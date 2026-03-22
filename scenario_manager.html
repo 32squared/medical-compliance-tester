@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>시나리오 관리 — 나만의 주치의</title>
+<style>
+  :root {
+    --bg: #0f172a; --surface: #1e293b; --surface2: #334155; --surface3: #3b4a63;
+    --text: #e2e8f0; --text-dim: #94a3b8; --accent: #38bdf8; --accent-dim: #0c4a6e;
+    --green: #22c55e; --red: #ef4444; --yellow: #eab308; --orange: #f97316;
+    --purple: #a855f7; --border: #475569; --radius: 12px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Pretendard','Apple SD Gothic Neo',system-ui,sans-serif;
+         background:var(--bg); color:var(--text); height:100vh; display:flex; flex-direction:column; }
+
+  /* ── Top Bar ── */
+  .topbar { display:flex; align-items:center; justify-content:space-between; padding:12px 20px;
+            background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; }
+  .topbar h1 { font-size:16px; font-weight:700; display:flex; align-items:center; gap:8px; }
+  .topbar .nav { display:flex; gap:6px; }
+  .nav-btn { background:none; border:1px solid var(--border); color:var(--text-dim); border-radius:8px;
+             padding:6px 14px; cursor:pointer; font-size:13px; text-decoration:none; transition:all .15s; }
+  .nav-btn:hover { background:var(--surface2); color:var(--text); }
+  .nav-btn.active { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
+  .topbar .actions { display:flex; gap:8px; }
+  .btn { padding:8px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;
+         border:1px solid var(--border); transition:all .15s; font-family:inherit; }
+  .btn-primary { background:var(--accent); color:#0f172a; border-color:var(--accent); }
+  .btn-primary:hover { opacity:.9; }
+  .btn-outline { background:none; color:var(--text-dim); }
+  .btn-outline:hover { background:var(--surface2); color:var(--text); }
+  .btn-danger { background:var(--red); color:white; border-color:var(--red); }
+  .btn-danger:hover { opacity:.9; }
+  .btn-sm { padding:5px 10px; font-size:12px; }
+  .btn-purple { background:var(--purple); color:white; border-color:var(--purple); }
+  .btn-purple:hover { opacity:.9; }
+  .btn:disabled { opacity:.5; cursor:not-allowed; }
+
+  /* ── Source Tabs ── */
+  .source-tabs { display:flex; gap:0; background:var(--surface); border-bottom:1px solid var(--border); padding:0 20px; }
+  .source-tab { padding:10px 20px; font-size:13px; font-weight:600; cursor:pointer; color:var(--text-dim);
+                border-bottom:2px solid transparent; transition:all .15s; display:flex; align-items:center; gap:8px; }
+  .source-tab:hover { color:var(--text); background:rgba(255,255,255,.03); }
+  .source-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+  .source-tab .tab-count { font-size:11px; background:var(--surface2); padding:2px 8px; border-radius:10px; }
+  .source-tab.active .tab-count { background:var(--accent-dim); color:var(--accent); }
+  .tab-icon { font-size:14px; }
+
+  /* ── Layout ── */
+  .layout { display:flex; flex:1; overflow:hidden; }
+
+  /* ── Sidebar (Categories) ── */
+  .sidebar { width:220px; background:var(--surface); border-right:1px solid var(--border);
+             padding:16px; overflow-y:auto; flex-shrink:0; }
+  .sidebar h3 { font-size:12px; color:var(--text-dim); text-transform:uppercase; letter-spacing:1px;
+                margin-bottom:12px; }
+  .cat-item { display:flex; align-items:center; justify-content:space-between; padding:8px 12px;
+              border-radius:8px; cursor:pointer; margin-bottom:4px; font-size:13px; transition:all .15s; }
+  .cat-item:hover { background:var(--surface2); }
+  .cat-item.active { background:var(--accent-dim); color:var(--accent); }
+  .cat-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .cat-name { flex:1; margin-left:8px; }
+  .cat-count { font-size:11px; color:var(--text-dim); background:var(--surface2); padding:2px 7px;
+               border-radius:10px; }
+  .cat-item.active .cat-count { background:var(--accent-dim); color:var(--accent); }
+
+  .sidebar-divider { border:none; border-top:1px solid var(--border); margin:16px 0; }
+  .sidebar-stats { font-size:12px; color:var(--text-dim); }
+  .sidebar-stats .stat { display:flex; justify-content:space-between; margin-bottom:6px; }
+  .sidebar-stats .stat-val { color:var(--text); font-weight:600; }
+
+  /* ── Main Content ── */
+  .main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+
+  /* ── Toolbar ── */
+  .toolbar { display:flex; align-items:center; gap:10px; padding:12px 20px;
+             background:var(--surface); border-bottom:1px solid var(--border); flex-wrap:wrap; }
+  .search-box { flex:1; min-width:200px; display:flex; align-items:center; background:var(--bg);
+                border:1px solid var(--border); border-radius:8px; padding:0 12px; }
+  .search-box input { flex:1; background:none; border:none; color:var(--text); padding:8px 0;
+                      font-size:13px; outline:none; font-family:inherit; }
+  .search-icon { color:var(--text-dim); font-size:14px; }
+  .filter-chips { display:flex; gap:6px; }
+  .chip { padding:5px 12px; border-radius:16px; font-size:11px; cursor:pointer;
+          border:1px solid var(--border); background:var(--bg); color:var(--text-dim); transition:all .15s; }
+  .chip:hover { border-color:var(--accent); color:var(--accent); }
+  .chip.active { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
+  .bulk-actions { display:flex; gap:6px; }
+
+  /* ── Scenario List ── */
+  .scenario-list { flex:1; overflow-y:auto; padding:16px 20px; }
+  .scenario-card { display:flex; align-items:flex-start; gap:12px; padding:14px 16px;
+                   background:var(--surface); border:1px solid var(--border); border-radius:12px;
+                   margin-bottom:8px; cursor:pointer; transition:all .15s; position:relative; }
+  .scenario-card:hover { border-color:var(--accent); background:var(--surface2); }
+  .scenario-card.selected { border-color:var(--accent); background:rgba(56,189,248,.08); }
+  .scenario-card.generated-card { border-left:3px solid var(--purple); }
+  .sc-check { width:18px; height:18px; border:2px solid var(--border); border-radius:4px;
+              flex-shrink:0; margin-top:2px; cursor:pointer; display:flex; align-items:center;
+              justify-content:center; transition:all .15s; }
+  .sc-check.checked { background:var(--accent); border-color:var(--accent); }
+  .sc-check.checked::after { content:'\2713'; color:#0f172a; font-size:12px; font-weight:bold; }
+  .sc-body { flex:1; min-width:0; }
+  .sc-header { display:flex; align-items:center; gap:8px; margin-bottom:4px; flex-wrap:wrap; }
+  .sc-id { font-size:12px; font-weight:700; color:var(--accent); font-family:monospace; }
+  .sc-risk { font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; text-transform:uppercase; }
+  .risk-LOW { background:#16a34a22; color:var(--green); }
+  .risk-MEDIUM { background:#eab30822; color:var(--yellow); }
+  .risk-HIGH { background:#f9731622; color:var(--orange); }
+  .risk-CRITICAL { background:#ef444422; color:var(--red); }
+  .sc-refuse { font-size:10px; padding:2px 8px; border-radius:10px; }
+  .refuse-yes { background:#ef444422; color:var(--red); }
+  .refuse-no { background:#22c55e22; color:var(--green); }
+  .sc-source { font-size:10px; padding:2px 8px; border-radius:10px; font-weight:600; }
+  .source-manual { background:#38bdf822; color:var(--accent); }
+  .source-generated { background:#a855f722; color:var(--purple); }
+  .sc-prompt { font-size:13px; color:var(--text); line-height:1.5; margin-bottom:6px;
+               overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+  .sc-tags { display:flex; gap:4px; flex-wrap:wrap; }
+  .sc-tag { font-size:10px; background:var(--surface2); color:var(--text-dim); padding:2px 8px;
+            border-radius:8px; }
+  .sc-parent { font-size:10px; color:var(--text-dim); margin-top:4px; }
+  .sc-actions { display:flex; gap:4px; flex-shrink:0; }
+  .sc-actions .btn-sm { opacity:0; transition:opacity .15s; }
+  .scenario-card:hover .sc-actions .btn-sm { opacity:1; }
+  .sc-disabled { opacity:.5; }
+
+  /* ── Empty State ── */
+  .empty-state { text-align:center; padding:60px 20px; color:var(--text-dim); }
+  .empty-state .icon { font-size:48px; margin-bottom:16px; }
+  .empty-state p { font-size:14px; margin-bottom:16px; }
+
+  /* ── Generate Panel ── */
+  .gen-panel { background:var(--surface); border:1px solid var(--purple); border-radius:12px;
+               margin:16px 20px; padding:20px; }
+  .gen-panel h3 { font-size:14px; font-weight:700; color:var(--purple); margin-bottom:16px;
+                  display:flex; align-items:center; gap:8px; }
+  .gen-panel .field { margin-bottom:14px; }
+  .gen-panel .field label { display:block; font-size:12px; color:var(--text-dim); margin-bottom:5px; font-weight:600; }
+  .gen-panel .field input, .gen-panel .field select, .gen-panel .field textarea {
+    width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text);
+    padding:9px 12px; border-radius:8px; font-size:13px; font-family:inherit; outline:none;
+  }
+  .gen-panel .field input:focus, .gen-panel .field select:focus, .gen-panel .field textarea:focus { border-color:var(--purple); }
+  .gen-panel .field textarea { resize:vertical; min-height:60px; }
+  .gen-panel .field .hint { font-size:11px; color:var(--text-dim); margin-top:3px; }
+  .gen-row { display:flex; gap:12px; }
+  .gen-row .field { flex:1; }
+  .gen-footer { display:flex; justify-content:space-between; align-items:center; margin-top:16px; }
+  .gen-footer .cost-hint { font-size:11px; color:var(--text-dim); }
+  .gen-progress { margin-top:12px; display:none; }
+  .gen-progress .bar { height:4px; background:var(--surface2); border-radius:2px; overflow:hidden; }
+  .gen-progress .bar-fill { height:100%; background:var(--purple); border-radius:2px;
+                            animation:progress 2s ease-in-out infinite; width:60%; }
+  @keyframes progress { 0% { transform:translateX(-100%); } 100% { transform:translateX(200%); } }
+  .gen-progress .status { font-size:12px; color:var(--purple); margin-top:6px; }
+
+  /* ── Source select chips in gen panel ── */
+  .scenario-select-list { max-height:200px; overflow-y:auto; border:1px solid var(--border);
+                          border-radius:8px; background:var(--bg); }
+  .scenario-select-item { display:flex; align-items:center; gap:8px; padding:8px 12px;
+                          font-size:12px; cursor:pointer; transition:background .1s; }
+  .scenario-select-item:hover { background:var(--surface2); }
+  .scenario-select-item.selected { background:rgba(168,85,247,.12); }
+  .scenario-select-item .sel-check { width:14px; height:14px; border:2px solid var(--border);
+                                     border-radius:3px; flex-shrink:0; display:flex; align-items:center;
+                                     justify-content:center; }
+  .scenario-select-item.selected .sel-check { background:var(--purple); border-color:var(--purple); }
+  .scenario-select-item.selected .sel-check::after { content:'\2713'; color:white; font-size:9px; font-weight:bold; }
+
+  /* ── Modal ── */
+  .modal-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.6);
+                   display:none; align-items:center; justify-content:center; z-index:100; }
+  .modal-overlay.show { display:flex; }
+  .modal { background:var(--surface); border:1px solid var(--border); border-radius:16px;
+           width:640px; max-width:90vw; max-height:85vh; overflow-y:auto; padding:24px; }
+  .modal h2 { font-size:16px; font-weight:700; margin-bottom:20px; display:flex; align-items:center;
+              justify-content:space-between; }
+  .modal h2 .close-btn { background:none; border:none; color:var(--text-dim); font-size:20px;
+                         cursor:pointer; padding:4px; }
+  .modal h2 .close-btn:hover { color:var(--text); }
+  .field { margin-bottom:16px; }
+  .field label { display:block; font-size:12px; color:var(--text-dim); margin-bottom:5px; font-weight:600; }
+  .field input, .field select, .field textarea {
+    width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text);
+    padding:9px 12px; border-radius:8px; font-size:13px; font-family:inherit; outline:none;
+    transition:border-color .15s;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color:var(--accent); }
+  .field textarea { resize:vertical; min-height:80px; }
+  .field .hint { font-size:11px; color:var(--text-dim); margin-top:3px; }
+  .field-row { display:flex; gap:12px; }
+  .field-row .field { flex:1; }
+  .toggle-field { display:flex; align-items:center; gap:10px; }
+  .toggle { width:40px; height:22px; background:var(--surface2); border-radius:11px; cursor:pointer;
+            position:relative; transition:background .15s; }
+  .toggle.on { background:var(--accent); }
+  .toggle::after { content:''; position:absolute; top:3px; left:3px; width:16px; height:16px;
+                   background:white; border-radius:50%; transition:transform .15s; }
+  .toggle.on::after { transform:translateX(18px); }
+  .modal-footer { display:flex; justify-content:flex-end; gap:8px; margin-top:20px; padding-top:16px;
+                  border-top:1px solid var(--border); }
+
+  /* ── Toast ── */
+  .toast-container { position:fixed; bottom:20px; right:20px; z-index:200; display:flex;
+                     flex-direction:column; gap:8px; }
+  .toast { padding:12px 20px; border-radius:10px; font-size:13px; font-weight:500;
+           animation:slideIn .3s ease; box-shadow:0 4px 12px rgba(0,0,0,.3); }
+  .toast-success { background:var(--green); color:white; }
+  .toast-error { background:var(--red); color:white; }
+  .toast-info { background:var(--accent); color:#0f172a; }
+  .toast-purple { background:var(--purple); color:white; }
+  @keyframes slideIn { from { transform:translateX(100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
+
+  /* ── Confirm Dialog ── */
+  .confirm-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.6);
+                     display:none; align-items:center; justify-content:center; z-index:150; }
+  .confirm-overlay.show { display:flex; }
+  .confirm-box { background:var(--surface); border:1px solid var(--border); border-radius:16px;
+                 padding:24px; width:400px; max-width:90vw; text-align:center; }
+  .confirm-box p { font-size:14px; margin-bottom:20px; line-height:1.6; }
+  .confirm-box .actions { display:flex; gap:8px; justify-content:center; }
+
+  /* Status bar */
+  .statusbar { padding:8px 20px; background:var(--surface); border-top:1px solid var(--border);
+               font-size:12px; color:var(--text-dim); display:flex; justify-content:space-between; }
+</style>
+</head>
+<body>
+
+<!-- ── Top Bar ── -->
+<div class="topbar">
+  <h1>&#127973; 시나리오 관리</h1>
+  <div class="nav">
+    <a href="/" class="nav-btn">채팅 테스터</a>
+    <a href="/manager" class="nav-btn active">시나리오 관리</a>
+  </div>
+  <div class="actions">
+    <button class="btn btn-outline" onclick="exportScenarios()">내보내기</button>
+    <button class="btn btn-outline" onclick="document.getElementById('importFile').click()">가져오기</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importScenarios(event)">
+    <button class="btn btn-primary" onclick="openCreateModal()">+ 새 시나리오</button>
+  </div>
+</div>
+
+<!-- ── Source Tabs ── -->
+<div class="source-tabs">
+  <div class="source-tab active" data-source="all" onclick="switchSourceTab('all')">
+    <span class="tab-icon">&#128203;</span> 전체
+    <span class="tab-count" id="tab-count-all">0</span>
+  </div>
+  <div class="source-tab" data-source="manual" onclick="switchSourceTab('manual')">
+    <span class="tab-icon">&#9997;&#65039;</span> 수동 등록
+    <span class="tab-count" id="tab-count-manual">0</span>
+  </div>
+  <div class="source-tab" data-source="generated" onclick="switchSourceTab('generated')">
+    <span class="tab-icon">&#129302;</span> AI 자동 생성
+    <span class="tab-count" id="tab-count-generated">0</span>
+  </div>
+</div>
+
+<!-- ── Layout ── -->
+<div class="layout">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <h3>카테고리</h3>
+    <div class="cat-item active" data-cat="all" onclick="filterCategory('all')">
+      <div class="cat-dot" style="background:var(--accent)"></div>
+      <span class="cat-name">전체</span>
+      <span class="cat-count" id="count-all">0</span>
+    </div>
+    <div id="categoryList"></div>
+
+    <hr class="sidebar-divider">
+    <div class="sidebar-stats">
+      <div class="stat"><span>전체 시나리오</span><span class="stat-val" id="stat-total">0</span></div>
+      <div class="stat"><span>수동 등록</span><span class="stat-val" style="color:var(--accent)" id="stat-manual">0</span></div>
+      <div class="stat"><span>AI 생성</span><span class="stat-val" style="color:var(--purple)" id="stat-generated">0</span></div>
+      <div class="stat"><span>활성화</span><span class="stat-val" id="stat-enabled">0</span></div>
+      <div class="stat"><span>CRITICAL</span><span class="stat-val" style="color:var(--red)" id="stat-critical">0</span></div>
+      <div class="stat"><span>거부 기대</span><span class="stat-val" style="color:var(--orange)" id="stat-refuse">0</span></div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <!-- Generate Panel (visible in generated tab) -->
+    <div class="gen-panel" id="genPanel" style="display:none">
+      <h3>&#129302; AI 시나리오 자동 생성</h3>
+      <div class="gen-row">
+        <div class="field">
+          <label>생성 모드</label>
+          <select id="genMode" onchange="onGenModeChange()">
+            <option value="paraphrase">변형 (같은 의도, 다른 표현)</option>
+            <option value="expand">확장 (같은 카테고리, 새 각도)</option>
+            <option value="new">신규 생성 (처음부터 새로)</option>
+          </select>
+          <div class="hint" id="genModeHint">선택한 시나리오의 표현을 다양하게 변형합니다</div>
+        </div>
+        <div class="field">
+          <label>생성 개수</label>
+          <select id="genCount">
+            <option value="3">3개</option>
+            <option value="5" selected>5개</option>
+            <option value="10">10개</option>
+            <option value="15">15개</option>
+            <option value="20">20개</option>
+          </select>
+        </div>
+      </div>
+      <div id="genBaseSection">
+        <div class="field">
+          <label>원본 시나리오 선택 <span style="color:var(--text-dim)">(수동 등록 시나리오 중 선택)</span></label>
+          <div class="scenario-select-list" id="genBaseList"></div>
+          <div class="hint" id="genBaseHint">0개 선택됨</div>
+        </div>
+      </div>
+      <div class="field" id="genCategoryField" style="display:none">
+        <label>카테고리</label>
+        <select id="genCategory">
+          <option value="">전체 (혼합)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>추가 지시사항 (선택)</label>
+        <textarea id="genInstruction" rows="2" placeholder="예: 노인 환자 관점으로 생성해줘, 임산부 관련 질문 위주로..."></textarea>
+      </div>
+      <div class="gen-footer">
+        <span class="cost-hint">gpt-4o-mini 사용 / OpenAI API Key 필요</span>
+        <button class="btn btn-purple" id="genBtn" onclick="generateScenarios()">&#129302; 생성 시작</button>
+      </div>
+      <div class="gen-progress" id="genProgress">
+        <div class="bar"><div class="bar-fill"></div></div>
+        <div class="status" id="genStatus">LLM에서 시나리오 생성 중...</div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <div class="search-box">
+        <span class="search-icon">&#128269;</span>
+        <input type="text" id="searchInput" placeholder="시나리오 검색 (ID, 프롬프트, 태그...)" oninput="debounceSearch()">
+      </div>
+      <div class="filter-chips">
+        <span class="chip active" data-risk="all" onclick="filterRisk('all')">전체</span>
+        <span class="chip" data-risk="CRITICAL" onclick="filterRisk('CRITICAL')">CRITICAL</span>
+        <span class="chip" data-risk="HIGH" onclick="filterRisk('HIGH')">HIGH</span>
+        <span class="chip" data-risk="MEDIUM" onclick="filterRisk('MEDIUM')">MEDIUM</span>
+        <span class="chip" data-risk="LOW" onclick="filterRisk('LOW')">LOW</span>
+      </div>
+      <div class="bulk-actions" id="bulkActions" style="display:none">
+        <button class="btn btn-sm btn-danger" onclick="bulkDelete()">선택 삭제</button>
+        <button class="btn btn-sm btn-outline" onclick="clearSelection()">선택 해제</button>
+      </div>
+      <div id="generatedBulkActions" style="display:none">
+        <button class="btn btn-sm btn-danger" onclick="deleteAllGenerated()">AI 생성 전체 삭제</button>
+      </div>
+    </div>
+
+    <!-- Scenario List -->
+    <div class="scenario-list" id="scenarioList">
+      <div class="empty-state">
+        <div class="icon">&#128203;</div>
+        <p>로딩 중...</p>
+      </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="statusbar">
+      <span id="statusText">로딩 중...</span>
+      <span id="statusRight"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ── Create/Edit Modal ── -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2>
+      <span id="modalTitle">새 시나리오</span>
+      <button class="close-btn" onclick="closeModal()">&times;</button>
+    </h2>
+    <div class="field-row">
+      <div class="field">
+        <label>ID (비우면 자동 생성)</label>
+        <input type="text" id="fId" placeholder="예: DIAG-006">
+      </div>
+      <div class="field">
+        <label>카테고리</label>
+        <select id="fCategory"></select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>세부 분류</label>
+        <input type="text" id="fSubcategory" placeholder="예: 직접 진단 요청">
+      </div>
+      <div class="field">
+        <label>위험도</label>
+        <select id="fRiskLevel">
+          <option value="LOW">LOW</option>
+          <option value="MEDIUM">MEDIUM</option>
+          <option value="HIGH">HIGH</option>
+          <option value="CRITICAL">CRITICAL</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>테스트 프롬프트</label>
+      <textarea id="fPrompt" rows="3" placeholder="테스트할 사용자 질문을 입력하세요"></textarea>
+    </div>
+    <div class="field">
+      <label>기대 동작</label>
+      <textarea id="fExpected" rows="2" placeholder="이 프롬프트에 대한 정상 응답 조건"></textarea>
+    </div>
+    <div class="field">
+      <label>태그 (콤마 구분)</label>
+      <input type="text" id="fTags" placeholder="예: 진단, 두통, 신경과">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <div class="toggle-field">
+          <div class="toggle" id="fShouldRefuse" onclick="toggleBtn(this)"></div>
+          <label style="margin-bottom:0">거부/우회 기대</label>
+        </div>
+        <div class="hint">True면 서비스가 요청을 거부해야 정상</div>
+      </div>
+      <div class="field">
+        <div class="toggle-field">
+          <div class="toggle on" id="fEnabled" onclick="toggleBtn(this)"></div>
+          <label style="margin-bottom:0">활성화</label>
+        </div>
+        <div class="hint">비활성화하면 테스트에서 제외</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">취소</button>
+      <button class="btn btn-primary" id="modalSaveBtn" onclick="saveScenario()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Confirm Dialog ── -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <p id="confirmMessage">정말 삭제하시겠습니까?</p>
+    <div class="actions">
+      <button class="btn btn-outline" onclick="closeConfirm()">취소</button>
+      <button class="btn btn-danger" id="confirmOk" onclick="confirmAction()">삭제</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast Container ── -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ════════════════════════════════════════════
+// State
+// ════════════════════════════════════════════
+let allScenarios = [];
+let categories = [];
+let selectedCategory = 'all';
+let selectedRisk = 'all';
+let selectedSource = 'all';  // all | manual | generated
+let searchQuery = '';
+let checkedIds = new Set();
+let editingId = null;
+let pendingConfirmFn = null;
+let debounceTimer = null;
+let genSelectedIds = new Set();
+
+const API = '';
+
+// ════════════════════════════════════════════
+// Init
+// ════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  loadData();
+});
+
+async function loadData() {
+  try {
+    const res = await fetch(`${API}/api/scenarios`);
+    const data = await res.json();
+    allScenarios = data.scenarios || [];
+    categories = data.categories || [];
+    renderCategories();
+    renderList();
+    updateStats();
+    updateTabCounts();
+    updateGenBaseList();
+  } catch (e) {
+    showToast('데이터 로드 실패: ' + e.message, 'error');
+  }
+}
+
+// ════════════════════════════════════════════
+// Source Tabs
+// ════════════════════════════════════════════
+function switchSourceTab(source) {
+  selectedSource = source;
+  document.querySelectorAll('.source-tab').forEach(el => {
+    el.classList.toggle('active', el.dataset.source === source);
+  });
+  // Show/hide generate panel
+  document.getElementById('genPanel').style.display = (source === 'generated') ? 'block' : 'none';
+  // Show/hide bulk delete for generated
+  document.getElementById('generatedBulkActions').style.display = (source === 'generated') ? 'flex' : 'none';
+  renderList();
+  updateStats();
+}
+
+function updateTabCounts() {
+  const manual = allScenarios.filter(s => (s.source || 'manual') === 'manual').length;
+  const generated = allScenarios.filter(s => s.source === 'generated').length;
+  document.getElementById('tab-count-all').textContent = allScenarios.length;
+  document.getElementById('tab-count-manual').textContent = manual;
+  document.getElementById('tab-count-generated').textContent = generated;
+}
+
+// ════════════════════════════════════════════
+// Render Categories
+// ════════════════════════════════════════════
+function renderCategories() {
+  const el = document.getElementById('categoryList');
+  const catSelect = document.getElementById('fCategory');
+  const genCatSelect = document.getElementById('genCategory');
+
+  const filtered = getSourceFiltered();
+
+  el.innerHTML = categories.map(c => {
+    const count = filtered.filter(s => s.category === c.id).length;
+    return `<div class="cat-item" data-cat="${c.id}" onclick="filterCategory('${c.id}')">
+      <div class="cat-dot" style="background:${c.color}"></div>
+      <span class="cat-name">${c.name}</span>
+      <span class="cat-count">${count}</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('count-all').textContent = filtered.length;
+
+  catSelect.innerHTML = categories.map(c =>
+    `<option value="${c.id}">${c.name}</option>`
+  ).join('');
+
+  genCatSelect.innerHTML = '<option value="">전체 (혼합)</option>' +
+    categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+}
+
+function getSourceFiltered() {
+  if (selectedSource === 'all') return allScenarios;
+  return allScenarios.filter(s => (s.source || 'manual') === selectedSource);
+}
+
+// ════════════════════════════════════════════
+// Render Scenario List
+// ════════════════════════════════════════════
+function renderList() {
+  let filtered = getSourceFiltered();
+
+  if (selectedCategory !== 'all') {
+    filtered = filtered.filter(s => s.category === selectedCategory);
+  }
+  if (selectedRisk !== 'all') {
+    filtered = filtered.filter(s => s.riskLevel === selectedRisk);
+  }
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    filtered = filtered.filter(s =>
+      s.id.toLowerCase().includes(q) ||
+      s.prompt.toLowerCase().includes(q) ||
+      (s.subcategory || '').toLowerCase().includes(q) ||
+      (s.tags || []).some(t => t.toLowerCase().includes(q))
+    );
+  }
+
+  const el = document.getElementById('scenarioList');
+
+  if (filtered.length === 0) {
+    const emptyMsg = selectedSource === 'generated'
+      ? '아직 AI 생성 시나리오가 없습니다. 위 패널에서 생성해보세요!'
+      : '시나리오가 없습니다';
+    el.innerHTML = `<div class="empty-state">
+      <div class="icon">${selectedSource === 'generated' ? '&#129302;' : '&#128203;'}</div>
+      <p>${emptyMsg}</p>
+      ${selectedSource !== 'generated' ? '<button class="btn btn-primary" onclick="openCreateModal()">+ 새 시나리오 만들기</button>' : ''}
+    </div>`;
+    document.getElementById('statusText').textContent = '검색 결과 없음';
+    return;
+  }
+
+  el.innerHTML = filtered.map(s => {
+    const catInfo = categories.find(c => c.id === s.category) || {};
+    const checked = checkedIds.has(s.id);
+    const disabledClass = s.enabled === false ? 'sc-disabled' : '';
+    const isGen = s.source === 'generated';
+    const genClass = isGen ? 'generated-card' : '';
+    const sourceLabel = isGen
+      ? '<span class="sc-source source-generated">AI 생성</span>'
+      : '<span class="sc-source source-manual">수동</span>';
+    const parentInfo = (isGen && s.parentId)
+      ? `<div class="sc-parent">&#8627; 원본: ${escHtml(s.parentId)}</div>` : '';
+
+    return `<div class="scenario-card ${checked ? 'selected' : ''} ${disabledClass} ${genClass}" data-id="${s.id}">
+      <div class="sc-check ${checked ? 'checked' : ''}" onclick="event.stopPropagation(); toggleCheck('${s.id}')"></div>
+      <div class="sc-body" onclick="openEditModal('${s.id}')">
+        <div class="sc-header">
+          <span class="sc-id">${s.id}</span>
+          ${sourceLabel}
+          <span class="sc-risk risk-${s.riskLevel}">${s.riskLevel}</span>
+          <span class="sc-refuse ${s.shouldRefuse ? 'refuse-yes' : 'refuse-no'}">${s.shouldRefuse ? '거부 기대' : '정상 응답'}</span>
+          ${s.enabled === false ? '<span style="font-size:10px;color:var(--text-dim)">(비활성)</span>' : ''}
+          <span style="font-size:11px;color:var(--text-dim);margin-left:auto">${catInfo.name || s.category}</span>
+        </div>
+        <div class="sc-prompt">${escHtml(s.prompt)}</div>
+        <div class="sc-tags">
+          ${(s.tags || []).map(t => `<span class="sc-tag">${t}</span>`).join('')}
+        </div>
+        ${parentInfo}
+      </div>
+      <div class="sc-actions">
+        <button class="btn btn-sm btn-outline" onclick="event.stopPropagation(); duplicateScenario('${s.id}')" title="복제">&#128203;</button>
+        ${isGen ? `<button class="btn btn-sm btn-outline" style="color:var(--accent)" onclick="event.stopPropagation(); promoteToManual('${s.id}')" title="수동으로 승격">&#9997;&#65039;</button>` : ''}
+        <button class="btn btn-sm btn-outline" onclick="event.stopPropagation(); sendToChat('${s.id}')" title="채팅 테스터에서 실행">&#9654;</button>
+        <button class="btn btn-sm btn-outline" style="color:var(--red)" onclick="event.stopPropagation(); confirmDelete('${s.id}')" title="삭제">&#128465;</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('statusText').textContent =
+    `${filtered.length}개 시나리오 표시 (전체 ${allScenarios.length}개)`;
+  document.getElementById('statusRight').textContent =
+    checkedIds.size > 0 ? `${checkedIds.size}개 선택됨` : '';
+
+  document.getElementById('bulkActions').style.display = checkedIds.size > 0 ? 'flex' : 'none';
+}
+
+// ════════════════════════════════════════════
+// Promote generated → manual
+// ════════════════════════════════════════════
+async function promoteToManual(id) {
+  try {
+    const res = await fetch(`${API}/api/scenarios/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source: 'manual', generationInfo: null })
+    });
+    if (!res.ok) throw new Error('승격 실패');
+    showToast(`${id}를 수동 등록으로 승격했습니다`, 'success');
+    await loadData();
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+// ════════════════════════════════════════════
+// Filters
+// ════════════════════════════════════════════
+function filterCategory(cat) {
+  selectedCategory = cat;
+  document.querySelectorAll('.cat-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.cat === cat);
+  });
+  renderList();
+}
+
+function filterRisk(risk) {
+  selectedRisk = risk;
+  document.querySelectorAll('.chip[data-risk]').forEach(el => {
+    el.classList.toggle('active', el.dataset.risk === risk);
+  });
+  renderList();
+}
+
+function debounceSearch() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    searchQuery = document.getElementById('searchInput').value.trim();
+    renderList();
+  }, 200);
+}
+
+// ════════════════════════════════════════════
+// Checkbox
+// ════════════════════════════════════════════
+function toggleCheck(id) {
+  if (checkedIds.has(id)) checkedIds.delete(id);
+  else checkedIds.add(id);
+  renderList();
+}
+
+function clearSelection() {
+  checkedIds.clear();
+  renderList();
+}
+
+// ════════════════════════════════════════════
+// Modal — Create / Edit
+// ════════════════════════════════════════════
+function openCreateModal() {
+  editingId = null;
+  document.getElementById('modalTitle').textContent = '새 시나리오 (수동 등록)';
+  document.getElementById('modalSaveBtn').textContent = '생성';
+  document.getElementById('fId').value = '';
+  document.getElementById('fId').disabled = false;
+  document.getElementById('fCategory').value = categories[0]?.id || '';
+  document.getElementById('fSubcategory').value = '';
+  document.getElementById('fRiskLevel').value = 'LOW';
+  document.getElementById('fPrompt').value = '';
+  document.getElementById('fExpected').value = '';
+  document.getElementById('fTags').value = '';
+  setToggle('fShouldRefuse', false);
+  setToggle('fEnabled', true);
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+function openEditModal(id) {
+  const s = allScenarios.find(x => x.id === id);
+  if (!s) return;
+  editingId = id;
+  const isGen = s.source === 'generated';
+  document.getElementById('modalTitle').textContent = `수정: ${id}${isGen ? ' (AI 생성)' : ''}`;
+  document.getElementById('modalSaveBtn').textContent = '저장';
+  document.getElementById('fId').value = s.id;
+  document.getElementById('fId').disabled = true;
+  document.getElementById('fCategory').value = s.category;
+  document.getElementById('fSubcategory').value = s.subcategory || '';
+  document.getElementById('fRiskLevel').value = s.riskLevel;
+  document.getElementById('fPrompt').value = s.prompt;
+  document.getElementById('fExpected').value = s.expectedBehavior || '';
+  document.getElementById('fTags').value = (s.tags || []).join(', ');
+  setToggle('fShouldRefuse', s.shouldRefuse);
+  setToggle('fEnabled', s.enabled !== false);
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('show');
+  editingId = null;
+}
+
+async function saveScenario() {
+  const payload = {
+    id: document.getElementById('fId').value.trim() || undefined,
+    category: document.getElementById('fCategory').value,
+    subcategory: document.getElementById('fSubcategory').value.trim(),
+    prompt: document.getElementById('fPrompt').value.trim(),
+    expectedBehavior: document.getElementById('fExpected').value.trim(),
+    shouldRefuse: getToggle('fShouldRefuse'),
+    riskLevel: document.getElementById('fRiskLevel').value,
+    tags: document.getElementById('fTags').value.split(',').map(t => t.trim()).filter(Boolean),
+    enabled: getToggle('fEnabled'),
+  };
+
+  if (!editingId) {
+    payload.source = 'manual';
+  }
+
+  if (!payload.prompt) {
+    showToast('프롬프트를 입력해주세요', 'error');
+    return;
+  }
+
+  try {
+    let res;
+    if (editingId) {
+      res = await fetch(`${API}/api/scenarios/${editingId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } else {
+      res = await fetch(`${API}/api/scenarios`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    }
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || '저장 실패');
+    showToast(editingId ? '시나리오 수정 완료' : `시나리오 생성: ${data.id}`, 'success');
+    closeModal();
+    await loadData();
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+// ════════════════════════════════════════════
+// Delete
+// ════════════════════════════════════════════
+function confirmDelete(id) {
+  document.getElementById('confirmMessage').textContent = `"${id}" 시나리오를 삭제하시겠습니까?`;
+  pendingConfirmFn = async () => {
+    try {
+      const res = await fetch(`${API}/api/scenarios/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      showToast(`${id} 삭제 완료`, 'success');
+      checkedIds.delete(id);
+      await loadData();
+    } catch (e) {
+      showToast(e.message, 'error');
+    }
+  };
+  document.getElementById('confirmOverlay').classList.add('show');
+}
+
+function bulkDelete() {
+  const ids = [...checkedIds];
+  document.getElementById('confirmMessage').textContent = `${ids.length}개 시나리오를 삭제하시겠습니까?`;
+  pendingConfirmFn = async () => {
+    try {
+      const res = await fetch(`${API}/api/scenarios/batch-delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      showToast(data.message, 'success');
+      checkedIds.clear();
+      await loadData();
+    } catch (e) {
+      showToast(e.message, 'error');
+    }
+  };
+  document.getElementById('confirmOverlay').classList.add('show');
+}
+
+function deleteAllGenerated() {
+  const genCount = allScenarios.filter(s => s.source === 'generated').length;
+  if (genCount === 0) {
+    showToast('삭제할 AI 생성 시나리오가 없습니다', 'info');
+    return;
+  }
+  document.getElementById('confirmMessage').textContent =
+    `AI 자동 생성 시나리오 ${genCount}개를 모두 삭제하시겠습니까?\n수동 등록 시나리오는 영향받지 않습니다.`;
+  pendingConfirmFn = async () => {
+    try {
+      const res = await fetch(`${API}/api/scenarios/batch-delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: 'generated' })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      showToast(data.message, 'success');
+      await loadData();
+    } catch (e) {
+      showToast(e.message, 'error');
+    }
+  };
+  document.getElementById('confirmOverlay').classList.add('show');
+}
+
+function confirmAction() {
+  closeConfirm();
+  if (pendingConfirmFn) pendingConfirmFn();
+}
+
+function closeConfirm() {
+  document.getElementById('confirmOverlay').classList.remove('show');
+}
+
+// ════════════════════════════════════════════
+// Duplicate
+// ════════════════════════════════════════════
+async function duplicateScenario(id) {
+  const s = allScenarios.find(x => x.id === id);
+  if (!s) return;
+  const payload = { ...s };
+  delete payload.id;
+  delete payload.createdAt;
+  delete payload.updatedAt;
+  payload.subcategory = (payload.subcategory || '') + ' (복제)';
+  payload.source = 'manual';
+  delete payload.parentId;
+  delete payload.generationInfo;
+
+  try {
+    const res = await fetch(`${API}/api/scenarios`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    showToast(`복제 완료: ${data.id} (수동 등록으로 저장)`, 'success');
+    await loadData();
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+// ════════════════════════════════════════════
+// Send to Chat Tester
+// ════════════════════════════════════════════
+function sendToChat(id) {
+  const s = allScenarios.find(x => x.id === id);
+  if (!s) return;
+  window.location.href = `/?prompt=${encodeURIComponent(s.prompt)}`;
+}
+
+// ════════════════════════════════════════════
+// Import / Export
+// ════════════════════════════════════════════
+function exportScenarios() {
+  window.open(`${API}/api/scenarios/export`, '_blank');
+}
+
+async function importScenarios(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  try {
+    const text = await file.text();
+    const json = JSON.parse(text);
+
+    const res = await fetch(`${API}/api/scenarios/import`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(json)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    showToast(data.message, 'success');
+    await loadData();
+  } catch (e) {
+    showToast('가져오기 실패: ' + e.message, 'error');
+  }
+  event.target.value = '';
+}
+
+// ════════════════════════════════════════════
+// AI Generate
+// ════════════════════════════════════════════
+function onGenModeChange() {
+  const mode = document.getElementById('genMode').value;
+  const hints = {
+    paraphrase: '선택한 시나리오의 표현을 다양하게 변형합니다 (존칭/반말, 직접적/우회적, 주어 변경 등)',
+    expand: '같은 카테고리에서 새로운 각도의 질문을 생성합니다 (다른 질병, 복합 질문, 함정 등)',
+    new: '지정한 카테고리에서 완전히 새로운 시나리오를 생성합니다'
+  };
+  document.getElementById('genModeHint').textContent = hints[mode] || '';
+  document.getElementById('genBaseSection').style.display = (mode === 'new') ? 'none' : 'block';
+  document.getElementById('genCategoryField').style.display = (mode === 'new') ? 'block' : 'none';
+}
+
+function updateGenBaseList() {
+  const manualScenarios = allScenarios.filter(s => (s.source || 'manual') === 'manual');
+  const el = document.getElementById('genBaseList');
+
+  el.innerHTML = manualScenarios.map(s => {
+    const catInfo = categories.find(c => c.id === s.category) || {};
+    const sel = genSelectedIds.has(s.id) ? 'selected' : '';
+    return `<div class="scenario-select-item ${sel}" onclick="toggleGenSelect('${s.id}')">
+      <div class="sel-check"></div>
+      <span style="color:var(--accent);font-family:monospace;font-size:11px;min-width:70px">${s.id}</span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(s.prompt)}</span>
+      <span style="color:var(--text-dim);font-size:10px">${catInfo.name || ''}</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('genBaseHint').textContent = `${genSelectedIds.size}개 선택됨`;
+}
+
+function toggleGenSelect(id) {
+  if (genSelectedIds.has(id)) genSelectedIds.delete(id);
+  else genSelectedIds.add(id);
+  updateGenBaseList();
+}
+
+async function generateScenarios() {
+  const mode = document.getElementById('genMode').value;
+  const count = parseInt(document.getElementById('genCount').value);
+  const instruction = document.getElementById('genInstruction').value.trim();
+  const category = document.getElementById('genCategory').value;
+
+  if (mode !== 'new' && genSelectedIds.size === 0) {
+    showToast('원본 시나리오를 1개 이상 선택해주세요', 'error');
+    return;
+  }
+
+  const baseScenarios = allScenarios.filter(s => genSelectedIds.has(s.id)).map(s => ({
+    id: s.id, category: s.category, subcategory: s.subcategory,
+    prompt: s.prompt, expectedBehavior: s.expectedBehavior,
+    shouldRefuse: s.shouldRefuse, riskLevel: s.riskLevel, tags: s.tags
+  }));
+
+  const btn = document.getElementById('genBtn');
+  const progress = document.getElementById('genProgress');
+  btn.disabled = true;
+  btn.textContent = '생성 중...';
+  progress.style.display = 'block';
+  document.getElementById('genStatus').textContent = 'LLM에서 시나리오 생성 중... (최대 60초 소요)';
+
+  try {
+    const res = await fetch(`${API}/api/scenarios/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode,
+        count,
+        scenarios: baseScenarios,
+        category,
+        instruction
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || '생성 실패');
+
+    showToast(`${data.generated}개 시나리오 자동 생성 완료!`, 'purple');
+    document.getElementById('genStatus').textContent =
+      `완료! ${data.generated}개 생성 (${data.model}, 토큰: ${data.usage?.total_tokens || '?'})`;
+
+    await loadData();
+
+    // Auto-switch to generated tab if not already
+    if (selectedSource !== 'generated') {
+      switchSourceTab('generated');
+    }
+  } catch (e) {
+    showToast('생성 실패: ' + e.message, 'error');
+    document.getElementById('genStatus').textContent = '생성 실패: ' + e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '\u{1F916} 생성 시작';
+    setTimeout(() => { progress.style.display = 'none'; }, 5000);
+  }
+}
+
+// ════════════════════════════════════════════
+// Stats
+// ════════════════════════════════════════════
+function updateStats() {
+  const src = getSourceFiltered();
+  document.getElementById('stat-total').textContent = allScenarios.length;
+  document.getElementById('stat-manual').textContent = allScenarios.filter(s => (s.source || 'manual') === 'manual').length;
+  document.getElementById('stat-generated').textContent = allScenarios.filter(s => s.source === 'generated').length;
+  document.getElementById('stat-enabled').textContent = src.filter(s => s.enabled !== false).length;
+  document.getElementById('stat-critical').textContent = src.filter(s => s.riskLevel === 'CRITICAL').length;
+  document.getElementById('stat-refuse').textContent = src.filter(s => s.shouldRefuse).length;
+}
+
+// ════════════════════════════════════════════
+// Toggle helpers
+// ════════════════════════════════════════════
+function toggleBtn(el) { el.classList.toggle('on'); }
+function setToggle(id, val) {
+  const el = document.getElementById(id);
+  if (val) el.classList.add('on'); else el.classList.remove('on');
+}
+function getToggle(id) { return document.getElementById(id).classList.contains('on'); }
+
+// ════════════════════════════════════════════
+// Toast
+// ════════════════════════════════════════════
+function showToast(msg, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  container.appendChild(t);
+  setTimeout(() => { t.remove(); }, 3500);
+}
+
+// ════════════════════════════════════════════
+// Escape HTML
+// ════════════════════════════════════════════
+function escHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+</script>
+</body>
+</html>
