@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>가이드라인 관리 — 나만의 주치의</title>
+<style>
+  :root {
+    --bg: #0f172a; --surface: #1e293b; --surface2: #334155; --surface3: #3b4a63;
+    --text: #e2e8f0; --text-dim: #94a3b8; --accent: #38bdf8; --accent-dim: #0c4a6e;
+    --green: #22c55e; --red: #ef4444; --yellow: #eab308; --orange: #f97316;
+    --border: #475569; --radius: 12px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Pretendard','Apple SD Gothic Neo',system-ui,sans-serif;
+         background:var(--bg); color:var(--text); min-height:100vh; display:flex; flex-direction:column; }
+
+  .topbar { display:flex; align-items:center; justify-content:space-between; padding:12px 20px;
+            background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; }
+  .topbar h1 { font-size:16px; font-weight:700; }
+  .topbar .nav { display:flex; gap:6px; }
+  .nav-btn { background:none; border:1px solid var(--border); color:var(--text-dim); border-radius:8px;
+             padding:6px 14px; cursor:pointer; font-size:13px; text-decoration:none; transition:all .15s; }
+  .nav-btn:hover { background:var(--surface2); color:var(--text); }
+  .nav-btn.active { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
+
+  .content { flex:1; padding:24px; max-width:1000px; margin:0 auto; width:100%; }
+
+  /* Version bar */
+  .version-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;
+                 padding:12px 16px; background:var(--surface); border:1px solid var(--border); border-radius:12px; }
+  .version-info { font-size:13px; color:var(--text-dim); display:flex; gap:16px; align-items:center; }
+  .version-badge { background:var(--accent-dim); color:var(--accent); padding:4px 10px; border-radius:6px;
+                   font-weight:700; font-size:12px; }
+  .btn-save { padding:8px 20px; background:var(--accent); color:#0f172a; border:none;
+              border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; }
+  .btn-save:hover { opacity:.9; }
+  .btn-save:disabled { opacity:.5; cursor:not-allowed; }
+
+  /* Tabs */
+  .tabs { display:flex; gap:4px; margin-bottom:20px; background:var(--surface); padding:4px;
+          border-radius:10px; border:1px solid var(--border); }
+  .tab { flex:1; text-align:center; padding:10px; border-radius:8px; font-size:13px; font-weight:600;
+         cursor:pointer; color:var(--text-dim); transition:all .15s; border:none; background:none; }
+  .tab.active { background:var(--accent-dim); color:var(--accent); }
+  .tab:hover { color:var(--text); }
+
+  /* Cards */
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:16px;
+          padding:24px; margin-bottom:20px; display:none; }
+  .card.active { display:block; }
+  .card h2 { font-size:15px; font-weight:700; color:var(--accent); margin-bottom:16px; }
+  .card h3 { font-size:13px; font-weight:600; color:var(--text); margin:16px 0 8px; }
+
+  .field { margin-bottom:16px; }
+  .field label { display:block; font-size:12px; color:var(--text-dim); margin-bottom:5px; font-weight:600; }
+  .field textarea, .field input {
+    width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text);
+    padding:10px 14px; border-radius:8px; font-size:13px; font-family:inherit; outline:none;
+    resize:vertical;
+  }
+  .field textarea:focus, .field input:focus { border-color:var(--accent); }
+  .field .hint { font-size:11px; color:var(--text-dim); margin-top:4px; }
+
+  /* Rule item */
+  .rule-item { background:var(--bg); border:1px solid var(--border); border-radius:10px;
+               padding:16px; margin-bottom:12px; position:relative; }
+  .rule-item .rule-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .rule-item .rule-title { font-size:14px; font-weight:600; }
+  .rule-item .rule-meta { font-size:11px; color:var(--text-dim); }
+  .severity-badge { padding:2px 8px; border-radius:4px; font-size:11px; font-weight:700; }
+  .severity-CRITICAL { background:#7f1d1d; color:#fca5a5; }
+  .severity-HIGH { background:#78350f; color:#fbbf24; }
+  .severity-MEDIUM { background:#1e3a5f; color:#93c5fd; }
+
+  .examples-list { list-style:none; padding:0; margin:8px 0 0; }
+  .examples-list li { font-size:12px; color:var(--text-dim); padding:3px 0; padding-left:12px;
+                      position:relative; }
+  .examples-list li::before { content:''; position:absolute; left:0; top:9px; width:4px; height:4px;
+                               background:var(--text-dim); border-radius:50%; }
+
+  .btn-add { padding:8px 16px; background:none; border:1px dashed var(--border); color:var(--text-dim);
+             border-radius:8px; font-size:12px; cursor:pointer; width:100%; margin-top:8px; }
+  .btn-add:hover { border-color:var(--accent); color:var(--accent); }
+
+  .btn-delete { background:none; border:none; color:var(--red); cursor:pointer; font-size:18px;
+                padding:4px 8px; line-height:1; }
+  .btn-delete:hover { opacity:.7; }
+
+  .btn-edit { background:none; border:1px solid var(--border); color:var(--text-dim); cursor:pointer;
+              font-size:11px; padding:4px 10px; border-radius:6px; margin-left:8px; }
+  .btn-edit:hover { border-color:var(--accent); color:var(--accent); }
+
+  /* Gray zone table */
+  .gz-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .gz-table th { text-align:left; padding:8px 12px; background:var(--surface2); color:var(--text-dim);
+                 font-size:11px; font-weight:600; }
+  .gz-table td { padding:8px 12px; border-bottom:1px solid var(--border); }
+  .gz-table .dangerous { color:var(--red); }
+  .gz-table .safe { color:var(--green); }
+
+  /* Keywords tag list */
+  .tag-list { display:flex; flex-wrap:wrap; gap:6px; }
+  .tag { background:var(--surface2); color:var(--text); padding:4px 10px; border-radius:6px;
+         font-size:12px; display:flex; align-items:center; gap:6px; }
+  .tag .remove { cursor:pointer; color:var(--red); font-size:14px; line-height:1; }
+  .tag-input-row { display:flex; gap:8px; margin-top:8px; }
+  .tag-input-row input { flex:1; }
+  .tag-input-row button { padding:8px 16px; background:var(--accent); color:#0f172a; border:none;
+                          border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; }
+
+  /* Test panel */
+  .test-panel { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:16px; margin-top:16px; }
+  .test-result { margin-top:12px; padding:12px; border-radius:8px; font-size:13px; }
+  .test-pass { background:#14532d; color:#86efac; }
+  .test-fail { background:#7f1d1d; color:#fca5a5; }
+
+  /* History panel */
+  .history-item { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border);
+                  font-size:12px; color:var(--text-dim); }
+
+  /* Modal */
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:100;
+                   justify-content:center; align-items:center; }
+  .modal-overlay.active { display:flex; }
+  .modal { background:var(--surface); border:1px solid var(--border); border-radius:16px;
+           padding:24px; width:600px; max-height:80vh; overflow-y:auto; }
+  .modal h3 { font-size:15px; font-weight:700; color:var(--accent); margin-bottom:16px; }
+  .modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
+
+  .toast-container { position:fixed; bottom:20px; right:20px; z-index:200; display:flex; flex-direction:column; gap:8px; }
+  .toast { padding:12px 20px; border-radius:10px; font-size:13px; font-weight:500;
+           animation:slideIn .3s ease; box-shadow:0 4px 12px rgba(0,0,0,.3); }
+  .toast-success { background:var(--green); color:white; }
+  .toast-error { background:var(--red); color:white; }
+  @keyframes slideIn { from { transform:translateX(100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
+
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--surface2); border-radius:3px; }
+</style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<div class="topbar">
+  <h1>&#9878; 가이드라인 관리</h1>
+  <div class="nav">
+    <a class="nav-btn" href="/chat_tester.html">채팅 테스터</a>
+    <a class="nav-btn" href="/scenario_manager.html">시나리오</a>
+    <a class="nav-btn active" href="/guideline_manager.html">가이드라인</a>
+    <a class="nav-btn" href="/settings.html" id="settingsNavLink">설정</a>
+    <a class="nav-btn" href="/history.html">이력</a>
+    <span id="testerBadge" style="display:none;font-size:11px;color:var(--accent);background:var(--accent-dim);padding:3px 10px;border-radius:6px;cursor:pointer;white-space:nowrap" onclick="if(confirm('로그아웃 하시겠습니까?'))testerLogout()"></span>
+  </div>
+</div>
+
+<!-- 테스터 로그인 모달 -->
+<div id="testerModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:600;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px;max-width:380px;width:90%;text-align:center">
+    <div style="font-size:32px;margin-bottom:10px">👤</div>
+    <h3 style="font-size:16px;margin-bottom:6px;color:var(--accent)">테스터 로그인</h3>
+    <p style="font-size:11px;color:var(--text-dim);margin-bottom:16px">Admin이 발급한 ID/PW로 로그인하세요</p>
+    <input type="text" id="testerIdInput" placeholder="테스터 ID" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:13px;margin-bottom:10px;outline:none">
+    <input type="password" id="testerPwInput" placeholder="비밀번호" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:13px;margin-bottom:10px;outline:none" onkeydown="if(event.key==='Enter')confirmTester()">
+    <div id="testerError" style="color:var(--red);font-size:11px;margin-bottom:8px;min-height:16px"></div>
+    <button onclick="confirmTester()" style="width:100%;padding:10px;background:var(--accent);color:#0f172a;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">로그인</button>
+  </div>
+</div>
+
+<div class="content">
+
+  <!-- Version Bar -->
+  <div class="version-bar">
+    <div class="version-info">
+      <span class="version-badge" id="versionBadge">v1.0.0</span>
+      <span id="lastModified">-</span>
+      <span id="modifiedBy">-</span>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-save" id="btnSave" onclick="saveAll()">저장</button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" data-tab="fixed" onclick="switchTab('fixed')">고정 문구</button>
+    <button class="tab" data-tab="prohibited" onclick="switchTab('prohibited')">금지 표현</button>
+    <button class="tab" data-tab="allowed" onclick="switchTab('allowed')">허용 표현</button>
+    <button class="tab" data-tab="grayzone" onclick="switchTab('grayzone')">회색지대</button>
+    <button class="tab" data-tab="emergency" onclick="switchTab('emergency')">응급 키워드</button>
+    <button class="tab" data-tab="test" onclick="switchTab('test')">테스트</button>
+    <button class="tab" data-tab="history" onclick="switchTab('history')">변경 이력</button>
+  </div>
+
+  <!-- Tab: 고정 문구 -->
+  <div class="card active" id="tab-fixed">
+    <h2>필수 고정 문구</h2>
+    <div class="field">
+      <label>상단 고지문 (모든 답변 상단에 표시)</label>
+      <textarea id="topDisclaimer" rows="3"></textarea>
+    </div>
+    <div class="field">
+      <label>답변 말미 문구</label>
+      <input type="text" id="bottomDisclaimer">
+    </div>
+    <div class="field">
+      <label>비의료 고지 문구</label>
+      <input type="text" id="nonMedicalNotice">
+    </div>
+    <div class="field">
+      <label>응급 안내 문구</label>
+      <input type="text" id="emergencyNotice">
+    </div>
+    <div class="field">
+      <label>면책조항 체크 키워드 (이 키워드 중 하나라도 포함되면 면책조항 있음으로 판정)</label>
+      <div class="tag-list" id="disclaimerKeywordTags"></div>
+      <div class="tag-input-row">
+        <input type="text" id="newDisclaimerKeyword" placeholder="새 키워드 입력">
+        <button onclick="addDisclaimerKeyword()">추가</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: 금지 표현 -->
+  <div class="card" id="tab-prohibited">
+    <h2>절대 금지 표현 (위반 시 감점)</h2>
+    <div id="prohibitedList"></div>
+    <button class="btn-add" onclick="addProhibitedRule()">+ 금지 표현 카테고리 추가</button>
+  </div>
+
+  <!-- Tab: 허용 표현 -->
+  <div class="card" id="tab-allowed">
+    <h2>허용되는 표현 패턴</h2>
+    <div id="allowedList"></div>
+    <button class="btn-add" onclick="addAllowedRule()">+ 허용 표현 카테고리 추가</button>
+  </div>
+
+  <!-- Tab: 회색지대 -->
+  <div class="card" id="tab-grayzone">
+    <h2>회색지대 변환 규칙 (위험 표현 &rarr; 안전 대체 표현)</h2>
+    <table class="gz-table">
+      <thead><tr><th>주제</th><th>위험 표현</th><th>안전 대체 표현</th><th></th></tr></thead>
+      <tbody id="grayZoneBody"></tbody>
+    </table>
+    <button class="btn-add" onclick="addGrayZone()">+ 회색지대 규칙 추가</button>
+  </div>
+
+  <!-- Tab: 응급 키워드 -->
+  <div class="card" id="tab-emergency">
+    <h2>응급 키워드</h2>
+    <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px">이 키워드가 감지되면 무조건 119/응급실 안내를 제공해야 합니다.</p>
+    <div class="tag-list" id="emergencyKeywordTags"></div>
+    <div class="tag-input-row">
+      <input type="text" id="newEmergencyKeyword" placeholder="새 응급 키워드 입력">
+      <button onclick="addEmergencyKeyword()">추가</button>
+    </div>
+  </div>
+
+  <!-- Tab: 테스트 -->
+  <div class="card" id="tab-test">
+    <h2>가이드라인 적용 테스트</h2>
+    <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px">샘플 텍스트를 입력하면 현재 가이드라인 기준으로 검증합니다.</p>
+    <div class="field">
+      <label>테스트할 AI 응답 텍스트</label>
+      <textarea id="testText" rows="6" placeholder="예: 이 증상은 위염입니다. 타이레놀 500mg을 하루 3번 복용하세요."></textarea>
+    </div>
+    <button class="btn-save" onclick="runTest()">검증 실행</button>
+    <div class="test-panel" id="testResult" style="display:none"></div>
+  </div>
+
+  <!-- Tab: 변경 이력 -->
+  <div class="card" id="tab-history">
+    <h2>변경 이력</h2>
+    <div id="historyList"></div>
+  </div>
+
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <h3 id="modalTitle">항목 편집</h3>
+    <div id="modalBody"></div>
+    <div class="modal-actions">
+      <button class="nav-btn" onclick="closeModal()">취소</button>
+      <button class="btn-save" onclick="saveModal()">적용</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+const API = '';
+let guidelineData = {};
+let editContext = null;
+
+// ── 초기 로드 ──
+async function loadData() {
+  try {
+    const res = await fetch(`${API}/api/guidelines`);
+    guidelineData = await res.json();
+    renderAll();
+  } catch(e) {
+    toast('데이터 로드 실패', 'error');
+  }
+}
+
+function renderAll() {
+  renderVersion();
+  renderFixedNotices();
+  renderProhibited();
+  renderAllowed();
+  renderGrayZone();
+  renderEmergencyKeywords();
+  renderHistory();
+}
+
+// ── 버전 ──
+function renderVersion() {
+  const m = guidelineData.meta || {};
+  document.getElementById('versionBadge').textContent = 'v' + (m.version || '0.0.0');
+  document.getElementById('lastModified').textContent = m.lastModified ? new Date(m.lastModified).toLocaleString('ko-KR') : '-';
+  document.getElementById('modifiedBy').textContent = m.modifiedBy ? `수정자: ${m.modifiedBy}` : '';
+}
+
+// ── 고정 문구 ──
+function renderFixedNotices() {
+  const fn = guidelineData.fixed_notices || {};
+  document.getElementById('topDisclaimer').value = fn.top_disclaimer || '';
+  document.getElementById('bottomDisclaimer').value = fn.bottom_disclaimer || '';
+  document.getElementById('nonMedicalNotice').value = fn.non_medical_notice || '';
+  document.getElementById('emergencyNotice').value = fn.emergency_notice || '';
+  renderTagList('disclaimerKeywordTags', fn.disclaimer_check_keywords || [], 'disclaimer');
+}
+
+function collectFixedNotices() {
+  guidelineData.fixed_notices = guidelineData.fixed_notices || {};
+  guidelineData.fixed_notices.top_disclaimer = document.getElementById('topDisclaimer').value;
+  guidelineData.fixed_notices.bottom_disclaimer = document.getElementById('bottomDisclaimer').value;
+  guidelineData.fixed_notices.non_medical_notice = document.getElementById('nonMedicalNotice').value;
+  guidelineData.fixed_notices.emergency_notice = document.getElementById('emergencyNotice').value;
+}
+
+// ── 태그 리스트 렌더 ──
+function renderTagList(containerId, items, type) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = items.map((kw, i) =>
+    `<span class="tag">${esc(kw)}<span class="remove" onclick="removeTag('${type}',${i})">&times;</span></span>`
+  ).join('');
+}
+
+function addDisclaimerKeyword() {
+  const input = document.getElementById('newDisclaimerKeyword');
+  const v = input.value.trim();
+  if (!v) return;
+  guidelineData.fixed_notices = guidelineData.fixed_notices || {};
+  guidelineData.fixed_notices.disclaimer_check_keywords = guidelineData.fixed_notices.disclaimer_check_keywords || [];
+  guidelineData.fixed_notices.disclaimer_check_keywords.push(v);
+  input.value = '';
+  renderTagList('disclaimerKeywordTags', guidelineData.fixed_notices.disclaimer_check_keywords, 'disclaimer');
+}
+
+function addEmergencyKeyword() {
+  const input = document.getElementById('newEmergencyKeyword');
+  const v = input.value.trim();
+  if (!v) return;
+  guidelineData.emergency_keywords = guidelineData.emergency_keywords || [];
+  guidelineData.emergency_keywords.push(v);
+  input.value = '';
+  renderTagList('emergencyKeywordTags', guidelineData.emergency_keywords, 'emergency');
+}
+
+function removeTag(type, idx) {
+  if (type === 'disclaimer') {
+    guidelineData.fixed_notices.disclaimer_check_keywords.splice(idx, 1);
+    renderTagList('disclaimerKeywordTags', guidelineData.fixed_notices.disclaimer_check_keywords, 'disclaimer');
+  } else if (type === 'emergency') {
+    guidelineData.emergency_keywords.splice(idx, 1);
+    renderTagList('emergencyKeywordTags', guidelineData.emergency_keywords, 'emergency');
+  }
+}
+
+// ── 금지 표현 ──
+function renderProhibited() {
+  const rules = guidelineData.prohibited_rules || [];
+  document.getElementById('prohibitedList').innerHTML = rules.map((r, i) => `
+    <div class="rule-item">
+      <div class="rule-header">
+        <div>
+          <span class="rule-title">${esc(r.category)}</span>
+          <span class="severity-badge severity-${r.severity}">${r.severity}</span>
+        </div>
+        <div>
+          <button class="btn-edit" onclick="editProhibited(${i})">편집</button>
+          <button class="btn-delete" onclick="deleteProhibited(${i})">&times;</button>
+        </div>
+      </div>
+      <div class="rule-meta">${esc(r.law)} | ${esc(r.description)}</div>
+      <ul class="examples-list">${(r.examples||[]).slice(0,3).map(e => `<li>${esc(e)}</li>`).join('')}
+        ${r.examples && r.examples.length > 3 ? `<li style="color:var(--accent)">... 외 ${r.examples.length-3}개</li>` : ''}
+      </ul>
+    </div>
+  `).join('');
+}
+
+function editProhibited(idx) {
+  const rule = guidelineData.prohibited_rules[idx];
+  editContext = { type: 'prohibited', idx };
+  document.getElementById('modalTitle').textContent = '금지 표현 편집';
+  document.getElementById('modalBody').innerHTML = `
+    <div class="field"><label>카테고리명</label><input id="m_category" value="${esc(rule.category)}"></div>
+    <div class="field"><label>심각도</label>
+      <select id="m_severity" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:13px">
+        <option value="CRITICAL" ${rule.severity==='CRITICAL'?'selected':''}>CRITICAL</option>
+        <option value="HIGH" ${rule.severity==='HIGH'?'selected':''}>HIGH</option>
+        <option value="MEDIUM" ${rule.severity==='MEDIUM'?'selected':''}>MEDIUM</option>
+      </select>
+    </div>
+    <div class="field"><label>법률근거</label><input id="m_law" value="${esc(rule.law)}"></div>
+    <div class="field"><label>설명</label><input id="m_desc" value="${esc(rule.description)}"></div>
+    <div class="field"><label>금지 예시 (줄바꿈으로 구분)</label>
+      <textarea id="m_examples" rows="8">${(rule.examples||[]).join('\n')}</textarea>
+    </div>
+  `;
+  document.getElementById('editModal').classList.add('active');
+}
+
+function deleteProhibited(idx) {
+  if (!confirm('이 금지 표현 카테고리를 삭제하시겠습니까?')) return;
+  guidelineData.prohibited_rules.splice(idx, 1);
+  renderProhibited();
+}
+
+function addProhibitedRule() {
+  guidelineData.prohibited_rules = guidelineData.prohibited_rules || [];
+  guidelineData.prohibited_rules.push({
+    id: 'new_' + Date.now(), category: '새 금지 표현', severity: 'HIGH',
+    law: '', description: '', examples: []
+  });
+  renderProhibited();
+  editProhibited(guidelineData.prohibited_rules.length - 1);
+}
+
+// ── 허용 표현 ──
+function renderAllowed() {
+  const rules = guidelineData.allowed_rules || [];
+  document.getElementById('allowedList').innerHTML = rules.map((r, i) => `
+    <div class="rule-item">
+      <div class="rule-header">
+        <span class="rule-title">${esc(r.category)}</span>
+        <div>
+          <button class="btn-edit" onclick="editAllowed(${i})">편집</button>
+          <button class="btn-delete" onclick="deleteAllowed(${i})">&times;</button>
+        </div>
+      </div>
+      <div class="rule-meta">${esc(r.description)}</div>
+      <ul class="examples-list">${(r.examples||[]).slice(0,2).map(e => `<li>${esc(e)}</li>`).join('')}
+        ${r.examples && r.examples.length > 2 ? `<li style="color:var(--accent)">... 외 ${r.examples.length-2}개</li>` : ''}
+      </ul>
+    </div>
+  `).join('');
+}
+
+function editAllowed(idx) {
+  const rule = guidelineData.allowed_rules[idx];
+  editContext = { type: 'allowed', idx };
+  document.getElementById('modalTitle').textContent = '허용 표현 편집';
+  document.getElementById('modalBody').innerHTML = `
+    <div class="field"><label>카테고리명</label><input id="m_category" value="${esc(rule.category)}"></div>
+    <div class="field"><label>설명</label><input id="m_desc" value="${esc(rule.description)}"></div>
+    <div class="field"><label>허용 예시 (줄바꿈으로 구분)</label>
+      <textarea id="m_examples" rows="8">${(rule.examples||[]).join('\n')}</textarea>
+    </div>
+  `;
+  document.getElementById('editModal').classList.add('active');
+}
+
+function deleteAllowed(idx) {
+  if (!confirm('이 허용 표현 카테고리를 삭제하시겠습니까?')) return;
+  guidelineData.allowed_rules.splice(idx, 1);
+  renderAllowed();
+}
+
+function addAllowedRule() {
+  guidelineData.allowed_rules = guidelineData.allowed_rules || [];
+  guidelineData.allowed_rules.push({
+    id: 'new_' + Date.now(), category: '새 허용 표현', description: '', examples: []
+  });
+  renderAllowed();
+  editAllowed(guidelineData.allowed_rules.length - 1);
+}
+
+// ── 회색지대 ──
+function renderGrayZone() {
+  const rules = guidelineData.gray_zone_rules || [];
+  document.getElementById('grayZoneBody').innerHTML = rules.map((r, i) => `
+    <tr>
+      <td>${esc(r.topic)}</td>
+      <td class="dangerous">${esc(r.dangerous_expression)}</td>
+      <td class="safe">${esc(r.safe_expression)}</td>
+      <td>
+        <button class="btn-edit" onclick="editGrayZone(${i})">편집</button>
+        <button class="btn-delete" onclick="deleteGrayZone(${i})">&times;</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function editGrayZone(idx) {
+  const rule = guidelineData.gray_zone_rules[idx];
+  editContext = { type: 'grayzone', idx };
+  document.getElementById('modalTitle').textContent = '회색지대 규칙 편집';
+  document.getElementById('modalBody').innerHTML = `
+    <div class="field"><label>주제</label><input id="m_topic" value="${esc(rule.topic)}"></div>
+    <div class="field"><label>위험 표현</label><input id="m_dangerous" value="${esc(rule.dangerous_expression)}"></div>
+    <div class="field"><label>안전 대체 표현</label><input id="m_safe" value="${esc(rule.safe_expression)}"></div>
+    <div class="field"><label>금지 예시 (줄바꿈 구분)</label>
+      <textarea id="m_prohibited_ex" rows="4">${(rule.prohibited_examples||[]).join('\n')}</textarea>
+    </div>
+    <div class="field"><label>허용 예시 (줄바꿈 구분)</label>
+      <textarea id="m_allowed_ex" rows="4">${(rule.allowed_examples||[]).join('\n')}</textarea>
+    </div>
+  `;
+  document.getElementById('editModal').classList.add('active');
+}
+
+function deleteGrayZone(idx) {
+  if (!confirm('삭제하시겠습니까?')) return;
+  guidelineData.gray_zone_rules.splice(idx, 1);
+  renderGrayZone();
+}
+
+function addGrayZone() {
+  guidelineData.gray_zone_rules = guidelineData.gray_zone_rules || [];
+  guidelineData.gray_zone_rules.push({
+    id: 'gz_' + Date.now(), topic: '', dangerous_expression: '', safe_expression: '',
+    prohibited_examples: [], allowed_examples: []
+  });
+  renderGrayZone();
+  editGrayZone(guidelineData.gray_zone_rules.length - 1);
+}
+
+// ── 응급 키워드 ──
+function renderEmergencyKeywords() {
+  renderTagList('emergencyKeywordTags', guidelineData.emergency_keywords || [], 'emergency');
+}
+
+// ── 변경 이력 ──
+function renderHistory() {
+  const history = (guidelineData.meta || {}).changeHistory || [];
+  document.getElementById('historyList').innerHTML = history.length === 0
+    ? '<p style="color:var(--text-dim);font-size:13px">변경 이력이 없습니다.</p>'
+    : history.map(h => `
+      <div class="history-item">
+        <span><strong>v${esc(h.version)}</strong> ${esc(h.summary)}</span>
+        <span>${h.date ? new Date(h.date).toLocaleString('ko-KR') : ''} | ${esc(h.author)}</span>
+      </div>
+    `).join('');
+}
+
+// ── 모달 ──
+function closeModal() {
+  document.getElementById('editModal').classList.remove('active');
+  editContext = null;
+}
+
+function saveModal() {
+  if (!editContext) return;
+  const { type, idx } = editContext;
+
+  if (type === 'prohibited') {
+    const rule = guidelineData.prohibited_rules[idx];
+    rule.category = document.getElementById('m_category').value;
+    rule.severity = document.getElementById('m_severity').value;
+    rule.law = document.getElementById('m_law').value;
+    rule.description = document.getElementById('m_desc').value;
+    rule.examples = document.getElementById('m_examples').value.split('\n').map(s => s.trim()).filter(Boolean);
+    renderProhibited();
+  } else if (type === 'allowed') {
+    const rule = guidelineData.allowed_rules[idx];
+    rule.category = document.getElementById('m_category').value;
+    rule.description = document.getElementById('m_desc').value;
+    rule.examples = document.getElementById('m_examples').value.split('\n').map(s => s.trim()).filter(Boolean);
+    renderAllowed();
+  } else if (type === 'grayzone') {
+    const rule = guidelineData.gray_zone_rules[idx];
+    rule.topic = document.getElementById('m_topic').value;
+    rule.dangerous_expression = document.getElementById('m_dangerous').value;
+    rule.safe_expression = document.getElementById('m_safe').value;
+    rule.prohibited_examples = document.getElementById('m_prohibited_ex').value.split('\n').map(s => s.trim()).filter(Boolean);
+    rule.allowed_examples = document.getElementById('m_allowed_ex').value.split('\n').map(s => s.trim()).filter(Boolean);
+    renderGrayZone();
+  }
+  closeModal();
+}
+
+// ── 저장 ──
+async function saveAll() {
+  collectFixedNotices();
+  const btn = document.getElementById('btnSave');
+  btn.disabled = true;
+  btn.textContent = '저장 중...';
+  try {
+    const res = await fetch(`${API}/api/guidelines`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(guidelineData)
+    });
+    const result = await res.json();
+    if (result.success) {
+      toast('저장 완료 (v' + result.version + ')', 'success');
+      loadData();
+    } else {
+      toast('저장 실패', 'error');
+    }
+  } catch(e) {
+    toast('저장 실패: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '저장';
+  }
+}
+
+// ── 테스트 ──
+async function runTest() {
+  const text = document.getElementById('testText').value.trim();
+  if (!text) { toast('텍스트를 입력하세요', 'error'); return; }
+  const panel = document.getElementById('testResult');
+  panel.style.display = 'block';
+  panel.className = 'test-panel';
+  panel.innerHTML = '검증 중...';
+  try {
+    const res = await fetch(`${API}/api/guidelines/test`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    const r = await res.json();
+    const cls = r.passed ? 'test-pass' : 'test-fail';
+    let html = `<div class="test-result ${cls}">
+      <strong>점수: ${r.score}/100 (${r.passed ? 'PASS' : 'FAIL'})</strong><br>
+      <span>${esc(r.summary)}</span>
+    </div>`;
+    if (r.violations && r.violations.length > 0) {
+      html += '<div style="margin-top:12px">';
+      r.violations.forEach(v => {
+        html += `<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
+          <span class="severity-badge severity-${v.severity}">${v.severity}</span>
+          <strong>${esc(v.rule_name)}</strong>: ${esc(v.matched_text)}
+          <div style="color:var(--text-dim);margin-top:2px">${esc(v.context)}</div>
+        </div>`;
+      });
+      html += '</div>';
+    }
+    panel.innerHTML = html;
+  } catch(e) {
+    panel.innerHTML = `<div class="test-result test-fail">오류: ${e.message}</div>`;
+  }
+}
+
+// ── 탭 전환 ──
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.card').forEach(c => c.classList.toggle('active', c.id === 'tab-' + name));
+}
+
+// ── 유틸 ──
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function toast(msg, type='success') {
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+// ── 테스터 로그인 공통 로직 ──
+async function initTesterAndAuth() {
+  try {
+    const authRes = await fetch('/api/auth/status').then(r => r.json());
+    if (!authRes.isAdmin) {
+      const sl = document.getElementById('settingsNavLink');
+      if (sl) sl.style.display = 'none';
+    }
+    if (authRes.tester) {
+      const badge = document.getElementById('testerBadge');
+      if (badge) { badge.style.display = ''; badge.textContent = `👤 ${authRes.tester.alias}`; }
+    } else if (!authRes.isAdmin) {
+      showTesterModal();
+    }
+  } catch(e) { console.warn('auth/tester init failed', e); }
+}
+
+function showTesterModal() {
+  const modal = document.getElementById('testerModal');
+  if (modal) modal.style.display = 'flex';
+}
+
+async function confirmTester() {
+  const id = document.getElementById('testerIdInput').value.trim();
+  const pw = document.getElementById('testerPwInput').value.trim();
+  const errEl = document.getElementById('testerError');
+  if (!id) { errEl.textContent = 'ID를 입력하세요'; return; }
+  if (!pw) { errEl.textContent = '비밀번호를 입력하세요'; return; }
+  try {
+    const res = await fetch('/api/tester/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, password: pw })
+    });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById('testerModal').style.display = 'none';
+      const badge = document.getElementById('testerBadge');
+      if (badge) { badge.style.display = ''; badge.textContent = `👤 ${data.tester.alias}`; }
+      location.reload();
+    } else { errEl.textContent = data.error || '로그인 실패'; }
+  } catch(e) { errEl.textContent = '서버 연결 실패'; }
+}
+
+async function testerLogout() {
+  await fetch('/api/tester/logout', { method: 'POST' });
+  location.reload();
+}
+
+// 초기 로드
+loadData();
+initTesterAndAuth();
+</script>
+</body>
+</html>

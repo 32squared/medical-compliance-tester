@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>테스트 이력 — 나만의 주치의</title>
+<style>
+  :root {
+    --bg: #0f172a; --surface: #1e293b; --surface2: #334155; --surface3: #3b4a63;
+    --text: #e2e8f0; --text-dim: #94a3b8; --accent: #38bdf8; --accent-dim: #0c4a6e;
+    --green: #22c55e; --red: #ef4444; --yellow: #eab308; --orange: #f97316;
+    --purple: #a855f7; --border: #475569; --radius: 12px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Pretendard','Apple SD Gothic Neo',system-ui,sans-serif;
+         background:var(--bg); color:var(--text); height:100vh; display:flex; flex-direction:column; }
+
+  /* ── Top Bar ── */
+  .topbar { display:flex; align-items:center; justify-content:space-between; padding:12px 20px;
+            background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; }
+  .topbar h1 { font-size:16px; font-weight:700; display:flex; align-items:center; gap:8px; }
+  .topbar .nav { display:flex; gap:6px; }
+  .nav-btn { background:none; border:1px solid var(--border); color:var(--text-dim); border-radius:8px;
+             padding:6px 14px; cursor:pointer; font-size:13px; text-decoration:none; transition:all .15s; }
+  .nav-btn:hover { background:var(--surface2); color:var(--text); }
+  .nav-btn.active { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
+
+  /* ── Env Selector (topbar) ── */
+  .env-selector { display:flex; gap:2px; background:var(--bg); border-radius:8px; padding:2px; border:1px solid var(--border); }
+  .env-chip-sm { padding:4px 12px; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer;
+                 color:var(--text-dim); transition:all .15s; user-select:none; }
+  .env-chip-sm:hover { color:var(--text); }
+  .env-chip-sm.active { background:var(--accent); color:#0f172a; }
+
+  /* ── Layout ── */
+  .layout { display:flex; flex:1; overflow:hidden; }
+
+  /* ── Left Sidebar ── */
+  .sidebar { width:280px; background:var(--surface); border-right:1px solid var(--border);
+             display:flex; flex-direction:column; flex-shrink:0; }
+  .sidebar-header { padding:16px; border-bottom:1px solid var(--border); }
+  .sidebar-header h3 { font-size:13px; font-weight:700; color:var(--text-dim); text-transform:uppercase;
+                        letter-spacing:1px; }
+  .sidebar-list { flex:1; overflow-y:auto; padding:8px; }
+  .run-item { padding:12px; border-radius:10px; cursor:pointer; margin-bottom:4px; transition:all .15s;
+              border:1px solid transparent; }
+  .run-item:hover { background:var(--surface2); }
+  .run-item.active { background:var(--accent-dim); border-color:var(--accent); }
+  .run-item-top { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+  .run-type-icon { font-size:14px; }
+  .run-env-badge { padding:2px 8px; border-radius:4px; font-size:10px; font-weight:700; }
+  .run-env-badge.dev { background:#38bdf822; color:var(--accent); }
+  .run-env-badge.stg { background:#eab30822; color:var(--yellow); }
+  .run-env-badge.prod { background:#ef444422; color:var(--red); }
+  .run-timestamp { font-size:11px; color:var(--text-dim); margin-left:auto; }
+  .run-summary { font-size:12px; color:var(--text-dim); margin-bottom:6px; }
+  .run-item.active .run-summary { color:var(--text); }
+  .run-passbar { height:3px; border-radius:2px; background:var(--surface2); overflow:hidden; }
+  .run-passbar-fill { height:100%; border-radius:2px; transition:width .3s; }
+
+  /* ── Right Panel ── */
+  .main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+  .detail-header { padding:20px 24px; background:var(--surface); border-bottom:1px solid var(--border); }
+  .detail-meta { display:flex; align-items:center; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
+  .detail-run-id { font-size:14px; font-weight:700; color:var(--accent); }
+  .detail-type { font-size:12px; color:var(--text-dim); background:var(--surface2); padding:3px 10px;
+                 border-radius:6px; }
+  .detail-timestamp { font-size:12px; color:var(--text-dim); }
+  .detail-actions { margin-left:auto; display:flex; gap:8px; }
+  .btn { padding:6px 14px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer;
+         border:1px solid var(--border); transition:all .15s; font-family:inherit; }
+  .btn-danger { background:var(--red); color:white; border-color:var(--red); }
+  .btn-danger:hover { opacity:.9; }
+  .btn-outline { background:none; color:var(--text-dim); }
+  .btn-outline:hover { background:var(--surface2); color:var(--text); }
+
+  /* Summary Cards */
+  .summary-cards { display:flex; gap:12px; }
+  .summary-card { flex:1; padding:14px 16px; background:var(--bg); border-radius:10px;
+                  border:1px solid var(--border); text-align:center; }
+  .summary-card .sc-value { font-size:24px; font-weight:800; margin-bottom:2px; }
+  .summary-card .sc-label { font-size:11px; color:var(--text-dim); font-weight:600; }
+  .summary-card.total .sc-value { color:var(--text); }
+  .summary-card.passed .sc-value { color:var(--green); }
+  .summary-card.failed .sc-value { color:var(--red); }
+  .summary-card.error .sc-value { color:var(--yellow); }
+  .summary-card.rate .sc-value { color:var(--accent); }
+
+  /* Results List */
+  .results-area { flex:1; overflow-y:auto; padding:20px 24px; }
+  .result-card { background:var(--surface); border:1px solid var(--border); border-radius:12px;
+                 margin-bottom:10px; overflow:hidden; transition:all .15s; }
+  .result-card-header { display:flex; align-items:center; gap:12px; padding:14px 16px; cursor:pointer;
+                        transition:background .15s; }
+  .result-card-header:hover { background:var(--surface2); }
+  .result-scenario-id { font-size:13px; font-weight:700; min-width:100px; }
+  .result-status { font-size:12px; font-weight:700; padding:3px 10px; border-radius:6px; }
+  .result-status.pass { background:#22c55e22; color:var(--green); }
+  .result-status.fail { background:#ef444422; color:var(--red); }
+  .result-status.error { background:#eab30822; color:var(--yellow); }
+  .result-prompt { flex:1; font-size:12px; color:var(--text-dim); white-space:nowrap;
+                   overflow:hidden; text-overflow:ellipsis; }
+  .result-time { font-size:11px; color:var(--text-dim); white-space:nowrap; }
+  .result-expand-icon { font-size:12px; color:var(--text-dim); transition:transform .2s; }
+  .result-card.expanded .result-expand-icon { transform:rotate(180deg); }
+  .result-detail { display:none; padding:0 16px 16px; border-top:1px solid var(--border); }
+  .result-card.expanded .result-detail { display:block; padding-top:14px; }
+  .result-section { margin-bottom:12px; }
+  .result-section-title { font-size:11px; font-weight:700; color:var(--text-dim); text-transform:uppercase;
+                          letter-spacing:1px; margin-bottom:6px; }
+  .result-section-body { font-size:13px; line-height:1.7; background:var(--bg); padding:12px 14px;
+                         border-radius:8px; border:1px solid var(--border); white-space:pre-wrap;
+                         word-break:break-word; max-height:300px; overflow-y:auto; }
+
+  /* ── Empty States ── */
+  .empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center;
+                 flex:1; color:var(--text-dim); text-align:center; padding:40px; }
+  .empty-state .empty-icon { font-size:48px; margin-bottom:16px; opacity:.5; }
+  .empty-state .empty-title { font-size:15px; font-weight:600; margin-bottom:8px; color:var(--text); }
+  .empty-state .empty-desc { font-size:13px; line-height:1.6; }
+
+  /* ── Toast ── */
+  .toast-container { position:fixed; bottom:20px; right:20px; z-index:200; display:flex; flex-direction:column; gap:8px; }
+  .toast { padding:12px 20px; border-radius:10px; font-size:13px; font-weight:500;
+           animation:slideIn .3s ease; box-shadow:0 4px 12px rgba(0,0,0,.3); }
+  .toast-success { background:var(--green); color:white; }
+  .toast-error { background:var(--red); color:white; }
+  .toast-info { background:var(--accent); color:#0f172a; }
+  @keyframes slideIn { from { transform:translateX(100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--surface2); border-radius:3px; }
+</style>
+</head>
+<body>
+
+<!-- ── Top Bar ── -->
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:12px">
+    <h1 style="font-size:16px;font-weight:700">&#127973; 나만의 주치의</h1>
+    <div class="env-selector" id="envSelector">
+      <span class="env-chip-sm active" data-env="dev" onclick="switchEnv('dev')">DEV</span>
+      <span class="env-chip-sm" data-env="stg" onclick="switchEnv('stg')">STG</span>
+      <span class="env-chip-sm" data-env="prod" onclick="switchEnv('prod')">PROD</span>
+    </div>
+  </div>
+  <div class="nav">
+    <a href="/" class="nav-btn">채팅 테스터</a>
+    <a href="/manager" class="nav-btn">시나리오 관리</a>
+    <a href="/history" class="nav-btn active">테스트 이력</a>
+    <a href="/guidelines" class="nav-btn">가이드라인</a>
+    <a href="/settings" class="nav-btn" id="settingsNavLink">&#9881; 설정</a>
+    <span id="testerBadge" style="display:none;font-size:11px;color:var(--accent);background:var(--accent-dim);padding:3px 10px;border-radius:6px;cursor:pointer;white-space:nowrap" onclick="if(confirm('로그아웃 하시겠습니까?'))testerLogout()"></span>
+  </div>
+</div>
+
+<!-- 테스터 로그인 모달 -->
+<div id="testerModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:600;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px;max-width:380px;width:90%;text-align:center">
+    <div style="font-size:32px;margin-bottom:10px">👤</div>
+    <h3 style="font-size:16px;margin-bottom:6px;color:var(--accent)">테스터 로그인</h3>
+    <p style="font-size:11px;color:var(--text-dim);margin-bottom:16px">Admin이 발급한 ID/PW로 로그인하세요</p>
+    <input type="text" id="testerIdInput" placeholder="테스터 ID" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:13px;margin-bottom:10px;outline:none">
+    <input type="password" id="testerPwInput" placeholder="비밀번호" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:13px;margin-bottom:10px;outline:none" onkeydown="if(event.key==='Enter')confirmTester()">
+    <div id="testerError" style="color:var(--red);font-size:11px;margin-bottom:8px;min-height:16px"></div>
+    <button onclick="confirmTester()" style="width:100%;padding:10px;background:var(--accent);color:#0f172a;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">로그인</button>
+  </div>
+</div>
+
+<!-- ── Layout ── -->
+<div class="layout">
+
+  <!-- Left Sidebar: Run List -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h3>테스트 이력</h3>
+    </div>
+    <div class="sidebar-list" id="runList">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+
+  <!-- Right Panel: Detail -->
+  <div class="main" id="detailPanel">
+    <div class="empty-state" id="emptySelect">
+      <div class="empty-icon">&#128203;</div>
+      <div class="empty-title">왼쪽에서 테스트 이력을 선택하세요</div>
+      <div class="empty-desc">실행된 테스트의 상세 결과를 확인할 수 있습니다.</div>
+    </div>
+    <div id="detailContent" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+      <div class="detail-header">
+        <div class="detail-meta">
+          <span class="detail-run-id" id="detailRunId"></span>
+          <span class="detail-type" id="detailType"></span>
+          <span class="run-env-badge" id="detailEnv"></span>
+          <span class="detail-timestamp" id="detailTimestamp"></span>
+          <div class="detail-actions">
+            <button class="btn" style="background:var(--accent);color:#fff;border:none;cursor:pointer" onclick="reEvaluateRun()" title="현재 가이드라인 버전으로 재평가">&#128260; 재평가</button>
+            <button class="btn btn-danger" onclick="deleteCurrentRun()">삭제</button>
+          </div>
+        </div>
+        <div class="summary-cards">
+          <div class="summary-card total">
+            <div class="sc-value" id="scTotal">0</div>
+            <div class="sc-label">전체</div>
+          </div>
+          <div class="summary-card passed">
+            <div class="sc-value" id="scPassed">0</div>
+            <div class="sc-label">통과</div>
+          </div>
+          <div class="summary-card failed">
+            <div class="sc-value" id="scFailed">0</div>
+            <div class="sc-label">실패</div>
+          </div>
+          <div class="summary-card error">
+            <div class="sc-value" id="scError">0</div>
+            <div class="sc-label">오류</div>
+          </div>
+          <div class="summary-card rate">
+            <div class="sc-value" id="scRate">0%</div>
+            <div class="sc-label">통과율</div>
+          </div>
+        </div>
+      </div>
+      <div class="results-area" id="resultsArea">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+  let currentRunId = null;
+  let historyData = [];
+
+  // ── Toast ──
+  function showToast(msg, type = 'info') {
+    const c = document.getElementById('toastContainer');
+    const t = document.createElement('div');
+    t.className = 'toast toast-' + type;
+    t.textContent = msg;
+    c.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; }, 2500);
+    setTimeout(() => t.remove(), 2800);
+  }
+
+  // ── Env Switching ──
+  function switchEnv(env) {
+    fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentEnv: env })
+    }).then(r => {
+      if (!r.ok) throw new Error('환경 변경 실패');
+      setEnvChips(env);
+      showToast('환경이 ' + env.toUpperCase() + '(으)로 변경되었습니다.', 'success');
+      loadHistory();
+    }).catch(e => showToast(e.message, 'error'));
+  }
+
+  function setEnvChips(env) {
+    document.querySelectorAll('#envSelector .env-chip-sm').forEach(c => {
+      c.classList.toggle('active', c.dataset.env === env);
+    });
+  }
+
+  function loadCurrentEnv() {
+    fetch('/api/settings')
+      .then(r => r.json())
+      .then(data => {
+        if (data.currentEnv) setEnvChips(data.currentEnv);
+      })
+      .catch(() => {});
+  }
+
+  // ── Format Timestamp ──
+  function formatTimestamp(ts) {
+    const d = new Date(ts);
+    const y = d.getFullYear();
+    const mo = String(d.getMonth() + 1).padStart(2, '0');
+    const da = String(d.getDate()).padStart(2, '0');
+    const h = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    return y + '.' + mo + '.' + da + ' ' + h + ':' + mi;
+  }
+
+  // ── Load History ──
+  function loadHistory() {
+    fetch('/api/history')
+      .then(r => r.json())
+      .then(data => {
+        historyData = Array.isArray(data) ? data : (data.runs || []);
+        renderRunList();
+      })
+      .catch(() => {
+        historyData = [];
+        renderRunList();
+      });
+  }
+
+  function renderRunList() {
+    const list = document.getElementById('runList');
+    if (historyData.length === 0) {
+      list.innerHTML =
+        '<div class="empty-state" style="padding:30px 16px">' +
+          '<div class="empty-icon" style="font-size:36px">&#128202;</div>' +
+          '<div class="empty-title" style="font-size:13px">아직 테스트 이력이 없습니다</div>' +
+          '<div class="empty-desc" style="font-size:12px">시나리오 관리에서 테스트를 실행해보세요.</div>' +
+        '</div>';
+      return;
+    }
+
+    list.innerHTML = historyData.map(run => {
+      const s = run.summary || {};
+      const total = s.total || 0;
+      const passed = s.passed || 0;
+      const failed = s.failed || 0;
+      const errors = s.error || 0;
+      const rate = s.passRate != null ? s.passRate : (total > 0 ? Math.round((passed / total) * 100) : 0);
+      const isBatch = run.type === 'batch';
+      const env = (run.env || 'dev').toLowerCase();
+      const rid = run.runId || run.id || '';
+      const isActive = rid === currentRunId;
+      const barColor = rate >= 80 ? 'var(--green)' : rate >= 50 ? 'var(--yellow)' : 'var(--red)';
+
+      return '<div class="run-item' + (isActive ? ' active' : '') + '" onclick="selectRun(\'' + rid + '\')">' +
+        '<div class="run-item-top">' +
+          '<span class="run-type-icon">' + (isBatch ? '&#128230;' : '&#9654;') + '</span>' +
+          '<span class="run-env-badge ' + env + '">' + env.toUpperCase() + '</span>' +
+          '<span class="run-timestamp">' + formatTimestamp(run.startedAt || run.timestamp) + '</span>' +
+        '</div>' +
+        '<div class="run-summary">' + total + '개 시나리오 / 통과 ' + passed + ' / 실패 ' + failed + '</div>' +
+        '<div class="run-passbar"><div class="run-passbar-fill" style="width:' + rate + '%;background:' + barColor + '"></div></div>' +
+      '</div>';
+    }).join('');
+  }
+
+  // ── Select Run ──
+  function selectRun(runId) {
+    currentRunId = runId;
+
+    // Highlight in sidebar
+    document.querySelectorAll('.run-item').forEach(el => {
+      el.classList.toggle('active', el.getAttribute('onclick').includes(runId));
+    });
+
+    fetch('/api/history/' + runId)
+      .then(r => {
+        if (!r.ok) throw new Error('이력 조회 실패');
+        return r.json();
+      })
+      .then(run => renderDetail(run))
+      .catch(e => showToast(e.message, 'error'));
+  }
+
+  function renderDetail(run) {
+    document.getElementById('emptySelect').style.display = 'none';
+    const dc = document.getElementById('detailContent');
+    dc.style.display = 'flex';
+
+    const env = (run.env || 'dev').toLowerCase();
+    const isBatch = run.type === 'batch';
+    const s = run.summary || {};
+    const total = s.total || 0;
+    const passed = s.passed || 0;
+    const failed = s.failed || 0;
+    const errors = s.error || 0;
+    const rate = s.passRate != null ? s.passRate : (total > 0 ? Math.round((passed / total) * 100) : 0);
+
+    document.getElementById('detailRunId').textContent = run.runId || run.id || '';
+    document.getElementById('detailType').textContent = isBatch ? '배치 실행' : '단건 실행';
+    const envBadge = document.getElementById('detailEnv');
+    envBadge.textContent = env.toUpperCase();
+    envBadge.className = 'run-env-badge ' + env;
+    document.getElementById('detailTimestamp').textContent = formatTimestamp(run.startedAt || run.completedAt || run.timestamp);
+    document.getElementById('scTotal').textContent = total;
+    document.getElementById('scPassed').textContent = passed;
+    document.getElementById('scFailed').textContent = failed;
+    document.getElementById('scError').textContent = errors;
+    document.getElementById('scRate').textContent = rate + '%';
+
+    const results = run.results || [];
+    const area = document.getElementById('resultsArea');
+
+    if (results.length === 0) {
+      area.innerHTML = '<div class="empty-state"><div class="empty-desc">결과 데이터가 없습니다.</div></div>';
+      return;
+    }
+
+    area.innerHTML = results.map((r, idx) => {
+      const st = (r.status || '').toLowerCase();
+      let statusLabel, statusClass;
+      if (st === 'pass') { statusLabel = '\u2705 PASS'; statusClass = 'pass'; }
+      else if (st === 'fail') { statusLabel = '\u274C FAIL'; statusClass = 'fail'; }
+      else { statusLabel = '\u26A0\uFE0F ERROR'; statusClass = 'error'; }
+
+      const prompt = r.prompt || '';
+      const truncPrompt = prompt.length > 60 ? prompt.substring(0, 60) + '...' : prompt;
+      const respTime = r.responseTime ? r.responseTime + 'ms' : '-';
+      const response = r.response || '응답 없음';
+      const compliance = r.compliance || null;
+
+      // 의료법 검수 표시
+      let complianceHtml = '';
+      if (compliance && compliance.score != null) {
+        const guideVer = compliance.guidelineVersion || r.guidelineVersion || '';
+        const verLabel = guideVer ? ' <span style="color:var(--text-dim);font-size:10px">[가이드라인 v' + escapeHtml(guideVer) + ']</span>' : '';
+        const cColor = compliance.violations && compliance.violations.length > 0 ? 'var(--red)' : 'var(--green)';
+        complianceHtml = '<div class="result-section">' +
+          '<div class="result-section-title" style="color:var(--yellow)">&#128203; 의료법 검수 (점수: ' + compliance.score + '점)' + verLabel + '</div>' +
+          '<div class="result-section-body">' +
+            (compliance.violations && compliance.violations.length > 0
+              ? compliance.violations.map(v =>
+                  '<div style="padding:3px 6px;margin:2px 0;background:var(--surface2);border-radius:4px;font-size:11px">' +
+                  '<span style="color:var(--red);font-weight:700">' + (v.severity || '') + '</span> ' +
+                  (v.name || v.rule || '') + ' — ' + (v.law || '') +
+                  (v.matched ? ' <span style="color:var(--orange)">"' + escapeHtml(v.matched) + '"</span>' : '') +
+                  (v.description ? ' <span style="color:var(--text-dim);font-size:10px">(' + escapeHtml(v.description) + ')</span>' : '') +
+                  '</div>'
+                ).join('')
+              : '<span style="color:var(--green)">&#10003; 위반 없음' + (compliance.hasDisclaimer ? ' / 면책조항 포함' : '') + '</span>') +
+            (compliance.summary ? '<div style="margin-top:4px;color:var(--text-dim);font-size:10px">' + escapeHtml(compliance.summary) + '</div>' : '') +
+          '</div></div>';
+      }
+
+      // GPT 평가 표시
+      const gptEval = r.gptEval || null;
+      const gradeColors = { A: '#22c55e', B: '#38bdf8', C: '#eab308', D: '#f97316', F: '#ef4444' };
+      let gptHtml = '';
+      if (gptEval && gptEval.grade) {
+        const gc = gradeColors[gptEval.grade] || '#94a3b8';
+        gptHtml = '<div class="result-section">' +
+          '<div class="result-section-title" style="color:var(--purple)">&#129302; GPT 평가</div>' +
+          '<div class="result-section-body">' +
+            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">' +
+              '<span style="font-size:16px;font-weight:800;color:' + gc + ';background:' + gc + '22;padding:2px 8px;border-radius:6px">' + gptEval.grade + '</span>' +
+              '<span>' + (gptEval.score != null ? gptEval.score + '점' : '') + ' — ' +
+                (gptEval.passed ? '<span style="color:var(--green)">PASS</span>' : '<span style="color:var(--red)">FAIL</span>') +
+              '</span>' +
+            '</div>' +
+            (gptEval.summary ? '<div style="color:var(--text-dim);font-size:11px">' + escapeHtml(gptEval.summary) + '</div>' : '') +
+            (gptEval.recommendation ? '<div style="margin-top:4px;padding:6px;background:var(--accent-dim);border-radius:4px;color:var(--accent);font-size:11px">&#128161; ' + escapeHtml(gptEval.recommendation) + '</div>' : '') +
+          '</div></div>';
+      }
+
+      return '<div class="result-card" id="result-' + idx + '">' +
+        '<div class="result-card-header" onclick="toggleResult(' + idx + ')">' +
+          '<span class="result-scenario-id">' + (r.scenarioId || 'S-' + (idx + 1)) + '</span>' +
+          '<span class="result-status ' + statusClass + '">' + statusLabel + '</span>' +
+          '<span class="result-prompt" title="' + prompt.replace(/"/g, '&quot;') + '">' + truncPrompt + '</span>' +
+          '<span class="result-time">' + respTime + '</span>' +
+          (compliance ? '<span style="font-size:10px;color:' + (compliance.violations && compliance.violations.length > 0 ? 'var(--red)' : 'var(--green)') + '">' + compliance.score + '점</span>' : '') +
+          (gptEval && gptEval.grade ? '<span style="font-size:10px;font-weight:700;color:' + (gradeColors[gptEval.grade] || '#94a3b8') + '">' + gptEval.grade + '</span>' : '') +
+          '<span class="result-expand-icon">&#9660;</span>' +
+        '</div>' +
+        '<div class="result-detail">' +
+          '<div class="result-section">' +
+            '<div class="result-section-title">프롬프트</div>' +
+            '<div class="result-section-body">' + escapeHtml(prompt) + '</div>' +
+          '</div>' +
+          '<div class="result-section">' +
+            '<div class="result-section-title">응답</div>' +
+            '<div class="result-section-body" style="white-space:pre-wrap">' + escapeHtml(response) + '</div>' +
+          '</div>' +
+          complianceHtml +
+          gptHtml +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  // ── Toggle Result Card ──
+  function toggleResult(idx) {
+    const card = document.getElementById('result-' + idx);
+    if (card) card.classList.toggle('expanded');
+  }
+
+  // ── Re-evaluate Run with current guidelines ──
+  function reEvaluateRun() {
+    if (!currentRunId) return;
+    if (!confirm('현재 가이드라인 버전으로 이 이력을 재평가하시겠습니까?')) return;
+    fetch('/api/history/re-evaluate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ runId: currentRunId })
+    })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          showToast(`재평가 완료: ${d.reEvaluated}건 (가이드라인 v${d.guidelineVersion})`, 'success');
+          loadHistory();
+          // 현재 선택된 이력 다시 로드
+          setTimeout(() => {
+            const link = document.querySelector('.run-item.active');
+            if (link) link.click();
+          }, 300);
+        } else {
+          showToast(d.error || '재평가 실패', 'error');
+        }
+      })
+      .catch(e => showToast(e.message, 'error'));
+  }
+
+  // ── Delete Run ──
+  function deleteCurrentRun() {
+    if (!currentRunId) return;
+    if (!confirm('이 테스트 이력을 삭제하시겠습니까?')) return;
+
+    fetch('/api/history/' + currentRunId, { method: 'DELETE' })
+      .then(r => {
+        if (!r.ok) throw new Error('삭제 실패');
+        showToast('테스트 이력이 삭제되었습니다.', 'success');
+        currentRunId = null;
+        document.getElementById('emptySelect').style.display = '';
+        document.getElementById('detailContent').style.display = 'none';
+        loadHistory();
+      })
+      .catch(e => showToast(e.message, 'error'));
+  }
+
+  // ── Escape HTML ──
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // ── 테스터 로그인 공통 로직 ──
+  async function initTesterAndAuth() {
+    try {
+      const authRes = await fetch('/api/auth/status').then(r => r.json());
+      if (!authRes.isAdmin) {
+        const sl = document.getElementById('settingsNavLink');
+        if (sl) sl.style.display = 'none';
+      }
+      if (authRes.tester) {
+        const badge = document.getElementById('testerBadge');
+        if (badge) { badge.style.display = ''; badge.textContent = `👤 ${authRes.tester.alias}`; }
+      } else if (!authRes.isAdmin) {
+        showTesterModal();
+      }
+    } catch(e) { console.warn('auth/tester init failed', e); }
+  }
+
+  function showTesterModal() {
+    const modal = document.getElementById('testerModal');
+    if (modal) modal.style.display = 'flex';
+  }
+
+  async function confirmTester() {
+    const id = document.getElementById('testerIdInput').value.trim();
+    const pw = document.getElementById('testerPwInput').value.trim();
+    const errEl = document.getElementById('testerError');
+    if (!id) { errEl.textContent = 'ID를 입력하세요'; return; }
+    if (!pw) { errEl.textContent = '비밀번호를 입력하세요'; return; }
+    try {
+      const res = await fetch('/api/tester/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, password: pw })
+      });
+      const data = await res.json();
+      if (data.success) {
+        document.getElementById('testerModal').style.display = 'none';
+        const badge = document.getElementById('testerBadge');
+        if (badge) { badge.style.display = ''; badge.textContent = `👤 ${data.tester.alias}`; }
+        location.reload();
+      } else { errEl.textContent = data.error || '로그인 실패'; }
+    } catch(e) { errEl.textContent = '서버 연결 실패'; }
+  }
+
+  async function testerLogout() {
+    await fetch('/api/tester/logout', { method: 'POST' });
+    location.reload();
+  }
+
+  // ── Init ──
+  loadCurrentEnv();
+  loadHistory();
+  initTesterAndAuth();
+</script>
+</body>
+</html>
