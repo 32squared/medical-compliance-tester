@@ -998,7 +998,7 @@ async function sendToChat(id) {
     const envCfg = (settings.environments && settings.environments[env]) || {};
     const apiUrl = envCfg.apiUrl || 'https://dev-skix.phnyx.ai';
     const graphType = settings.graphType || 'SUPERVISED_HYBRID_SEARCH';
-    const proxyUrl = settings.proxyUrl || window.location.origin;
+    const proxyUrl = (settings.proxyUrl && !settings.proxyUrl.includes('localhost')) ? settings.proxyUrl : window.location.origin;
 
     const targetUrl = `${apiUrl}/api/service/conversations/${graphType}`;
     const startTime = performance.now();
