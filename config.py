@@ -114,8 +114,13 @@ CONVERSATIONS_API = {
 # ============================================================
 
 def _load_violation_rules_legacy():
-    """violation_rules.json에서 레거시 위반 규칙 로드 (폴백용)"""
+    """violation_rules.json에서 레거시 위반 규칙 로드 (폴백용)
+    DATA_DIR → 앱 디렉토리 순으로 탐색"""
+    # 1차: DATA_DIR (GCS 볼륨 등 외부 저장소)
     path = os.path.join(_DATA_DIR, 'violation_rules.json')
+    if not os.path.exists(path):
+        # 2차: 앱 디렉토리 (Docker 이미지에 포함된 파일)
+        path = os.path.join(_BASE_DIR, 'violation_rules.json')
     try:
         with open(path, 'r', encoding='utf-8') as f:
             return json.load(f)

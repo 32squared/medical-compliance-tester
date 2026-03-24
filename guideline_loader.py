@@ -12,15 +12,21 @@ from datetime import datetime, timezone
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 _DATA_DIR = os.environ.get('DATA_DIR', _BASE_DIR)
 GUIDELINES_FILE = os.path.join(_DATA_DIR, 'guidelines.json')
+# 앱 디렉토리의 기본 가이드라인 (Docker 이미지에 포함)
+_BUNDLED_GUIDELINES = os.path.join(_BASE_DIR, 'guidelines.json')
 MAX_HISTORY = 20
 
 
 def load_guidelines() -> dict:
-    """guidelines.json 전체 로드"""
-    if not os.path.exists(GUIDELINES_FILE):
-        return _default_guidelines()
-    with open(GUIDELINES_FILE, 'r', encoding='utf-8') as f:
-        return json.load(f)
+    """guidelines.json 전체 로드 (DATA_DIR → 앱 디렉토리 → 기본값)"""
+    if os.path.exists(GUIDELINES_FILE):
+        with open(GUIDELINES_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    # DATA_DIR에 없으면 앱 디렉토리(Docker 이미지 번들) 확인
+    if os.path.exists(_BUNDLED_GUIDELINES):
+        with open(_BUNDLED_GUIDELINES, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return _default_guidelines()
 
 
 def save_guidelines(data: dict, author: str = "관리자") -> dict:
