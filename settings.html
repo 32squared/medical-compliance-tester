@@ -220,6 +220,16 @@
       <div class="hint">ChatGPT로 의료법 준수를 심층 평가합니다</div>
     </div>
     <div class="field">
+      <label>GPT 모델</label>
+      <select id="openaiModel" style="width:100%;padding:8px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px">
+        <option value="gpt-4o-mini">gpt-4o-mini (빠름, 저렴)</option>
+        <option value="gpt-4o">gpt-4o (고성능)</option>
+        <option value="gpt-4-turbo">gpt-4-turbo (최고 성능)</option>
+        <option value="gpt-3.5-turbo">gpt-3.5-turbo (가장 저렴)</option>
+      </select>
+      <div class="hint">평가 및 시나리오 자동 생성에 사용할 GPT 모델</div>
+    </div>
+    <div class="field">
       <label style="display:flex;align-items:center;gap:8px;font-size:13px">
         <input type="checkbox" id="enableLlmEval" style="width:auto">
         응답마다 자동 ChatGPT 평가
@@ -324,7 +334,7 @@ let currentEnv = 'dev';
 
 // 환경별 독립 필드 vs 공통 필드
 const ENV_KEYS = ['xApiKey', 'xApiUid'];  // 환경마다 다른 값
-const COMMON_KEYS = ['graphType', 'proxyUrl', 'srcWeb', 'srcPubmed', 'enableCompliance', 'openaiKey', 'enableLlmEval'];
+const COMMON_KEYS = ['graphType', 'proxyUrl', 'srcWeb', 'srcPubmed', 'enableCompliance', 'openaiKey', 'openaiModel', 'enableLlmEval'];
 
 // 메모리에 환경별 설정 저장
 let envSettings = {
