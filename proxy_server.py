@@ -395,6 +395,15 @@ class ProxyHandler(BaseHTTPRequestHandler):
         if path == '/api/guidelines/history':
             return self._get_guideline_history()
 
+        # ── 대화 이력 API (SKIX 프록시) ──
+        if path == '/api/conversations':
+            return self._proxy_get_skix('/api/data_management/conversations', parsed.query)
+        if path == '/api/conversations/search':
+            return self._proxy_get_skix('/api/data_management/conversations/search', parsed.query)
+        m_conv = re.match(r'^/api/conversations/([^/]+)$', path)
+        if m_conv:
+            return self._proxy_get_skix(f'/api/data_management/conversations/{m_conv.group(1)}')
+
         # ── 설정 API ──
         if path == '/api/settings':
             return self._load_settings()
@@ -1916,6 +1925,66 @@ AI 건강상담 서비스의 응답이 한국 의료법을 준수하는지 평�
     # ════════════════════════════════════════════
     # SKIX API 프록시
     # ════════════════════════════════════════════
+
+    def _proxy_get_skix(self, skix_path, query_string=''):
+        """SKIX data_management API로 GET 프록시 (대화 목록/상세 등)"""
+        try:
+            settings_file = os.path.join(BASE_DIR, 'settings.json')
+            settings = {}
+            if os.path.exists(settings_file):
+                with open(settings_file, 'r', encoding='utf-8') as f:
+                    settings = json.load(f)
+
+            current_env = settings.get('currentEnv', 'dev')
+            env_defaults = {
+                'dev': 'https://dev-skix.phnyx.ai',
+                'stg': 'https://staging-skix.phnyx.ai',
+                'prod': 'https://skix.phnyx.ai',
+            }
+            env_cfg = settings.get('environments', {}).get(current_env, {})
+
+            api_url = env_cfg.get('apiUrl', env_defaults.get(current_env, 'https://dev-skix.phnyx.ai'))
+            api_key = env_cfg.get('xApiKey', settings.get('xApiKey', ''))
+            tenant = env_cfg.get('xTenantDomain', '')
+            uid = env_cfg.get('xApiUid', settings.get('xApiUid', ''))
+
+            # 테스터 UID 우선
+            tester = self._get_tester_info()
+            if tester and tester.get('uid'):
+                uid = tester['uid']
+
+            if not api_key:
+                return self._send_error(400, f'{current_env.upper()} API Key가 설정되지 않았습니다.')
+
+            full_url = f"{api_url}{skix_path}"
+            if query_string:
+                full_url += f"?{query_string}"
+
+            headers = {
+                'Accept': 'application/json',
+                'X-API-Key': api_key,
+                'X-tenant-Domain': tenant,
+                'X-Api-UID': uid,
+            }
+
+            print(f"[프록시 GET] {full_url} (UID={uid})")
+
+            ctx = ssl.create_default_context()
+            req = Request(url=full_url, headers=headers, method='GET')
+            resp = urlopen(req, context=ctx, timeout=30)
+            data = json.loads(resp.read().decode('utf-8'))
+            self._send_json(200, data)
+
+        except HTTPError as e:
+            err_body = e.read().decode('utf-8', errors='replace')
+            print(f"[프록시 GET ERROR] {e.code}: {err_body[:200]}")
+            self._send_error(e.code, err_body[:500])
+        except URLError as e:
+            print(f"[프록시 GET ERROR] URLError: {e.reason}")
+            self._send_error(502, f'SKIX 서버 연결 실패: {e.reason}')
+        except Exception as e:
+            print(f"[프록시 GET ERROR] {e}")
+            self._send_error(500, f'프록시 오류: {str(e)}')
 
     def _proxy_post(self, body):
         """SKIX API로 POST 프록시 (SSE 스트리밍)"""
