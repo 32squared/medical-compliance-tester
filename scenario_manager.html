@@ -1542,6 +1542,13 @@ async function initTesterAndAuth() {
     if (authRes.tester) {
       const badge = document.getElementById('testerBadge');
       if (badge) { badge.style.display = ''; badge.textContent = `👤 ${authRes.tester.alias}`; }
+    } else if (authRes.isAdmin) {
+      const badge = document.getElementById('testerBadge');
+      if (badge) {
+        badge.style.display = '';
+        badge.textContent = '🛡️ 관리자';
+        badge.onclick = function() { if(confirm('관리자 로그아웃 하시겠습니까?')) adminLogout(); };
+      }
     } else if (!authRes.isAdmin) {
       showTesterModal();
     }
@@ -1577,6 +1584,11 @@ async function confirmTester() {
 
 async function testerLogout() {
   await fetch('/api/tester/logout', { method: 'POST' });
+  location.reload();
+}
+
+async function adminLogout() {
+  await fetch('/api/auth/logout', { method: 'POST' });
   location.reload();
 }
 
