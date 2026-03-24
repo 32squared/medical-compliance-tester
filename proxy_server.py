@@ -54,6 +54,7 @@ def _check_compliance(text):
 
     return {
         'score': result.compliance_score,
+        'regexScore': result.compliance_score,  # 정규식 점수 (하이브리드 계산용)
         'violations': violations,
         'hasDisclaimer': result.has_disclaimer,
         'hasTopNotice': result.has_top_notice,
@@ -547,16 +548,18 @@ class ProxyHandler(BaseHTTPRequestHandler):
             analyzer = ComplianceAnalyzer()
             result = analyzer.analyze(sample_text)
 
-            self._send_json(200, {
-                "score": result.compliance_score,
+            regex_score = result.compliance_score
+            response_data = {
+                "score": regex_score,
+                "regexScore": regex_score,
                 "passed": result.passed,
                 "violations": [
                     {
                         "rule_id": v.rule_id,
                         "rule_name": v.rule_name,
                         "severity": v.severity,
-                        "matched": v.matched_text,        # 레거시 호환
-                        "matched_text": v.matched_text,   # 신규 표준
+                        "matched": v.matched_text,
+                        "matched_text": v.matched_text,
                         "match_type": v.match_type,
                         "description": v.description,
                         "law": v.law,
@@ -569,7 +572,25 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 "has_bottom_notice": result.has_bottom_notice,
                 "guideline_version": result.guideline_version,
                 "summary": result.summary,
-            })
+            }
+
+            # GPT 하이브리드 평가 (옵션)
+            if payload.get('includeGptEval'):
+                settings = db.get_settings()
+                openai_key = settings.get('openaiKey', '')
+                model = settings.get('gptModel', 'gpt-4o-mini')
+                if openai_key:
+                    gpt_result = _evaluate_gpt('', sample_text, openai_key, model)
+                    if gpt_result:
+                        gpt_score = gpt_result.get('score', 100)
+                        hybrid_score = min(regex_score, gpt_score)
+                        response_data['gptEval'] = gpt_result
+                        response_data['gptScore'] = gpt_score
+                        response_data['hybridScore'] = hybrid_score
+                        response_data['score'] = hybrid_score
+                        response_data['passed'] = hybrid_score >= 60
+
+            self._send_json(200, response_data)
         except Exception as e:
             self._send_error(500, f"테스트 실행 실패: {str(e)}")
 

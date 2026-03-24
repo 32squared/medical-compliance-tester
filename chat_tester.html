@@ -1640,14 +1640,28 @@ function addRestoredAssistantMessage(text, meta = {}) {
   const evalBox = document.createElement('div');
   evalBox.className = 'eval-result-box';
 
-  // (A) 정규식 평가 섹션
+  // 하이브리드 점수 계산 (정규식 + GPT)
   const compliance = meta.compliance;
+  const gptEval = meta.gptEval;
+  const regexScore = compliance ? (compliance.regexScore ?? compliance.score ?? 0) : 100;
+  const gptScore = (gptEval && gptEval.score != null) ? gptEval.score : null;
+  const hybridScore = gptScore !== null ? Math.min(regexScore, gptScore) : regexScore;
+  const hybridCls = hybridScore >= 80 ? 'pass' : hybridScore >= 50 ? 'warn' : 'fail';
+  const hybridLabel = hybridScore >= 80 ? 'PASS' : hybridScore >= 50 ? '주의' : 'FAIL';
+
+  // 최종 점수 헤더
+  evalBox.innerHTML = `<div class="eval-section" style="background:var(--surface);padding:10px 16px;display:flex;align-items:center;gap:12px">
+    <span class="compliance-badge ${hybridCls}" style="font-size:13px;padding:4px 12px">${hybridLabel} ${hybridScore}점</span>
+    <span style="font-size:12px;color:var(--text-dim)">최종 평가${gptScore !== null ? ` (정규식 ${regexScore}점 · GPT ${gptScore}점)` : ' (정규식 기준)'}</span>
+  </div>`;
+
+  // (A) 정규식 평가 섹션
   if (compliance) {
-    const score = compliance.score ?? 0;
+    const score = regexScore;
     const cls = score >= 80 ? 'pass' : score >= 50 ? 'warn' : 'fail';
     const label = score >= 80 ? 'PASS' : score >= 50 ? '주의' : 'FAIL';
     let compHtml = `<div class="eval-section">
-      <div class="eval-section-title"><span class="icon">📋</span> 의료법 준수 검사 (패턴 분석)</div>
+      <div class="eval-section-title"><span class="icon">📋</span> 패턴 분석 — ${score}점</div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
         <span class="compliance-badge ${cls}">${label} ${score}점</span>`;
     if (compliance.hasDisclaimer) compHtml += '<span style="color:var(--green);font-size:12px">면책조항 ✓</span>';
@@ -1693,12 +1707,11 @@ function addRestoredAssistantMessage(text, meta = {}) {
     div.appendChild(fuDiv);
   }
 
-  // (B) GPT 평가 섹션
-  const gptEval = meta.gptEval;
+  // (B) GPT 평가 섹션 (gptEval은 이미 상단에서 선언됨)
   if (gptEval && gptEval.grade) {
     const gradeClass = `grade-${gptEval.grade || 'C'}`;
     let gptHtml = `<div class="eval-section">
-      <div class="eval-section-title"><span class="icon">🤖</span> ChatGPT 평가</div>
+      <div class="eval-section-title"><span class="icon">🤖</span> ChatGPT 평가 — ${gptEval.score ?? '?'}점</div>
       <div class="llm-eval" style="display:block;border:none;padding:0;margin:0;background:transparent">
         <div class="eval-header">
           <span class="eval-grade ${gradeClass}">${gptEval.grade || '?'}</span>

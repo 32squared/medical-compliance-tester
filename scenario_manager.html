@@ -1327,9 +1327,11 @@ function runComplianceCheck(text, scenario) {
   const verLabel = _smGuidelineVersion !== 'unknown' ? ` [v${_smGuidelineVersion}]` : '';
 
   if (dedupViolations.length === 0) {
-    result.innerHTML = `<span style="color:var(--green)">&#10003; 위반 없음 (점수: ${score}점)${hasDisclaimer ? ' / 면책조항 포함' : ''}${verLabel}</span>`;
+    result.innerHTML = `<span style="color:var(--green)">&#10003; 위반 없음 (패턴 분석: ${score}점)${hasDisclaimer ? ' / 면책조항 포함' : ''}${verLabel}</span>
+      <div style="color:var(--text-dim);font-size:10px;margin-top:4px">GPT 평가 포함 시 하이브리드 점수가 산출됩니다</div>`;
   } else {
-    result.innerHTML = `<div style="color:var(--red);font-weight:600;margin-bottom:6px">&#10007; ${dedupViolations.length}건 위반 감지 (점수: ${score}점)${verLabel}</div>` +
+    result.innerHTML = `<div style="color:var(--red);font-weight:600;margin-bottom:6px">&#10007; ${dedupViolations.length}건 위반 감지 (패턴 분석: ${score}점)${verLabel}</div>
+      <div style="color:var(--text-dim);font-size:10px;margin-bottom:6px">GPT 평가 포함 시 하이브리드 점수가 산출됩니다</div>` +
       dedupViolations.map(v => `<div style="padding:4px 8px;margin:3px 0;background:var(--surface2);border-radius:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
         <span class="sc-risk risk-${v.severity}" style="font-size:10px">${v.severity}</span>
         <span>${escHtml(v.name)}</span><span style="color:var(--text-dim)">— ${escHtml(v.law)}</span>
@@ -1337,7 +1339,7 @@ function runComplianceCheck(text, scenario) {
         ${v.recommendation ? `<span style="color:var(--green);font-size:10px">→ ${escHtml(v.recommendation)}</span>` : ''}
       </div>`).join('');
   }
-  return { score, violations: dedupViolations, hasDisclaimer, guidelineVersion: _smGuidelineVersion };
+  return { score, regexScore: score, violations: dedupViolations, hasDisclaimer, guidelineVersion: _smGuidelineVersion };
 }
 
 // GPT 평가

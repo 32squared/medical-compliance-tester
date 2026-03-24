@@ -293,6 +293,11 @@
       <label>테스트할 AI 응답 텍스트</label>
       <textarea id="testText" rows="6" placeholder="예: 이 증상은 위염입니다. 타이레놀 500mg을 하루 3번 복용하세요."></textarea>
     </div>
+    <div style="margin:8px 0;display:flex;align-items:center;gap:8px">
+      <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer">
+        <input type="checkbox" id="includeGptEval"> GPT 평가 포함 (하이브리드 점수)
+      </label>
+    </div>
     <button class="btn-save" onclick="runTest()">검증 실행</button>
     <div class="test-panel" id="testResult" style="display:none"></div>
   </div>
@@ -655,22 +660,48 @@ async function saveAll() {
 async function runTest() {
   const text = document.getElementById('testText').value.trim();
   if (!text) { toast('텍스트를 입력하세요', 'error'); return; }
+  const includeGptEval = document.getElementById('includeGptEval').checked;
   const panel = document.getElementById('testResult');
   panel.style.display = 'block';
   panel.className = 'test-panel';
-  panel.innerHTML = '검증 중...';
+  panel.innerHTML = includeGptEval ? '검증 중 (GPT 평가 포함)...' : '검증 중...';
   try {
+    const bodyObj = includeGptEval ? { text, includeGptEval: true } : { text };
     const res = await fetch(`${API}/api/guidelines/test`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text })
+      body: JSON.stringify(bodyObj)
     });
     const r = await res.json();
+    const regexScore = r.regexScore != null ? r.regexScore : r.score;
+    const gptEval = r.gptEval || null;
+    const gptScore = (gptEval && gptEval.score != null) ? gptEval.score : null;
+    const hybridScore = gptScore !== null ? Math.min(regexScore, gptScore) : regexScore;
+    const displayScore = gptScore !== null ? hybridScore : regexScore;
     const cls = r.passed ? 'test-pass' : 'test-fail';
+    let scoreText = '';
+    if (gptScore !== null) {
+      scoreText = `하이브리드: ${hybridScore}/100 (패턴: ${regexScore} / GPT: ${gptScore})`;
+    } else {
+      scoreText = `패턴 분석: ${regexScore}/100`;
+    }
     let html = `<div class="test-result ${cls}">
-      <strong>점수: ${r.score}/100 (${r.passed ? 'PASS' : 'FAIL'})</strong><br>
+      <strong>${scoreText} (${r.passed ? 'PASS' : 'FAIL'})</strong><br>
       <span>${esc(r.summary)}</span>
     </div>`;
+    if (gptEval) {
+      const gradeColors = { A: '#22c55e', B: '#38bdf8', C: '#eab308', D: '#f97316', F: '#ef4444' };
+      const gc = gradeColors[gptEval.grade] || '#94a3b8';
+      html += '<div style="margin-top:12px;padding:10px;background:var(--surface2);border-radius:8px">';
+      html += '<div style="font-weight:600;margin-bottom:6px;color:var(--purple)">GPT 평가</div>';
+      html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">';
+      html += '<span style="font-size:16px;font-weight:800;color:' + gc + ';background:' + gc + '22;padding:2px 8px;border-radius:6px">' + (gptEval.grade || '?') + '</span>';
+      html += '<span>' + (gptEval.score != null ? gptEval.score + '점' : '') + ' — ' + (gptEval.passed ? '<span style="color:var(--green)">PASS</span>' : '<span style="color:var(--red)">FAIL</span>') + '</span>';
+      html += '</div>';
+      if (gptEval.summary) html += '<div style="color:var(--text-dim);font-size:11px">' + esc(gptEval.summary) + '</div>';
+      if (gptEval.recommendation) html += '<div style="margin-top:4px;padding:6px;background:var(--accent-dim);border-radius:4px;color:var(--accent);font-size:11px">' + esc(gptEval.recommendation) + '</div>';
+      html += '</div>';
+    }
     if (r.violations && r.violations.length > 0) {
       html += '<div style="margin-top:12px">';
       r.violations.forEach(v => {
