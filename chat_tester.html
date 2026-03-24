@@ -323,7 +323,7 @@ async function switchEnv(env) {
 // 최초 1회 연결 테스트 (백그라운드)
 async function testConnectionOnce() {
   const envCfg = getEnvConfig();
-  const proxyUrl = savedSettings.proxyUrl || 'http://localhost:9000';
+  const proxyUrl = savedSettings.proxyUrl || window.location.origin;
   const targetUrl = `${envCfg.apiUrl}/api/service/conversations/${savedSettings.graphType || 'SUPERVISED_HYBRID_SEARCH'}`;
 
   try {
@@ -466,7 +466,10 @@ function buildBody(query) {
 }
 
 function getProxyUrl() {
-  return savedSettings.proxyUrl || 'http://localhost:9000';
+  // 클라우드 배포: 같은 origin 사용 (상대경로)
+  // 로컬 개발: localhost:9000 fallback
+  if (savedSettings.proxyUrl) return savedSettings.proxyUrl;
+  return window.location.origin;  // 같은 서버에서 서빙하므로 상대경로
 }
 
 // ──────────────────────────────────────

@@ -1,0 +1,15 @@
+.git
+.gitignore
+__pycache__
+*.pyc
+.claude
+node_modules
+WORK_PLAN.md
+SCENARIO_MANAGER_PLAN.md
+start.sh
+start.ps1
+deploy.ps1
+test_history.json
+settings.json
+reports/
+*.md
