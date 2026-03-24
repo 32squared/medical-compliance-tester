@@ -1141,9 +1141,9 @@ async function sendToChat(id) {
 
     // GPT 평가 (프론트 실시간 표시)
     const gptCheck = document.getElementById('gptEvalCheck');
-    if (gptCheck && gptCheck.checked && settings.openaiKey) {
-      await runGptEval(s.prompt, fullText, settings.openaiKey, proxyUrl);
-    } else if (gptCheck && gptCheck.checked && !settings.openaiKey) {
+    if (gptCheck && gptCheck.checked) {
+      await runGptEval(s.prompt, fullText, proxyUrl);
+    } else if (false) {
       const gptResult = document.getElementById('gptEvalResult');
       if (gptResult) gptResult.innerHTML = '<span style="color:var(--text-dim)">OpenAI API Key가 설정되지 않았습니다. <a href="/settings" style="color:var(--accent)">설정</a>에서 입력하세요.</span>';
     } else {
@@ -1332,7 +1332,7 @@ function runComplianceCheck(text, scenario) {
 }
 
 // GPT 평가
-async function runGptEval(prompt, response, openaiKey, proxyUrl) {
+async function runGptEval(prompt, response, proxyUrl) {
   const area = document.getElementById('gptEvalArea');
   const result = document.getElementById('gptEvalResult');
   if (!area || !result) return;
@@ -1344,7 +1344,7 @@ async function runGptEval(prompt, response, openaiKey, proxyUrl) {
     const res = await fetch(`${proxyUrl}/api/evaluate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ openai_api_key: openaiKey, prompt, response })
+      body: JSON.stringify({ prompt, response })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || '평가 실패');
