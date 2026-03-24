@@ -1137,12 +1137,13 @@ async function sendToChat(id) {
     statusEl.innerHTML = `<span style="color:var(--green)">완료 (${(elapsed/1000).toFixed(1)}s)</span>`;
 
     // 의료법 검수 (프론트 실시간 표시)
-    runComplianceCheck(fullText, s);
+    window._lastComplianceResult = runComplianceCheck(fullText, s);
+    window._lastGptEval = null;
 
     // GPT 평가 (프론트 실시간 표시)
     const gptCheck = document.getElementById('gptEvalCheck');
     if (gptCheck && gptCheck.checked) {
-      await runGptEval(s.prompt, fullText, proxyUrl);
+      window._lastGptEval = await runGptEval(s.prompt, fullText, proxyUrl);
     } else if (false) {
       const gptResult = document.getElementById('gptEvalResult');
       if (gptResult) gptResult.innerHTML = '<span style="color:var(--text-dim)">OpenAI API Key가 설정되지 않았습니다. <a href="/settings" style="color:var(--accent)">설정</a>에서 입력하세요.</span>';
@@ -1151,9 +1152,17 @@ async function sendToChat(id) {
       if (gptResult) gptResult.innerHTML = '<span style="color:var(--text-dim)">GPT 평가 건너뜀</span>';
     }
 
-    // 이력 저장 (서버에서 별도로 API 호출 + compliance + GPT 평가 포함 저장 — 백그라운드)
-    fetch(`/api/scenarios/${id}/run`, {
-      method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}'
+    // 이력 저장 (프론트에서 받은 결과를 직접 서버에 전달)
+    fetch('/api/history/save', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        scenarioId: id,
+        response: fullText,
+        responseTime: elapsed,
+        compliance: window._lastComplianceResult || null,
+        gptEval: window._lastGptEval || null,
+      })
     }).catch(() => {});
 
     showToast(`${id} 실행 완료`, 'success');
