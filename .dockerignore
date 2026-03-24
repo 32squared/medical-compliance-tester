@@ -11,5 +11,6 @@ start.ps1
 deploy.ps1
 test_history.json
 settings.json
+conversations.json
 reports/
 *.md

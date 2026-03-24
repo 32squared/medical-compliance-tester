@@ -267,14 +267,28 @@
 
 <!-- 테스터 로그인 모달 -->
 <div id="testerModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:600;align-items:center;justify-content:center">
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px;max-width:380px;width:90%;text-align:center">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px;max-width:400px;width:90%;text-align:center">
     <div style="font-size:32px;margin-bottom:10px">👤</div>
-    <h3 style="font-size:16px;margin-bottom:6px;color:var(--accent)">테스터 로그인</h3>
-    <p style="font-size:11px;color:var(--text-dim);margin-bottom:16px">Admin이 발급한 ID/PW로 로그인하세요</p>
-    <input type="text" id="testerIdInput" placeholder="테스터 ID" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:13px;margin-bottom:10px;outline:none">
-    <input type="password" id="testerPwInput" placeholder="비밀번호" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:13px;margin-bottom:10px;outline:none" onkeydown="if(event.key==='Enter')confirmTester()">
-    <div id="testerError" style="color:var(--red);font-size:11px;margin-bottom:8px;min-height:16px"></div>
-    <button onclick="confirmTester()" style="width:100%;padding:10px;background:var(--accent);color:#0f172a;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">로그인</button>
+    <div style="display:flex;gap:0;margin-bottom:16px;border-bottom:2px solid var(--border)">
+      <button id="tabLogin" onclick="switchAuthTab('login')" style="flex:1;padding:8px;background:none;border:none;border-bottom:2px solid var(--accent);color:var(--accent);font-size:13px;font-weight:700;cursor:pointer;margin-bottom:-2px">로그인</button>
+      <button id="tabRegister" onclick="switchAuthTab('register')" style="flex:1;padding:8px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text-dim);font-size:13px;font-weight:600;cursor:pointer;margin-bottom:-2px">회원가입</button>
+    </div>
+    <div id="loginForm">
+      <input type="text" id="testerIdInput" placeholder="ID" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:13px;margin-bottom:10px;outline:none;box-sizing:border-box">
+      <input type="password" id="testerPwInput" placeholder="비밀번호" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:13px;margin-bottom:10px;outline:none;box-sizing:border-box" onkeydown="if(event.key==='Enter')confirmTester()">
+      <div id="testerError" style="color:var(--red);font-size:11px;margin-bottom:8px;min-height:16px"></div>
+      <button onclick="confirmTester()" style="width:100%;padding:10px;background:var(--accent);color:#0f172a;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">로그인</button>
+    </div>
+    <div id="registerForm" style="display:none">
+      <input type="text" id="regId" placeholder="ID (2자 이상)" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:13px;margin-bottom:8px;outline:none;box-sizing:border-box">
+      <input type="text" id="regName" placeholder="이름" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:13px;margin-bottom:8px;outline:none;box-sizing:border-box">
+      <input type="text" id="regOrg" placeholder="소속 (예: 서울대병원)" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:13px;margin-bottom:8px;outline:none;box-sizing:border-box">
+      <input type="password" id="regPw" placeholder="비밀번호 (4자 이상)" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:13px;margin-bottom:8px;outline:none;box-sizing:border-box">
+      <input type="password" id="regPwConfirm" placeholder="비밀번호 확인" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:13px;margin-bottom:8px;outline:none;box-sizing:border-box" onkeydown="if(event.key==='Enter')submitRegister()">
+      <div id="regError" style="color:var(--red);font-size:11px;margin-bottom:8px;min-height:16px"></div>
+      <div id="regSuccess" style="color:#22c55e;font-size:12px;margin-bottom:8px;min-height:16px;display:none"></div>
+      <button onclick="submitRegister()" style="width:100%;padding:10px;background:var(--accent);color:#0f172a;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">가입 신청</button>
+    </div>
   </div>
 </div>
 
@@ -1564,6 +1578,61 @@ async function confirmTester() {
 async function testerLogout() {
   await fetch('/api/tester/logout', { method: 'POST' });
   location.reload();
+}
+
+function switchAuthTab(tab) {
+  const loginForm = document.getElementById('loginForm');
+  const registerForm = document.getElementById('registerForm');
+  const tabLogin = document.getElementById('tabLogin');
+  const tabRegister = document.getElementById('tabRegister');
+  if (tab === 'login') {
+    loginForm.style.display = '';
+    registerForm.style.display = 'none';
+    tabLogin.style.borderBottomColor = 'var(--accent)';
+    tabLogin.style.color = 'var(--accent)';
+    tabRegister.style.borderBottomColor = 'transparent';
+    tabRegister.style.color = 'var(--text-dim)';
+  } else {
+    loginForm.style.display = 'none';
+    registerForm.style.display = '';
+    tabRegister.style.borderBottomColor = 'var(--accent)';
+    tabRegister.style.color = 'var(--accent)';
+    tabLogin.style.borderBottomColor = 'transparent';
+    tabLogin.style.color = 'var(--text-dim)';
+  }
+}
+
+async function submitRegister() {
+  const id = document.getElementById('regId').value.trim();
+  const name = document.getElementById('regName').value.trim();
+  const org = document.getElementById('regOrg').value.trim();
+  const pw = document.getElementById('regPw').value.trim();
+  const pwConfirm = document.getElementById('regPwConfirm').value.trim();
+  const errEl = document.getElementById('regError');
+  const successEl = document.getElementById('regSuccess');
+  errEl.textContent = ''; successEl.style.display = 'none';
+
+  if (!id || id.length < 2) { errEl.textContent = 'ID는 2자 이상 입력하세요'; return; }
+  if (!name) { errEl.textContent = '이름을 입력하세요'; return; }
+  if (!pw || pw.length < 4) { errEl.textContent = '비밀번호는 4자 이상 입력하세요'; return; }
+  if (pw !== pwConfirm) { errEl.textContent = '비밀번호가 일치하지 않습니다'; return; }
+
+  try {
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, name, org, password: pw })
+    });
+    const data = await res.json();
+    if (data.success) {
+      successEl.textContent = data.message;
+      successEl.style.display = '';
+      errEl.textContent = '';
+      ['regId','regName','regOrg','regPw','regPwConfirm'].forEach(f => document.getElementById(f).value = '');
+    } else {
+      errEl.textContent = data.error || '가입 실패';
+    }
+  } catch(e) { errEl.textContent = '서버 연결 실패'; }
 }
 </script>
 </body>

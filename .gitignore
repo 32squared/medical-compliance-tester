@@ -6,3 +6,4 @@ proxy.log
 reports/live_*.html
 settings.json
 test_history.json
+conversations.json

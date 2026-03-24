@@ -31,6 +31,21 @@ import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SCENARIOS_FILE = os.path.join(BASE_DIR, 'scenarios.json')
 HISTORY_FILE = os.path.join(BASE_DIR, 'test_history.json')
+CONVERSATIONS_FILE = os.path.join(BASE_DIR, 'conversations.json')
+
+
+def load_conversations():
+    """conversations.json 로드"""
+    if not os.path.exists(CONVERSATIONS_FILE):
+        return {"conversations": []}
+    with open(CONVERSATIONS_FILE, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+
+def save_conversations(data):
+    """conversations.json 저장"""
+    with open(CONVERSATIONS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
 
 def load_history():
@@ -242,7 +257,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
             if elapsed > self.SESSION_MAX_AGE:
                 del ProxyHandler._tester_sessions[token]
                 return None
-        return {'id': session['id'], 'alias': session['alias'], 'uid': session['uid']}
+        return {'id': session['id'], 'alias': session['alias'], 'name': session.get('name',''), 'org': session.get('org',''), 'uid': session.get('uid','')}
 
     def _get_alias(self) -> str:
         """현재 사용자 alias 반환 (Admin이면 '관리자', 테스터면 alias, 없으면 '익명')"""
@@ -271,6 +286,16 @@ class ProxyHandler(BaseHTTPRequestHandler):
             return self._auth_logout()
         if self.path == '/api/auth/change-password':
             return self._auth_change_password(body)
+        if self.path == '/api/auth/register':
+            return self._auth_register(body)
+        if self.path == '/api/auth/approve-user':
+            if not self._require_admin():
+                return
+            return self._auth_approve_user(body)
+        if self.path == '/api/auth/reject-user':
+            if not self._require_admin():
+                return
+            return self._auth_reject_user(body)
 
         # ── 테스터 API ──
         if self.path == '/api/tester/login':
@@ -289,6 +314,20 @@ class ProxyHandler(BaseHTTPRequestHandler):
             if not self._require_admin():
                 return
             return self._tester_update(body)
+
+        # ── 대화 저장 API ──
+        if self.path == '/api/conversations':
+            return self._create_local_conversation(body)
+
+        # ── 대화 메시지 추가 ──
+        m_conv_msg = re.match(r'^/api/conversations/([^/]+)/message$', self.path)
+        if m_conv_msg:
+            return self._add_conversation_message(m_conv_msg.group(1), body)
+
+        # ── 커멘트 API ──
+        m_comment = re.match(r'^/api/conversations/([^/]+)/comments$', self.path)
+        if m_comment:
+            return self._add_comment(m_comment.group(1), body)
 
         # ── 시나리오 API ──
         if self.path == '/api/scenarios':
@@ -346,6 +385,11 @@ class ProxyHandler(BaseHTTPRequestHandler):
         if m_hist:
             return self._update_history_run(m_hist.group(1), body)
 
+        # ── 대화 메시지 추가 ──
+        m_conv_msg = re.match(r'^/api/conversations/([^/]+)/message$', self.path)
+        if m_conv_msg:
+            return self._add_conversation_message(m_conv_msg.group(1), body)
+
         self._send_error(404, 'Not Found')
 
     def do_DELETE(self):
@@ -357,6 +401,10 @@ class ProxyHandler(BaseHTTPRequestHandler):
         m_hist = re.match(r'^/api/history/([^/]+)$', self.path)
         if m_hist:
             return self._delete_history_run(m_hist.group(1))
+
+        m_conv_del = re.match(r'^/api/conversations/([^/]+)$', self.path)
+        if m_conv_del:
+            return self._delete_local_conversation(m_conv_del.group(1))
 
         self._send_error(404, 'Not Found')
 
@@ -374,6 +422,10 @@ class ProxyHandler(BaseHTTPRequestHandler):
             if not self._is_admin():
                 return self._send_json(200, {"accounts": []})
             return self._tester_accounts()
+        if path == '/api/auth/pending-users':
+            if not self._is_admin():
+                return self._send_json(200, {"pendingUsers": []})
+            return self._auth_pending_users()
 
         # ── 시나리오 API ──
         if path == '/api/scenarios':
@@ -395,14 +447,16 @@ class ProxyHandler(BaseHTTPRequestHandler):
         if path == '/api/guidelines/history':
             return self._get_guideline_history()
 
-        # ── 대화 이력 API (SKIX 프록시) ──
+        # ── 대화 이력 API (로컬 저장) ──
+        if path == '/api/comments/export':
+            return self._export_comments()
         if path == '/api/conversations':
-            return self._proxy_get_skix('/api/data_management/conversations', parsed.query)
+            return self._list_local_conversations(parsed.query)
         if path == '/api/conversations/search':
-            return self._proxy_get_skix('/api/data_management/conversations/search', parsed.query)
+            return self._search_local_conversations(parsed.query)
         m_conv = re.match(r'^/api/conversations/([^/]+)$', path)
         if m_conv:
-            return self._proxy_get_skix(f'/api/data_management/conversations/{m_conv.group(1)}')
+            return self._get_local_conversation(m_conv.group(1))
 
         # ── 설정 API ──
         if path == '/api/settings':
@@ -1618,7 +1672,14 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
                 break
 
         if not account:
-            return self._send_error(401, '존재하지 않는 테스터 ID입니다')
+            return self._send_error(401, '존재하지 않는 ID입니다')
+
+        # 승인 상태 확인
+        status = account.get('status', 'approved')
+        if status == 'pending':
+            return self._send_error(403, '관리자 승인 대기 중입니다. 승인 후 로그인 가능합니다.')
+        if status == 'rejected':
+            return self._send_error(403, '가입이 거부되었습니다. 관리자에게 문의하세요.')
 
         import hmac as _hmac
         pw_hash, _ = self._hash_password(password, account.get('salt', ''))
@@ -1632,6 +1693,8 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
                 'created_at': datetime.now(timezone.utc),
                 'id': tester_id,
                 'alias': account.get('alias', tester_id),
+                'name': account.get('name', ''),
+                'org': account.get('org', ''),
                 'uid': account.get('uid', ''),
             }
 
@@ -1640,6 +1703,8 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
             "tester": {
                 "id": tester_id,
                 "alias": account.get('alias', tester_id),
+                "name": account.get('name', ''),
+                "org": account.get('org', ''),
                 "uid": account.get('uid', ''),
             }
         }).encode('utf-8')
@@ -1696,17 +1761,23 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
         if len(accounts) >= 10:
             return self._send_error(400, '테스터 계정은 최대 10개까지 생성 가능합니다')
 
+        name = payload.get('name', alias).strip()
+        org = payload.get('org', '').strip()
+
         pw_hash, salt = self._hash_password(password)
         accounts.append({
             'id': tester_id,
             'alias': alias,
+            'name': name,
+            'org': org,
             'uid': uid,
             'passwordHash': pw_hash,
             'salt': salt,
+            'status': 'approved',
             'createdAt': datetime.now(timezone.utc).isoformat(),
         })
         self._save_tester_accounts(accounts)
-        self._send_json(200, {"success": True, "message": f"테스터 '{alias}' 생성 완료"})
+        self._send_json(200, {"success": True, "message": f"사용자 '{alias}' 생성 완료"})
 
     def _tester_delete(self, body):
         """POST /api/tester/delete — Admin이 테스터 계정 삭제"""
@@ -1782,10 +1853,122 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
         safe_list = [{
             'id': a.get('id',''),
             'alias': a.get('alias',''),
+            'name': a.get('name',''),
+            'org': a.get('org',''),
             'uid': a.get('uid',''),
+            'status': a.get('status', 'approved'),
             'createdAt': a.get('createdAt',''),
         } for a in accounts]
         self._send_json(200, {"accounts": safe_list})
+
+    # ════════════════════════════════════════════
+    # 회원가입 + 승인 시스템
+    # ════════════════════════════════════════════
+
+    def _auth_register(self, body):
+        """POST /api/auth/register — 공개 회원가입 (Admin 승인 필요)"""
+        try:
+            payload = json.loads(body)
+        except json.JSONDecodeError:
+            return self._send_error(400, '잘못된 JSON')
+
+        user_id = payload.get('id', '').strip()
+        name = payload.get('name', '').strip()
+        org = payload.get('org', '').strip()
+        password = payload.get('password', '').strip()
+
+        if not user_id or not name or not password:
+            return self._send_error(400, 'ID, 이름, 비밀번호는 필수입니다')
+        if len(user_id) < 2:
+            return self._send_error(400, 'ID는 2자 이상이어야 합니다')
+        if len(password) < 4:
+            return self._send_error(400, '비밀번호는 4자 이상이어야 합니다')
+        if len(name) > 30:
+            return self._send_error(400, '이름은 30자 이하여야 합니다')
+
+        accounts = self._load_tester_accounts()
+        if any(a.get('id') == user_id for a in accounts):
+            return self._send_error(400, '이미 존재하는 ID입니다')
+
+        pw_hash, salt = self._hash_password(password)
+        accounts.append({
+            'id': user_id,
+            'alias': name,
+            'name': name,
+            'org': org,
+            'uid': '',
+            'passwordHash': pw_hash,
+            'salt': salt,
+            'status': 'pending',
+            'createdAt': datetime.now(timezone.utc).isoformat(),
+        })
+        self._save_tester_accounts(accounts)
+        self._send_json(200, {"success": True, "message": "가입 신청이 완료되었습니다. 관리자 승인 후 사용 가능합니다."})
+
+    def _auth_approve_user(self, body):
+        """POST /api/auth/approve-user — Admin이 사용자 승인"""
+        try:
+            payload = json.loads(body)
+        except json.JSONDecodeError:
+            return self._send_error(400, '잘못된 JSON')
+
+        user_id = payload.get('userId', '').strip()
+        uid = payload.get('uid', '').strip()  # Admin이 UID 부여
+        if not user_id:
+            return self._send_error(400, '사용자 ID가 필요합니다')
+
+        accounts = self._load_tester_accounts()
+        target = None
+        for acc in accounts:
+            if acc.get('id') == user_id:
+                target = acc
+                break
+        if not target:
+            return self._send_error(404, '사용자를 찾을 수 없습니다')
+
+        target['status'] = 'approved'
+        target['approvedAt'] = datetime.now(timezone.utc).isoformat()
+        target['approvedBy'] = self._get_alias()
+        if uid:
+            target['uid'] = uid
+
+        self._save_tester_accounts(accounts)
+        self._send_json(200, {"success": True, "message": f"'{user_id}' 사용자가 승인되었습니다."})
+
+    def _auth_reject_user(self, body):
+        """POST /api/auth/reject-user — Admin이 사용자 거부"""
+        try:
+            payload = json.loads(body)
+        except json.JSONDecodeError:
+            return self._send_error(400, '잘못된 JSON')
+
+        user_id = payload.get('userId', '').strip()
+        if not user_id:
+            return self._send_error(400, '사용자 ID가 필요합니다')
+
+        accounts = self._load_tester_accounts()
+        target = None
+        for acc in accounts:
+            if acc.get('id') == user_id:
+                target = acc
+                break
+        if not target:
+            return self._send_error(404, '사용자를 찾을 수 없습니다')
+
+        target['status'] = 'rejected'
+        self._save_tester_accounts(accounts)
+        self._send_json(200, {"success": True, "message": f"'{user_id}' 사용자가 거부되었습니다."})
+
+    def _auth_pending_users(self):
+        """GET /api/auth/pending-users — 승인 대기 목록 (Admin용)"""
+        accounts = self._load_tester_accounts()
+        pending = [{
+            'id': a.get('id',''),
+            'name': a.get('name',''),
+            'org': a.get('org',''),
+            'createdAt': a.get('createdAt',''),
+        } for a in accounts if a.get('status') == 'pending']
+        self._send_json(200, {"pendingUsers": pending})
 
     # ════════════════════════════════════════════
     # ChatGPT 의료법 준수 평가
@@ -1921,6 +2104,270 @@ AI 건강상담 서비스의 응답이 한국 의료법을 준수하는지 평�
 
         except Exception as e:
             self._send_error(500, f'평가 오류: {str(e)}')
+
+    # ════════════════════════════════════════════
+    # 로컬 대화 저장 + 커멘트
+    # ════════════════════════════════════════════
+
+    def _list_local_conversations(self, query_string=''):
+        """GET /api/conversations — 로컬 대화 목록 (userId 자동 필터)"""
+        tester = self._get_tester_info()
+        user_id = tester['id'] if tester else None
+        data = load_conversations()
+        convs = data.get('conversations', [])
+
+        # 사용자별 필터 (Admin은 전체)
+        if not self._is_admin() and user_id:
+            convs = [c for c in convs if c.get('userId') == user_id]
+
+        # 검색 파라미터
+        params = parse_qs(query_string)
+        limit = int(params.get('limit', ['50'])[0])
+
+        # 최신순 정렬
+        convs.sort(key=lambda c: c.get('updatedAt', ''), reverse=True)
+        convs = convs[:limit]
+
+        # messages 제외 (목록용)
+        results = []
+        for c in convs:
+            results.append({
+                'id': c.get('id'),
+                'title': c.get('title', ''),
+                'userId': c.get('userId', ''),
+                'userName': c.get('userName', ''),
+                'env': c.get('env', ''),
+                'createdAt': c.get('createdAt', ''),
+                'updatedAt': c.get('updatedAt', ''),
+                'messageCount': len(c.get('messages', [])),
+            })
+
+        self._send_json(200, {"results": results, "total_count": len(results)})
+
+    def _search_local_conversations(self, query_string=''):
+        """GET /api/conversations/search — 로컬 대화 검색"""
+        params = parse_qs(query_string)
+        search_query = params.get('search_query', [''])[0].lower()
+        if not search_query:
+            return self._send_error(400, 'search_query 파라미터가 필요합니다')
+
+        tester = self._get_tester_info()
+        user_id = tester['id'] if tester else None
+        data = load_conversations()
+        convs = data.get('conversations', [])
+
+        if not self._is_admin() and user_id:
+            convs = [c for c in convs if c.get('userId') == user_id]
+
+        results = []
+        for c in convs:
+            title = c.get('title', '').lower()
+            msgs = c.get('messages', [])
+            if search_query in title:
+                results.append({'id': c['id'], 'title': c.get('title',''), 'updatedAt': c.get('updatedAt',''), 'messageCount': len(msgs)})
+                continue
+            for m in msgs:
+                if search_query in m.get('content', '').lower():
+                    snippet = m.get('content', '')[:100]
+                    results.append({'id': c['id'], 'title': c.get('title',''), 'updatedAt': c.get('updatedAt',''), 'messageCount': len(msgs), 'snippet': snippet})
+                    break
+
+        self._send_json(200, {"results": results, "total_count": len(results)})
+
+    def _get_local_conversation(self, conv_id):
+        """GET /api/conversations/{id} — 대화 상세 (messages 포함)"""
+        data = load_conversations()
+        for c in data.get('conversations', []):
+            if c.get('id') == conv_id:
+                return self._send_json(200, c)
+        self._send_error(404, '대화를 찾을 수 없습니다')
+
+    def _create_local_conversation(self, body):
+        """POST /api/conversations — 새 대화 생성"""
+        try:
+            payload = json.loads(body)
+        except json.JSONDecodeError:
+            return self._send_error(400, '잘못된 JSON')
+
+        tester = self._get_tester_info()
+        user_id = tester['id'] if tester else 'anonymous'
+        user_name = tester['alias'] if tester else '익명'
+
+        now = datetime.now(timezone.utc).isoformat()
+        conv_id = f"conv-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{secrets.token_hex(4)}"
+
+        conv = {
+            'id': conv_id,
+            'userId': user_id,
+            'userName': user_name,
+            'title': payload.get('title', ''),
+            'env': payload.get('env', 'dev'),
+            'conversationStrid': payload.get('conversationStrid', ''),
+            'createdAt': now,
+            'updatedAt': now,
+            'messages': [],
+        }
+
+        data = load_conversations()
+        data['conversations'].insert(0, conv)
+        # 최대 500개 대화 보관
+        if len(data['conversations']) > 500:
+            data['conversations'] = data['conversations'][:500]
+        save_conversations(data)
+
+        self._send_json(200, {"success": True, "id": conv_id})
+
+    def _add_conversation_message(self, conv_id, body):
+        """PUT /api/conversations/{id}/message — 메시지 쌍(Q&A) 추가"""
+        try:
+            payload = json.loads(body)
+        except json.JSONDecodeError:
+            return self._send_error(400, '잘못된 JSON')
+
+        data = load_conversations()
+        target = None
+        for c in data.get('conversations', []):
+            if c.get('id') == conv_id:
+                target = c
+                break
+        if not target:
+            return self._send_error(404, '대화를 찾을 수 없습니다')
+
+        now = datetime.now(timezone.utc).isoformat()
+        msgs = target.setdefault('messages', [])
+
+        # 사용자 메시지
+        if payload.get('query'):
+            msgs.append({
+                'msgId': f"msg-{secrets.token_hex(4)}",
+                'role': 'user',
+                'content': payload['query'],
+                'timestamp': now,
+            })
+
+        # 어시스턴트 메시지
+        if payload.get('response'):
+            msg = {
+                'msgId': f"msg-{secrets.token_hex(4)}",
+                'role': 'assistant',
+                'content': payload['response'],
+                'timestamp': now,
+                'comments': [],
+            }
+            if payload.get('responseTime'):
+                msg['responseTime'] = payload['responseTime']
+            if payload.get('compliance'):
+                msg['compliance'] = payload['compliance']
+            if payload.get('searchResults'):
+                msg['searchResults'] = payload['searchResults']
+            if payload.get('followUps'):
+                msg['followUps'] = payload['followUps']
+            msgs.append(msg)
+
+        # 제목 자동 설정 (첫 메시지 기반)
+        if not target.get('title') and payload.get('query'):
+            target['title'] = payload['query'][:40]
+
+        # conversationStrid 업데이트
+        if payload.get('conversationStrid'):
+            target['conversationStrid'] = payload['conversationStrid']
+
+        target['updatedAt'] = now
+        save_conversations(data)
+        self._send_json(200, {"success": True, "messageCount": len(msgs)})
+
+    def _delete_local_conversation(self, conv_id):
+        """DELETE /api/conversations/{id} — 대화 삭제"""
+        data = load_conversations()
+        before = len(data.get('conversations', []))
+        data['conversations'] = [c for c in data.get('conversations', []) if c.get('id') != conv_id]
+        if len(data['conversations']) == before:
+            return self._send_error(404, '대화를 찾을 수 없습니다')
+        save_conversations(data)
+        self._send_json(200, {"success": True})
+
+    def _add_comment(self, conv_id, body):
+        """POST /api/conversations/{convId}/comments — 커멘트 추가"""
+        try:
+            payload = json.loads(body)
+        except json.JSONDecodeError:
+            return self._send_error(400, '잘못된 JSON')
+
+        msg_id = payload.get('msgId', '')
+        category = payload.get('category', '기타')
+        content = payload.get('content', '').strip()
+        if not msg_id or not content:
+            return self._send_error(400, 'msgId와 content가 필요합니다')
+
+        tester = self._get_tester_info()
+        user_id = tester['id'] if tester else 'anonymous'
+        user_name = tester['alias'] if tester else '익명'
+
+        data = load_conversations()
+        target_conv = None
+        for c in data.get('conversations', []):
+            if c.get('id') == conv_id:
+                target_conv = c
+                break
+        if not target_conv:
+            return self._send_error(404, '대화를 찾을 수 없습니다')
+
+        target_msg = None
+        for m in target_conv.get('messages', []):
+            if m.get('msgId') == msg_id:
+                target_msg = m
+                break
+        if not target_msg:
+            return self._send_error(404, '메시지를 찾을 수 없습니다')
+
+        comment_id = f"cmt-{secrets.token_hex(4)}"
+        comments = target_msg.setdefault('comments', [])
+        comments.append({
+            'commentId': comment_id,
+            'userId': user_id,
+            'userName': user_name,
+            'category': category,
+            'content': content,
+            'createdAt': datetime.now(timezone.utc).isoformat(),
+        })
+        save_conversations(data)
+        self._send_json(200, {"success": True, "commentId": comment_id})
+
+    def _export_comments(self):
+        """GET /api/comments/export — 전체 커멘트 내보내기 (리포트용)"""
+        data = load_conversations()
+        report = []
+        category_count = {}
+        for c in data.get('conversations', []):
+            for m in c.get('messages', []):
+                for cmt in m.get('comments', []):
+                    cat = cmt.get('category', '기타')
+                    category_count[cat] = category_count.get(cat, 0) + 1
+                    # 이전 user 메시지 찾기
+                    prev_query = ''
+                    msgs = c.get('messages', [])
+                    idx = msgs.index(m)
+                    if idx > 0 and msgs[idx-1].get('role') == 'user':
+                        prev_query = msgs[idx-1].get('content', '')[:200]
+
+                    report.append({
+                        'conversationId': c.get('id'),
+                        'conversationTitle': c.get('title', ''),
+                        'userName': c.get('userName', ''),
+                        'userQuery': prev_query,
+                        'aiResponse': m.get('content', '')[:300],
+                        'complianceScore': m.get('compliance', {}).get('score', ''),
+                        'commentId': cmt.get('commentId'),
+                        'category': cat,
+                        'comment': cmt.get('content', ''),
+                        'commentBy': cmt.get('userName', ''),
+                        'commentAt': cmt.get('createdAt', ''),
+                    })
+        self._send_json(200, {
+            "totalComments": len(report),
+            "categorySummary": category_count,
+            "comments": report,
+        })
 
     # ════════════════════════════════════════════
     # SKIX API 프록시

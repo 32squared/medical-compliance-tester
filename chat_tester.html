@@ -232,14 +232,31 @@
 
 <!-- 테스터 로그인 모달 -->
 <div id="testerModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:600;align-items:center;justify-content:center">
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px;max-width:380px;width:90%;text-align:center">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px;max-width:400px;width:90%;text-align:center">
     <div style="font-size:32px;margin-bottom:10px">👤</div>
-    <h3 style="font-size:16px;margin-bottom:6px;color:var(--accent)">테스터 로그인</h3>
-    <p style="font-size:11px;color:var(--text-dim);margin-bottom:16px">Admin이 발급한 ID/PW로 로그인하세요</p>
-    <input type="text" id="testerIdInput" placeholder="테스터 ID" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:13px;margin-bottom:10px;outline:none">
-    <input type="password" id="testerPwInput" placeholder="비밀번호" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:13px;margin-bottom:10px;outline:none" onkeydown="if(event.key==='Enter')confirmTester()">
-    <div id="testerError" style="color:var(--red);font-size:11px;margin-bottom:8px;min-height:16px"></div>
-    <button onclick="confirmTester()" style="width:100%;padding:10px;background:var(--accent);color:#0f172a;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">로그인</button>
+    <!-- 탭 -->
+    <div style="display:flex;gap:0;margin-bottom:16px;border-bottom:2px solid var(--border)">
+      <button id="tabLogin" onclick="switchAuthTab('login')" style="flex:1;padding:8px;background:none;border:none;border-bottom:2px solid var(--accent);color:var(--accent);font-size:13px;font-weight:700;cursor:pointer;margin-bottom:-2px">로그인</button>
+      <button id="tabRegister" onclick="switchAuthTab('register')" style="flex:1;padding:8px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text-dim);font-size:13px;font-weight:600;cursor:pointer;margin-bottom:-2px">회원가입</button>
+    </div>
+    <!-- 로그인 폼 -->
+    <div id="loginForm">
+      <input type="text" id="testerIdInput" placeholder="ID" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:13px;margin-bottom:10px;outline:none;box-sizing:border-box">
+      <input type="password" id="testerPwInput" placeholder="비밀번호" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:13px;margin-bottom:10px;outline:none;box-sizing:border-box" onkeydown="if(event.key==='Enter')confirmTester()">
+      <div id="testerError" style="color:var(--red);font-size:11px;margin-bottom:8px;min-height:16px"></div>
+      <button onclick="confirmTester()" style="width:100%;padding:10px;background:var(--accent);color:#0f172a;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">로그인</button>
+    </div>
+    <!-- 회원가입 폼 -->
+    <div id="registerForm" style="display:none">
+      <input type="text" id="regId" placeholder="ID (2자 이상)" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:13px;margin-bottom:8px;outline:none;box-sizing:border-box">
+      <input type="text" id="regName" placeholder="이름" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:13px;margin-bottom:8px;outline:none;box-sizing:border-box">
+      <input type="text" id="regOrg" placeholder="소속 (예: 서울대병원)" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:13px;margin-bottom:8px;outline:none;box-sizing:border-box">
+      <input type="password" id="regPw" placeholder="비밀번호 (4자 이상)" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:13px;margin-bottom:8px;outline:none;box-sizing:border-box">
+      <input type="password" id="regPwConfirm" placeholder="비밀번호 확인" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:13px;margin-bottom:8px;outline:none;box-sizing:border-box" onkeydown="if(event.key==='Enter')submitRegister()">
+      <div id="regError" style="color:var(--red);font-size:11px;margin-bottom:8px;min-height:16px"></div>
+      <div id="regSuccess" style="color:#22c55e;font-size:12px;margin-bottom:8px;min-height:16px;display:none"></div>
+      <button onclick="submitRegister()" style="width:100%;padding:10px;background:var(--accent);color:#0f172a;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">가입 신청</button>
+    </div>
   </div>
 </div>
 
@@ -459,6 +476,62 @@ async function confirmTester() {
 async function testerLogout() {
   await fetch('/api/tester/logout', { method: 'POST' });
   location.reload();
+}
+
+function switchAuthTab(tab) {
+  const loginForm = document.getElementById('loginForm');
+  const registerForm = document.getElementById('registerForm');
+  const tabLogin = document.getElementById('tabLogin');
+  const tabRegister = document.getElementById('tabRegister');
+  if (tab === 'login') {
+    loginForm.style.display = '';
+    registerForm.style.display = 'none';
+    tabLogin.style.borderBottomColor = 'var(--accent)';
+    tabLogin.style.color = 'var(--accent)';
+    tabRegister.style.borderBottomColor = 'transparent';
+    tabRegister.style.color = 'var(--text-dim)';
+  } else {
+    loginForm.style.display = 'none';
+    registerForm.style.display = '';
+    tabRegister.style.borderBottomColor = 'var(--accent)';
+    tabRegister.style.color = 'var(--accent)';
+    tabLogin.style.borderBottomColor = 'transparent';
+    tabLogin.style.color = 'var(--text-dim)';
+  }
+}
+
+async function submitRegister() {
+  const id = document.getElementById('regId').value.trim();
+  const name = document.getElementById('regName').value.trim();
+  const org = document.getElementById('regOrg').value.trim();
+  const pw = document.getElementById('regPw').value.trim();
+  const pwConfirm = document.getElementById('regPwConfirm').value.trim();
+  const errEl = document.getElementById('regError');
+  const successEl = document.getElementById('regSuccess');
+  errEl.textContent = ''; successEl.style.display = 'none';
+
+  if (!id || id.length < 2) { errEl.textContent = 'ID는 2자 이상 입력하세요'; return; }
+  if (!name) { errEl.textContent = '이름을 입력하세요'; return; }
+  if (!pw || pw.length < 4) { errEl.textContent = '비밀번호는 4자 이상 입력하세요'; return; }
+  if (pw !== pwConfirm) { errEl.textContent = '비밀번호가 일치하지 않습니다'; return; }
+
+  try {
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, name, org, password: pw })
+    });
+    const data = await res.json();
+    if (data.success) {
+      successEl.textContent = data.message;
+      successEl.style.display = '';
+      errEl.textContent = '';
+      // 입력 필드 초기화
+      ['regId','regName','regOrg','regPw','regPwConfirm'].forEach(f => document.getElementById(f).value = '');
+    } else {
+      errEl.textContent = data.error || '가입 실패';
+    }
+  } catch(e) { errEl.textContent = '서버 연결 실패'; }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -1155,8 +1228,37 @@ async function sendMessage() {
     finalizeAssistantMessage(finalText, { elapsed, compliance, searchResults, followUps, userPrompt: text });
     chatHistory.push({ role:'assistant', content: finalText, compliance, searchResults });
 
-    // 사이드바 갱신 (SKIX 서버 저장 대기)
-    setTimeout(() => loadConversations(), 1000);
+    // 로컬 대화 자동 저장
+    try {
+      if (!currentConvId) {
+        // 첫 메시지: 대화 생성
+        const createRes = await fetch('/api/conversations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: text.substring(0, 40), env: currentEnv })
+        });
+        const createData = await createRes.json();
+        if (createData.success) currentConvId = createData.id;
+      }
+      if (currentConvId) {
+        await fetch(`/api/conversations/${currentConvId}/message`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: text,
+            response: finalText,
+            responseTime: elapsed,
+            compliance: compliance,
+            searchResults: searchResults?.slice(0, 5),
+            followUps: followUps,
+            conversationStrid: conversationStrid,
+          })
+        });
+      }
+    } catch(e) { console.warn('대화 저장 실패', e); }
+
+    // 사이드바 갱신
+    setTimeout(() => loadConversations(), 500);
 
   } catch(e) {
     setStatus(false, 'API 오류 — 클릭하여 재테스트');
@@ -1173,6 +1275,7 @@ async function sendMessage() {
 function clearChat() {
   chatHistory = [];
   conversationStrid = null;
+  currentConvId = null;
   cancelRequested = true;
   document.getElementById('messages').innerHTML = `
     <div class="empty-state" id="emptyState">
@@ -1192,6 +1295,7 @@ function clearChat() {
 // ══════════════════════════════════════════
 let sidebarConversations = [];
 let searchDebounceTimer = null;
+let currentConvId = null;  // 로컬 대화 ID
 
 async function loadConversations() {
   try {
@@ -1232,7 +1336,7 @@ function groupConversationsByDate(conversations) {
     { label: '이전', items: [] },
   ];
   for (const c of conversations) {
-    const d = new Date(c.last_used_time || c.creation_time);
+    const d = new Date(c.updatedAt || c.createdAt || c.last_used_time || c.creation_time);
     if (d >= today) groups[0].items.push(c);
     else if (d >= yesterday) groups[1].items.push(c);
     else if (d >= week) groups[2].items.push(c);
@@ -1254,12 +1358,12 @@ function renderSidebar(conversations) {
     if (!g.items.length) continue;
     html += `<div class="sidebar-group-label">${g.label}</div>`;
     for (const c of g.items) {
-      const title = c.title || (c.last_input_kwargs?.query || '').substring(0, 40) || '제목 없음';
-      const chatCount = c.num_chats || 0;
-      const isActive = c.strid === conversationStrid;
-      const safeStrid = escapeHtml(c.strid);
-      html += `<div class="sidebar-item${isActive ? ' active' : ''}" data-strid="${safeStrid}"
-                   onclick="loadConversation('${safeStrid}')">
+      const title = c.title || '제목 없음';
+      const chatCount = c.messageCount || 0;
+      const isActive = c.id === currentConvId;
+      const safeId = escapeHtml(c.id);
+      html += `<div class="sidebar-item${isActive ? ' active' : ''}" data-strid="${safeId}"
+                   onclick="loadConversation('${safeId}')">
         <span class="conv-title">${escapeHtml(title)}</span>
         <span class="conv-meta">${chatCount}개 메시지</span>
       </div>`;
@@ -1268,15 +1372,16 @@ function renderSidebar(conversations) {
   list.innerHTML = html;
 }
 
-async function loadConversation(strid) {
+async function loadConversation(convId) {
   try {
-    const res = await fetch(`/api/conversations/${strid}`);
+    const res = await fetch(`/api/conversations/${convId}`);
     if (!res.ok) { showToast('대화 로드 실패', 'error'); return; }
     const conv = await res.json();
 
     // 채팅 영역 초기화
     chatHistory = [];
-    conversationStrid = strid;
+    currentConvId = convId;
+    conversationStrid = conv.conversationStrid || null;
     const messagesEl = document.getElementById('messages');
     messagesEl.innerHTML = '';
 
@@ -1285,26 +1390,21 @@ async function loadConversation(strid) {
       messagesEl.innerHTML += `<div style="text-align:center;padding:8px;color:var(--text-dim);font-size:12px;font-weight:600">${escapeHtml(conv.title)}</div>`;
     }
 
-    // chats 배열에서 Q&A 복원
-    const chats = conv.chats || [];
-    for (const chat of chats) {
-      if (chat.status !== 'SUCCESS') continue;
-      const query = chat.input_state?.query;
-      const response = chat.output_state?.response;
-      if (query) {
-        addUserMessage(query);
-        chatHistory.push({ role: 'user', content: query });
-      }
-      if (response) {
-        addRestoredAssistantMessage(response);
-        chatHistory.push({ role: 'assistant', content: response });
+    // messages 배열에서 Q&A 복원 (로컬 저장 구조)
+    const messages = conv.messages || [];
+    for (const msg of messages) {
+      if (msg.role === 'user') {
+        addUserMessage(msg.content);
+        chatHistory.push({ role: 'user', content: msg.content });
+      } else if (msg.role === 'assistant') {
+        addRestoredAssistantMessage(msg.content, msg);
+        chatHistory.push({ role: 'assistant', content: msg.content, compliance: msg.compliance });
       }
     }
 
     // 스크롤 + 사이드바 하이라이트
-    const msgsContainer = document.getElementById('messages');
-    msgsContainer.scrollTop = msgsContainer.scrollHeight;
-    highlightActiveConversation(strid);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    highlightActiveConversation(convId);
 
     // 모바일: 사이드바 닫기
     if (window.innerWidth <= 768) {
@@ -1316,24 +1416,93 @@ async function loadConversation(strid) {
   }
 }
 
-function addRestoredAssistantMessage(text) {
+function addRestoredAssistantMessage(text, meta = {}) {
   const messagesEl = document.getElementById('messages');
   const ts = '';
   const div = document.createElement('div');
   div.className = 'msg assistant';
-  div.innerHTML = `<div class="bubble">${typeof marked !== 'undefined' ? marked.parse(text) : escapeHtml(text)}</div>
-    <div class="meta"><span>${ts}</span></div>`;
+  const parsedText = typeof marked !== 'undefined' ? marked.parse(text) : escapeHtml(text);
+
+  // compliance 메타 표시
+  let metaHtml = '';
+  const compliance = meta.compliance;
+  if (compliance) {
+    const score = compliance.score ?? '';
+    const color = score >= 80 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444';
+    const label = score >= 80 ? 'PASS' : score >= 50 ? '주의' : 'FAIL';
+    metaHtml += `<span style="background:${color}22;color:${color};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700">${label} ${score}점</span> `;
+  }
+  if (meta.responseTime) metaHtml += `<span style="font-size:10px;color:var(--text-dim)">${meta.responseTime}ms</span> `;
+
+  // 커멘트 버튼 + 기존 커멘트 표시
+  const msgId = meta.msgId || '';
+  let commentHtml = '';
+  const comments = meta.comments || [];
+  if (comments.length) {
+    commentHtml = `<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:6px">`;
+    for (const cmt of comments) {
+      commentHtml += `<div style="background:var(--bg);border-left:3px solid #f59e0b;padding:6px 10px;margin-bottom:4px;border-radius:0 6px 6px 0;font-size:11px">
+        <span style="color:#f59e0b;font-weight:600">[${escapeHtml(cmt.category)}]</span>
+        <span style="color:var(--text)">${escapeHtml(cmt.content)}</span>
+        <span style="color:var(--text-dim);font-size:10px"> — ${escapeHtml(cmt.userName)} ${cmt.createdAt ? new Date(cmt.createdAt).toLocaleDateString() : ''}</span>
+      </div>`;
+    }
+    commentHtml += `</div>`;
+  }
+  const commentBtn = msgId ? `<button onclick="toggleCommentForm('${escapeHtml(msgId)}')" style="background:none;border:1px solid var(--border);color:var(--text-dim);padding:2px 8px;border-radius:4px;font-size:10px;cursor:pointer;margin-left:4px">💬 커멘트${comments.length ? ` (${comments.length})` : ''}</button>` : '';
+  const commentForm = msgId ? `<div id="commentForm_${escapeHtml(msgId)}" style="display:none;margin-top:8px;padding:8px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
+    <select id="commentCat_${escapeHtml(msgId)}" style="width:100%;padding:6px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:11px;margin-bottom:6px">
+      <option value="부정확한 정보">부정확한 정보</option><option value="불충분한 답변">불충분한 답변</option>
+      <option value="위험한 조언">위험한 조언</option><option value="면책 조항 누락">면책 조항 누락</option>
+      <option value="과잉 진단/처방">과잉 진단/처방</option><option value="출처 불명확">출처 불명확</option>
+      <option value="표현 부적절">표현 부적절</option><option value="기타">기타</option>
+    </select>
+    <textarea id="commentText_${escapeHtml(msgId)}" rows="2" placeholder="커멘트를 입력하세요..." style="width:100%;padding:6px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:11px;resize:none;box-sizing:border-box"></textarea>
+    <button onclick="submitComment('${escapeHtml(msgId)}')" style="margin-top:4px;padding:4px 12px;background:var(--accent);color:#0f172a;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">등록</button>
+  </div>` : '';
+
+  div.innerHTML = `<div class="bubble" ${comments.length ? 'style="border-left:3px solid #f59e0b"' : ''}>${parsedText}${commentHtml}</div>
+    <div class="meta">${metaHtml}${commentBtn}</div>${commentForm}`;
   messagesEl.appendChild(div);
 }
 
+function toggleCommentForm(msgId) {
+  const form = document.getElementById('commentForm_' + msgId);
+  if (form) form.style.display = form.style.display === 'none' ? '' : 'none';
+}
+
+async function submitComment(msgId) {
+  if (!currentConvId) { showToast('대화를 먼저 저장하세요', 'error'); return; }
+  const cat = document.getElementById('commentCat_' + msgId)?.value || '기타';
+  const content = document.getElementById('commentText_' + msgId)?.value.trim();
+  if (!content) { showToast('커멘트 내용을 입력하세요', 'error'); return; }
+
+  try {
+    const res = await fetch(`/api/conversations/${currentConvId}/comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ msgId, category: cat, content })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('커멘트가 등록되었습니다', 'success');
+      // 대화 다시 로드하여 커멘트 반영
+      loadConversation(currentConvId);
+    } else {
+      showToast(data.error || '커멘트 등록 실패', 'error');
+    }
+  } catch(e) { showToast('서버 연결 실패', 'error'); }
+}
+
 function newConversation() {
+  currentConvId = null;
   clearChat();
   document.getElementById('chatInput')?.focus();
 }
 
-function highlightActiveConversation(strid) {
+function highlightActiveConversation(convId) {
   document.querySelectorAll('.sidebar-item').forEach(el => {
-    el.classList.toggle('active', el.dataset.strid === strid);
+    el.classList.toggle('active', el.dataset.strid === convId);
   });
 }
 

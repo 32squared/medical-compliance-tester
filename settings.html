@@ -235,22 +235,32 @@
 
   <hr class="divider">
 
-  <!-- 테스터 계정 관리 -->
+  <!-- 가입 승인 대기 -->
   <div class="card">
-    <h2>👥 테스터 계정 관리</h2>
-    <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px">테스터 ID/PW를 생성하고 X-Api-UID를 배정합니다 (최대 10개)</p>
+    <h2>⏳ 가입 승인 대기</h2>
+    <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px">회원가입 신청자를 승인하거나 거부합니다</p>
+    <div id="pendingUserList"></div>
+  </div>
+
+  <!-- 사용자 관리 -->
+  <div class="card">
+    <h2>👥 사용자 관리</h2>
+    <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px">승인된 사용자 목록 및 관리 (직접 생성도 가능)</p>
     <div id="testerAccountList" style="margin-bottom:12px"></div>
     <hr class="divider" style="margin:12px 0">
-    <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:10px">새 테스터 생성</div>
+    <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:10px">직접 사용자 생성</div>
     <div class="field-row">
       <div class="field"><label>ID</label><input type="text" id="newTesterId" placeholder="로그인 ID (2자 이상)"></div>
-      <div class="field"><label>별명(alias)</label><input type="text" id="newTesterAlias" placeholder="표시명 (예: 김수연)"></div>
+      <div class="field"><label>이름</label><input type="text" id="newTesterAlias" placeholder="이름 (예: 김의사)"></div>
     </div>
     <div class="field-row">
+      <div class="field"><label>소속</label><input type="text" id="newTesterOrg" placeholder="소속 (예: 서울대병원)"></div>
       <div class="field"><label>비밀번호</label><input type="password" id="newTesterPw" placeholder="4자 이상"></div>
+    </div>
+    <div class="field-row">
       <div class="field"><label>X-Api-UID</label><input type="text" id="newTesterUid" placeholder="SKIX API UID"></div>
     </div>
-    <button class="btn-primary" onclick="createTesterAccount()" style="font-size:12px;padding:8px 20px">테스터 생성</button>
+    <button class="btn-primary" onclick="createTesterAccount()" style="font-size:12px;padding:8px 20px">사용자 생성</button>
   </div>
 
   <!-- 테스터 허용 환경 -->
@@ -646,17 +656,75 @@ async function loadTesterAccounts() {
   } catch(e) { console.warn('loadTesterAccounts failed', e); }
 }
 
-function renderTesterAccounts(accounts) {
-  const container = document.getElementById('testerAccountList');
-  if (!accounts.length) {
-    container.innerHTML = '<div style="color:var(--text-dim);font-size:12px;padding:8px">등록된 테스터가 없습니다</div>';
+async function loadPendingUsers() {
+  try {
+    const res = await fetch('/api/auth/pending-users');
+    const data = await res.json();
+    renderPendingUsers(data.pendingUsers || []);
+  } catch(e) { console.warn('loadPendingUsers failed', e); }
+}
+
+function renderPendingUsers(users) {
+  const container = document.getElementById('pendingUserList');
+  if (!users.length) {
+    container.innerHTML = '<div style="color:var(--text-dim);font-size:12px;padding:8px">승인 대기 중인 사용자가 없습니다</div>';
     return;
   }
-  container.innerHTML = accounts.map(a => `
+  container.innerHTML = users.map(u => `
+    <div style="display:flex;gap:8px;margin-bottom:6px;align-items:center;padding:10px 12px;background:var(--bg);border-radius:8px;border:1px solid #f59e0b33">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600;color:var(--text)">${escHtml(u.name)} <span style="font-size:11px;color:var(--text-dim)">(${escHtml(u.id)})</span></div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:2px">${escHtml(u.org || '소속 미입력')} · ${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : ''}</div>
+      </div>
+      <div style="display:flex;gap:4px">
+        <input type="text" id="uid_${escHtml(u.id)}" placeholder="X-Api-UID" style="width:120px;font-size:11px;padding:4px 8px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px">
+        <button onclick="approveUser('${escHtml(u.id)}')" style="background:#22c55e;color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:11px;font-weight:600;cursor:pointer">승인</button>
+        <button onclick="rejectUser('${escHtml(u.id)}')" style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:11px;font-weight:600;cursor:pointer">거부</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function approveUser(userId) {
+  const uidInput = document.getElementById('uid_' + userId);
+  const uid = uidInput ? uidInput.value.trim() : '';
+  try {
+    const res = await fetch('/api/auth/approve-user', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ userId, uid })
+    });
+    const data = await res.json();
+    if (data.success) { showToast(data.message, 'success'); loadPendingUsers(); loadTesterAccounts(); }
+    else showToast(data.error || '승인 실패', 'error');
+  } catch(e) { showToast('서버 연결 실패', 'error'); }
+}
+
+async function rejectUser(userId) {
+  if (!confirm(`'${userId}' 사용자를 거부하시겠습니까?`)) return;
+  try {
+    const res = await fetch('/api/auth/reject-user', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ userId })
+    });
+    const data = await res.json();
+    if (data.success) { showToast(data.message, 'success'); loadPendingUsers(); }
+    else showToast(data.error || '거부 실패', 'error');
+  } catch(e) { showToast('서버 연결 실패', 'error'); }
+}
+
+function renderTesterAccounts(accounts) {
+  const container = document.getElementById('testerAccountList');
+  const approved = accounts.filter(a => a.status !== 'pending' && a.status !== 'rejected');
+  if (!approved.length) {
+    container.innerHTML = '<div style="color:var(--text-dim);font-size:12px;padding:8px">등록된 사용자가 없습니다</div>';
+    return;
+  }
+  container.innerHTML = approved.map(a => `
     <div style="display:flex;gap:8px;margin-bottom:6px;align-items:center;padding:8px 10px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
-      <span style="font-size:12px;font-weight:600;color:var(--accent);min-width:80px">${escHtml(a.id)}</span>
-      <span style="font-size:12px;color:var(--text);flex:1">${escHtml(a.alias)}</span>
-      <span style="font-size:11px;color:var(--text-dim);min-width:100px">UID: ${escHtml(a.uid||'-')}</span>
+      <span style="font-size:12px;font-weight:600;color:var(--accent);min-width:70px">${escHtml(a.id)}</span>
+      <span style="font-size:12px;color:var(--text);min-width:60px">${escHtml(a.name || a.alias)}</span>
+      <span style="font-size:11px;color:var(--text-dim);flex:1">${escHtml(a.org || '')}</span>
+      <span style="font-size:10px;color:var(--text-dim);min-width:90px">UID: ${escHtml(a.uid||'-')}</span>
       <button onclick="deleteTesterAccount('${escHtml(a.id)}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 6px" title="삭제">✕</button>
     </div>
   `).join('');
@@ -665,6 +733,7 @@ function renderTesterAccounts(accounts) {
 async function createTesterAccount() {
   const id = document.getElementById('newTesterId').value.trim();
   const alias = document.getElementById('newTesterAlias').value.trim();
+  const org = document.getElementById('newTesterOrg')?.value.trim() || '';
   const pw = document.getElementById('newTesterPw').value.trim();
   const uid = document.getElementById('newTesterUid').value.trim();
 
@@ -674,7 +743,7 @@ async function createTesterAccount() {
     const res = await fetch('/api/tester/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, alias: alias || id, password: pw, uid })
+      body: JSON.stringify({ id, alias: alias || id, name: alias || id, org, password: pw, uid })
     });
     const data = await res.json();
     if (data.success) {
@@ -801,9 +870,9 @@ loadSettings = async function() {
       c.style.color = isActive ? '#0f172a' : 'var(--text-dim)';
     });
 
-    // UID 로드
-    // 테스터 계정은 별도 API로 관리
+    // 사용자 관리 로드
     loadTesterAccounts();
+    loadPendingUsers();
 
     // 허용 환경 로드
     const allowed = settings.allowedEnvironments || ['dev', 'stg', 'prod'];
