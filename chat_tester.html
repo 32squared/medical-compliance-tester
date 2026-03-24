@@ -1591,18 +1591,50 @@ function addRestoredAssistantMessage(text, meta = {}) {
   // 커멘트 데이터
   const comments = meta.comments || [];
 
-  // bubble (커멘트 있으면 좌측 하이라이트)
-  div.innerHTML = `<div class="bubble" ${comments.length ? 'style="border-left:3px solid #f59e0b"' : ''}>${parsedText}</div><div class="meta"></div>`;
+  // bubble
+  div.innerHTML = `<div class="bubble" ${comments.length ? 'style="border-left:3px solid #f59e0b"' : ''}>${parsedText}</div>`;
   messagesEl.appendChild(div);
 
-  const metaEl = div.querySelector('.meta');
+  // ── 커멘트 영역 (답변 바로 아래) ──
+  const commentArea = document.createElement('div');
+  commentArea.style.cssText = 'margin-top:6px;';
 
-  // 응답시간
-  let metaHtml = '';
-  if (meta.responseTime) metaHtml += `<span>${meta.responseTime}ms</span> `;
-  // 커멘트 버튼
-  metaHtml += `<button class="comment-btn" onclick="toggleCommentForm('${safeMsgId}')">💬 커멘트${comments.length ? ` (${comments.length})` : ''}</button>`;
-  metaEl.innerHTML = metaHtml;
+  // 커멘트 버튼 + 응답시간
+  let cmtBtnHtml = '';
+  if (meta.responseTime) cmtBtnHtml += `<span style="font-size:11px;color:var(--text-dim);margin-right:8px">${meta.responseTime}ms</span>`;
+  cmtBtnHtml += `<button class="comment-btn" onclick="toggleCommentForm('${safeMsgId}')">💬 커멘트${comments.length ? ` (${comments.length})` : ''}</button>`;
+  commentArea.innerHTML = cmtBtnHtml;
+
+  // 기존 커멘트 표시
+  if (comments.length) {
+    const cmtList = document.createElement('div');
+    cmtList.style.cssText = 'margin-top:8px;';
+    for (const cmt of comments) {
+      cmtList.innerHTML += `<div class="comment-item">
+        <span class="comment-category">[${escapeHtml(cmt.category)}]</span>
+        <div class="comment-content">${escapeHtml(cmt.content)}</div>
+        <div class="comment-meta">${escapeHtml(cmt.userName || '')} · ${cmt.createdAt ? new Date(cmt.createdAt).toLocaleDateString() : ''}</div>
+      </div>`;
+    }
+    commentArea.appendChild(cmtList);
+  }
+
+  // 커멘트 입력 폼 (토글)
+  const commentFormDiv = document.createElement('div');
+  commentFormDiv.id = 'commentForm_' + safeMsgId;
+  commentFormDiv.style.cssText = 'display:none;margin-top:8px;padding:12px;background:var(--bg);border-radius:10px;border:1px solid var(--border)';
+  commentFormDiv.innerHTML = `
+    <select id="commentCat_${safeMsgId}" style="width:100%;padding:8px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px;margin-bottom:8px">
+      <option value="부정확한 정보">부정확한 정보</option><option value="불충분한 답변">불충분한 답변</option>
+      <option value="위험한 조언">위험한 조언</option><option value="면책 조항 누락">면책 조항 누락</option>
+      <option value="과잉 진단/처방">과잉 진단/처방</option><option value="출처 불명확">출처 불명확</option>
+      <option value="표현 부적절">표현 부적절</option><option value="기타">기타</option>
+    </select>
+    <textarea id="commentText_${safeMsgId}" rows="3" placeholder="커멘트를 입력하세요..." style="width:100%;padding:8px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px;resize:none;box-sizing:border-box;line-height:1.5"></textarea>
+    <button onclick="submitComment('${safeMsgId}')" style="margin-top:6px;padding:8px 20px;background:var(--accent);color:#0f172a;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">등록</button>
+  `;
+  commentArea.appendChild(commentFormDiv);
+  div.appendChild(commentArea);
 
   // ── 평가 결과 통합 박스 ──
   const evalBox = document.createElement('div');
@@ -1715,38 +1747,7 @@ function addRestoredAssistantMessage(text, meta = {}) {
     });
   }
 
-  // (C) 커멘트 표시 섹션
-  if (comments.length) {
-    let cmtHtml = `<div class="eval-section">
-      <div class="eval-section-title"><span class="icon">💬</span> 의사 커멘트 (${comments.length})</div>`;
-    for (const cmt of comments) {
-      cmtHtml += `<div class="comment-item">
-        <span class="comment-category">[${escapeHtml(cmt.category)}]</span>
-        <div class="comment-content">${escapeHtml(cmt.content)}</div>
-        <div class="comment-meta">${escapeHtml(cmt.userName || '')} · ${cmt.createdAt ? new Date(cmt.createdAt).toLocaleDateString() : ''}</div>
-      </div>`;
-    }
-    cmtHtml += '</div>';
-    evalBox.innerHTML += cmtHtml;
-  }
-
   div.appendChild(evalBox);
-
-  // 커멘트 입력 폼 (토글)
-  const commentFormDiv = document.createElement('div');
-  commentFormDiv.id = 'commentForm_' + safeMsgId;
-  commentFormDiv.style.cssText = 'display:none;margin-top:8px;padding:12px;background:var(--bg);border-radius:10px;border:1px solid var(--border)';
-  commentFormDiv.innerHTML = `
-    <select id="commentCat_${safeMsgId}" style="width:100%;padding:8px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px;margin-bottom:8px">
-      <option value="부정확한 정보">부정확한 정보</option><option value="불충분한 답변">불충분한 답변</option>
-      <option value="위험한 조언">위험한 조언</option><option value="면책 조항 누락">면책 조항 누락</option>
-      <option value="과잉 진단/처방">과잉 진단/처방</option><option value="출처 불명확">출처 불명확</option>
-      <option value="표현 부적절">표현 부적절</option><option value="기타">기타</option>
-    </select>
-    <textarea id="commentText_${safeMsgId}" rows="3" placeholder="커멘트를 입력하세요..." style="width:100%;padding:8px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px;resize:none;box-sizing:border-box;line-height:1.5"></textarea>
-    <button onclick="submitComment('${safeMsgId}')" style="margin-top:6px;padding:8px 20px;background:var(--accent);color:#0f172a;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">등록</button>
-  `;
-  div.appendChild(commentFormDiv);
 }
 
 function toggleCommentForm(msgId) {
