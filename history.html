@@ -25,10 +25,9 @@
   @keyframes spin{to{transform:rotate(360deg)}}
 
   /* ── Top Bar ── */
-  .topbar { display:flex; align-items:center; justify-content:space-between; padding:12px 20px;
-            background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; }
-  .topbar h1 { font-size:16px; font-weight:700; display:flex; align-items:center; gap:8px; }
-  .topbar .nav { display:flex; gap:6px; }
+  .topbar { display:flex; align-items:center; gap:8px; padding:12px 20px;
+            background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; flex-wrap:nowrap; overflow-x:auto; }
+  .topbar h1 { font-size:16px; font-weight:700; display:flex; align-items:center; gap:8px; white-space:nowrap; }
   .nav-btn { background:none; border:1px solid var(--border); color:var(--text-dim); border-radius:8px;
              padding:6px 14px; cursor:pointer; font-size:13px; text-decoration:none; transition:all .15s; }
   .nav-btn:hover { background:var(--surface2); color:var(--text); }
@@ -152,22 +151,18 @@
 
 <!-- ── Top Bar ── -->
 <div class="topbar">
-  <div style="display:flex;align-items:center;gap:12px">
-    <h1 style="font-size:16px;font-weight:700">&#127973; 나만의 주치의</h1>
-    <div class="env-selector" id="envSelector">
-      <span class="env-chip-sm active" data-env="dev" onclick="switchEnv('dev')">DEV</span>
-      <span class="env-chip-sm" data-env="stg" onclick="switchEnv('stg')">STG</span>
-      <span class="env-chip-sm" data-env="prod" onclick="switchEnv('prod')">PROD</span>
-    </div>
+  <h1 style="font-size:16px;font-weight:700">&#127973; 나만의 주치의</h1>
+  <div class="env-selector" id="envSelector">
+    <span class="env-chip-sm active" data-env="dev" onclick="switchEnv('dev')">DEV</span>
+    <span class="env-chip-sm" data-env="stg" onclick="switchEnv('stg')">STG</span>
+    <span class="env-chip-sm" data-env="prod" onclick="switchEnv('prod')">PROD</span>
   </div>
-  <div class="nav">
-    <a href="/" class="nav-btn">채팅 테스터</a>
-    <a href="/manager" class="nav-btn">시나리오 관리</a>
-    <a href="/history" class="nav-btn active">테스트 이력</a>
-    <a href="/guidelines" class="nav-btn">가이드라인</a>
-    <a href="/settings" class="nav-btn" id="settingsNavLink">&#9881; 설정</a>
-    <span id="testerBadge" style="display:none;font-size:11px;color:var(--accent);background:var(--accent-dim);padding:3px 10px;border-radius:6px;cursor:pointer;white-space:nowrap" onclick="if(confirm('로그아웃 하시겠습니까?'))testerLogout()"></span>
-  </div>
+  <a href="/" class="nav-btn">채팅 테스터</a>
+  <a href="/manager" class="nav-btn">시나리오 관리</a>
+  <a href="/history" class="nav-btn active">테스트 이력</a>
+  <a href="/guidelines" class="nav-btn">가이드라인</a>
+  <a href="/settings" class="nav-btn" id="settingsNavLink">&#9881; 설정</a>
+  <span id="testerBadge" style="margin-left:auto;display:none;font-size:11px;color:var(--accent);background:var(--accent-dim);padding:3px 10px;border-radius:6px;cursor:pointer;white-space:nowrap" onclick="if(confirm('로그아웃 하시겠습니까?'))testerLogout()"></span>
 </div>
 
 <!-- 테스터 로그인 모달 -->
