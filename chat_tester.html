@@ -185,6 +185,12 @@
   .comment-item .comment-content { color:var(--text); font-size:13px; margin-top:2px; }
   .comment-item .comment-meta { color:var(--text-dim); font-size:11px; margin-top:4px; }
 
+  /* ── 참조 번호 링크 ── */
+  .citation-link { color:var(--accent); font-size:11px; font-weight:700; text-decoration:none;
+                   background:rgba(56,189,248,.12); padding:1px 5px; border-radius:4px; cursor:pointer;
+                   transition:all .15s; vertical-align:super; }
+  .citation-link:hover { background:rgba(56,189,248,.3); color:#fff; }
+
   /* Typing indicator */
   .typing { display:flex; gap:4px; padding:14px 18px; }
   .typing span { width:6px; height:6px; background:var(--text-dim); border-radius:50%;
@@ -1206,6 +1212,23 @@ function createAssistantMessage() {
   return div;
 }
 
+function convertCitations(html, searchResults) {
+  // [9:1] 형태의 참조 번호를 클릭 가능한 링크로 변환
+  return html.replace(/\[(\d+):(\d+)\]/g, (match, docIdx, secIdx) => {
+    const idx = parseInt(docIdx) - 1;
+    const src = (searchResults || [])[idx];
+    if (src) {
+      const title = (src.title || src.strid || '참고자료 ' + docIdx).replace(/"/g, '&quot;');
+      const url = src.url || '';
+      if (url) {
+        return `<a href="${url}" target="_blank" class="citation-link" title="${title}">[${docIdx}]</a>`;
+      }
+      return `<span class="citation-link" title="${title}" style="cursor:help">[${docIdx}]</span>`;
+    }
+    return match;
+  });
+}
+
 function updateStreamBubble(fullText) {
   const bubble = document.getElementById('streamBubble');
   if (!bubble) return;
@@ -1233,64 +1256,19 @@ function finalizeAssistantMessage(fullText, meta = {}) {
   const bubble = document.getElementById('streamBubble');
   if (bubble) {
     bubble.removeAttribute('id');
-    bubble.innerHTML = marked.parse(fullText);
+    let parsedHtml = marked.parse(fullText);
+    parsedHtml = convertCitations(parsedHtml, meta.searchResults);
+    bubble.innerHTML = parsedHtml;
   }
 
   const metaEl = document.getElementById('streamMeta');
   if (!metaEl) return;
   metaEl.removeAttribute('id');
 
-  let html = '';
-  if (meta.elapsed) html += `<span>${meta.elapsed}ms</span>`;
+  // 응답 시간만 metaEl에 표시
+  metaEl.innerHTML = meta.elapsed ? `<span>${meta.elapsed}ms</span>` : '';
 
-  // Compliance
-  if (meta.compliance) {
-    const c = meta.compliance;
-    const cls = c.score >= 80 ? 'pass' : c.score >= 50 ? 'warn' : 'fail';
-    const label = c.score >= 80 ? 'PASS' : c.score >= 50 ? '주의' : 'FAIL';
-    html += `<span class="compliance-badge ${cls}">${label} ${c.score}점</span>`;
-    if (c.hasDisclaimer) html += '<span style="color:var(--green);font-size:11px">면책조항 &#10003;</span>';
-    else if (c.isMedical) html += '<span style="color:var(--yellow);font-size:11px">면책조항 누락</span>';
-    if (c.violations.length > 0) {
-      const chips = c.violations.map(v => {
-        const vc = v.severity==='CRITICAL' ? '' : v.severity==='HIGH' ? ' high' : ' medium';
-        return `<span class="violation-chip${vc}">[${v.severity}] ${v.name}: ${escapeHtml(v.matched.substring(0,40))}</span>`;
-      }).join('');
-      html += `<span class="violations-toggle" onclick="this.nextElementSibling.classList.toggle('open')">위반 ${c.violations.length}건 상세</span><div class="violations-list">${chips}</div>`;
-    }
-  }
-  metaEl.innerHTML = html;
-
-  // Sources
-  if (meta.searchResults && meta.searchResults.length > 0) {
-    const msgDiv = metaEl.closest('.msg');
-    const srcPanel = document.createElement('details');
-    srcPanel.className = 'sources-panel';
-    srcPanel.innerHTML = `<summary>참고 자료 (${meta.searchResults.length}건)</summary>` +
-      meta.searchResults.slice(0, 8).map(s => {
-        const title = escapeHtml(s.title || s.strid || '');
-        const snippet = escapeHtml((s.text_snapshot || s.snippet || '').substring(0, 120));
-        const url = s.url || '';
-        const badge = s.source_type === 'PUBMED'
-          ? '<span style="color:var(--green);font-size:10px">[PubMed]</span>'
-          : '<span style="color:var(--accent);font-size:10px">[Web]</span>';
-        return `<div class="src-item">${badge} <span class="src-title">${url ? `<a href="${url}" target="_blank">${title}</a>` : title}</span><div class="src-snippet">${snippet}</div></div>`;
-      }).join('');
-    msgDiv.appendChild(srcPanel);
-  }
-
-  // Follow-ups
-  if (meta.followUps && meta.followUps.length > 0) {
-    const msgDiv = metaEl.closest('.msg');
-    const fuDiv = document.createElement('div');
-    fuDiv.className = 'followups';
-    fuDiv.innerHTML = meta.followUps.map(f =>
-      `<button class="followup-chip" onclick="insertPrompt('${escapeHtml(f.query)}');sendMessage()">${escapeHtml(f.query)}</button>`
-    ).join('');
-    msgDiv.appendChild(fuDiv);
-  }
-
-  // 평가 결과 박스 + 커멘트 (addRestoredAssistantMessage와 동일 UI)
+  // 평가 결과 박스 + GPT + 커멘트 (addRestoredAssistantMessage와 동일 UI)
   const msgId = window._lastAssistantMsgId || ('msg-' + Date.now());
   const msgDiv = metaEl.closest('.msg');
   if (msgDiv) {
@@ -1346,6 +1324,33 @@ function finalizeAssistantMessage(fullText, meta = {}) {
     }
 
     msgDiv.appendChild(evalBox);
+
+    // ── 참고 자료 ──
+    if (meta.searchResults && meta.searchResults.length > 0) {
+      const srcPanel = document.createElement('details');
+      srcPanel.className = 'sources-panel';
+      srcPanel.innerHTML = `<summary>참고 자료 (${meta.searchResults.length}건)</summary>` +
+        meta.searchResults.slice(0, 8).map(s => {
+          const title = escapeHtml(s.title || s.strid || '');
+          const snippet = escapeHtml((s.text_snapshot || s.snippet || '').substring(0, 120));
+          const url = s.url || '';
+          const badge = s.source_type === 'PUBMED'
+            ? '<span style="color:var(--green);font-size:10px">[PubMed]</span>'
+            : '<span style="color:var(--accent);font-size:10px">[Web]</span>';
+          return `<div class="src-item">${badge} <span class="src-title">${url ? `<a href="${url}" target="_blank">${title}</a>` : title}</span><div class="src-snippet">${snippet}</div></div>`;
+        }).join('');
+      msgDiv.appendChild(srcPanel);
+    }
+
+    // ── 추천 질문 ──
+    if (meta.followUps && meta.followUps.length > 0) {
+      const fuDiv = document.createElement('div');
+      fuDiv.className = 'followups';
+      fuDiv.innerHTML = meta.followUps.map(f =>
+        `<button class="followup-chip" onclick="insertPrompt('${escapeHtml(f.query)}');sendMessage()">${escapeHtml(f.query)}</button>`
+      ).join('');
+      msgDiv.appendChild(fuDiv);
+    }
 
     // ── 커멘트 버튼 ──
     const commentWrapper = document.createElement('div');
@@ -1613,7 +1618,8 @@ function addRestoredAssistantMessage(text, meta = {}) {
   const messagesEl = document.getElementById('messages');
   const div = document.createElement('div');
   div.className = 'msg assistant';
-  const parsedText = typeof marked !== 'undefined' ? marked.parse(text) : escapeHtml(text);
+  let parsedText = typeof marked !== 'undefined' ? marked.parse(text) : escapeHtml(text);
+  parsedText = convertCitations(parsedText, meta.searchResults);
   const msgId = meta.msgId || ('restored-' + Math.random().toString(36).substring(2, 8));
   const safeMsgId = escapeHtml(msgId);
 
