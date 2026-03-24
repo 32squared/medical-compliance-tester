@@ -1323,36 +1323,7 @@ function finalizeAssistantMessage(fullText, meta = {}) {
       evaluateWithLLM(meta.userPrompt || '', fullText, msgId);
     }
 
-    msgDiv.appendChild(evalBox);
-
-    // ── 참고 자료 ──
-    if (meta.searchResults && meta.searchResults.length > 0) {
-      const srcPanel = document.createElement('details');
-      srcPanel.className = 'sources-panel';
-      srcPanel.innerHTML = `<summary>참고 자료 (${meta.searchResults.length}건)</summary>` +
-        meta.searchResults.slice(0, 8).map(s => {
-          const title = escapeHtml(s.title || s.strid || '');
-          const snippet = escapeHtml((s.text_snapshot || s.snippet || '').substring(0, 120));
-          const url = s.url || '';
-          const badge = s.source_type === 'PUBMED'
-            ? '<span style="color:var(--green);font-size:10px">[PubMed]</span>'
-            : '<span style="color:var(--accent);font-size:10px">[Web]</span>';
-          return `<div class="src-item">${badge} <span class="src-title">${url ? `<a href="${url}" target="_blank">${title}</a>` : title}</span><div class="src-snippet">${snippet}</div></div>`;
-        }).join('');
-      msgDiv.appendChild(srcPanel);
-    }
-
-    // ── 추천 질문 ──
-    if (meta.followUps && meta.followUps.length > 0) {
-      const fuDiv = document.createElement('div');
-      fuDiv.className = 'followups';
-      fuDiv.innerHTML = meta.followUps.map(f =>
-        `<button class="followup-chip" onclick="insertPrompt('${escapeHtml(f.query)}');sendMessage()">${escapeHtml(f.query)}</button>`
-      ).join('');
-      msgDiv.appendChild(fuDiv);
-    }
-
-    // ── 커멘트 버튼 ──
+    // ── 1. 커멘트 버튼 (답변 직후) ──
     const commentWrapper = document.createElement('div');
     commentWrapper.style.marginTop = '6px';
     commentWrapper.innerHTML = `
@@ -1369,6 +1340,36 @@ function finalizeAssistantMessage(fullText, meta = {}) {
       </div>
     `;
     msgDiv.appendChild(commentWrapper);
+
+    // ── 2. 참고 자료 ──
+    if (meta.searchResults && meta.searchResults.length > 0) {
+      const srcPanel = document.createElement('details');
+      srcPanel.className = 'sources-panel';
+      srcPanel.innerHTML = `<summary>참고 자료 (${meta.searchResults.length}건)</summary>` +
+        meta.searchResults.slice(0, 8).map(s => {
+          const title = escapeHtml(s.title || s.strid || '');
+          const snippet = escapeHtml((s.text_snapshot || s.snippet || '').substring(0, 120));
+          const url = s.url || '';
+          const badge = s.source_type === 'PUBMED'
+            ? '<span style="color:var(--green);font-size:10px">[PubMed]</span>'
+            : '<span style="color:var(--accent);font-size:10px">[Web]</span>';
+          return `<div class="src-item">${badge} <span class="src-title">${url ? `<a href="${url}" target="_blank">${title}</a>` : title}</span><div class="src-snippet">${snippet}</div></div>`;
+        }).join('');
+      msgDiv.appendChild(srcPanel);
+    }
+
+    // ── 3. 추천 질문 ──
+    if (meta.followUps && meta.followUps.length > 0) {
+      const fuDiv = document.createElement('div');
+      fuDiv.className = 'followups';
+      fuDiv.innerHTML = meta.followUps.map(f =>
+        `<button class="followup-chip" onclick="insertPrompt('${escapeHtml(f.query)}');sendMessage()">${escapeHtml(f.query)}</button>`
+      ).join('');
+      msgDiv.appendChild(fuDiv);
+    }
+
+    // ── 4. 평가 결과 박스 (패턴 + GPT) — 최하단 ──
+    msgDiv.appendChild(evalBox);
   }
 
   scrollToBottom();
