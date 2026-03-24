@@ -167,6 +167,24 @@
   .violation-chip.high { background:rgba(249,115,22,.12); color:var(--orange); }
   .violation-chip.medium { background:rgba(234,179,8,.12); color:var(--yellow); }
 
+  /* ── 평가 결과 통합 박스 ── */
+  .eval-result-box { margin-top:10px; background:var(--bg); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  .eval-result-box .eval-section { padding:12px 16px; }
+  .eval-result-box .eval-section + .eval-section { border-top:1px solid var(--border); }
+  .eval-section-title { font-size:12px; font-weight:700; color:var(--text-dim); margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+  .eval-section-title .icon { font-size:14px; }
+
+  /* ── 커멘트 버튼 + 내용 확대 ── */
+  .comment-btn { background:var(--surface2); border:1px solid var(--border); color:var(--text);
+                 padding:8px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;
+                 transition:all .15s; display:inline-flex; align-items:center; gap:6px; }
+  .comment-btn:hover { background:var(--accent-dim); color:var(--accent); border-color:var(--accent); }
+  .comment-item { background:var(--bg); border-left:3px solid #f59e0b; padding:10px 14px; margin-bottom:6px;
+                  border-radius:0 8px 8px 0; font-size:13px; line-height:1.6; }
+  .comment-item .comment-category { color:#f59e0b; font-weight:700; font-size:13px; }
+  .comment-item .comment-content { color:var(--text); font-size:13px; margin-top:2px; }
+  .comment-item .comment-meta { color:var(--text-dim); font-size:11px; margin-top:4px; }
+
   /* Typing indicator */
   .typing { display:flex; gap:4px; padding:14px 18px; }
   .typing span { width:6px; height:6px; background:var(--text-dim); border-radius:50%;
@@ -1570,50 +1588,51 @@ function addRestoredAssistantMessage(text, meta = {}) {
   const msgId = meta.msgId || ('restored-' + Math.random().toString(36).substring(2, 8));
   const safeMsgId = escapeHtml(msgId);
 
-  // 커멘트 인라인 표시
+  // 커멘트 데이터
   const comments = meta.comments || [];
-  let commentHtml = '';
-  if (comments.length) {
-    commentHtml = `<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:6px">`;
-    for (const cmt of comments) {
-      commentHtml += `<div style="background:var(--bg);border-left:3px solid #f59e0b;padding:6px 10px;margin-bottom:4px;border-radius:0 6px 6px 0;font-size:11px">
-        <span style="color:#f59e0b;font-weight:600">[${escapeHtml(cmt.category)}]</span>
-        <span style="color:var(--text)">${escapeHtml(cmt.content)}</span>
-        <span style="color:var(--text-dim);font-size:10px"> — ${escapeHtml(cmt.userName)} ${cmt.createdAt ? new Date(cmt.createdAt).toLocaleDateString() : ''}</span>
-      </div>`;
-    }
-    commentHtml += `</div>`;
-  }
 
-  // bubble
-  div.innerHTML = `<div class="bubble" ${comments.length ? 'style="border-left:3px solid #f59e0b"' : ''}>${parsedText}${commentHtml}</div><div class="meta"></div>`;
+  // bubble (커멘트 있으면 좌측 하이라이트)
+  div.innerHTML = `<div class="bubble" ${comments.length ? 'style="border-left:3px solid #f59e0b"' : ''}>${parsedText}</div><div class="meta"></div>`;
   messagesEl.appendChild(div);
 
   const metaEl = div.querySelector('.meta');
 
-  // compliance 메타
+  // 응답시간
   let metaHtml = '';
   if (meta.responseTime) metaHtml += `<span>${meta.responseTime}ms</span> `;
+  // 커멘트 버튼
+  metaHtml += `<button class="comment-btn" onclick="toggleCommentForm('${safeMsgId}')">💬 커멘트${comments.length ? ` (${comments.length})` : ''}</button>`;
+  metaEl.innerHTML = metaHtml;
+
+  // ── 평가 결과 통합 박스 ──
+  const evalBox = document.createElement('div');
+  evalBox.className = 'eval-result-box';
+
+  // (A) 정규식 평가 섹션
   const compliance = meta.compliance;
   if (compliance) {
     const score = compliance.score ?? 0;
     const cls = score >= 80 ? 'pass' : score >= 50 ? 'warn' : 'fail';
     const label = score >= 80 ? 'PASS' : score >= 50 ? '주의' : 'FAIL';
-    metaHtml += `<span class="compliance-badge ${cls}">${label} ${score}점</span> `;
-    if (compliance.hasDisclaimer) metaHtml += '<span style="color:var(--green);font-size:11px">면책조항 &#10003;</span> ';
-    else metaHtml += '<span style="color:var(--yellow);font-size:11px">면책조항 누락</span> ';
+    let compHtml = `<div class="eval-section">
+      <div class="eval-section-title"><span class="icon">📋</span> 의료법 준수 검사 (패턴 분석)</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <span class="compliance-badge ${cls}">${label} ${score}점</span>`;
+    if (compliance.hasDisclaimer) compHtml += '<span style="color:var(--green);font-size:12px">면책조항 ✓</span>';
+    else compHtml += '<span style="color:var(--yellow);font-size:12px">면책조항 누락</span>';
+    compHtml += '</div>';
     const violations = compliance.violations || [];
     if (violations.length > 0) {
-      const chips = violations.map(v => {
+      compHtml += '<div style="margin-top:4px">';
+      for (const v of violations) {
         const vc = v.severity==='CRITICAL' ? '' : v.severity==='HIGH' ? ' high' : ' medium';
-        return `<span class="violation-chip${vc}">[${v.severity}] ${escapeHtml(v.name || '')}: ${escapeHtml((v.matched || v.matched_text || '').substring(0,40))}</span>`;
-      }).join('');
-      metaHtml += `<span class="violations-toggle" onclick="this.nextElementSibling.classList.toggle('open')">위반 ${violations.length}건 상세</span><div class="violations-list">${chips}</div>`;
+        compHtml += `<span class="violation-chip${vc}">[${v.severity}] ${escapeHtml(v.name || '')}: ${escapeHtml((v.matched || v.matched_text || '').substring(0,40))}</span>`;
+      }
+      compHtml += '</div>';
     }
+    compHtml += '</div>';
+    evalBox.innerHTML += compHtml;
   }
-  // 커멘트 버튼
-  metaHtml += `<button onclick="toggleCommentForm('${safeMsgId}')" style="background:none;border:1px solid var(--border);color:var(--text-dim);padding:2px 8px;border-radius:4px;font-size:10px;cursor:pointer;margin-left:4px">💬 커멘트${comments.length ? ` (${comments.length})` : ''}</button>`;
-  metaEl.innerHTML = metaHtml;
 
   // Sources
   if (meta.searchResults && meta.searchResults.length > 0) {
@@ -1642,42 +1661,44 @@ function addRestoredAssistantMessage(text, meta = {}) {
     div.appendChild(fuDiv);
   }
 
-  // LLM 평가 결과 또는 버튼 + 커멘트 폼
-  const bottomWrapper = document.createElement('div');
-  bottomWrapper.style.marginTop = '4px';
-
-  // 저장된 GPT 평가 결과가 있으면 바로 표시
+  // (B) GPT 평가 섹션
   const gptEval = meta.gptEval;
   if (gptEval && gptEval.grade) {
     const gradeClass = `grade-${gptEval.grade || 'C'}`;
-    const evalHtml = `<div class="llm-eval" style="display:block">
-      <div class="eval-header">
-        <span class="eval-grade ${gradeClass}">${gptEval.grade || '?'}</span>
-        <span>ChatGPT 평가 — ${gptEval.score ?? '?'}점</span>
-        <span style="color:${gptEval.passed ? 'var(--green)' : 'var(--red)'}; margin-left:auto">
-          ${gptEval.passed ? '&#10003; PASS' : '&#10007; FAIL'}
-        </span>
-      </div>
-      <div class="eval-summary">${escapeHtml(gptEval.summary || '')}</div>
-      ${(gptEval.violations && gptEval.violations.length > 0) ? `
-        <div class="eval-violations">
-          ${gptEval.violations.map(v => `
-            <div class="eval-viol-item">
-              <span class="eval-viol-sev risk-${v.severity}">${v.severity}</span>
-              <span>${escapeHtml(v.description || v.type || '')}</span>
-            </div>
-          `).join('')}
+    let gptHtml = `<div class="eval-section">
+      <div class="eval-section-title"><span class="icon">🤖</span> ChatGPT 평가</div>
+      <div class="llm-eval" style="display:block;border:none;padding:0;margin:0;background:transparent">
+        <div class="eval-header">
+          <span class="eval-grade ${gradeClass}">${gptEval.grade || '?'}</span>
+          <span>ChatGPT 평가 — ${gptEval.score ?? '?'}점</span>
+          <span style="color:${gptEval.passed ? 'var(--green)' : 'var(--red)'}; margin-left:auto">
+            ${gptEval.passed ? '✓ PASS' : '✗ FAIL'}
+          </span>
         </div>
-      ` : ''}
-      ${gptEval.recommendation ? `<div class="eval-recommendation">&#128161; ${escapeHtml(gptEval.recommendation)}</div>` : ''}
-      <div style="margin-top:6px;font-size:10px;color:var(--text-dim)">모델: ${meta.gptModel || 'gpt-4o-mini'}</div>
+        <div class="eval-summary">${escapeHtml(gptEval.summary || '')}</div>
+        ${(gptEval.violations && gptEval.violations.length > 0) ? `
+          <div class="eval-violations">
+            ${gptEval.violations.map(v => `
+              <div class="eval-viol-item">
+                <span class="eval-viol-sev risk-${v.severity}">${v.severity}</span>
+                <span>${escapeHtml(v.description || v.type || '')}</span>
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+        ${gptEval.recommendation ? `<div class="eval-recommendation">💡 ${escapeHtml(gptEval.recommendation)}</div>` : ''}
+        <div style="margin-top:6px;font-size:11px;color:var(--text-dim)">모델: ${meta.gptModel || 'gpt-4o-mini'}</div>
+      </div>
     </div>`;
-    bottomWrapper.innerHTML = evalHtml;
+    evalBox.innerHTML += gptHtml;
   } else {
-    // 평가 결과 없으면 버튼 표시
-    bottomWrapper.innerHTML = `
-      <button class="eval-btn">&#129302; ChatGPT 평가</button>
+    // GPT 평가 버튼
+    const gptBtnSection = document.createElement('div');
+    gptBtnSection.className = 'eval-section';
+    gptBtnSection.innerHTML = `
+      <button class="eval-btn" style="padding:6px 14px;font-size:12px">🤖 ChatGPT 평가</button>
       <div class="llm-eval" id="llm-eval-${safeMsgId}" style="display:none"></div>`;
+    evalBox.appendChild(gptBtnSection);
     const allMsgs = messagesEl.querySelectorAll('.msg');
     let prevQuery = '';
     for (let i = allMsgs.length - 2; i >= 0; i--) {
@@ -1687,29 +1708,45 @@ function addRestoredAssistantMessage(text, meta = {}) {
       }
     }
     const _pq = prevQuery, _tx = text, _sm = safeMsgId;
-    bottomWrapper.querySelector('.eval-btn').addEventListener('click', function() {
+    gptBtnSection.querySelector('.eval-btn').addEventListener('click', function() {
       this.style.display = 'none';
       document.getElementById('llm-eval-' + _sm).style.display = 'block';
       evaluateWithLLM(_pq, _tx, _sm);
     });
   }
 
-  // 커멘트 폼 추가
+  // (C) 커멘트 표시 섹션
+  if (comments.length) {
+    let cmtHtml = `<div class="eval-section">
+      <div class="eval-section-title"><span class="icon">💬</span> 의사 커멘트 (${comments.length})</div>`;
+    for (const cmt of comments) {
+      cmtHtml += `<div class="comment-item">
+        <span class="comment-category">[${escapeHtml(cmt.category)}]</span>
+        <div class="comment-content">${escapeHtml(cmt.content)}</div>
+        <div class="comment-meta">${escapeHtml(cmt.userName || '')} · ${cmt.createdAt ? new Date(cmt.createdAt).toLocaleDateString() : ''}</div>
+      </div>`;
+    }
+    cmtHtml += '</div>';
+    evalBox.innerHTML += cmtHtml;
+  }
+
+  div.appendChild(evalBox);
+
+  // 커멘트 입력 폼 (토글)
   const commentFormDiv = document.createElement('div');
   commentFormDiv.id = 'commentForm_' + safeMsgId;
-  commentFormDiv.style.cssText = 'display:none;margin-top:8px;padding:8px;background:var(--bg);border-radius:8px;border:1px solid var(--border)';
+  commentFormDiv.style.cssText = 'display:none;margin-top:8px;padding:12px;background:var(--bg);border-radius:10px;border:1px solid var(--border)';
   commentFormDiv.innerHTML = `
-    <select id="commentCat_${safeMsgId}" style="width:100%;padding:6px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:11px;margin-bottom:6px">
+    <select id="commentCat_${safeMsgId}" style="width:100%;padding:8px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px;margin-bottom:8px">
       <option value="부정확한 정보">부정확한 정보</option><option value="불충분한 답변">불충분한 답변</option>
       <option value="위험한 조언">위험한 조언</option><option value="면책 조항 누락">면책 조항 누락</option>
       <option value="과잉 진단/처방">과잉 진단/처방</option><option value="출처 불명확">출처 불명확</option>
       <option value="표현 부적절">표현 부적절</option><option value="기타">기타</option>
     </select>
-    <textarea id="commentText_${safeMsgId}" rows="2" placeholder="커멘트를 입력하세요..." style="width:100%;padding:6px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:11px;resize:none;box-sizing:border-box"></textarea>
-    <button onclick="submitComment('${safeMsgId}')" style="margin-top:4px;padding:4px 12px;background:var(--accent);color:#0f172a;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">등록</button>
+    <textarea id="commentText_${safeMsgId}" rows="3" placeholder="커멘트를 입력하세요..." style="width:100%;padding:8px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px;resize:none;box-sizing:border-box;line-height:1.5"></textarea>
+    <button onclick="submitComment('${safeMsgId}')" style="margin-top:6px;padding:8px 20px;background:var(--accent);color:#0f172a;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">등록</button>
   `;
-  bottomWrapper.appendChild(commentFormDiv);
-  div.appendChild(bottomWrapper);
+  div.appendChild(commentFormDiv);
 }
 
 function toggleCommentForm(msgId) {
