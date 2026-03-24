@@ -26,7 +26,7 @@ Write-Host ""
 
 # [0/4] GCS 버킷 생성 (최초 1회, 이미 있으면 skip)
 Write-Host "[0/4] Checking GCS bucket..." -ForegroundColor Yellow
-$bucketExists = gsutil ls -b "gs://$BucketName" 2>$null
+$bucketExists = gcloud storage ls -b "gs://$BucketName" 2>$null
 if (-not $bucketExists) {
     Write-Host "Creating bucket gs://$BucketName ..." -ForegroundColor Yellow
     gcloud storage buckets create "gs://$BucketName" `
@@ -37,10 +37,10 @@ if (-not $bucketExists) {
 
     # 초기 가이드라인/위반규칙 파일 업로드
     if (Test-Path "guidelines.json") {
-        gsutil cp guidelines.json "gs://$BucketName/guidelines.json"
+        gcloud storage cp guidelines.json "gs://$BucketName/guidelines.json"
     }
     if (Test-Path "violation_rules.json") {
-        gsutil cp violation_rules.json "gs://$BucketName/violation_rules.json"
+        gcloud storage cp violation_rules.json "gs://$BucketName/violation_rules.json"
     }
 } else {
     Write-Host "Bucket already exists." -ForegroundColor Green
@@ -92,4 +92,4 @@ Write-Host "  - violation_rules.json: 위반 규칙" -ForegroundColor Green
 Write-Host ""
 Write-Host "기존 데이터 마이그레이션:" -ForegroundColor Yellow
 Write-Host "  python migrate.py  (로컬에서 실행 후 app.db를 GCS에 업로드)" -ForegroundColor Yellow
-Write-Host "  gsutil cp app.db gs://$BucketName/app.db" -ForegroundColor Yellow
+Write-Host "  gcloud storage cp app.db gs://$BucketName/app.db" -ForegroundColor Yellow
