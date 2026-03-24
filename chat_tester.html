@@ -1023,14 +1023,21 @@ async function evaluateWithLLM(prompt, responseText, msgId) {
 
     // GPT 평가 결과를 DB에 저장 (msgId를 직접 사용 — 복원된 대화에서도 동작)
     const saveMsgId = msgId || window._lastAssistantMsgId;
+    console.log('[GPT저장] convId=', currentConvId, 'msgId=', msgId, 'saveMsgId=', saveMsgId);
     if (currentConvId && saveMsgId) {
       try {
-        await fetch(`/api/conversations/${currentConvId}/message`, {
+        const saveRes = await fetch(`/api/conversations/${currentConvId}/message`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ updateGptEval: true, msgId: saveMsgId, gptEval: ev, gptModel: data.model })
         });
-      } catch(e2) { console.warn('GPT 평가 저장 실패', e2); }
+        const saveData = await saveRes.json();
+        console.log('[GPT저장] 결과:', saveData);
+        if (!saveData.success) showToast('GPT 평가 저장 실패', 'error');
+      } catch(e2) { console.warn('GPT 평가 저장 실패', e2); showToast('GPT 평가 저장 실패: ' + e2.message, 'error'); }
+    } else {
+      console.warn('[GPT저장] 저장 불가 — currentConvId:', currentConvId, 'saveMsgId:', saveMsgId);
+      showToast('GPT 평가 저장 불가: 대화 ID 또는 메시지 ID 없음', 'error');
     }
   } catch(e) {
     evalContainer.innerHTML = `<span style="color:var(--red);font-size:12px">&#10007; ${escapeHtml(e.message)}</span>`;
@@ -1175,7 +1182,8 @@ function finalizeAssistantMessage(fullText, meta = {}) {
   }
 
   // LLM Evaluation container
-  const msgId = 'msg-' + Date.now();
+  // 서버에서 받은 실제 msgId 사용 (없으면 임시 ID)
+  const msgId = window._lastAssistantMsgId || ('msg-' + Date.now());
   const msgDiv = metaEl.closest('.msg');
   if (msgDiv) {
     const evalWrapper = document.createElement('div');
