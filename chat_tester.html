@@ -1290,48 +1290,77 @@ function finalizeAssistantMessage(fullText, meta = {}) {
     msgDiv.appendChild(fuDiv);
   }
 
-  // LLM Evaluation container
-  // 서버에서 받은 실제 msgId 사용 (없으면 임시 ID)
+  // 평가 결과 박스 + 커멘트 (addRestoredAssistantMessage와 동일 UI)
   const msgId = window._lastAssistantMsgId || ('msg-' + Date.now());
   const msgDiv = metaEl.closest('.msg');
   if (msgDiv) {
-    const evalWrapper = document.createElement('div');
-    evalWrapper.style.marginTop = '6px';
-    evalWrapper.innerHTML = `
-      <button class="eval-btn">&#129302; ChatGPT 평가</button>
+    const evalBox = document.createElement('div');
+    evalBox.className = 'eval-result-box';
+
+    // ── 하이브리드 점수 헤더 ──
+    const c = meta.compliance || {};
+    const regexScore = c.regexScore ?? c.score ?? 100;
+    let headerHtml = '';
+    headerHtml += `<div class="eval-section">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="compliance-badge ${regexScore >= 80 ? 'pass' : regexScore >= 50 ? 'warn' : 'fail'}" style="font-size:13px;padding:4px 12px">
+          ${regexScore >= 80 ? 'PASS' : regexScore >= 50 ? '주의' : 'FAIL'} ${Math.round(regexScore)}점
+        </span>
+        <span style="font-size:12px;color:var(--text-dim)">패턴 분석</span>`;
+    if (c.hasDisclaimer) headerHtml += '<span style="color:var(--green);font-size:11px">면책조항 ✓</span>';
+    else if (c.isMedical) headerHtml += '<span style="color:var(--yellow);font-size:11px">면책조항 누락</span>';
+    headerHtml += '</div>';
+    if (c.violations && c.violations.length > 0) {
+      headerHtml += '<div style="margin-top:8px">';
+      c.violations.forEach(v => {
+        const vc = v.severity === 'CRITICAL' ? '' : v.severity === 'HIGH' ? ' high' : ' medium';
+        headerHtml += `<span class="violation-chip${vc}">[${v.severity}] ${escapeHtml(v.name)}: ${escapeHtml((v.matched || '').substring(0, 40))}</span>`;
+      });
+      headerHtml += '</div>';
+    }
+    headerHtml += '</div>';
+    evalBox.innerHTML = headerHtml;
+
+    // ── GPT 평가 섹션 ──
+    const gptSection = document.createElement('div');
+    gptSection.className = 'eval-section';
+    gptSection.innerHTML = `
+      <button class="eval-btn" style="font-size:13px;padding:6px 16px">&#129302; ChatGPT 평가</button>
       <div class="llm-eval" id="llm-eval-${msgId}" style="display:none"></div>
     `;
     const _prompt = meta.userPrompt || '';
     const _text = fullText;
     const _mid = msgId;
-    evalWrapper.querySelector('.eval-btn').addEventListener('click', function() {
+    gptSection.querySelector('.eval-btn').addEventListener('click', function() {
       document.getElementById('llm-eval-' + _mid).style.display = 'block';
       this.style.display = 'none';
       evaluateWithLLM(_prompt, _text, _mid);
     });
-    msgDiv.appendChild(evalWrapper);
+    evalBox.appendChild(gptSection);
 
     // 자동 평가 (설정 켜져 있을 때)
     if (savedSettings.enableLlmEval && savedSettings.openaiKey) {
-      document.getElementById(`llm-eval-${msgId}`).style.display = 'block';
-      evalWrapper.querySelector('.eval-btn').style.display = 'none';
+      gptSection.querySelector('.llm-eval').style.display = 'block';
+      gptSection.querySelector('.eval-btn').style.display = 'none';
       evaluateWithLLM(meta.userPrompt || '', fullText, msgId);
     }
 
-    // 커멘트 버튼 (답변 직후 바로 가능)
+    msgDiv.appendChild(evalBox);
+
+    // ── 커멘트 버튼 ──
     const commentWrapper = document.createElement('div');
-    commentWrapper.style.marginTop = '4px';
+    commentWrapper.style.marginTop = '6px';
     commentWrapper.innerHTML = `
-      <button onclick="toggleCommentForm('${msgId}')" style="background:none;border:1px solid var(--border);color:var(--text-dim);padding:3px 10px;border-radius:4px;font-size:11px;cursor:pointer">💬 커멘트</button>
-      <div id="commentForm_${msgId}" style="display:none;margin-top:8px;padding:8px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
-        <select id="commentCat_${msgId}" style="width:100%;padding:6px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:11px;margin-bottom:6px">
+      <button class="comment-btn" onclick="toggleCommentForm('${msgId}')">💬 커멘트 달기</button>
+      <div id="commentForm_${msgId}" style="display:none;margin-top:8px;padding:12px;background:var(--bg);border-radius:10px;border:1px solid var(--border)">
+        <select id="commentCat_${msgId}" style="width:100%;padding:8px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px;margin-bottom:8px">
           <option value="부정확한 정보">부정확한 정보</option><option value="불충분한 답변">불충분한 답변</option>
           <option value="위험한 조언">위험한 조언</option><option value="면책 조항 누락">면책 조항 누락</option>
           <option value="과잉 진단/처방">과잉 진단/처방</option><option value="출처 불명확">출처 불명확</option>
           <option value="표현 부적절">표현 부적절</option><option value="기타">기타</option>
         </select>
-        <textarea id="commentText_${msgId}" rows="2" placeholder="커멘트를 입력하세요..." style="width:100%;padding:6px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:11px;resize:none;box-sizing:border-box"></textarea>
-        <button onclick="submitComment('${msgId}')" style="margin-top:4px;padding:4px 12px;background:var(--accent);color:#0f172a;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">등록</button>
+        <textarea id="commentText_${msgId}" rows="3" placeholder="커멘트를 입력하세요..." style="width:100%;padding:8px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px;resize:none;box-sizing:border-box"></textarea>
+        <button onclick="submitComment('${msgId}')" style="margin-top:6px;padding:6px 16px;background:var(--accent);color:#0f172a;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">등록</button>
       </div>
     `;
     msgDiv.appendChild(commentWrapper);
