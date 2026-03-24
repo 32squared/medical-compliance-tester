@@ -287,9 +287,14 @@ def get_conversation(conv_id):
         messages = []
         for mr in msg_rows:
             msg = _row_to_dict(mr)
-            # JSON 필드 파싱
-            for jf in ['compliance_json', 'search_results_json', 'follow_ups_json', 'gpt_eval_json']:
-                key = jf.replace('_json', '')
+            # JSON 필드 파싱 (snake_case → camelCase)
+            json_field_map = {
+                'compliance_json': 'compliance',
+                'search_results_json': 'searchResults',
+                'follow_ups_json': 'followUps',
+                'gpt_eval_json': 'gptEval',
+            }
+            for jf, key in json_field_map.items():
                 raw = msg.pop(jf, None)
                 if raw:
                     try:
@@ -303,9 +308,13 @@ def get_conversation(conv_id):
                 "SELECT * FROM comments WHERE message_id = ? ORDER BY created_at", (msg['id'],)
             ).fetchall()
             msg['comments'] = [_row_to_dict(c) for c in cmt_rows]
-            # 필드명 정리 (id → msgId, conversation_id 제거)
+            # 필드명 정리 (snake_case → camelCase)
             msg['msgId'] = msg.pop('id')
             msg.pop('conversation_id', None)
+            if 'response_time' in msg:
+                msg['responseTime'] = msg.pop('response_time')
+            if 'gpt_model' in msg:
+                msg['gptModel'] = msg.pop('gpt_model')
             messages.append(msg)
 
         result['messages'] = messages
