@@ -384,7 +384,7 @@ async function switchEnv(env) {
 // 최초 1회 연결 테스트 (백그라운드)
 async function testConnectionOnce() {
   const envCfg = getEnvConfig();
-  const proxyUrl = savedSettings.proxyUrl || window.location.origin;
+  const proxyUrl = getProxyUrl();
   const targetUrl = `${envCfg.apiUrl}/api/service/conversations/${savedSettings.graphType || 'SUPERVISED_HYBRID_SEARCH'}`;
 
   try {
@@ -440,8 +440,13 @@ async function initTesterAndAuth() {
     if (authRes.tester) {
       const badge = document.getElementById('testerBadge');
       if (badge) { badge.style.display = ''; badge.textContent = `👤 ${authRes.tester.alias}`; }
-    } else if (!authRes.isAdmin) {
+      // 로그인 완료 후 사이드바 로드
+      loadConversations();
+    } else if (authRes.isAdmin) {
+      loadConversations();
+    } else {
       showTesterModal();
+      renderSidebarMessage('로그인 후 대화 기록을 확인할 수 있습니다');
     }
   } catch(e) { console.warn('auth/tester init failed', e); }
 }
@@ -537,8 +542,7 @@ async function submitRegister() {
 document.addEventListener('DOMContentLoaded', () => {
   loadSettings();
   setTimeout(() => loadGuidelinesForCompliance(), 500);
-  initTesterAndAuth();
-  setTimeout(() => loadConversations(), 800);
+  initTesterAndAuth();  // 내부에서 로그인 확인 후 loadConversations() 호출
 });
 
 // ──────────────────────────────────────
@@ -584,10 +588,12 @@ function buildBody(query) {
 }
 
 function getProxyUrl() {
-  // 클라우드 배포: 같은 origin 사용 (상대경로)
-  // 로컬 개발: localhost:9000 fallback
-  if (savedSettings.proxyUrl) return savedSettings.proxyUrl;
-  return window.location.origin;  // 같은 서버에서 서빙하므로 상대경로
+  // 항상 현재 origin 사용 (클라우드/로컬 모두 동일 서버에서 서빙)
+  // settings의 proxyUrl이 localhost인데 현재 origin이 다르면 무시
+  if (savedSettings.proxyUrl && !savedSettings.proxyUrl.includes('localhost')) {
+    return savedSettings.proxyUrl;
+  }
+  return window.location.origin;
 }
 
 // ──────────────────────────────────────
@@ -954,7 +960,7 @@ function analyzeCompliance(text) {
 // ChatGPT LLM Evaluation
 // ──────────────────────────────────────
 async function evaluateWithLLM(prompt, responseText, msgId) {
-  const openaiKey = savedSettings.openaiKey || '';
+  // 키는 서버에서 자동 로드 (마스킹된 키 전송 방지)
   const proxy = getProxyUrl();
   if (!proxy) return;
 
@@ -968,7 +974,6 @@ async function evaluateWithLLM(prompt, responseText, msgId) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        openai_api_key: openaiKey,
         prompt: prompt,
         response: responseText,
       })
@@ -1005,6 +1010,17 @@ async function evaluateWithLLM(prompt, responseText, msgId) {
         모델: ${data.model || 'gpt-4o-mini'} · 토큰: ${data.usage?.total_tokens || '?'}
       </div>
     `;
+
+    // GPT 평가 결과를 conversations.json에 저장
+    if (currentConvId && window._lastAssistantMsgId) {
+      try {
+        await fetch(`/api/conversations/${currentConvId}/message`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ updateGptEval: true, msgId: window._lastAssistantMsgId, gptEval: ev, gptModel: data.model })
+        });
+      } catch(e2) { console.warn('GPT 평가 저장 실패', e2); }
+    }
   } catch(e) {
     evalContainer.innerHTML = `<span style="color:var(--red);font-size:12px">&#10007; ${escapeHtml(e.message)}</span>`;
   }
@@ -1154,15 +1170,16 @@ function finalizeAssistantMessage(fullText, meta = {}) {
     const evalWrapper = document.createElement('div');
     evalWrapper.style.marginTop = '6px';
     evalWrapper.innerHTML = `
-      <button class="eval-btn" onclick="evaluateWithLLM(${JSON.stringify(meta.userPrompt || '')}, ${JSON.stringify(fullText)}, '${msgId}')">
-        &#129302; ChatGPT 평가
-      </button>
+      <button class="eval-btn">&#129302; ChatGPT 평가</button>
       <div class="llm-eval" id="llm-eval-${msgId}" style="display:none"></div>
     `;
-    // eval-btn 클릭 시 컨테이너 표시
+    const _prompt = meta.userPrompt || '';
+    const _text = fullText;
+    const _mid = msgId;
     evalWrapper.querySelector('.eval-btn').addEventListener('click', function() {
-      document.getElementById(`llm-eval-${msgId}`).style.display = 'block';
+      document.getElementById('llm-eval-' + _mid).style.display = 'block';
       this.style.display = 'none';
+      evaluateWithLLM(_prompt, _text, _mid);
     });
     msgDiv.appendChild(evalWrapper);
 
@@ -1172,6 +1189,24 @@ function finalizeAssistantMessage(fullText, meta = {}) {
       evalWrapper.querySelector('.eval-btn').style.display = 'none';
       evaluateWithLLM(meta.userPrompt || '', fullText, msgId);
     }
+
+    // 커멘트 버튼 (답변 직후 바로 가능)
+    const commentWrapper = document.createElement('div');
+    commentWrapper.style.marginTop = '4px';
+    commentWrapper.innerHTML = `
+      <button onclick="toggleCommentForm('${msgId}')" style="background:none;border:1px solid var(--border);color:var(--text-dim);padding:3px 10px;border-radius:4px;font-size:11px;cursor:pointer">💬 커멘트</button>
+      <div id="commentForm_${msgId}" style="display:none;margin-top:8px;padding:8px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
+        <select id="commentCat_${msgId}" style="width:100%;padding:6px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:11px;margin-bottom:6px">
+          <option value="부정확한 정보">부정확한 정보</option><option value="불충분한 답변">불충분한 답변</option>
+          <option value="위험한 조언">위험한 조언</option><option value="면책 조항 누락">면책 조항 누락</option>
+          <option value="과잉 진단/처방">과잉 진단/처방</option><option value="출처 불명확">출처 불명확</option>
+          <option value="표현 부적절">표현 부적절</option><option value="기타">기타</option>
+        </select>
+        <textarea id="commentText_${msgId}" rows="2" placeholder="커멘트를 입력하세요..." style="width:100%;padding:6px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:11px;resize:none;box-sizing:border-box"></textarea>
+        <button onclick="submitComment('${msgId}')" style="margin-top:4px;padding:4px 12px;background:var(--accent);color:#0f172a;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">등록</button>
+      </div>
+    `;
+    msgDiv.appendChild(commentWrapper);
   }
 
   scrollToBottom();
@@ -1241,7 +1276,7 @@ async function sendMessage() {
         if (createData.success) currentConvId = createData.id;
       }
       if (currentConvId) {
-        await fetch(`/api/conversations/${currentConvId}/message`, {
+        const saveRes = await fetch(`/api/conversations/${currentConvId}/message`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1254,6 +1289,11 @@ async function sendMessage() {
             conversationStrid: conversationStrid,
           })
         });
+        const saveData = await saveRes.json();
+        // 서버에서 반환된 실제 msgId를 저장 (커멘트용)
+        if (saveData.assistantMsgId) {
+          window._lastAssistantMsgId = saveData.assistantMsgId;
+        }
       }
     } catch(e) { console.warn('대화 저장 실패', e); }
 
@@ -1299,20 +1339,16 @@ let currentConvId = null;  // 로컬 대화 ID
 
 async function loadConversations() {
   try {
-    const res = await fetch('/api/conversations?sort_by=last_used_time&ascending=false&limit=50');
+    const res = await fetch('/api/conversations?limit=50');
     if (!res.ok) {
-      if (res.status === 400) {
-        renderSidebarMessage('API 키를 설정하세요');
-      } else {
-        renderSidebarMessage('대화 기록을 불러올 수 없습니다');
-      }
+      renderSidebarMessage(res.status === 400 ? 'API 키를 설정하세요' : '대화 기록을 불러올 수 없습니다');
       return;
     }
     const data = await res.json();
     sidebarConversations = data.results || [];
     renderSidebar(sidebarConversations);
   } catch(e) {
-    console.warn('Failed to load conversations', e);
+    console.warn('loadConversations error:', e);
     renderSidebarMessage('대화 기록 로드 실패');
   }
 }
@@ -1418,26 +1454,15 @@ async function loadConversation(convId) {
 
 function addRestoredAssistantMessage(text, meta = {}) {
   const messagesEl = document.getElementById('messages');
-  const ts = '';
   const div = document.createElement('div');
   div.className = 'msg assistant';
   const parsedText = typeof marked !== 'undefined' ? marked.parse(text) : escapeHtml(text);
+  const msgId = meta.msgId || ('restored-' + Math.random().toString(36).substring(2, 8));
+  const safeMsgId = escapeHtml(msgId);
 
-  // compliance 메타 표시
-  let metaHtml = '';
-  const compliance = meta.compliance;
-  if (compliance) {
-    const score = compliance.score ?? '';
-    const color = score >= 80 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444';
-    const label = score >= 80 ? 'PASS' : score >= 50 ? '주의' : 'FAIL';
-    metaHtml += `<span style="background:${color}22;color:${color};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700">${label} ${score}점</span> `;
-  }
-  if (meta.responseTime) metaHtml += `<span style="font-size:10px;color:var(--text-dim)">${meta.responseTime}ms</span> `;
-
-  // 커멘트 버튼 + 기존 커멘트 표시
-  const msgId = meta.msgId || '';
-  let commentHtml = '';
+  // 커멘트 인라인 표시
   const comments = meta.comments || [];
+  let commentHtml = '';
   if (comments.length) {
     commentHtml = `<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:6px">`;
     for (const cmt of comments) {
@@ -1449,21 +1474,132 @@ function addRestoredAssistantMessage(text, meta = {}) {
     }
     commentHtml += `</div>`;
   }
-  const commentBtn = msgId ? `<button onclick="toggleCommentForm('${escapeHtml(msgId)}')" style="background:none;border:1px solid var(--border);color:var(--text-dim);padding:2px 8px;border-radius:4px;font-size:10px;cursor:pointer;margin-left:4px">💬 커멘트${comments.length ? ` (${comments.length})` : ''}</button>` : '';
-  const commentForm = msgId ? `<div id="commentForm_${escapeHtml(msgId)}" style="display:none;margin-top:8px;padding:8px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
-    <select id="commentCat_${escapeHtml(msgId)}" style="width:100%;padding:6px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:11px;margin-bottom:6px">
+
+  // bubble
+  div.innerHTML = `<div class="bubble" ${comments.length ? 'style="border-left:3px solid #f59e0b"' : ''}>${parsedText}${commentHtml}</div><div class="meta"></div>`;
+  messagesEl.appendChild(div);
+
+  const metaEl = div.querySelector('.meta');
+
+  // compliance 메타
+  let metaHtml = '';
+  if (meta.responseTime) metaHtml += `<span>${meta.responseTime}ms</span> `;
+  const compliance = meta.compliance;
+  if (compliance) {
+    const score = compliance.score ?? 0;
+    const cls = score >= 80 ? 'pass' : score >= 50 ? 'warn' : 'fail';
+    const label = score >= 80 ? 'PASS' : score >= 50 ? '주의' : 'FAIL';
+    metaHtml += `<span class="compliance-badge ${cls}">${label} ${score}점</span> `;
+    if (compliance.hasDisclaimer) metaHtml += '<span style="color:var(--green);font-size:11px">면책조항 &#10003;</span> ';
+    else metaHtml += '<span style="color:var(--yellow);font-size:11px">면책조항 누락</span> ';
+    const violations = compliance.violations || [];
+    if (violations.length > 0) {
+      const chips = violations.map(v => {
+        const vc = v.severity==='CRITICAL' ? '' : v.severity==='HIGH' ? ' high' : ' medium';
+        return `<span class="violation-chip${vc}">[${v.severity}] ${escapeHtml(v.name || '')}: ${escapeHtml((v.matched || v.matched_text || '').substring(0,40))}</span>`;
+      }).join('');
+      metaHtml += `<span class="violations-toggle" onclick="this.nextElementSibling.classList.toggle('open')">위반 ${violations.length}건 상세</span><div class="violations-list">${chips}</div>`;
+    }
+  }
+  // 커멘트 버튼
+  metaHtml += `<button onclick="toggleCommentForm('${safeMsgId}')" style="background:none;border:1px solid var(--border);color:var(--text-dim);padding:2px 8px;border-radius:4px;font-size:10px;cursor:pointer;margin-left:4px">💬 커멘트${comments.length ? ` (${comments.length})` : ''}</button>`;
+  metaEl.innerHTML = metaHtml;
+
+  // Sources
+  if (meta.searchResults && meta.searchResults.length > 0) {
+    const srcPanel = document.createElement('details');
+    srcPanel.className = 'sources-panel';
+    srcPanel.innerHTML = `<summary>참고 자료 (${meta.searchResults.length}건)</summary>` +
+      meta.searchResults.slice(0, 8).map(s => {
+        const title = escapeHtml(s.title || s.strid || '');
+        const snippet = escapeHtml((s.text_snapshot || s.snippet || '').substring(0, 120));
+        const url = s.url || '';
+        const badge = s.source_type === 'PUBMED'
+          ? '<span style="color:var(--green);font-size:10px">[PubMed]</span>'
+          : '<span style="color:var(--accent);font-size:10px">[Web]</span>';
+        return `<div class="src-item">${badge} <span class="src-title">${url ? `<a href="${url}" target="_blank">${title}</a>` : title}</span><div class="src-snippet">${snippet}</div></div>`;
+      }).join('');
+    div.appendChild(srcPanel);
+  }
+
+  // Follow-ups (추천 질문)
+  if (meta.followUps && meta.followUps.length > 0) {
+    const fuDiv = document.createElement('div');
+    fuDiv.className = 'followups';
+    fuDiv.innerHTML = meta.followUps.map(f =>
+      `<button class="followup-chip" onclick="insertPrompt('${escapeHtml(f.query || f)}');sendMessage()">${escapeHtml(f.query || f)}</button>`
+    ).join('');
+    div.appendChild(fuDiv);
+  }
+
+  // LLM 평가 결과 또는 버튼 + 커멘트 폼
+  const bottomWrapper = document.createElement('div');
+  bottomWrapper.style.marginTop = '4px';
+
+  // 저장된 GPT 평가 결과가 있으면 바로 표시
+  const gptEval = meta.gptEval;
+  if (gptEval && gptEval.grade) {
+    const gradeClass = `grade-${gptEval.grade || 'C'}`;
+    const evalHtml = `<div class="llm-eval" style="display:block">
+      <div class="eval-header">
+        <span class="eval-grade ${gradeClass}">${gptEval.grade || '?'}</span>
+        <span>ChatGPT 평가 — ${gptEval.score ?? '?'}점</span>
+        <span style="color:${gptEval.passed ? 'var(--green)' : 'var(--red)'}; margin-left:auto">
+          ${gptEval.passed ? '&#10003; PASS' : '&#10007; FAIL'}
+        </span>
+      </div>
+      <div class="eval-summary">${escapeHtml(gptEval.summary || '')}</div>
+      ${(gptEval.violations && gptEval.violations.length > 0) ? `
+        <div class="eval-violations">
+          ${gptEval.violations.map(v => `
+            <div class="eval-viol-item">
+              <span class="eval-viol-sev risk-${v.severity}">${v.severity}</span>
+              <span>${escapeHtml(v.description || v.type || '')}</span>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+      ${gptEval.recommendation ? `<div class="eval-recommendation">&#128161; ${escapeHtml(gptEval.recommendation)}</div>` : ''}
+      <div style="margin-top:6px;font-size:10px;color:var(--text-dim)">모델: ${meta.gptModel || 'gpt-4o-mini'}</div>
+    </div>`;
+    bottomWrapper.innerHTML = evalHtml;
+  } else {
+    // 평가 결과 없으면 버튼 표시
+    bottomWrapper.innerHTML = `
+      <button class="eval-btn">&#129302; ChatGPT 평가</button>
+      <div class="llm-eval" id="llm-eval-${safeMsgId}" style="display:none"></div>`;
+    const allMsgs = messagesEl.querySelectorAll('.msg');
+    let prevQuery = '';
+    for (let i = allMsgs.length - 2; i >= 0; i--) {
+      if (allMsgs[i].classList.contains('user')) {
+        prevQuery = allMsgs[i].querySelector('.bubble')?.textContent || '';
+        break;
+      }
+    }
+    const _pq = prevQuery, _tx = text, _sm = safeMsgId;
+    bottomWrapper.querySelector('.eval-btn').addEventListener('click', function() {
+      this.style.display = 'none';
+      document.getElementById('llm-eval-' + _sm).style.display = 'block';
+      evaluateWithLLM(_pq, _tx, _sm);
+    });
+  }
+
+  // 커멘트 폼 추가
+  const commentFormDiv = document.createElement('div');
+  commentFormDiv.id = 'commentForm_' + safeMsgId;
+  commentFormDiv.style.cssText = 'display:none;margin-top:8px;padding:8px;background:var(--bg);border-radius:8px;border:1px solid var(--border)';
+  commentFormDiv.innerHTML = `
+    <select id="commentCat_${safeMsgId}" style="width:100%;padding:6px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:11px;margin-bottom:6px">
       <option value="부정확한 정보">부정확한 정보</option><option value="불충분한 답변">불충분한 답변</option>
       <option value="위험한 조언">위험한 조언</option><option value="면책 조항 누락">면책 조항 누락</option>
       <option value="과잉 진단/처방">과잉 진단/처방</option><option value="출처 불명확">출처 불명확</option>
       <option value="표현 부적절">표현 부적절</option><option value="기타">기타</option>
     </select>
-    <textarea id="commentText_${escapeHtml(msgId)}" rows="2" placeholder="커멘트를 입력하세요..." style="width:100%;padding:6px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:11px;resize:none;box-sizing:border-box"></textarea>
-    <button onclick="submitComment('${escapeHtml(msgId)}')" style="margin-top:4px;padding:4px 12px;background:var(--accent);color:#0f172a;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">등록</button>
-  </div>` : '';
-
-  div.innerHTML = `<div class="bubble" ${comments.length ? 'style="border-left:3px solid #f59e0b"' : ''}>${parsedText}${commentHtml}</div>
-    <div class="meta">${metaHtml}${commentBtn}</div>${commentForm}`;
-  messagesEl.appendChild(div);
+    <textarea id="commentText_${safeMsgId}" rows="2" placeholder="커멘트를 입력하세요..." style="width:100%;padding:6px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:11px;resize:none;box-sizing:border-box"></textarea>
+    <button onclick="submitComment('${safeMsgId}')" style="margin-top:4px;padding:4px 12px;background:var(--accent);color:#0f172a;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">등록</button>
+  `;
+  bottomWrapper.appendChild(commentFormDiv);
+  div.appendChild(bottomWrapper);
 }
 
 function toggleCommentForm(msgId) {
@@ -1477,11 +1613,20 @@ async function submitComment(msgId) {
   const content = document.getElementById('commentText_' + msgId)?.value.trim();
   if (!content) { showToast('커멘트 내용을 입력하세요', 'error'); return; }
 
+  // 프론트 임시 msgId → 서버 실제 msgId 매핑
+  let actualMsgId = msgId;
+  if (msgId.startsWith('msg-') && !msgId.startsWith('msg-') === false) {
+    // 이미 서버 ID
+  } else if (window._lastAssistantMsgId && msgId.match(/^msg-\d+$/)) {
+    // 임시 timestamp 기반 ID → 서버 실제 ID 사용
+    actualMsgId = window._lastAssistantMsgId;
+  }
+
   try {
     const res = await fetch(`/api/conversations/${currentConvId}/comments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ msgId, category: cat, content })
+      body: JSON.stringify({ msgId: actualMsgId, category: cat, content })
     });
     const data = await res.json();
     if (data.success) {
