@@ -135,6 +135,8 @@
   .toast-error { background:var(--red); color:white; }
   .toast-info { background:var(--accent); color:#0f172a; }
   @keyframes slideIn { from { transform:translateX(100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+  .run-item.running { border-left:3px solid var(--accent); }
 
   /* ── Scrollbar ── */
   ::-webkit-scrollbar { width:6px; }
@@ -350,18 +352,31 @@
       const env = (run.env || 'dev').toLowerCase();
       const rid = run.runId || run.id || '';
       const isActive = rid === currentRunId;
-      const barColor = rate >= 80 ? 'var(--green)' : rate >= 50 ? 'var(--yellow)' : 'var(--red)';
+      const isRunning = run.status === 'running';
+      const barColor = isRunning ? 'var(--accent)' : rate >= 80 ? 'var(--green)' : rate >= 50 ? 'var(--yellow)' : 'var(--red)';
+      const statusBadge = isRunning
+        ? '<span style="color:var(--accent);font-size:11px;margin-left:auto">⏳ 실행 중</span>'
+        : '';
 
-      return '<div class="run-item' + (isActive ? ' active' : '') + '" onclick="selectRun(\'' + rid + '\')">' +
+      return '<div class="run-item' + (isActive ? ' active' : '') + (isRunning ? ' running' : '') + '" onclick="selectRun(\'' + rid + '\')" data-runid="' + rid + '">' +
         '<div class="run-item-top">' +
           '<span class="run-type-icon">' + (isBatch ? '&#128230;' : '&#9654;') + '</span>' +
           '<span class="run-env-badge ' + env + '">' + env.toUpperCase() + '</span>' +
           '<span class="run-timestamp">' + formatTimestamp(run.startedAt || run.timestamp) + '</span>' +
+          statusBadge +
         '</div>' +
-        '<div class="run-summary">' + total + '개 시나리오 / 통과 ' + passed + ' / 실패 ' + failed + '</div>' +
-        '<div class="run-passbar"><div class="run-passbar-fill" style="width:' + rate + '%;background:' + barColor + '"></div></div>' +
+        (isRunning
+          ? '<div class="run-summary" style="color:var(--accent)">' + total + '개 시나리오 병렬 실행 중...</div>' +
+            '<div class="run-passbar"><div class="run-passbar-fill" style="width:100%;background:var(--accent);animation:pulse 1.5s infinite"></div></div>'
+          : '<div class="run-summary">' + total + '개 시나리오 / 통과 ' + passed + ' / 실패 ' + failed + '</div>' +
+            '<div class="run-passbar"><div class="run-passbar-fill" style="width:' + rate + '%;background:' + barColor + '"></div></div>') +
       '</div>';
     }).join('');
+
+    // running 상태 배치가 있으면 자동 폴링 시작
+    historyData.filter(r => r.status === 'running').forEach(r => {
+      startProgressPolling(r.runId || r.id);
+    });
   }
 
   // ── Select Run ──
@@ -734,6 +749,33 @@
       if (loader) { loader.classList.add('fade-out'); setTimeout(() => loader.remove(), 300); }
     }
   })();
+
+  // ── 배치 진행 상태 자동 폴링 ──
+  const _pollingIntervals = {};
+  function startProgressPolling(runId) {
+    if (_pollingIntervals[runId]) return;
+    _pollingIntervals[runId] = setInterval(async () => {
+      try {
+        const res = await fetch('/api/test/status/' + runId);
+        if (!res.ok) return;
+        const status = await res.json();
+        // 진행 상태 UI 업데이트
+        const item = document.querySelector('[data-runid="' + runId + '"]');
+        if (item) {
+          const summaryEl = item.querySelector('.run-summary');
+          if (summaryEl && status.status === 'running') {
+            summaryEl.textContent = status.completed + '/' + status.total + ' 완료 (' + (status.current || '') + ')';
+          }
+        }
+        // 완료 시 폴링 중단 + 이력 새로고침
+        if (status.status === 'done' || status.status === 'completed') {
+          clearInterval(_pollingIntervals[runId]);
+          delete _pollingIntervals[runId];
+          loadHistory();
+        }
+      } catch(e) { /* 네트워크 오류 무시 */ }
+    }, 3000);
+  }
 </script>
 </body>
 </html>

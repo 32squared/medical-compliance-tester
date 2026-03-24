@@ -1081,11 +1081,13 @@ function analyzeCompliance(text) {
 // ──────────────────────────────────────
 async function evaluateWithLLM(prompt, responseText, msgId) {
   // 키는 서버에서 자동 로드 (마스킹된 키 전송 방지)
-  const proxy = getProxyUrl();
-  if (!proxy) return;
+  const proxy = getProxyUrl() || window.location.origin;
 
   const evalContainer = document.getElementById(`llm-eval-${msgId}`);
-  if (!evalContainer) return;
+  if (!evalContainer) {
+    console.warn('[evaluateWithLLM] DOM element not found:', `llm-eval-${msgId}`);
+    return;
+  }
 
   evalContainer.innerHTML = '<span class="eval-loading">&#129302; ChatGPT 평가 중...</span>';
 
@@ -1311,11 +1313,13 @@ function finalizeAssistantMessage(fullText, meta = {}) {
     });
     evalBox.appendChild(gptSection);
 
-    // 자동 평가 (설정 켜져 있을 때)
-    if (savedSettings.enableLlmEval && savedSettings.openaiKey) {
+    // 자동 평가 (openaiKey가 있으면 자동 실행, enableLlmEval 기본값 true)
+    const autoEval = savedSettings.enableLlmEval !== false && savedSettings.openaiKey;
+    if (autoEval) {
       gptSection.querySelector('.llm-eval').style.display = 'block';
       gptSection.querySelector('.eval-btn').style.display = 'none';
-      evaluateWithLLM(meta.userPrompt || '', fullText, msgId);
+      // DOM이 확실히 삽입된 후 실행
+      setTimeout(() => evaluateWithLLM(meta.userPrompt || '', fullText, msgId), 100);
     }
 
     // ── 1. 커멘트 버튼 (답변 직후) ──

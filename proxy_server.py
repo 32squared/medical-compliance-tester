@@ -131,6 +131,7 @@ def _save_run_to_db(run):
         'guidelineVersion': run.get('guidelineVersion', ''),
         'tester': run.get('runBy', run.get('tester', '')),
         'results': run.get('results', []),
+        'status': run.get('status', 'completed'),
     })
 
 
@@ -159,6 +160,7 @@ def _db_run_to_proxy(r):
         },
         'results': r.get('results', []),
         'guidelineVersion': r.get('guidelineVersion', ''),
+        'status': r.get('status', 'completed'),
     }
 
 
@@ -451,6 +453,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
             return self._get_history_run(m_hist.group(1))
 
         # ── 배치 진행 상태 ──
+        if path == '/api/test/active-batches':
+            return self._get_active_batches()
         m_batch = re.match(r'^/api/test/status/([^/]+)$', path)
         if m_batch:
             run_id = m_batch.group(1)
@@ -1270,13 +1274,16 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
             "message": f"{re_evaluated}건 재평가 완료"
         })
 
-    # 배치 실행 진행 상태 (메모리)
+    # 배치 실행 진행 상태 (메모리) + 동시 실행 제한
     _batch_status = {}
+    _active_batches = {}
+    _active_batches_lock = threading.Lock()
+    _MAX_CONCURRENT_BATCHES = 2
 
     def _batch_run(self, body):
-        """POST /api/test/batch — 비동기 일괄 실행 (즉시 응답 + 백그라운드 실행)"""
-        import threading
+        """POST /api/test/batch — 병렬 일괄 실행 (ThreadPoolExecutor, 최대 2배치 동시)"""
         import time as _time
+        from concurrent.futures import ThreadPoolExecutor, as_completed
 
         try:
             payload = json.loads(body)
@@ -1287,26 +1294,27 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
         if not scenario_ids:
             return self._send_error(400, '실행할 시나리오 ID를 지정하세요')
 
+        # 동시 실행 제한 체크
+        with ProxyHandler._active_batches_lock:
+            if len(ProxyHandler._active_batches) >= ProxyHandler._MAX_CONCURRENT_BATCHES:
+                active_users = ', '.join(b['user'] for b in ProxyHandler._active_batches.values())
+                return self._send_error(429,
+                    f'현재 {len(ProxyHandler._active_batches)}개 배치 실행 중 ({active_users}). 잠시 후 재시도하세요.')
+
         # 설정 로드
         settings = db.get_settings()
-
         current_env = settings.get('currentEnv', 'dev')
         env_defaults = {
             'dev':  {'apiUrl': 'https://dev-skix.phnyx.ai',    'xTenantDomain': 'dev-skix'},
             'stg':  {'apiUrl': 'https://staging-skix.phnyx.ai', 'xTenantDomain': 'staging-skix'},
             'prod': {'apiUrl': 'https://skix.phnyx.ai',         'xTenantDomain': 'skix'},
         }
-        env_cfg = {}
-        if 'environments' in settings and current_env in settings['environments']:
-            env_cfg = settings['environments'][current_env]
-
+        env_cfg = settings.get('environments', {}).get(current_env, {})
         api_key = env_cfg.get('xApiKey', settings.get('xApiKey', ''))
         api_uid_default = env_cfg.get('xApiUid', settings.get('xApiUid', ''))
         tenant_domain = env_cfg.get('xTenantDomain', env_defaults.get(current_env, {}).get('xTenantDomain', 'dev-skix'))
         api_url = env_cfg.get('apiUrl', env_defaults.get(current_env, {}).get('apiUrl', 'https://dev-skix.phnyx.ai'))
         graph_type = settings.get('graphType', 'SUPERVISED_HYBRID_SEARCH')
-
-        # 테스터 UID 우선 사용
         tester = self._get_tester_info()
         api_uid = tester['uid'] if tester else api_uid_default
 
@@ -1319,8 +1327,13 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
 
         openai_key = settings.get('openaiKey', '') or settings.get('openai_api_key', '')
         gpt_model = settings.get('openaiModel', 'gpt-4o-mini')
-        run_id = f"batch-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-        run_by = self._get_alias()  # 배치 스레드 시작 전에 캡처
+        run_id = f"batch-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{secrets.token_hex(3)}"
+        run_by = self._get_alias()
+        now = datetime.now(timezone.utc).isoformat()
+
+        # 활성 배치 등록
+        with ProxyHandler._active_batches_lock:
+            ProxyHandler._active_batches[run_id] = {"user": run_by, "started": now}
 
         # 진행 상태 초기화
         ProxyHandler._batch_status[run_id] = {
@@ -1328,98 +1341,125 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
             "completed": 0, "current": "", "runId": run_id
         }
 
-        # 백그라운드 스레드에서 실행
-        def run_batch():
-            data = db.get_scenarios()
-            scenarios_map = {s['id']: s for s in data.get('scenarios', [])}
-            now = datetime.now(timezone.utc).isoformat()
-            results = []
-            passed = failed = errors = 0
+        # DB에 "running" 상태로 즉시 저장 (이력 페이지에서 바로 보임)
+        running_run = {
+            "runId": run_id, "type": "batch", "env": current_env,
+            "status": "running", "startedAt": now, "completedAt": None,
+            "runBy": run_by,
+            "summary": {"total": len(scenario_ids), "passed": 0, "failed": 0, "error": 0, "passRate": 0},
+            "results": []
+        }
+        _save_run_to_db(running_run)
 
-            for i, sid in enumerate(scenario_ids):
-                ProxyHandler._batch_status[run_id]["completed"] = i
-                ProxyHandler._batch_status[run_id]["current"] = sid
-
-                sc = scenarios_map.get(sid)
-                if not sc:
-                    results.append({"scenarioId": sid, "status": "error", "error": "시나리오 없음",
-                                    "prompt": "", "response": "", "responseTime": 0})
-                    errors += 1
-                    continue
-
-                target_url = f"{api_url}/api/service/conversations/{graph_type}"
-                req_body_bytes = json.dumps({
-                    "query": sc['prompt'], "conversation_strid": None, "source_types": source_types,
-                }, ensure_ascii=False).encode('utf-8')
-                headers = {
-                    'Content-Type': 'application/json', 'Accept': 'text/event-stream',
-                    'X-API-Key': api_key, 'X-tenant-Domain': tenant_domain, 'X-Api-UID': api_uid,
+        # 단일 시나리오 실행 함수 (ThreadPoolExecutor에서 호출)
+        def execute_single(sid, sc):
+            target_url = f"{api_url}/api/service/conversations/{graph_type}"
+            req_body_bytes = json.dumps({
+                "query": sc['prompt'], "conversation_strid": None, "source_types": source_types,
+            }, ensure_ascii=False).encode('utf-8')
+            hdrs = {
+                'Content-Type': 'application/json', 'Accept': 'text/event-stream',
+                'X-API-Key': api_key, 'X-tenant-Domain': tenant_domain, 'X-Api-UID': api_uid,
+            }
+            t0 = _time.time()
+            try:
+                ctx = ssl.create_default_context()
+                req = Request(url=target_url, data=req_body_bytes, headers=hdrs, method='POST')
+                resp = urlopen(req, context=ctx, timeout=120)
+                full_text = ''
+                raw = resp.read().decode('utf-8', errors='replace')
+                for line in raw.split('\n'):
+                    stripped = line.strip()
+                    if not stripped.startswith('data:'): continue
+                    json_str = stripped[5:].strip()
+                    if not json_str: continue
+                    try:
+                        ed = json.loads(json_str)
+                        etype = ed.get('type', '')
+                        if etype == 'GENERATION':
+                            full_text += ed.get('text', '')
+                        elif etype == 'STOP' and not full_text and ed.get('text'):
+                            full_text = ed.get('text', '')
+                    except json.JSONDecodeError:
+                        pass
+                el = int((_time.time() - t0) * 1000)
+                st = 'pass' if full_text else 'fail'
+                comp = _check_compliance(full_text)
+                gpt = _evaluate_gpt(sc['prompt'], full_text, openai_key, model=gpt_model) if openai_key else None
+                return {
+                    "scenarioId": sid, "prompt": sc['prompt'], "response": full_text,
+                    "status": st, "responseTime": el,
+                    "expectedBehavior": sc.get('expectedBehavior', ''),
+                    "riskLevel": sc.get('riskLevel', ''),
+                    "shouldRefuse": sc.get('shouldRefuse', False),
+                    "compliance": comp, "gptEval": gpt,
+                    "guidelineVersion": comp.get('guidelineVersion', ''),
+                }
+            except Exception as e:
+                el = int((_time.time() - t0) * 1000)
+                return {
+                    "scenarioId": sid, "prompt": sc['prompt'], "response": "",
+                    "status": "error", "responseTime": el, "error": str(e)[:200],
                 }
 
-                t0 = _time.time()
-                try:
-                    ctx = ssl.create_default_context()
-                    req = Request(url=target_url, data=req_body_bytes, headers=headers, method='POST')
-                    resp = urlopen(req, context=ctx, timeout=120)
-                    full_text = ''
-                    raw = resp.read().decode('utf-8', errors='replace')
-                    for line in raw.split('\n'):
-                        stripped = line.strip()
-                        if not stripped.startswith('data:'): continue
-                        json_str = stripped[5:].strip()
-                        if not json_str: continue
-                        try:
-                            ed = json.loads(json_str)
-                            etype = ed.get('type', '')
-                            if etype == 'GENERATION':
-                                full_text += ed.get('text', '')
-                            elif etype == 'STOP' and not full_text and ed.get('text'):
-                                full_text = ed.get('text', '')
-                        except json.JSONDecodeError:
-                            pass
-                    el = int((_time.time() - t0) * 1000)
-                    st = 'pass' if full_text else 'fail'
-                    if st == 'pass': passed += 1
-                    else: failed += 1
-                    comp = _check_compliance(full_text)
-                    gpt = _evaluate_gpt(sc['prompt'], full_text, openai_key, model=gpt_model) if openai_key else None
-                    results.append({
-                        "scenarioId": sid, "prompt": sc['prompt'], "response": full_text,
-                        "status": st, "responseTime": el,
-                        "expectedBehavior": sc.get('expectedBehavior', ''),
-                        "riskLevel": sc.get('riskLevel', ''),
-                        "shouldRefuse": sc.get('shouldRefuse', False),
-                        "compliance": comp,
-                        "gptEval": gpt,
-                        "guidelineVersion": comp.get('guidelineVersion', ''),
-                    })
-                except Exception as e:
-                    el = int((_time.time() - t0) * 1000)
-                    errors += 1
-                    results.append({
-                        "scenarioId": sid, "prompt": sc['prompt'], "response": "",
-                        "status": "error", "responseTime": el, "error": str(e)[:200],
-                    })
+        # 백그라운드 스레드: 병렬 실행
+        def run_batch():
+            try:
+                data = db.get_scenarios()
+                scenarios_map = {s['id']: s for s in data.get('scenarios', [])}
+                results = []
+                passed = failed = errors = 0
+                completed_count = 0
+                max_workers = min(5, len(scenario_ids))
 
-            total = len(results)
-            pass_rate = round(passed / total * 100, 1) if total > 0 else 0.0
-            completed_at = datetime.now(timezone.utc).isoformat()
+                with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                    futures = {}
+                    for sid in scenario_ids:
+                        sc = scenarios_map.get(sid)
+                        if not sc:
+                            results.append({"scenarioId": sid, "status": "error", "error": "시나리오 없음",
+                                            "prompt": "", "response": "", "responseTime": 0})
+                            errors += 1
+                            completed_count += 1
+                            continue
+                        # rate limit 방지: 0.3초 간격으로 제출
+                        if futures:
+                            _time.sleep(0.3)
+                        future = executor.submit(execute_single, sid, sc)
+                        futures[future] = sid
 
-            run = {
-                "runId": run_id, "type": "batch", "env": current_env,
-                "startedAt": now, "completedAt": completed_at,
-                "runBy": run_by,
-                "summary": {"total": total, "passed": passed, "failed": failed,
-                            "error": errors, "passRate": pass_rate},
-                "results": results
-            }
-            _save_run_to_db(run)
+                    for future in as_completed(futures):
+                        result = future.result()
+                        results.append(result)
+                        completed_count += 1
+                        if result['status'] == 'pass': passed += 1
+                        elif result['status'] == 'error': errors += 1
+                        else: failed += 1
+                        ProxyHandler._batch_status[run_id]["completed"] = completed_count
+                        ProxyHandler._batch_status[run_id]["current"] = result['scenarioId']
 
-            ProxyHandler._batch_status[run_id] = {
-                "status": "done", "total": total, "completed": total,
-                "current": "", "runId": run_id,
-                "summary": run["summary"]
-            }
+                total = len(results)
+                pass_rate = round(passed / total * 100, 1) if total > 0 else 0.0
+                completed_at = datetime.now(timezone.utc).isoformat()
+
+                run = {
+                    "runId": run_id, "type": "batch", "env": current_env,
+                    "status": "completed", "startedAt": now, "completedAt": completed_at,
+                    "runBy": run_by,
+                    "summary": {"total": total, "passed": passed, "failed": failed,
+                                "error": errors, "passRate": pass_rate},
+                    "results": results
+                }
+                _save_run_to_db(run)
+
+                ProxyHandler._batch_status[run_id] = {
+                    "status": "done", "total": total, "completed": total,
+                    "current": "", "runId": run_id,
+                    "summary": run["summary"]
+                }
+            finally:
+                with ProxyHandler._active_batches_lock:
+                    ProxyHandler._active_batches.pop(run_id, None)
 
         thread = threading.Thread(target=run_batch, daemon=True)
         thread.start()
@@ -1429,8 +1469,17 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
             "runId": run_id,
             "status": "running",
             "total": len(scenario_ids),
-            "message": f"{len(scenario_ids)}개 시나리오 일괄 실행 시작"
+            "message": f"{len(scenario_ids)}개 시나리오 병렬 실행 시작 (최대 {min(5, len(scenario_ids))}개 동시)"
         })
+
+    def _get_active_batches(self):
+        """GET /api/test/active-batches — 현재 실행 중인 배치 목록"""
+        with ProxyHandler._active_batches_lock:
+            return self._send_json(200, {
+                "activeBatches": list(ProxyHandler._active_batches.values()),
+                "count": len(ProxyHandler._active_batches),
+                "maxConcurrent": ProxyHandler._MAX_CONCURRENT_BATCHES
+            })
 
     # ════════════════════════════════════════════
     # 설정 저장/로드 (DB)

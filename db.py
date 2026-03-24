@@ -120,7 +120,8 @@ CREATE TABLE IF NOT EXISTS test_runs (
     env TEXT DEFAULT 'dev',
     guideline_version TEXT,
     tester TEXT DEFAULT '',
-    results_json TEXT
+    results_json TEXT,
+    status TEXT DEFAULT 'completed'
 );
 
 CREATE TABLE IF NOT EXISTS settings (
@@ -152,6 +153,11 @@ def init_db(db_path=None):
     conn.execute("PRAGMA foreign_keys=ON")
     conn.execute("PRAGMA busy_timeout=5000")
     conn.executescript(SCHEMA)
+    # 마이그레이션: 기존 DB에 status 컬럼 추가
+    try:
+        conn.execute("ALTER TABLE test_runs ADD COLUMN status TEXT DEFAULT 'completed'")
+    except sqlite3.OperationalError:
+        pass  # 이미 존재
     conn.commit()
     conn.close()
     return path
@@ -694,14 +700,16 @@ def get_test_run(run_id):
 def save_test_run(data):
     run_id = data.get('id') or f"run-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}-{secrets.token_hex(2)}"
     now = _now()
+    status = data.get('status', 'completed')
     with get_conn() as conn:
         conn.execute(
-            """INSERT OR REPLACE INTO test_runs (id, run_at, total, passed, failed, env, guideline_version, tester, results_json)
-               VALUES (?,?,?,?,?,?,?,?,?)""",
+            """INSERT OR REPLACE INTO test_runs (id, run_at, total, passed, failed, env, guideline_version, tester, results_json, status)
+               VALUES (?,?,?,?,?,?,?,?,?,?)""",
             (run_id, data.get('runAt', now), data.get('total', 0), data.get('passed', 0),
              data.get('failed', 0), data.get('env', 'dev'), data.get('guidelineVersion', ''),
              data.get('tester', ''),
-             json.dumps(data.get('results', []), ensure_ascii=False))
+             json.dumps(data.get('results', []), ensure_ascii=False),
+             status)
         )
     return run_id
 
