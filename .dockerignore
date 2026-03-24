@@ -12,5 +12,7 @@ deploy.ps1
 test_history.json
 settings.json
 conversations.json
+app.db
+*.db
 reports/
 *.md

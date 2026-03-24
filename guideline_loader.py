@@ -10,7 +10,8 @@ import os
 from datetime import datetime, timezone
 
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-GUIDELINES_FILE = os.path.join(_BASE_DIR, 'guidelines.json')
+_DATA_DIR = os.environ.get('DATA_DIR', _BASE_DIR)
+GUIDELINES_FILE = os.path.join(_DATA_DIR, 'guidelines.json')
 MAX_HISTORY = 20
 
 

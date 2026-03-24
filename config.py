@@ -6,6 +6,7 @@ import json
 import os
 
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+_DATA_DIR = os.environ.get('DATA_DIR', _BASE_DIR)
 
 # ============================================================
 # 1. 환경별 API 설정
@@ -114,7 +115,7 @@ CONVERSATIONS_API = {
 
 def _load_violation_rules_legacy():
     """violation_rules.json에서 레거시 위반 규칙 로드 (폴백용)"""
-    path = os.path.join(_BASE_DIR, 'violation_rules.json')
+    path = os.path.join(_DATA_DIR, 'violation_rules.json')
     try:
         with open(path, 'r', encoding='utf-8') as f:
             return json.load(f)
