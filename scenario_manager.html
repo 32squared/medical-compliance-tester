@@ -15,6 +15,15 @@
   body { font-family:'Pretendard','Apple SD Gothic Neo',system-ui,sans-serif;
          background:var(--bg); color:var(--text); height:100vh; display:flex; flex-direction:column; }
 
+  /* 로딩 스피너 */
+  #appLoader{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg,#0f172a);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .3s}
+  #appLoader.fade-out{opacity:0;pointer-events:none}
+  .loader-spinner{width:40px;height:40px;border:3px solid #334155;border-top-color:#38bdf8;border-radius:50%;animation:spin .8s linear infinite}
+  .loader-text{margin-top:16px;color:#94a3b8;font-size:13px;font-family:system-ui}
+  .loader-progress{width:200px;height:3px;background:#334155;border-radius:2px;margin-top:12px;overflow:hidden}
+  .loader-bar{height:100%;background:#38bdf8;border-radius:2px;transition:width .2s;width:0%}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
   /* ── Top Bar ── */
   .topbar { display:flex; align-items:center; justify-content:space-between; padding:12px 20px;
             background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; }
@@ -238,6 +247,11 @@
 </style>
 </head>
 <body>
+<div id="appLoader">
+  <div class="loader-spinner"></div>
+  <div class="loader-text">로딩 중...</div>
+  <div class="loader-progress"><div class="loader-bar" id="loaderBar"></div></div>
+</div>
 
 <!-- ── Top Bar ── -->
 <div class="topbar">
@@ -528,12 +542,79 @@ const API = '';
 // ════════════════════════════════════════════
 let currentEnv = 'dev';
 
-document.addEventListener('DOMContentLoaded', () => {
-  loadData();
-  loadCurrentEnv();
-  // 가이드라인 동적 로드
-  setTimeout(() => loadScenarioGuidelines(), 500);
-  initTesterAndAuth();
+document.addEventListener('DOMContentLoaded', async () => {
+  const bar = document.getElementById('loaderBar');
+  if (bar) bar.style.width = '10%';
+  try {
+    const [scenariosRes, settingsRes, authRes, guidelinesRes] = await Promise.allSettled([
+      fetch(`${API}/api/scenarios`),
+      fetch('/api/settings'),
+      fetch('/api/auth/status'),
+      fetch('/api/guidelines')
+    ]);
+    if (bar) bar.style.width = '60%';
+
+    // Apply scenarios
+    if (scenariosRes.status === 'fulfilled' && scenariosRes.value.ok) {
+      const data = await scenariosRes.value.json();
+      allScenarios = data.scenarios || [];
+      categories = data.categories || [];
+      renderCategories();
+      renderList();
+      updateStats();
+      updateTabCounts();
+      updateGenBaseList();
+    }
+    if (bar) bar.style.width = '70%';
+
+    // Apply settings (env)
+    if (settingsRes.status === 'fulfilled' && settingsRes.value.ok) {
+      const settings = await settingsRes.value.json();
+      if (settings.currentEnv) {
+        currentEnv = settings.currentEnv;
+        document.querySelectorAll('.env-chip-sm').forEach(c => {
+          c.classList.toggle('active', c.dataset.env === currentEnv);
+        });
+      }
+    }
+    if (bar) bar.style.width = '80%';
+
+    // Apply auth
+    if (authRes.status === 'fulfilled' && authRes.value.ok) {
+      const authData = await authRes.value.json();
+      if (!authData.isAdmin) {
+        const sl = document.getElementById('settingsNavLink');
+        if (sl) sl.style.display = 'none';
+      }
+      if (authData.tester) {
+        const badge = document.getElementById('testerBadge');
+        if (badge) { badge.style.display = ''; badge.textContent = `👤 ${authData.tester.alias}`; }
+      } else if (authData.isAdmin) {
+        const badge = document.getElementById('testerBadge');
+        if (badge) {
+          badge.style.display = '';
+          badge.textContent = '🛡️ 관리자';
+          badge.onclick = function() { if(confirm('관리자 로그아웃 하시겠습니까?')) adminLogout(); };
+        }
+      } else if (!authData.isAdmin) {
+        showTesterModal();
+      }
+    }
+    if (bar) bar.style.width = '90%';
+
+    // Apply guidelines
+    if (guidelinesRes.status === 'fulfilled' && guidelinesRes.value.ok) {
+      _smGuidelineData = await guidelinesRes.value.json();
+      _smGuidelineVersion = _smGuidelineData?.meta?.version || 'unknown';
+      console.log(`[시나리오] 가이드라인 v${_smGuidelineVersion} 로드 완료`);
+    }
+    if (bar) bar.style.width = '100%';
+  } catch(e) {
+    console.error('Init error:', e);
+  } finally {
+    const loader = document.getElementById('appLoader');
+    if (loader) { loader.classList.add('fade-out'); setTimeout(() => loader.remove(), 300); }
+  }
 });
 
 async function loadCurrentEnv() {

@@ -13,6 +13,14 @@
     --green: #22c55e; --red: #ef4444; --yellow: #eab308; --orange: #f97316;
     --border: #475569; --radius: 12px;
   }
+  /* 로딩 스피너 */
+  #appLoader{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .3s}
+  #appLoader.fade-out{opacity:0;pointer-events:none}
+  .loader-spinner{width:40px;height:40px;border:3px solid var(--surface2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+  .loader-text{margin-top:16px;color:var(--text-dim);font-size:13px;font-family:system-ui}
+  .loader-progress{width:200px;height:3px;background:var(--surface2);border-radius:2px;margin-top:12px;overflow:hidden}
+  .loader-bar{height:100%;background:var(--accent);border-radius:2px;transition:width .2s;width:0%}
+  @keyframes spin{to{transform:rotate(360deg)}}
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:'Pretendard','Apple SD Gothic Neo',system-ui,sans-serif;
          background:var(--bg); color:var(--text); height:100vh; display:flex; flex-direction:column; }
@@ -203,6 +211,12 @@
 </style>
 </head>
 <body>
+<!-- 로딩 스피너 -->
+<div id="appLoader">
+  <div class="loader-spinner"></div>
+  <div class="loader-text">로딩 중...</div>
+  <div class="loader-progress"><div class="loader-bar" id="loaderBar"></div></div>
+</div>
 
 <!-- Top Bar -->
 <div class="topbar">
@@ -549,10 +563,87 @@ async function submitRegister() {
   } catch(e) { errEl.textContent = '서버 연결 실패'; }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  loadSettings();
-  setTimeout(() => loadGuidelinesForCompliance(), 500);
-  initTesterAndAuth();  // 내부에서 로그인 확인 후 loadConversations() 호출
+document.addEventListener('DOMContentLoaded', async () => {
+  const loader = document.getElementById('appLoader');
+  const bar = document.getElementById('loaderBar');
+  const setText = (t) => { const el = loader?.querySelector('.loader-text'); if (el) el.textContent = t; };
+  const setProgress = (p) => { if (bar) bar.style.width = p + '%'; };
+
+  try {
+    // Phase 1: 핵심 API 병렬 호출 (설정 + 인증 + 가이드라인 동시)
+    setText('설정 로딩 중...');
+    setProgress(10);
+    const [settingsRes, authRes, guidelinesRes] = await Promise.allSettled([
+      fetch('/api/settings').then(r => r.ok ? r.json() : {}),
+      fetch('/api/auth/status').then(r => r.json()),
+      fetch('/api/guidelines').then(r => r.ok ? r.json() : null),
+    ]);
+    setProgress(50);
+
+    // 설정 적용
+    if (settingsRes.status === 'fulfilled' && settingsRes.value) {
+      const settings = settingsRes.value;
+      if (settings && Object.keys(settings).length > 0) {
+        savedSettings = settings;
+        if (settings.currentEnv) { currentEnv = settings.currentEnv; updateEnvChips(); }
+        const envCfg = getEnvConfig();
+        if (envCfg.xApiKey) setStatus(true, `${currentEnv.toUpperCase()} 준비됨`);
+        else setStatus(false, '설정 필요');
+      }
+    }
+
+    // 가이드라인 적용
+    if (guidelinesRes.status === 'fulfilled' && guidelinesRes.value) {
+      window._guidelinesData = guidelinesRes.value;
+      window._guidelineVersion = guidelinesRes.value?.meta?.version || 'unknown';
+    }
+    setProgress(70);
+
+    // Phase 2: 인증 상태에 따라 UI 초기화 + 대화 목록 로드
+    setText('인증 확인 중...');
+    const auth = authRes.status === 'fulfilled' ? authRes.value : {};
+
+    if (!auth.isAdmin) {
+      const sl = document.getElementById('settingsNavLink');
+      if (sl) sl.style.display = 'none';
+    }
+
+    if (auth.tester) {
+      const badge = document.getElementById('testerBadge');
+      if (badge) { badge.style.display = ''; badge.textContent = `👤 ${auth.tester.alias}`; }
+    } else if (auth.isAdmin) {
+      const badge = document.getElementById('testerBadge');
+      if (badge) {
+        badge.style.display = '';
+        badge.textContent = '🛡️ 관리자';
+        badge.onclick = function() { if(confirm('관리자 로그아웃 하시겠습니까?')) adminLogout(); };
+      }
+    }
+
+    setProgress(85);
+
+    // Phase 3: 대화 목록 + 시나리오 프리셋 병렬 로드
+    if (auth.tester || auth.isAdmin) {
+      setText('대화 기록 로딩 중...');
+      await Promise.allSettled([
+        loadConversations(),
+        loadScenarioPresets(),
+      ]);
+    } else {
+      showTesterModal();
+      renderSidebarMessage('로그인 후 대화 기록을 확인할 수 있습니다');
+    }
+    setProgress(100);
+
+  } catch(e) {
+    console.warn('초기화 오류', e);
+  } finally {
+    // 스피너 제거
+    if (loader) {
+      loader.classList.add('fade-out');
+      setTimeout(() => loader.remove(), 300);
+    }
+  }
 });
 
 // ──────────────────────────────────────

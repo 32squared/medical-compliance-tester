@@ -15,6 +15,15 @@
   body { font-family:'Pretendard','Apple SD Gothic Neo',system-ui,sans-serif;
          background:var(--bg); color:var(--text); min-height:100vh; display:flex; flex-direction:column; }
 
+  /* 로딩 스피너 */
+  #appLoader{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg,#0f172a);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .3s}
+  #appLoader.fade-out{opacity:0;pointer-events:none}
+  .loader-spinner{width:40px;height:40px;border:3px solid #334155;border-top-color:#38bdf8;border-radius:50%;animation:spin .8s linear infinite}
+  .loader-text{margin-top:16px;color:#94a3b8;font-size:13px;font-family:system-ui}
+  .loader-progress{width:200px;height:3px;background:#334155;border-radius:2px;margin-top:12px;overflow:hidden}
+  .loader-bar{height:100%;background:#38bdf8;border-radius:2px;transition:width .2s;width:0%}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
   /* ── Top Bar ── */
   .topbar { display:flex; align-items:center; justify-content:space-between; padding:12px 20px;
             background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; }
@@ -91,6 +100,11 @@
 </style>
 </head>
 <body>
+<div id="appLoader">
+  <div class="loader-spinner"></div>
+  <div class="loader-text">로딩 중...</div>
+  <div class="loader-progress"><div class="loader-bar" id="loaderBar"></div></div>
+</div>
 
 <!-- ── Top Bar ── -->
 <div class="topbar">
@@ -906,8 +920,43 @@ loadSettings = async function() {
 // ══════════════════════════════════════════
 // Init
 // ══════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', () => {
-  checkAuth();
+document.addEventListener('DOMContentLoaded', async () => {
+  const bar = document.getElementById('loaderBar');
+  if (bar) bar.style.width = '10%';
+  try {
+    const [authRes] = await Promise.allSettled([
+      fetch('/api/auth/status')
+    ]);
+    if (bar) bar.style.width = '60%';
+
+    if (authRes.status === 'fulfilled' && authRes.value.ok) {
+      const status = await authRes.value.json();
+      if (!status.isSetup) {
+        document.getElementById('setupGate').style.display = 'flex';
+        document.getElementById('loginGate').style.display = 'none';
+        document.getElementById('mainContent').style.display = 'none';
+      } else if (!status.isAdmin) {
+        document.getElementById('loginGate').style.display = 'flex';
+        document.getElementById('setupGate').style.display = 'none';
+        document.getElementById('mainContent').style.display = 'none';
+      } else {
+        document.getElementById('loginGate').style.display = 'none';
+        document.getElementById('setupGate').style.display = 'none';
+        document.getElementById('mainContent').style.display = '';
+        loadSettings();
+      }
+    } else {
+      document.getElementById('loginGate').style.display = 'flex';
+    }
+    if (bar) bar.style.width = '100%';
+  } catch(e) {
+    document.getElementById('loginGate').style.display = 'flex';
+    console.error('Init error:', e);
+  } finally {
+    const loader = document.getElementById('appLoader');
+    if (loader) { loader.classList.add('fade-out'); setTimeout(() => loader.remove(), 300); }
+  }
+
   setTimeout(() => {
     [...ENV_KEYS, ...COMMON_KEYS].forEach(key => {
       const el = document.getElementById(key);
