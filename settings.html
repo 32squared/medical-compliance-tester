@@ -222,10 +222,16 @@
     <div class="field">
       <label>GPT 모델</label>
       <select id="openaiModel" style="width:100%;padding:8px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px">
-        <option value="gpt-4o-mini">gpt-4o-mini (빠름, 저렴)</option>
-        <option value="gpt-4o">gpt-4o (고성능)</option>
-        <option value="gpt-4-turbo">gpt-4-turbo (최고 성능)</option>
-        <option value="gpt-3.5-turbo">gpt-3.5-turbo (가장 저렴)</option>
+        <optgroup label="GPT-5.4 (최신)">
+          <option value="gpt-5.4-pro">gpt-5.4-pro (최고 성능, 복잡한 추론)</option>
+          <option value="gpt-5.4">gpt-5.4 (플래그십, 1M 컨텍스트)</option>
+          <option value="gpt-5.4-mini">gpt-5.4-mini (빠름, 고성능 소형)</option>
+          <option value="gpt-5.4-nano">gpt-5.4-nano (초경량, 최저 비용)</option>
+        </optgroup>
+        <optgroup label="GPT-4o">
+          <option value="gpt-4o">gpt-4o (안정적 고성능)</option>
+          <option value="gpt-4o-mini" selected>gpt-4o-mini (빠름, 저렴 — 기본)</option>
+        </optgroup>
       </select>
       <div class="hint">평가 및 시나리오 자동 생성에 사용할 GPT 모델</div>
     </div>
