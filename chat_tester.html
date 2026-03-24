@@ -1021,13 +1021,14 @@ async function evaluateWithLLM(prompt, responseText, msgId) {
       </div>
     `;
 
-    // GPT 평가 결과를 conversations.json에 저장
-    if (currentConvId && window._lastAssistantMsgId) {
+    // GPT 평가 결과를 DB에 저장 (msgId를 직접 사용 — 복원된 대화에서도 동작)
+    const saveMsgId = msgId || window._lastAssistantMsgId;
+    if (currentConvId && saveMsgId) {
       try {
         await fetch(`/api/conversations/${currentConvId}/message`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ updateGptEval: true, msgId: window._lastAssistantMsgId, gptEval: ev, gptModel: data.model })
+          body: JSON.stringify({ updateGptEval: true, msgId: saveMsgId, gptEval: ev, gptModel: data.model })
         });
       } catch(e2) { console.warn('GPT 평가 저장 실패', e2); }
     }
