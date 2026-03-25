@@ -943,13 +943,8 @@ function clearSelection() {
 
 function toggleSelectAll() {
   const cb = document.getElementById('selectAllCheckbox');
-  const visible = document.querySelectorAll('.scenario-checkbox, .sc-check');
   if (cb.checked) {
-    visible.forEach(c => {
-      const id = c.dataset?.id || c.closest('.scenario-card')?.dataset?.id;
-      if (id) checkedIds.add(id);
-    });
-    // Also add all filtered scenario IDs directly
+    // 현재 필터링된(화면에 보이는) 시나리오만 선택
     let filtered = getSourceFiltered();
     if (selectedCategory !== 'all') filtered = filtered.filter(s => s.category === selectedCategory);
     if (selectedRisk !== 'all') filtered = filtered.filter(s => s.riskLevel === selectedRisk);
@@ -961,6 +956,14 @@ function toggleSelectAll() {
         (s.subcategory || '').toLowerCase().includes(q) ||
         (s.tags || []).some(t => t.toLowerCase().includes(q))
       );
+    }
+    // 상태 필터 적용
+    if (currentStatusFilter !== 'all') {
+      filtered = filtered.filter(s => {
+        const st = lastRunResults[s.id];
+        if (currentStatusFilter === 'untested') return !st;
+        return st === currentStatusFilter;
+      });
     }
     filtered.forEach(s => checkedIds.add(s.id));
   } else {
@@ -1547,9 +1550,7 @@ async function bulkRun() {
 }
 
 async function pollBatchStatus(runId, total) {
-  const startTime = Date.now();
   const statusEl = document.getElementById('bulkStatus');
-
   const poll = async () => {
     try {
       const res = await fetch(`${API}/api/test/status/${runId}`);
@@ -1557,48 +1558,27 @@ async function pollBatchStatus(runId, total) {
       const data = await res.json();
 
       if (data.status === 'done' || data.status === 'completed') {
-        if (statusEl) statusEl.innerHTML = `<span style="color:var(--green)">✅ 완료 (${data.completed}/${data.total})</span>`;
+        if (statusEl) statusEl.innerHTML = `<span style="color:var(--green)">✅ 완료</span>`;
         showBatchResultConfirm(runId, data.summary);
+        loadLastRunResults();
         return;
       }
       if (data.status === 'cancelled') {
-        if (statusEl) statusEl.innerHTML = `<span style="color:var(--yellow)">⏹ 중지됨 (${data.completed}/${data.total})</span>`;
-        showToast('배치가 중지되었습니다. 완료된 결과만 저장됩니다.', 'info');
+        if (statusEl) statusEl.innerHTML = `<span style="color:var(--yellow)">⏹ 중지됨</span>`;
+        showToast('배치가 중지되었습니다.', 'info');
         showBatchResultConfirm(runId, data.summary);
+        loadLastRunResults();
         return;
       }
 
-      // Progress with estimated time
       const pct = Math.round((data.completed / data.total) * 100);
-      const elapsed = (Date.now() - startTime) / 1000;
-      const avgPerItem = data.completed > 0 ? elapsed / data.completed : 30;
-      const remaining = Math.round(avgPerItem * (data.total - data.completed) / 60);
-      const remainText = remaining > 0 ? `~${remaining}분` : '곧 완료';
-
-      if (statusEl) {
-        statusEl.innerHTML = `
-          <span>⏳ 실행 중... ${data.completed}/${data.total} (${pct}%) — 예상 ${remainText}</span>
-          <button onclick="cancelBatch('${runId}')" style="margin-left:8px;padding:2px 10px;background:var(--red);color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer">⏹ 중지</button>
-        `;
-      }
+      if (statusEl) statusEl.innerHTML = `<span>⏳ ${data.completed}/${data.total} (${pct}%)</span>`;
 
       const interval = data.total > 100 ? 5000 : 2000;
       setTimeout(poll, interval);
-    } catch(e) {
-      setTimeout(poll, 3000);
-    }
+    } catch(e) { setTimeout(poll, 3000); }
   };
   setTimeout(poll, 2000);
-}
-
-async function cancelBatch(runId) {
-  if (!confirm('배치 실행을 중지하시겠습니까?\n완료된 결과만 저장됩니다.')) return;
-  try {
-    await fetch(`${API}/api/test/cancel/${runId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
-    showToast('배치 중지 요청됨', 'info');
-  } catch(e) {
-    showToast('중지 요청 실패', 'error');
-  }
 }
 
 function showBatchResultConfirm(runId, summary) {
