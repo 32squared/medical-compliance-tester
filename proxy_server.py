@@ -2577,7 +2577,7 @@ AI 건강상담 서비스의 응답이 한국 의료법을 준수하는지 평�
                 'X-Api-UID': uid,
             }
 
-            print(f"[프록시 GET] {full_url} (UID={uid})")
+            ProxyHandler._add_log(f"[프록시 GET] {full_url} (UID={uid})")
 
             ctx = ssl.create_default_context()
             req = Request(url=full_url, headers=headers, method='GET')
@@ -2587,13 +2587,13 @@ AI 건강상담 서비스의 응답이 한국 의료법을 준수하는지 평�
 
         except HTTPError as e:
             err_body = e.read().decode('utf-8', errors='replace')
-            print(f"[프록시 GET ERROR] {e.code}: {err_body[:200]}")
+            ProxyHandler._add_log(f"[프록시 GET ERROR] {e.code}: {err_body[:200]}")
             self._send_error(e.code, err_body[:500])
         except URLError as e:
-            print(f"[프록시 GET ERROR] URLError: {e.reason}")
+            ProxyHandler._add_log(f"[프록시 GET ERROR] URLError: {e.reason}")
             self._send_error(502, f'SKIX 서버 연결 실패: {e.reason}')
         except Exception as e:
-            print(f"[프록시 GET ERROR] {e}")
+            ProxyHandler._add_log(f"[프록시 GET ERROR] {e}")
             self._send_error(500, f'프록시 오류: {str(e)}')
 
     def _proxy_post(self, body):
@@ -2632,8 +2632,8 @@ AI 건강상담 서비스의 응답이 한국 의료법을 준수하는지 평�
             if tester and tester.get('uid'):
                 forward_headers['X-Api-UID'] = tester['uid']
 
-            print(f"[프록시] target={target_url}")
-            print(f"[프록시] X-API-Key={forward_headers.get('X-API-Key','')[:8]}... UID={forward_headers.get('X-Api-UID','')}")
+            ProxyHandler._add_log(f"[프록시] target={target_url}")
+            ProxyHandler._add_log(f"[프록시] X-API-Key={forward_headers.get('X-API-Key','')[:8]}... UID={forward_headers.get('X-Api-UID','')}")
 
             # http.client로 비버퍼링 SSE 스트리밍
             parsed = urlparse(target_url)
@@ -2686,8 +2686,10 @@ AI 건강상담 서비스의 응답이 한국 의료법을 준수하는지 평�
             conn.close()
 
         except http.client.HTTPException as e:
+            ProxyHandler._add_log(f"[프록시 ERROR] HTTP: {e}")
             self._send_error(502, f'프록시 HTTP 오류: {str(e)}')
         except (ConnectionRefusedError, OSError) as e:
+            ProxyHandler._add_log(f"[프록시 ERROR] 연결실패: {e}")
             self._send_error(502, f'프록시 연결 실패: {str(e)}')
         except (BrokenPipeError, ConnectionResetError):
             pass  # 클라이언트 연결 끊김
