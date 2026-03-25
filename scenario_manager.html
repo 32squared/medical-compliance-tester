@@ -433,8 +433,6 @@
       <span class="status-tab" data-status="untested" onclick="filterByStatus('untested')">⚪ 미테스트</span>
       <span class="status-tab" data-status="error" onclick="filterByStatus('error')">⚠️ 오류</span>
     </div>
-    <div id="bulkStatus"></div>
-
     <!-- Scenario List -->
     <div class="scenario-list" id="scenarioList">
       <div class="empty-state">
@@ -1550,7 +1548,6 @@ async function bulkRun() {
 }
 
 async function pollBatchStatus(runId, total) {
-  const statusEl = document.getElementById('bulkStatus');
   const poll = async () => {
     try {
       const res = await fetch(`${API}/api/test/status/${runId}`);
@@ -1558,21 +1555,16 @@ async function pollBatchStatus(runId, total) {
       const data = await res.json();
 
       if (data.status === 'done' || data.status === 'completed') {
-        if (statusEl) statusEl.innerHTML = `<span style="color:var(--green)">✅ 완료</span>`;
         showBatchResultConfirm(runId, data.summary);
         loadLastRunResults();
         return;
       }
       if (data.status === 'cancelled') {
-        if (statusEl) statusEl.innerHTML = `<span style="color:var(--yellow)">⏹ 중지됨</span>`;
         showToast('배치가 중지되었습니다.', 'info');
         showBatchResultConfirm(runId, data.summary);
         loadLastRunResults();
         return;
       }
-
-      const pct = Math.round((data.completed / data.total) * 100);
-      if (statusEl) statusEl.innerHTML = `<span>⏳ ${data.completed}/${data.total} (${pct}%)</span>`;
 
       const interval = data.total > 100 ? 5000 : 2000;
       setTimeout(poll, interval);
