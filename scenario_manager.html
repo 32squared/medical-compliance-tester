@@ -123,6 +123,7 @@
   .sc-source { font-size:10px; padding:2px 8px; border-radius:10px; font-weight:600; }
   .source-manual { background:#38bdf822; color:var(--accent); }
   .source-generated { background:#a855f722; color:var(--purple); }
+  .source-conversation { background:#f59e0b22; color:#f59e0b; }
   .sc-prompt { font-size:13px; color:var(--text); line-height:1.5; margin-bottom:6px;
                overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
   .sc-tags { display:flex; gap:4px; flex-wrap:wrap; }
@@ -318,6 +319,10 @@
     <span class="tab-icon">&#129302;</span> AI 자동 생성
     <span class="tab-count" id="tab-count-generated">0</span>
   </div>
+  <div class="source-tab" data-source="conversation" onclick="switchSourceTab('conversation')">
+    <span class="tab-icon">&#128172;</span> 대화 추출
+    <span class="tab-count" id="tab-count-conversation">0</span>
+  </div>
 </div>
 
 <!-- ── Layout ── -->
@@ -338,6 +343,7 @@
       <div class="stat"><span>전체 시나리오</span><span class="stat-val" id="stat-total">0</span></div>
       <div class="stat"><span>수동 등록</span><span class="stat-val" style="color:var(--accent)" id="stat-manual">0</span></div>
       <div class="stat"><span>AI 생성</span><span class="stat-val" style="color:var(--purple)" id="stat-generated">0</span></div>
+      <div class="stat"><span>대화 추출</span><span class="stat-val" style="color:#f59e0b" id="stat-conversation">0</span></div>
       <div class="stat"><span>활성화</span><span class="stat-val" id="stat-enabled">0</span></div>
       <div class="stat"><span>CRITICAL</span><span class="stat-val" style="color:var(--red)" id="stat-critical">0</span></div>
       <div class="stat"><span>거부 기대</span><span class="stat-val" style="color:var(--orange)" id="stat-refuse">0</span></div>
@@ -698,9 +704,11 @@ function switchSourceTab(source) {
 function updateTabCounts() {
   const manual = allScenarios.filter(s => (s.source || 'manual') === 'manual').length;
   const generated = allScenarios.filter(s => s.source === 'generated').length;
+  const conversation = allScenarios.filter(s => s.source === 'conversation').length;
   document.getElementById('tab-count-all').textContent = allScenarios.length;
   document.getElementById('tab-count-manual').textContent = manual;
   document.getElementById('tab-count-generated').textContent = generated;
+  document.getElementById('tab-count-conversation').textContent = conversation;
 }
 
 // ════════════════════════════════════════════
@@ -786,9 +794,12 @@ function renderList() {
     const checked = checkedIds.has(s.id);
     const disabledClass = s.enabled === false ? 'sc-disabled' : '';
     const isGen = s.source === 'generated';
-    const genClass = isGen ? 'generated-card' : '';
+    const isConv = s.source === 'conversation';
+    const genClass = isGen ? 'generated-card' : isConv ? 'generated-card' : '';
     const sourceLabel = isGen
       ? '<span class="sc-source source-generated">AI 생성</span>'
+      : isConv
+      ? '<span class="sc-source source-conversation">대화 추출</span>'
       : '<span class="sc-source source-manual">수동</span>';
     const parentInfo = (isGen && s.parentId)
       ? `<div class="sc-parent">&#8627; 원본: ${escHtml(s.parentId)}</div>` : '';
@@ -1724,6 +1735,7 @@ function updateStats() {
   document.getElementById('stat-total').textContent = allScenarios.length;
   document.getElementById('stat-manual').textContent = allScenarios.filter(s => (s.source || 'manual') === 'manual').length;
   document.getElementById('stat-generated').textContent = allScenarios.filter(s => s.source === 'generated').length;
+  document.getElementById('stat-conversation').textContent = allScenarios.filter(s => s.source === 'conversation').length;
   document.getElementById('stat-enabled').textContent = src.filter(s => s.enabled !== false).length;
   document.getElementById('stat-critical').textContent = src.filter(s => s.riskLevel === 'CRITICAL').length;
   document.getElementById('stat-refuse').textContent = src.filter(s => s.shouldRefuse).length;
