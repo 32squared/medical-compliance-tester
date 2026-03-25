@@ -170,7 +170,7 @@
       </div>
       <div class="field">
         <label>X-tenant-Domain</label>
-        <input type="text" id="xTenantDomain" value="dev-skix" readonly style="opacity:.7">
+        <input type="text" id="xTenantDomain" value="dev-skix">
         <div class="hint">환경 선택시 자동 설정됩니다</div>
       </div>
     </div>
@@ -349,7 +349,7 @@ const ENVS = {
 let currentEnv = 'dev';
 
 // 환경별 독립 필드 vs 공통 필드
-const ENV_KEYS = ['xApiKey', 'xApiUid'];  // 환경마다 다른 값
+const ENV_KEYS = ['xApiKey', 'xApiUid', 'xTenantDomain', 'apiUrl'];  // 환경마다 다른 값
 const COMMON_KEYS = ['graphType', 'proxyUrl', 'srcWeb', 'srcPubmed', 'enableCompliance', 'openaiKey', 'openaiModel', 'enableLlmEval'];
 
 // 메모리에 환경별 설정 저장
