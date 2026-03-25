@@ -152,9 +152,11 @@ def init_db(db_path=None):
     path = db_path or DB_PATH
     os.makedirs(os.path.dirname(path) if os.path.dirname(path) else '.', exist_ok=True)
     conn = sqlite3.connect(path)
-    conn.execute("PRAGMA journal_mode=WAL")
+    # GCS FUSE 환경에서는 WAL 모드 사용 불가 (-shm 파일 충돌)
+    # DELETE 모드 사용 (단일 파일, GCS 호환)
+    conn.execute("PRAGMA journal_mode=DELETE")
     conn.execute("PRAGMA foreign_keys=ON")
-    conn.execute("PRAGMA busy_timeout=5000")
+    conn.execute("PRAGMA busy_timeout=10000")
     conn.executescript(SCHEMA)
     # 마이그레이션: 기존 DB에 컬럼 추가
     migrations = [
@@ -180,7 +182,7 @@ def get_conn(db_path=None):
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys=ON")
-    conn.execute("PRAGMA busy_timeout=5000")
+    conn.execute("PRAGMA busy_timeout=10000")
     try:
         yield conn
         conn.commit()
