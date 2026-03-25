@@ -50,7 +50,7 @@ Write-Host "Build done!" -ForegroundColor Green
 
 # [2/4] Cloud Run 배포
 Write-Host "[2/4] Deploying to Cloud Run with GCS volume mount..." -ForegroundColor Yellow
-gcloud run deploy $ServiceName --image "gcr.io/$ProjectId/$ServiceName" --region $Region --platform managed --allow-unauthenticated --memory 2Gi --cpu 2 --timeout 900 --min-instances 1 --max-instances 3 --concurrency 80 --execution-environment gen2 --set-env-vars "DB_PATH=/data/app.db,DATA_DIR=/data" --add-volume "name=data-vol,type=cloud-storage,bucket=$BucketName" --add-volume-mount "volume=data-vol,mount-path=/data" --vpc-connector=medical-connector --vpc-egress=private-ranges-only --cpu-boost
+gcloud run deploy $ServiceName --image "gcr.io/$ProjectId/$ServiceName" --region $Region --platform managed --allow-unauthenticated --memory 2Gi --cpu 2 --timeout 900 --min-instances 1 --max-instances 3 --concurrency 80 --execution-environment gen2 --set-env-vars "DB_PATH=/data/app.db,DATA_DIR=/data" --add-volume "name=data-vol,type=cloud-storage,bucket=$BucketName" --add-volume-mount "volume=data-vol,mount-path=/data" --vpc-connector=medical-connector --vpc-egress=all-traffic --cpu-boost
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Deploy failed!" -ForegroundColor Red
     exit 1
