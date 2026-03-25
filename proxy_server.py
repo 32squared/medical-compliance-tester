@@ -758,8 +758,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
         current_env = settings.get('currentEnv', 'dev')
         env_defaults = {
             'dev':  {'apiUrl': 'https://dev-skix.phnyx.ai',    'xTenantDomain': 'dev-skix'},
-            'stg':  {'apiUrl': 'https://staging-skix.phnyx.ai', 'xTenantDomain': 'staging-skix'},
-            'prod': {'apiUrl': 'https://skix.phnyx.ai',         'xTenantDomain': 'skix'},
+            'stg':  {'apiUrl': 'https://staging-skix.phnyx.ai', 'xTenantDomain': 'staging-skix-test'},
+            'prod': {'apiUrl': 'https://skix.phnyx.ai',         'xTenantDomain': 'prod-skix-test'},
         }
 
         # 환경별 설정 가져오기
@@ -1322,8 +1322,8 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
         current_env = settings.get('currentEnv', 'dev')
         env_defaults = {
             'dev':  {'apiUrl': 'https://dev-skix.phnyx.ai',    'xTenantDomain': 'dev-skix'},
-            'stg':  {'apiUrl': 'https://staging-skix.phnyx.ai', 'xTenantDomain': 'staging-skix'},
-            'prod': {'apiUrl': 'https://skix.phnyx.ai',         'xTenantDomain': 'skix'},
+            'stg':  {'apiUrl': 'https://staging-skix.phnyx.ai', 'xTenantDomain': 'staging-skix-test'},
+            'prod': {'apiUrl': 'https://skix.phnyx.ai',         'xTenantDomain': 'prod-skix-test'},
         }
         env_cfg = settings.get('environments', {}).get(current_env, {})
         api_key = env_cfg.get('xApiKey', settings.get('xApiKey', ''))
