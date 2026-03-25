@@ -1387,6 +1387,7 @@ async function bulkRun() {
     const res = await fetch(`${API}/api/test/batch`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ scenarioIds: ids })
     });
     const data = await res.json();
