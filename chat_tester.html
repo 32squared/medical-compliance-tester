@@ -399,14 +399,21 @@ function updateEnvChips() {
 async function switchEnv(env) {
   currentEnv = env;
   updateEnvChips();
-  // 서버에 현재 환경 저장
+  // 서버에 현재 환경 저장 (전용 API — 테스터도 사용 가능)
   try {
-    await fetch('/api/settings', {
+    const res = await fetch('/api/settings/env', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ currentEnv: env })
     });
-  } catch(e) {}
+    if (!res.ok) {
+      showToast('환경 전환 실패', 'error');
+      return;
+    }
+  } catch(e) {
+    showToast('환경 전환 실패: ' + e.message, 'error');
+    return;
+  }
   // 설정 다시 로드
   await loadSettings();
   conversationStrid = null;

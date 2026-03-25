@@ -631,12 +631,13 @@ async function switchEnv(env) {
     c.classList.toggle('active', c.dataset.env === env);
   });
   try {
-    await fetch('/api/settings', {
+    const res = await fetch('/api/settings/env', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ currentEnv: env })
     });
-  } catch(e) {}
+    if (!res.ok) { showToast('환경 전환 실패', 'error'); return; }
+  } catch(e) { showToast('환경 전환 실패', 'error'); return; }
   showToast(`${env.toUpperCase()} 환경으로 전환`, 'info');
 }
 

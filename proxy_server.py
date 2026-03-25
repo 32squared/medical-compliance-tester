@@ -342,6 +342,10 @@ class ProxyHandler(BaseHTTPRequestHandler):
         if self.path == '/api/history/re-evaluate':
             return self._re_evaluate_history(body)
 
+        # ── 환경 전환 API (로그인 사용자 모두 가능) ──
+        if self.path == '/api/settings/env':
+            return self._switch_env(body)
+
         # ── 설정 저장/로드 API (Admin only) ──
         if self.path == '/api/settings':
             if not self._require_admin():
@@ -1507,6 +1511,21 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
     # ════════════════════════════════════════════
     # 설정 저장/로드 (DB)
     # ════════════════════════════════════════════
+
+    def _switch_env(self, body):
+        """POST /api/settings/env — 환경 전환 (로그인 사용자 모두 가능)"""
+        try:
+            payload = json.loads(body)
+        except json.JSONDecodeError:
+            return self._send_error(400, '잘못된 JSON')
+        new_env = payload.get('currentEnv', '')
+        if new_env not in ('dev', 'stg', 'prod'):
+            return self._send_error(400, f'유효하지 않은 환경: {new_env}')
+        existing = db.get_settings()
+        existing['currentEnv'] = new_env
+        existing['updatedAt'] = datetime.now(timezone.utc).isoformat()
+        db.save_settings(existing)
+        self._send_json(200, {"success": True, "currentEnv": new_env})
 
     def _save_settings(self, body):
         """POST /api/settings — 설정 저장 (Admin only — do_POST에서 가드)"""
