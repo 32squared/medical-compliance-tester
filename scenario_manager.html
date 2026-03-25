@@ -1354,19 +1354,34 @@ async function sendToChat(id) {
       }
     }
 
-    // 이력 저장 (프론트에서 받은 결과를 직접 서버에 전달)
-    fetch('/api/history/save', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        scenarioId: id,
-        response: fullText,
-        responseTime: elapsed,
-        compliance: window._lastComplianceResult || null,
-        gptEval: window._lastGptEval || null,
-        consultationEval: window._lastConsultEval || null,
-      })
-    }).catch(() => {});
+    // 이력 저장 — 문진 평가 완료를 기다린 후 저장
+    const _saveHistory = () => {
+      fetch('/api/history/save', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          scenarioId: id,
+          response: fullText,
+          responseTime: elapsed,
+          compliance: window._lastComplianceResult || null,
+          gptEval: window._lastGptEval || null,
+          consultationEval: window._lastConsultEval || null,
+        })
+      }).catch(() => {});
+    };
+    // 문진 평가가 진행 중이면 최대 15초 대기
+    if (fullText && !window._lastConsultEval) {
+      let waitCount = 0;
+      const waitForConsult = setInterval(() => {
+        waitCount++;
+        if (window._lastConsultEval || waitCount >= 30) {
+          clearInterval(waitForConsult);
+          _saveHistory();
+        }
+      }, 500);
+    } else {
+      _saveHistory();
+    }
 
     showToast(`${id} 실행 완료`, 'success');
   } catch (e) {
