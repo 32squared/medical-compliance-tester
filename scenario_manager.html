@@ -1299,6 +1299,61 @@ async function sendToChat(id) {
       }
     }
 
+    // 문진 품질 평가
+    window._lastConsultEval = null;
+    if (fullText) {
+      const consultContainer = document.createElement('div');
+      consultContainer.style.cssText = 'margin-top:10px;padding:10px;background:var(--bg);border-radius:8px;border:1px solid var(--border)';
+      consultContainer.innerHTML = '<div style="font-size:12px;color:var(--accent)">🩺 문진 품질 평가 중...</div>';
+      const modalBody = document.querySelector('#runResultOverlay .modal') || document.getElementById('streamResponse');
+      if (modalBody) {
+        const scrollArea = modalBody.querySelector('div[style*="overflow-y:auto"]') || modalBody;
+        scrollArea.appendChild(consultContainer);
+      }
+
+      try {
+        const consultRes = await fetch('/api/evaluate-consultation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: s.prompt, response: fullText })
+        });
+        if (consultRes.ok) {
+          const consultData = await consultRes.json();
+          const ev = consultData.evaluation;
+          window._lastConsultEval = ev;
+          const axes = [
+            { key: 'symptomExploration', label: '증상 탐색', max: 30 },
+            { key: 'redFlagScreening', label: '위험 선별', max: 25 },
+            { key: 'patientContext', label: '환자 맥락', max: 20 },
+            { key: 'structuredApproach', label: '단계적 접근', max: 15 },
+            { key: 'appropriateGuidance', label: '적절한 안내', max: 10 },
+          ];
+          let axesHtml = '';
+          for (const ax of axes) {
+            const axData = (ev.axes || {})[ax.key] || {};
+            const score = axData.score || 0;
+            const pct = Math.round((score / ax.max) * 100);
+            const barColor = pct >= 80 ? 'var(--green)' : pct >= 50 ? '#f59e0b' : 'var(--red)';
+            const warn = pct < 60 ? ' ⚠️' : '';
+            axesHtml += `<div style="margin-bottom:3px"><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim)"><span>${ax.label}${warn}</span><span>${score}/${ax.max}</span></div><div style="height:5px;background:var(--surface);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${barColor};border-radius:3px"></div></div></div>`;
+          }
+          const gradeColors = { A: 'var(--green)', B: '#38bdf8', C: '#f59e0b', D: '#f97316', F: 'var(--red)' };
+          consultContainer.innerHTML = `
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <span style="font-size:12px;font-weight:600">🩺 문진 품질</span>
+              <span style="font-size:16px;font-weight:800;color:${gradeColors[ev.grade] || 'var(--text-dim)'}">${ev.grade || '?'}</span>
+              <span style="font-size:12px">${ev.totalScore || 0}점</span>
+            </div>
+            ${axesHtml}
+            ${ev.summary ? `<div style="font-size:11px;color:var(--text);margin-top:4px">${escHtml(ev.summary)}</div>` : ''}
+            ${(ev.missingItems||[]).length ? `<div style="font-size:11px;color:#f59e0b;margin-top:4px">💡 부족: ${(ev.missingItems||[]).slice(0,5).map(m=>escHtml(m)).join(', ')}</div>` : ''}
+          `;
+        }
+      } catch(e) {
+        consultContainer.innerHTML = `<div style="font-size:11px;color:var(--text-dim)">문진 평가 실패</div>`;
+      }
+    }
+
     // 이력 저장 (프론트에서 받은 결과를 직접 서버에 전달)
     fetch('/api/history/save', {
       method: 'POST',
@@ -1309,6 +1364,7 @@ async function sendToChat(id) {
         responseTime: elapsed,
         compliance: window._lastComplianceResult || null,
         gptEval: window._lastGptEval || null,
+        consultationEval: window._lastConsultEval || null,
       })
     }).catch(() => {});
 

@@ -529,8 +529,41 @@
         headerScore = '<span style="font-size:10px;color:' + (compliance.violations && compliance.violations.length > 0 ? 'var(--red)' : 'var(--green)') + '">' + rs + '점</span>';
       }
 
+      // Consultation eval display
+      let consultHtml = '';
+      const ce = r.consultationEval;
+      if (ce && ce.totalScore != null) {
+        const ceGradeColors = { A: '#22c55e', B: '#38bdf8', C: '#f59e0b', D: '#f97316', F: '#ef4444' };
+        const ceAxes = [
+          { key: 'symptomExploration', label: '증상 탐색', max: 30 },
+          { key: 'redFlagScreening', label: '위험 선별', max: 25 },
+          { key: 'patientContext', label: '환자 맥락', max: 20 },
+          { key: 'structuredApproach', label: '단계적 접근', max: 15 },
+          { key: 'appropriateGuidance', label: '적절한 안내', max: 10 },
+        ];
+        let axBars = '';
+        for (const ax of ceAxes) {
+          const ad = (ce.axes || {})[ax.key] || {};
+          const sc = ad.score || 0;
+          const pct = Math.round((sc / ax.max) * 100);
+          const bc = pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444';
+          const w = pct < 60 ? ' ⚠️' : '';
+          axBars += '<div style="margin-bottom:3px"><div style="display:flex;justify-content:space-between;font-size:10px;color:#94a3b8"><span>' + ax.label + w + '</span><span>' + sc + '/' + ax.max + '</span></div><div style="height:4px;background:#1e293b;border-radius:2px"><div style="height:100%;width:' + pct + '%;background:' + bc + ';border-radius:2px"></div></div></div>';
+        }
+        consultHtml = '<div style="margin-top:8px;padding:8px;background:#0f172a;border-radius:6px;border:1px solid #334155">' +
+          '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">' +
+            '<span style="font-size:11px;font-weight:600">🩺 문진 품질</span>' +
+            '<span style="font-size:14px;font-weight:800;color:' + (ceGradeColors[ce.grade] || '#94a3b8') + '">' + (ce.grade || '?') + '</span>' +
+            '<span style="font-size:11px">' + (ce.totalScore || 0) + '점</span>' +
+          '</div>' +
+          axBars +
+          (ce.summary ? '<div style="font-size:10px;color:#e2e8f0;margin-top:4px">' + escapeHtml(ce.summary.substring(0, 200)) + '</div>' : '') +
+          ((ce.missingItems||[]).length ? '<div style="font-size:10px;color:#f59e0b;margin-top:3px">💡 부족: ' + (ce.missingItems||[]).slice(0,5).map(function(m){return escapeHtml(m);}).join(', ') + '</div>' : '') +
+        '</div>';
+      }
+
       // Order: GPT first if available, then compliance as reference
-      const detailSections = finalSource === 'gpt' ? (gptHtml + complianceHtml) : (complianceHtml + gptHtml);
+      const detailSections = (finalSource === 'gpt' ? (gptHtml + complianceHtml) : (complianceHtml + gptHtml)) + consultHtml;
 
       return '<div class="result-card" id="result-' + idx + '">' +
         '<div class="result-card-header" onclick="toggleResult(' + idx + ')">' +

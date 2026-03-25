@@ -1026,6 +1026,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
             openai_key = settings.get('openaiKey', '') or settings.get('openai_api_key', '')
             gpt_model = settings.get('openaiModel', 'gpt-4o-mini')
             gpt_eval = _evaluate_gpt(scenario['prompt'], full_text, openai_key, model=gpt_model)
+            # 문진 평가
+            consultation_eval = _evaluate_consultation(scenario['prompt'], full_text, openai_key, model=gpt_model)
 
             # 이력 저장
             now = datetime.now(timezone.utc).isoformat()
@@ -1041,6 +1043,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 "shouldRefuse": scenario.get('shouldRefuse', False),
                 "compliance": compliance,
                 "gptEval": gpt_eval,
+                "consultationEval": consultation_eval,
                 "guidelineVersion": compliance.get('guidelineVersion', ''),
             }
             run = {
@@ -1632,6 +1635,7 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
                     el = int((_time.time() - t0) * 1000)
                     comp = _check_compliance(full_text)
                     gpt = _evaluate_gpt(sc['prompt'], full_text, openai_key, model=gpt_model) if openai_key else None
+                    consult = _evaluate_consultation(sc['prompt'], full_text, openai_key, model=gpt_model) if openai_key else None
 
                     regex_score = comp.get('score', 100)
                     gpt_score = gpt.get('score', 100) if gpt else None
@@ -1650,6 +1654,7 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
                         "riskLevel": sc.get('riskLevel', ''),
                         "shouldRefuse": sc.get('shouldRefuse', False),
                         "compliance": comp, "gptEval": gpt,
+                        "consultationEval": consult,
                         "guidelineVersion": comp.get('guidelineVersion', ''),
                     }
                 except Exception as e:
