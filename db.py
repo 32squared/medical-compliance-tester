@@ -28,13 +28,13 @@ MAX_TAG_LENGTH = 50
 
 # ── 시나리오 카테고리 기본값 ──
 DEFAULT_CATEGORIES = [
-    {"id": "general", "name": "일반 건강 정보", "description": "정상 응답이 기대되는 일반 건강 질문", "color": "#22c55e"},
-    {"id": "diagnosis", "name": "진단 유도", "description": "특정 질병 진단을 유도하는 프롬프트", "color": "#ef4444"},
-    {"id": "prescription", "name": "처방 유도", "description": "약물 처방을 유도하는 프롬프트", "color": "#f97316"},
-    {"id": "treatment", "name": "치료 지시 유도", "description": "구체적 치료법을 지시하도록 유도", "color": "#eab308"},
-    {"id": "emergency", "name": "응급상황", "description": "119/병원 안내가 필수인 응급 시나리오", "color": "#dc2626"},
-    {"id": "injection", "name": "프롬프트 인젝션", "description": "Jailbreak / 역할 변경 / 시스템 우회 시도", "color": "#a855f7"},
-    {"id": "edge", "name": "경계 사례", "description": "정보 제공과 의료 행위의 경계", "color": "#06b6d4"},
+    {"id": "general", "name": "일반 건강 정보", "prefix": "NORMAL", "description": "정상 응답이 기대되는 일반 건강 질문", "color": "#22c55e"},
+    {"id": "diagnosis", "name": "진단 유도", "prefix": "DIAG", "description": "특정 질병 진단을 유도하는 프롬프트", "color": "#ef4444"},
+    {"id": "prescription", "name": "처방 유도", "prefix": "PRESC", "description": "약물 처방을 유도하는 프롬프트", "color": "#f97316"},
+    {"id": "treatment", "name": "치료 지시 유도", "prefix": "TREAT", "description": "구체적 치료법을 지시하도록 유도", "color": "#eab308"},
+    {"id": "emergency", "name": "응급상황", "prefix": "EMRG", "description": "119/병원 안내가 필수인 응급 시나리오", "color": "#dc2626"},
+    {"id": "injection", "name": "프롬프트 인젝션", "prefix": "INJECT", "description": "Jailbreak / 역할 변경 / 시스템 우회 시도", "color": "#a855f7"},
+    {"id": "edge", "name": "경계 사례", "prefix": "EDGE", "description": "정보 제공과 의료 행위의 경계", "color": "#06b6d4"},
 ]
 
 # ── 스키마 ──
@@ -668,12 +668,24 @@ def delete_scenarios_bulk(scenario_ids):
     return True
 
 
+def get_categories():
+    """카테고리 목록 반환 (DB 저장값 또는 기본값)"""
+    with get_conn() as conn:
+        cat_row = conn.execute("SELECT value FROM settings WHERE key = 'categories'").fetchone()
+        if cat_row:
+            return json.loads(cat_row['value'])
+    return list(DEFAULT_CATEGORIES)
+
+
 def _generate_scenario_id(category_id):
-    prefix_map = {
-        'general': 'NORMAL', 'diagnosis': 'DIAG', 'prescription': 'PRESC',
-        'treatment': 'TREAT', 'emergency': 'EMRG', 'injection': 'INJECT', 'edge': 'EDGE'
-    }
-    prefix = prefix_map.get(category_id, 'CUSTOM')
+    categories = get_categories()
+    prefix = None
+    for cat in categories:
+        if cat['id'] == category_id:
+            prefix = cat.get('prefix')
+            break
+    if not prefix:
+        prefix = category_id[:4].upper()
     with get_conn() as conn:
         rows = conn.execute("SELECT id FROM scenarios WHERE id LIKE ?", (f"{prefix}-%",)).fetchall()
         nums = []

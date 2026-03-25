@@ -1030,8 +1030,9 @@ function renderLogLine(line) {
 
   let color = '#c9d1d9';
   if (line.includes('ERROR') || line.includes('error') || line.includes('실패')) color = '#f85149';
-  else if (line.includes('WARN') || line.includes('warn') || line.includes('경고')) color = '#d29922';
-  else if (line.includes('[프록시]')) color = '#58a6ff';
+  else if (line.includes('WARN') || line.includes('warn') || line.includes('주의') || line.includes('경고')) color = '#d29922';
+  else if (line.includes('[프록시]') || line.includes('[SKIX]')) color = '#58a6ff';
+  else if (line.includes('[GPT]') || line.includes('[배치]')) color = '#a5d6ff';
   else if (line.includes('200') || line.includes('성공')) color = '#3fb950';
 
   const div = document.createElement('div');
