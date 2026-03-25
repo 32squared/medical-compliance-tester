@@ -370,6 +370,7 @@
           '<span class="run-timestamp">' + formatTimestamp(run.startedAt || run.timestamp) + '</span>' +
           statusBadge +
         '</div>' +
+        '<div style="font-size:10px;color:var(--text-dim);margin:2px 0;font-family:monospace">' + escapeHtml(rid) + '</div>' +
         (isRunning
           ? '<div class="run-summary" style="color:var(--accent)">' + total + '개 시나리오 병렬 실행 중...</div>' +
             '<div class="run-passbar"><div class="run-passbar-fill" style="width:100%;background:var(--accent);animation:pulse 1.5s infinite"></div></div>'

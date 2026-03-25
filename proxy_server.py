@@ -239,11 +239,11 @@ class ProxyHandler(BaseHTTPRequestHandler):
         return {'id': session['id'], 'alias': session['alias'], 'name': session.get('name',''), 'org': session.get('org',''), 'uid': session.get('uid','')}
 
     def _get_alias(self) -> str:
-        """현재 사용자 alias 반환 (Admin이면 '관리자', 테스터면 alias, 없으면 '익명')"""
+        """현재 사용자 ID 반환 (Admin이면 '관리자', 테스터면 ID, 없으면 '익명')"""
         if self._is_admin():
             return '관리자'
         tester = self._get_tester_info()
-        return tester['alias'] if tester else '익명'
+        return tester['id'] if tester else '익명'
 
     def do_OPTIONS(self):
         """CORS preflight 처리"""
