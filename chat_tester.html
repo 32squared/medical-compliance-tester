@@ -2129,7 +2129,7 @@ async function submitCtxComment() {
   if (!currentConvId) { showToast('대화가 저장되지 않았습니다', 'error'); return; }
 
   try {
-    const res = await fetch(`${getProxyUrl()}/api/conversations/${currentConvId}/comments`, {
+    const res = await fetch(`/api/conversations/${currentConvId}/comments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
