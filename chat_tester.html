@@ -174,6 +174,8 @@
   .eval-section-title { font-size:12px; font-weight:700; color:var(--text-dim); margin-bottom:8px; display:flex; align-items:center; gap:6px; }
   .eval-section-title .icon { font-size:14px; }
 
+  .consultation-box { margin-top:8px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px; }
+
   /* ── 커멘트 버튼 + 내용 확대 ── */
   .comment-btn { background:var(--surface2); border:1px solid var(--border); color:var(--text);
                  padding:8px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;
@@ -1180,6 +1182,87 @@ async function evaluateWithLLM(prompt, responseText, msgId) {
 }
 
 // ──────────────────────────────────────
+// Consultation Quality Evaluation (문진 품질 평가)
+// ──────────────────────────────────────
+async function evaluateConsultation(prompt, responseText, msgId) {
+  const proxy = getProxyUrl() || window.location.origin;
+  const evalContainer = document.getElementById(`consultation-eval-${msgId}`);
+  if (!evalContainer) return;
+
+  evalContainer.innerHTML = '<span style="color:var(--accent);font-size:12px">🩺 문진 품질 평가 중...</span>';
+
+  try {
+    const res = await fetch(`${proxy}/api/evaluate-consultation`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, response: responseText })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || '문진 평가 실패');
+
+    const ev = data.evaluation;
+    const gradeColors = { A: 'var(--green)', B: '#38bdf8', C: '#f59e0b', D: '#f97316', F: 'var(--red)' };
+    const gradeColor = gradeColors[ev.grade] || 'var(--text-dim)';
+
+    // 5축 바 생성
+    const axes = [
+      { key: 'symptomExploration', label: '증상 탐색', max: 30 },
+      { key: 'redFlagScreening', label: '위험 선별', max: 25 },
+      { key: 'patientContext', label: '환자 맥락', max: 20 },
+      { key: 'structuredApproach', label: '단계적 접근', max: 15 },
+      { key: 'appropriateGuidance', label: '적절한 안내', max: 10 },
+    ];
+
+    let axesHtml = '';
+    for (const ax of axes) {
+      const axData = (ev.axes || {})[ax.key] || {};
+      const score = axData.score || 0;
+      const pct = Math.round((score / ax.max) * 100);
+      const barColor = pct >= 80 ? 'var(--green)' : pct >= 50 ? '#f59e0b' : 'var(--red)';
+      const missing = (axData.missing || []).join(', ');
+      const warn = pct < 60 ? ' ⚠️' : '';
+      axesHtml += `<div style="margin-bottom:4px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim)">
+          <span>${ax.label}${warn}</span><span>${score}/${ax.max}</span>
+        </div>
+        <div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${barColor};border-radius:3px;transition:width .3s"></div>
+        </div>
+        ${missing ? `<div style="font-size:10px;color:var(--text-dim);margin-top:1px">부족: ${escapeHtml(missing)}</div>` : ''}
+      </div>`;
+    }
+
+    const missingAll = (ev.missingItems || []).slice(0, 5).map(m => escapeHtml(m)).join(', ');
+
+    evalContainer.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:18px;font-weight:800;color:${gradeColor}">${ev.grade || '?'}</span>
+        <span style="font-size:13px;font-weight:600;color:var(--text)">${ev.totalScore || 0}점</span>
+        <span style="font-size:11px;color:var(--text-dim)">문진 품질</span>
+      </div>
+      ${axesHtml}
+      ${ev.summary ? `<div style="font-size:11px;color:var(--text);margin-top:6px;padding:6px 8px;background:var(--bg);border-radius:4px">${escapeHtml(ev.summary)}</div>` : ''}
+      ${missingAll ? `<div style="font-size:11px;color:#f59e0b;margin-top:4px">💡 부족: ${missingAll}</div>` : ''}
+      ${ev.recommendation ? `<div style="font-size:11px;color:var(--accent);margin-top:4px">💊 ${escapeHtml(ev.recommendation)}</div>` : ''}
+    `;
+
+    // DB에 저장
+    const saveMsgId = msgId || window._lastAssistantMsgId;
+    if (currentConvId && saveMsgId) {
+      try {
+        await fetch(`/api/conversations/${currentConvId}/message`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ updateConsultationEval: true, msgId: saveMsgId, consultationEval: ev })
+        });
+      } catch(e2) { console.warn('문진 평가 저장 실패', e2); }
+    }
+  } catch(e) {
+    evalContainer.innerHTML = `<span style="color:var(--red);font-size:11px">문진 평가 실패: ${escapeHtml(e.message)}</span>`;
+  }
+}
+
+// ──────────────────────────────────────
 // UI Helpers
 // ──────────────────────────────────────
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -1350,6 +1433,34 @@ function finalizeAssistantMessage(fullText, meta = {}) {
       gptSection.querySelector('.eval-btn').style.display = 'none';
       // DOM이 확실히 삽입된 후 실행
       setTimeout(() => evaluateWithLLM(meta.userPrompt || '', fullText, msgId), 100);
+    }
+
+    // ── 문진 품질 평가 섹션 ──
+    const consultSection = document.createElement('div');
+    consultSection.style.cssText = 'margin-top:8px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px';
+    consultSection.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:12px;font-weight:600;color:var(--text)">🩺 문진 품질</span>
+        <button class="eval-btn" style="font-size:11px">문진 평가</button>
+      </div>
+      <div id="consultation-eval-${msgId}" style="display:none"></div>
+    `;
+    const consultBtn = consultSection.querySelector('.eval-btn');
+    const _cp = meta.userPrompt || '';
+    const _ct = fullText;
+    const _cm = msgId;
+    consultBtn.addEventListener('click', function() {
+      this.style.display = 'none';
+      document.getElementById('consultation-eval-' + _cm).style.display = 'block';
+      evaluateConsultation(_cp, _ct, _cm);
+    });
+    evalBox.appendChild(consultSection);
+
+    // 자동 문진 평가 (설정 켜져 있을 때)
+    if (autoEval) {
+      consultSection.querySelector('.eval-btn').style.display = 'none';
+      consultSection.querySelector('[id^="consultation-eval-"]').style.display = 'block';
+      setTimeout(() => evaluateConsultation(meta.userPrompt || '', fullText, msgId), 3000);  // GPT 평가 후 3초 딜레이
     }
 
     // ── 1. 커멘트 버튼 (답변 직후) ──
@@ -1835,6 +1946,78 @@ function addRestoredAssistantMessage(text, meta = {}) {
       this.style.display = 'none';
       document.getElementById('llm-eval-' + _sm).style.display = 'block';
       evaluateWithLLM(_pq, _tx, _sm);
+    });
+  }
+
+  // ── 문진 평가 복원 또는 버튼 ──
+  const consultEval = meta.consultationEval;
+  if (consultEval && consultEval.totalScore != null) {
+    const cGradeColors = { A: 'var(--green)', B: '#38bdf8', C: '#f59e0b', D: '#f97316', F: 'var(--red)' };
+    const cGradeColor = cGradeColors[consultEval.grade] || 'var(--text-dim)';
+    const cAxes = [
+      { key: 'symptomExploration', label: '증상 탐색', max: 30 },
+      { key: 'redFlagScreening', label: '위험 선별', max: 25 },
+      { key: 'patientContext', label: '환자 맥락', max: 20 },
+      { key: 'structuredApproach', label: '단계적 접근', max: 15 },
+      { key: 'appropriateGuidance', label: '적절한 안내', max: 10 },
+    ];
+    let cAxesHtml = '';
+    for (const ax of cAxes) {
+      const axData = (consultEval.axes || {})[ax.key] || {};
+      const score = axData.score || 0;
+      const pct = Math.round((score / ax.max) * 100);
+      const barColor = pct >= 80 ? 'var(--green)' : pct >= 50 ? '#f59e0b' : 'var(--red)';
+      const missing = (axData.missing || []).join(', ');
+      const warn = pct < 60 ? ' ⚠️' : '';
+      cAxesHtml += `<div style="margin-bottom:4px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim)">
+          <span>${ax.label}${warn}</span><span>${score}/${ax.max}</span>
+        </div>
+        <div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${barColor};border-radius:3px;transition:width .3s"></div>
+        </div>
+        ${missing ? `<div style="font-size:10px;color:var(--text-dim);margin-top:1px">부족: ${escapeHtml(missing)}</div>` : ''}
+      </div>`;
+    }
+    const cMissingAll = (consultEval.missingItems || []).slice(0, 5).map(m => escapeHtml(m)).join(', ');
+    let consultHtml = `<details class="eval-section consultation-box" style="cursor:pointer">
+      <summary style="font-size:12px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px">
+        🩺 문진 품질
+        <span style="font-size:16px;font-weight:800;color:${cGradeColor}">${consultEval.grade || '?'}</span>
+        <span style="font-size:12px;color:var(--text-dim)">${consultEval.totalScore || 0}점</span>
+      </summary>
+      <div style="margin-top:8px">
+        ${cAxesHtml}
+        ${consultEval.summary ? `<div style="font-size:11px;color:var(--text);margin-top:6px;padding:6px 8px;background:var(--bg);border-radius:4px">${escapeHtml(consultEval.summary)}</div>` : ''}
+        ${cMissingAll ? `<div style="font-size:11px;color:#f59e0b;margin-top:4px">💡 부족: ${cMissingAll}</div>` : ''}
+        ${consultEval.recommendation ? `<div style="font-size:11px;color:var(--accent);margin-top:4px">💊 ${escapeHtml(consultEval.recommendation)}</div>` : ''}
+      </div>
+    </details>`;
+    evalBox.innerHTML += consultHtml;
+  } else {
+    // 문진 평가 버튼
+    const consultBtnSection = document.createElement('div');
+    consultBtnSection.className = 'eval-section consultation-box';
+    consultBtnSection.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:12px;font-weight:600;color:var(--text)">🩺 문진 품질</span>
+        <button class="eval-btn" style="font-size:11px">문진 평가</button>
+      </div>
+      <div id="consultation-eval-${safeMsgId}" style="display:none"></div>`;
+    evalBox.appendChild(consultBtnSection);
+    const allMsgsC = messagesEl.querySelectorAll('.msg');
+    let prevQueryC = '';
+    for (let i = allMsgsC.length - 2; i >= 0; i--) {
+      if (allMsgsC[i].classList.contains('user')) {
+        prevQueryC = allMsgsC[i].querySelector('.bubble')?.textContent || '';
+        break;
+      }
+    }
+    const _cpq = prevQueryC, _ctx = text, _csm = safeMsgId;
+    consultBtnSection.querySelector('.eval-btn').addEventListener('click', function() {
+      this.style.display = 'none';
+      document.getElementById('consultation-eval-' + _csm).style.display = 'block';
+      evaluateConsultation(_cpq, _ctx, _csm);
     });
   }
 

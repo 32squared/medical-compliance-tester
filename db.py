@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS messages (
     follow_ups_json TEXT,
     gpt_eval_json TEXT,
     gpt_model TEXT,
+    consultation_eval_json TEXT,
     FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
 );
 
@@ -164,6 +165,7 @@ def init_db(db_path=None):
         "ALTER TABLE comments ADD COLUMN selected_text TEXT DEFAULT ''",
         "ALTER TABLE comments ADD COLUMN user_query TEXT DEFAULT ''",
         "ALTER TABLE comments ADD COLUMN full_response TEXT DEFAULT ''",
+        "ALTER TABLE messages ADD COLUMN consultation_eval_json TEXT",
     ]
     for sql in migrations:
         try:
@@ -311,6 +313,7 @@ def get_conversation(conv_id):
                 'search_results_json': 'searchResults',
                 'follow_ups_json': 'followUps',
                 'gpt_eval_json': 'gptEval',
+                'consultation_eval_json': 'consultationEval',
             }
             for jf, key in json_field_map.items():
                 raw = msg.pop(jf, None)
@@ -381,7 +384,8 @@ def add_message(conv_id, msg_data):
 def update_message(conv_id, msg_id, updates):
     """메시지 필드 업데이트 (gptEval, compliance 등)"""
     allowed_json = {'compliance': 'compliance_json', 'searchResults': 'search_results_json',
-                    'followUps': 'follow_ups_json', 'gptEval': 'gpt_eval_json'}
+                    'followUps': 'follow_ups_json', 'gptEval': 'gpt_eval_json',
+                    'consultationEval': 'consultation_eval_json'}
     allowed_plain = {'gptModel': 'gpt_model', 'responseTime': 'response_time'}
     sets = []
     vals = []
