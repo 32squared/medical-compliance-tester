@@ -1335,7 +1335,14 @@ async function sendToChat(id) {
             const pct = Math.round((score / ax.max) * 100);
             const barColor = pct >= 80 ? 'var(--green)' : pct >= 50 ? '#f59e0b' : 'var(--red)';
             const warn = pct < 60 ? ' ⚠️' : '';
-            axesHtml += `<div style="margin-bottom:3px"><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim)"><span>${ax.label}${warn}</span><span>${score}/${ax.max}</span></div><div style="height:5px;background:var(--surface);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${barColor};border-radius:3px"></div></div></div>`;
+            const missing = (axData.missing || []).join(', ');
+            const detail = axData.details || '';
+            axesHtml += `<div style="margin-bottom:5px">
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim)"><span>${ax.label}${warn}</span><span>${score}/${ax.max}</span></div>
+              <div style="height:5px;background:var(--surface);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${barColor};border-radius:3px"></div></div>
+              ${detail ? `<div style="font-size:10px;color:var(--text-dim);margin-top:1px">${escHtml(detail)}</div>` : ''}
+              ${missing ? `<div style="font-size:10px;color:#f59e0b;margin-top:1px">⚠ ${escHtml(missing)}</div>` : ''}
+            </div>`;
           }
           const gradeColors = { A: 'var(--green)', B: '#38bdf8', C: '#f59e0b', D: '#f97316', F: 'var(--red)' };
           consultContainer.innerHTML = `
@@ -1345,8 +1352,9 @@ async function sendToChat(id) {
               <span style="font-size:12px">${ev.totalScore || 0}점</span>
             </div>
             ${axesHtml}
-            ${ev.summary ? `<div style="font-size:11px;color:var(--text);margin-top:4px">${escHtml(ev.summary)}</div>` : ''}
-            ${(ev.missingItems||[]).length ? `<div style="font-size:11px;color:#f59e0b;margin-top:4px">💡 부족: ${(ev.missingItems||[]).slice(0,5).map(m=>escHtml(m)).join(', ')}</div>` : ''}
+            ${ev.summary ? `<div style="font-size:11px;color:var(--text);margin-top:6px;padding:6px 8px;background:var(--surface);border-radius:4px">${escHtml(ev.summary)}</div>` : ''}
+            ${(ev.missingItems||[]).length ? `<div style="font-size:11px;color:#f59e0b;margin-top:4px">💡 전체 부족 항목: ${(ev.missingItems||[]).slice(0,8).map(m=>escHtml(m)).join(', ')}</div>` : ''}
+            ${ev.recommendation ? `<div style="font-size:11px;color:var(--accent);margin-top:4px">💊 ${escHtml(ev.recommendation)}</div>` : ''}
           `;
         }
       } catch(e) {
