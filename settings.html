@@ -329,6 +329,21 @@
     <button class="btn-outline" onclick="doLogout()" style="color:var(--red);border-color:var(--red)">🚪 Admin 로그아웃</button>
   </div>
 
+  <!-- 서버 실시간 로그 -->
+  <div class="card" style="margin-top:20px">
+    <h2>🖥️ 서버 실시간 로그</h2>
+    <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+      <button class="btn-primary" onclick="toggleLogStream()" id="logToggleBtn" style="font-size:12px;padding:6px 14px">▶ 실시간 로그 시작</button>
+      <button class="btn-outline" onclick="clearLogView()" style="font-size:12px;padding:6px 14px">🗑 화면 지우기</button>
+      <input type="text" id="logFilter" placeholder="필터 (예: 프록시, ERROR)..." oninput="filterLogs()"
+             style="flex:1;min-width:120px;padding:6px 10px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px">
+      <span id="logCount" style="font-size:11px;color:var(--text-dim);align-self:center"></span>
+    </div>
+    <div id="logViewer" style="height:400px;overflow-y:auto;background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:10px;font-family:'Consolas','Courier New',monospace;font-size:11px;line-height:1.6;color:#c9d1d9">
+      <div style="color:#8b949e">▶ 시작 버튼을 눌러 실시간 로그를 확인하세요</div>
+    </div>
+  </div>
+
 </div>
 
 <!-- Status Bar -->
@@ -954,6 +969,101 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }, 500);
 });
+
+// ══════════════════════════════════════════
+// 실시간 로그 뷰어
+// ══════════════════════════════════════════
+let logEventSource = null;
+let logLines = [];
+let logLineCount = 0;
+
+function toggleLogStream() {
+  const btn = document.getElementById('logToggleBtn');
+  if (logEventSource) {
+    logEventSource.close();
+    logEventSource = null;
+    btn.textContent = '▶ 실시간 로그 시작';
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-outline');
+    return;
+  }
+
+  const viewer = document.getElementById('logViewer');
+  viewer.innerHTML = '<div style="color:#8b949e">연결 중...</div>';
+  logLineCount = 0;
+
+  logEventSource = new EventSource('/api/logs/stream');
+  btn.textContent = '⏹ 중지';
+  btn.classList.remove('btn-outline');
+  btn.classList.add('btn-primary');
+
+  logEventSource.onopen = () => {
+    viewer.innerHTML = '';
+  };
+
+  logEventSource.onmessage = (e) => {
+    if (!e.data) return;
+    logLines.push(e.data);
+    if (logLines.length > 1000) logLines.shift();
+    logLineCount++;
+    renderLogLine(e.data);
+    document.getElementById('logCount').textContent = logLineCount + '줄';
+  };
+
+  logEventSource.onerror = () => {
+    logEventSource.close();
+    logEventSource = null;
+    btn.textContent = '▶ 실시간 로그 시작';
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-outline');
+    const div = document.createElement('div');
+    div.style.color = '#f85149';
+    div.textContent = '[연결 끊김 — 다시 시작하세요]';
+    viewer.appendChild(div);
+  };
+}
+
+function renderLogLine(line) {
+  const viewer = document.getElementById('logViewer');
+  const filter = (document.getElementById('logFilter').value || '').toLowerCase();
+  if (filter && !line.toLowerCase().includes(filter)) return;
+
+  let color = '#c9d1d9';
+  if (line.includes('ERROR') || line.includes('error') || line.includes('실패')) color = '#f85149';
+  else if (line.includes('WARN') || line.includes('warn') || line.includes('경고')) color = '#d29922';
+  else if (line.includes('[프록시]')) color = '#58a6ff';
+  else if (line.includes('200') || line.includes('성공')) color = '#3fb950';
+
+  const div = document.createElement('div');
+  div.style.color = color;
+  div.style.borderBottom = '1px solid #21262d';
+  div.style.padding = '1px 0';
+  div.textContent = line;
+  viewer.appendChild(div);
+
+  // 최대 1000줄 유지
+  while (viewer.children.length > 1000) viewer.removeChild(viewer.firstChild);
+  viewer.scrollTop = viewer.scrollHeight;
+}
+
+function clearLogView() {
+  document.getElementById('logViewer').innerHTML = '<div style="color:#8b949e">화면이 지워졌습니다. 새 로그가 계속 표시됩니다.</div>';
+  logLineCount = 0;
+  document.getElementById('logCount').textContent = '';
+}
+
+function filterLogs() {
+  const viewer = document.getElementById('logViewer');
+  const filter = (document.getElementById('logFilter').value || '').toLowerCase();
+  viewer.innerHTML = '';
+  let count = 0;
+  for (const line of logLines) {
+    if (filter && !line.toLowerCase().includes(filter)) continue;
+    renderLogLine(line);
+    count++;
+  }
+  document.getElementById('logCount').textContent = count + '/' + logLines.length + '줄';
+}
 </script>
 </body>
 </html>
