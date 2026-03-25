@@ -494,42 +494,33 @@ async function testConnection() {
   result.textContent = '테스트 중...';
   result.style.color = 'var(--yellow)';
 
-  const proxyUrl = document.getElementById('proxyUrl').value.trim();
+  // 서버에서 실제 키를 사용하여 테스트 (마스킹 키 전송 방지)
+  const proxy = window.location.origin;
   const apiUrl = document.getElementById('apiUrl').value.trim();
-  const apiKey = document.getElementById('xApiKey').value.trim();
-
-  if (!apiKey) {
-    result.textContent = 'API Key를 입력해주세요';
-    result.style.color = 'var(--red)';
-    return;
-  }
+  const graphType = document.getElementById('graphType').value.trim() || 'SUPERVISED_HYBRID_SEARCH';
+  const targetUrl = `${apiUrl}/api/service/conversations/${graphType}`;
 
   try {
-    const targetUrl = `${apiUrl}/api/service/conversations/${document.getElementById('graphType').value.trim() || 'SUPERVISED_HYBRID_SEARCH'}`;
-    const testBody = JSON.stringify({
-      query: '테스트',
-      conversation_strid: null,
-      source_types: ['WEB']
-    });
-
-    const res = await fetch(proxyUrl || targetUrl, {
+    const res = await fetch(proxy, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'text/event-stream',
-        'X-API-Key': apiKey,
-        'X-tenant-Domain': document.getElementById('xTenantDomain').value.trim(),
-        'X-Api-UID': document.getElementById('xApiUid').value.trim(),
         'X-Target-URL': targetUrl,
       },
-      body: testBody,
+      body: JSON.stringify({
+        query: '연결테스트',
+        conversation_strid: null,
+        source_types: ['WEB']
+      }),
     });
 
     if (res.ok) {
       result.textContent = `${currentEnv.toUpperCase()} 연결 성공!`;
       result.style.color = 'var(--green)';
     } else {
-      result.textContent = `실패 (${res.status})`;
+      const errText = await res.text().catch(() => '');
+      result.textContent = `실패 (${res.status}) ${errText.substring(0, 50)}`;
       result.style.color = 'var(--red)';
     }
   } catch (e) {
