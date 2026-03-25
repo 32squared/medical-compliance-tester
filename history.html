@@ -221,6 +221,7 @@
           <span class="detail-type" id="detailType"></span>
           <span class="run-env-badge" id="detailEnv"></span>
           <span class="detail-timestamp" id="detailTimestamp"></span>
+          <span id="detailRunBy" style="display:none;font-size:11px;color:var(--text-dim);background:rgba(255,255,255,.08);padding:2px 8px;border-radius:4px">👤</span>
           <div class="detail-actions">
             <button class="btn" style="background:var(--accent);color:#fff;border:none;cursor:pointer" onclick="reEvaluateRun()" title="현재 가이드라인 버전으로 재평가">&#128260; 재평가</button>
             <button class="btn btn-danger" onclick="deleteCurrentRun()">삭제</button>
@@ -358,10 +359,14 @@
         ? '<span style="color:var(--accent);font-size:11px;margin-left:auto">⏳ 실행 중</span>'
         : '';
 
+      const runByName = run.runBy || run.tester || '';
+      const runByBadge = runByName ? '<span style="font-size:10px;color:var(--text-dim);background:rgba(255,255,255,.08);padding:1px 6px;border-radius:4px;margin-left:4px">👤 ' + escapeHtml(runByName) + '</span>' : '';
+
       return '<div class="run-item' + (isActive ? ' active' : '') + (isRunning ? ' running' : '') + '" onclick="selectRun(\'' + rid + '\')" data-runid="' + rid + '">' +
         '<div class="run-item-top">' +
           '<span class="run-type-icon">' + (isBatch ? '&#128230;' : '&#9654;') + '</span>' +
           '<span class="run-env-badge ' + env + '">' + env.toUpperCase() + '</span>' +
+          runByBadge +
           '<span class="run-timestamp">' + formatTimestamp(run.startedAt || run.timestamp) + '</span>' +
           statusBadge +
         '</div>' +
@@ -417,6 +422,12 @@
     envBadge.textContent = env.toUpperCase();
     envBadge.className = 'run-env-badge ' + env;
     document.getElementById('detailTimestamp').textContent = formatTimestamp(run.startedAt || run.completedAt || run.timestamp);
+    const runByEl = document.getElementById('detailRunBy');
+    if (runByEl) {
+      const who = run.runBy || run.tester || '익명';
+      runByEl.textContent = '실행자: ' + who;
+      runByEl.style.display = '';
+    }
     document.getElementById('scTotal').textContent = total;
     document.getElementById('scPassed').textContent = passed;
     document.getElementById('scFailed').textContent = failed;
