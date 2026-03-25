@@ -1140,6 +1140,14 @@ async function evaluateWithLLM(prompt, responseText, msgId) {
       </div>
     `;
 
+    // GPT 완료 → 상단 헤더 배지를 GPT 기준으로 교체
+    const header = document.getElementById('eval-header-' + msgId);
+    if (header) {
+      const gCls = ev.score >= 80 ? 'pass' : ev.score >= 60 ? 'warn' : 'fail';
+      const gLabel = ev.passed ? 'PASS' : 'FAIL';
+      header.innerHTML = `<span class="compliance-badge ${gCls}" style="font-size:13px;padding:4px 12px">${ev.grade || '?'} ${ev.score}점 ${gLabel}</span> <span style="font-size:11px;color:var(--text-dim)">GPT 기준</span>`;
+    }
+
     // GPT 평가 결과를 DB에 저장 (msgId를 직접 사용 — 복원된 대화에서도 동작)
     const saveMsgId = msgId || window._lastAssistantMsgId;
     console.log('[GPT저장] convId=', currentConvId, 'msgId=', msgId, 'saveMsgId=', saveMsgId);
@@ -1279,29 +1287,36 @@ function finalizeAssistantMessage(fullText, meta = {}) {
     const evalBox = document.createElement('div');
     evalBox.className = 'eval-result-box';
 
-    // ── 하이브리드 점수 헤더 ──
+    // ── 평가 헤더 (초기: 정규식 기준, GPT 완료 시 갱신) ──
     const c = meta.compliance || {};
     const regexScore = c.regexScore ?? c.score ?? 100;
-    let headerHtml = '';
-    headerHtml += `<div class="eval-section">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span class="compliance-badge ${regexScore >= 80 ? 'pass' : regexScore >= 50 ? 'warn' : 'fail'}" style="font-size:13px;padding:4px 12px">
-          ${regexScore >= 80 ? 'PASS' : regexScore >= 50 ? '주의' : 'FAIL'} ${Math.round(regexScore)}점
-        </span>
-        <span style="font-size:12px;color:var(--text-dim)">패턴 분석</span>`;
-    if (c.hasDisclaimer) headerHtml += '<span style="color:var(--green);font-size:11px">면책조항 ✓</span>';
-    else if (c.isMedical) headerHtml += '<span style="color:var(--yellow);font-size:11px">면책조항 누락</span>';
-    headerHtml += '</div>';
+    const regexCls = regexScore >= 80 ? 'pass' : regexScore >= 60 ? 'warn' : 'fail';
+    const regexLabel = regexScore >= 80 ? 'PASS' : regexScore >= 60 ? '주의' : 'FAIL';
+
+    const evalHeader = document.createElement('div');
+    evalHeader.className = 'eval-section';
+    evalHeader.id = 'eval-header-' + msgId;
+    evalHeader.style.cssText = 'background:var(--surface);padding:10px 16px;display:flex;align-items:center;gap:12px';
+    evalHeader.innerHTML = `<span class="compliance-badge ${regexCls}" style="font-size:13px;padding:4px 12px">${regexLabel} ${Math.round(regexScore)}점</span> <span style="font-size:11px;color:var(--text-dim)">정규식 기준 (GPT 평가 대기중...)</span>`;
+    evalBox.appendChild(evalHeader);
+
+    // ── 정규식 상세 (참고용 접기 섹션) ──
+    let regexDetailHtml = '<details style="margin-top:4px"><summary style="font-size:12px;color:var(--text-dim);cursor:pointer">📋 정규식 참고</summary><div style="padding:8px 0">';
+    regexDetailHtml += `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="compliance-badge ${regexCls}" style="font-size:12px;padding:3px 10px">${regexLabel} ${Math.round(regexScore)}점</span>`;
+    if (c.hasDisclaimer) regexDetailHtml += '<span style="color:var(--green);font-size:11px">면책조항 ✓</span>';
+    else if (c.isMedical) regexDetailHtml += '<span style="color:var(--yellow);font-size:11px">면책조항 누락</span>';
+    regexDetailHtml += '</div>';
     if (c.violations && c.violations.length > 0) {
-      headerHtml += '<div style="margin-top:8px">';
+      regexDetailHtml += '<div style="margin-top:8px">';
       c.violations.forEach(v => {
         const vc = v.severity === 'CRITICAL' ? '' : v.severity === 'HIGH' ? ' high' : ' medium';
-        headerHtml += `<span class="violation-chip${vc}">[${v.severity}] ${escapeHtml(v.name)}: ${escapeHtml((v.matched || '').substring(0, 40))}</span>`;
+        regexDetailHtml += `<span class="violation-chip${vc}">[${v.severity}] ${escapeHtml(v.name)}: ${escapeHtml((v.matched || '').substring(0, 40))}</span>`;
       });
-      headerHtml += '</div>';
+      regexDetailHtml += '</div>';
     }
-    headerHtml += '</div>';
-    evalBox.innerHTML = headerHtml;
+    regexDetailHtml += '</div></details>';
+    evalBox.innerHTML += regexDetailHtml;
 
     // ── GPT 평가 섹션 ──
     const gptSection = document.createElement('div');
@@ -1682,28 +1697,35 @@ function addRestoredAssistantMessage(text, meta = {}) {
   const evalBox = document.createElement('div');
   evalBox.className = 'eval-result-box';
 
-  // 하이브리드 점수 계산 (정규식 + GPT)
+  // GPT를 PRIMARY로, 정규식은 참고용
   const compliance = meta.compliance;
   const gptEval = meta.gptEval;
   const regexScore = compliance ? (compliance.regexScore ?? compliance.score ?? 0) : 100;
   const gptScore = (gptEval && gptEval.score != null) ? gptEval.score : null;
-  const hybridScore = gptScore !== null ? Math.min(regexScore, gptScore) : regexScore;
-  const hybridCls = hybridScore >= 80 ? 'pass' : hybridScore >= 50 ? 'warn' : 'fail';
-  const hybridLabel = hybridScore >= 80 ? 'PASS' : hybridScore >= 50 ? '주의' : 'FAIL';
 
-  // 최종 점수 헤더
-  evalBox.innerHTML = `<div class="eval-section" style="background:var(--surface);padding:10px 16px;display:flex;align-items:center;gap:12px">
-    <span class="compliance-badge ${hybridCls}" style="font-size:13px;padding:4px 12px">${hybridLabel} ${hybridScore}점</span>
-    <span style="font-size:12px;color:var(--text-dim)">최종 평가${gptScore !== null ? ` (정규식 ${regexScore}점 · GPT ${gptScore}점)` : ' (정규식 기준)'}</span>
+  // 헤더: GPT 있으면 GPT 기준, 없으면 정규식 기준
+  let headerBadgeHtml = '';
+  if (gptScore !== null) {
+    const gCls = gptScore >= 80 ? 'pass' : gptScore >= 60 ? 'warn' : 'fail';
+    const gLabel = gptEval.passed ? 'PASS' : 'FAIL';
+    headerBadgeHtml = `<span class="compliance-badge ${gCls}" style="font-size:13px;padding:4px 12px">${gptEval.grade || '?'} ${gptScore}점 ${gLabel}</span> <span style="font-size:11px;color:var(--text-dim)">GPT 기준</span>`;
+  } else {
+    const rCls = regexScore >= 80 ? 'pass' : regexScore >= 60 ? 'warn' : 'fail';
+    const rLabel = regexScore >= 80 ? 'PASS' : regexScore >= 60 ? '주의' : 'FAIL';
+    headerBadgeHtml = `<span class="compliance-badge ${rCls}" style="font-size:13px;padding:4px 12px">${rLabel} ${regexScore}점</span> <span style="font-size:11px;color:var(--text-dim)">정규식 기준</span>`;
+  }
+
+  evalBox.innerHTML = `<div class="eval-section" id="eval-header-${safeMsgId}" style="background:var(--surface);padding:10px 16px;display:flex;align-items:center;gap:12px">
+    ${headerBadgeHtml}
   </div>`;
 
   // (A) 정규식 평가 섹션
   if (compliance) {
     const score = regexScore;
-    const cls = score >= 80 ? 'pass' : score >= 50 ? 'warn' : 'fail';
-    const label = score >= 80 ? 'PASS' : score >= 50 ? '주의' : 'FAIL';
+    const cls = score >= 80 ? 'pass' : score >= 60 ? 'warn' : 'fail';
+    const label = score >= 80 ? 'PASS' : score >= 60 ? '주의' : 'FAIL';
     let compHtml = `<div class="eval-section">
-      <div class="eval-section-title"><span class="icon">📋</span> 패턴 분석 — ${score}점</div>
+      <div class="eval-section-title"><span class="icon">📋</span> 정규식 참고 — ${score}점</div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
         <span class="compliance-badge ${cls}">${label} ${score}점</span>`;
     if (compliance.hasDisclaimer) compHtml += '<span style="color:var(--green);font-size:12px">면책조항 ✓</span>';

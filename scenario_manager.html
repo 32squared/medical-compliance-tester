@@ -416,6 +416,12 @@
       </div>
     </div>
 
+    <!-- Select All -->
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim);cursor:pointer;margin:0 20px 8px 20px">
+      <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()">
+      <span id="selectAllLabel">전체 선택</span>
+    </label>
+
     <!-- Scenario List -->
     <div class="scenario-list" id="scenarioList">
       <div class="empty-state">
@@ -796,6 +802,16 @@ function renderList() {
     checkedIds.size > 0 ? `${checkedIds.size}개 선택됨` : '';
 
   document.getElementById('bulkActions').style.display = checkedIds.size > 0 ? 'flex' : 'none';
+
+  // Update selectAll checkbox state
+  const selectAllCb = document.getElementById('selectAllCheckbox');
+  if (selectAllCb) {
+    const allCards = document.querySelectorAll('.scenario-card[data-id]');
+    selectAllCb.checked = allCards.length > 0 && checkedIds.size >= allCards.length;
+    selectAllCb.indeterminate = checkedIds.size > 0 && checkedIds.size < allCards.length;
+  }
+  const selectAllLabel = document.getElementById('selectAllLabel');
+  if (selectAllLabel) selectAllLabel.textContent = checkedIds.size > 0 ? `${checkedIds.size}개 선택됨` : '전체 선택';
 }
 
 // ════════════════════════════════════════════
@@ -854,6 +870,34 @@ function toggleCheck(id) {
 
 function clearSelection() {
   checkedIds.clear();
+  renderList();
+}
+
+function toggleSelectAll() {
+  const cb = document.getElementById('selectAllCheckbox');
+  const visible = document.querySelectorAll('.scenario-checkbox, .sc-check');
+  if (cb.checked) {
+    visible.forEach(c => {
+      const id = c.dataset?.id || c.closest('.scenario-card')?.dataset?.id;
+      if (id) checkedIds.add(id);
+    });
+    // Also add all filtered scenario IDs directly
+    let filtered = getSourceFiltered();
+    if (selectedCategory !== 'all') filtered = filtered.filter(s => s.category === selectedCategory);
+    if (selectedRisk !== 'all') filtered = filtered.filter(s => s.riskLevel === selectedRisk);
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(s =>
+        s.id.toLowerCase().includes(q) ||
+        s.prompt.toLowerCase().includes(q) ||
+        (s.subcategory || '').toLowerCase().includes(q) ||
+        (s.tags || []).some(t => t.toLowerCase().includes(q))
+      );
+    }
+    filtered.forEach(s => checkedIds.add(s.id));
+  } else {
+    checkedIds.clear();
+  }
   renderList();
 }
 
@@ -1147,6 +1191,34 @@ async function sendToChat(id) {
       if (gptResult) gptResult.innerHTML = '<span style="color:var(--text-dim)">GPT 평가 건너뜀</span>';
     }
 
+    // GPT-first: Show final judgment based on GPT if available
+    const finalJudgment = document.getElementById('finalJudgmentArea');
+    if (finalJudgment) {
+      const gptEv = window._lastGptEval;
+      const compResult = window._lastComplianceResult;
+      if (gptEv && gptEv.grade) {
+        const gradeColors = { A: 'var(--green)', B: 'var(--accent)', C: 'var(--yellow)', D: 'var(--orange)', F: 'var(--red)' };
+        const gc = gradeColors[gptEv.grade] || 'var(--text-dim)';
+        const regexInfo = compResult ? ` <span style="color:var(--text-dim);font-size:11px">(참고: 정규식 ${compResult.regexScore || compResult.score || 0}점)</span>` : '';
+        finalJudgment.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--surface2);border-radius:8px;border:1px solid ${gc}44">
+          <span style="font-size:11px;color:var(--text-dim)">최종 판정 기준:</span>
+          <span style="font-size:14px;font-weight:800;color:${gc}">&#129302; GPT ${gptEv.grade} (${gptEv.score ?? '?'}점)</span>
+          <span style="font-weight:600">${gptEv.passed ? '<span style="color:var(--green)">PASS</span>' : '<span style="color:var(--red)">FAIL</span>'}</span>
+          ${regexInfo}
+        </div>`;
+        finalJudgment.style.display = 'block';
+      } else if (compResult) {
+        const regexScore = compResult.regexScore || compResult.score || 0;
+        const passed = (compResult.violations || []).length === 0;
+        finalJudgment.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--surface2);border-radius:8px">
+          <span style="font-size:11px;color:var(--text-dim)">최종 판정 기준:</span>
+          <span style="font-size:14px;font-weight:700">&#128203; 정규식 ${regexScore}점</span>
+          <span style="font-weight:600">${passed ? '<span style="color:var(--green)">PASS</span>' : '<span style="color:var(--red)">FAIL</span>'}</span>
+        </div>`;
+        finalJudgment.style.display = 'block';
+      }
+    }
+
     // 이력 저장 (프론트에서 받은 결과를 직접 서버에 전달)
     fetch('/api/history/save', {
       method: 'POST',
@@ -1201,6 +1273,7 @@ function openStreamModal(scenario) {
           </div>
           <div id="streamResponse" style="background:var(--bg);padding:14px;border-radius:8px;font-size:13px;line-height:1.7;border:1px solid var(--accent);white-space:pre-wrap;min-height:120px;max-height:300px;overflow-y:auto;color:var(--text)"></div>
         </div>
+        <div id="finalJudgmentArea" style="display:none"></div>
         <div id="complianceArea">
           <label style="font-size:12px;color:var(--yellow);font-weight:600;display:block;margin-bottom:4px">&#128203; 의료법 검수 (정규식)</label>
           <div id="complianceResult" style="background:var(--bg);padding:12px;border-radius:8px;font-size:12px;border:1px solid var(--border);color:var(--text-dim)">&#8987; AI 응답 완료 후 자동 검사됩니다</div>

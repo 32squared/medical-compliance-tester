@@ -455,19 +455,26 @@
       const respTime = r.responseTime ? r.responseTime + 'ms' : '-';
       const response = r.response || '응답 없음';
       const compliance = r.compliance || null;
+      const gptEval = r.gptEval || null;
+      const gradeColors = { A: '#22c55e', B: '#38bdf8', C: '#eab308', D: '#f97316', F: '#ef4444' };
 
-      // 의료법 검수 표시 (하이브리드 점수)
+      // Determine finalSource
+      const finalSource = (gptEval && gptEval.grade) ? 'gpt' : 'regex';
+      const sourceIndicator = finalSource === 'gpt' ? '\uD83E\uDD16 GPT 기준' : '\uD83D\uDCCB 정규식 기준';
+
+      // 의료법 검수 표시
       let complianceHtml = '';
       if (compliance && compliance.score != null) {
         const regexScore = compliance.regexScore || compliance.score || 0;
-        const gptScore = (r.gptEval && r.gptEval.score != null) ? r.gptEval.score : null;
-        const hybridScore = gptScore !== null ? Math.min(regexScore, gptScore) : regexScore;
+        const gptScore = (gptEval && gptEval.score != null) ? gptEval.score : null;
         const guideVer = compliance.guidelineVersion || r.guidelineVersion || '';
         const verLabel = guideVer ? ' <span style="color:var(--text-dim);font-size:10px">[가이드라인 v' + escapeHtml(guideVer) + ']</span>' : '';
-        const cColor = compliance.violations && compliance.violations.length > 0 ? 'var(--red)' : 'var(--green)';
-        const scoreLabel = gptScore !== null
-          ? '하이브리드: ' + hybridScore + '점 (패턴: ' + regexScore + ' / GPT: ' + gptScore + ')'
-          : '패턴 분석: ' + regexScore + '점';
+        let scoreLabel;
+        if (finalSource === 'gpt') {
+          scoreLabel = '참고 — 패턴 분석: ' + regexScore + '점';
+        } else {
+          scoreLabel = '패턴 분석: ' + regexScore + '점';
+        }
         complianceHtml = '<div class="result-section">' +
           '<div class="result-section-title" style="color:var(--yellow)">&#128203; 의료법 검수 (' + scoreLabel + ')' + verLabel + '</div>' +
           '<div class="result-section-body">' +
@@ -486,33 +493,50 @@
       }
 
       // GPT 평가 표시
-      const gptEval = r.gptEval || null;
-      const gradeColors = { A: '#22c55e', B: '#38bdf8', C: '#eab308', D: '#f97316', F: '#ef4444' };
       let gptHtml = '';
       if (gptEval && gptEval.grade) {
         const gc = gradeColors[gptEval.grade] || '#94a3b8';
+        const regexRef = (compliance && compliance.score != null)
+          ? ' <span style="color:var(--text-dim);font-size:10px">(참고: 정규식 ' + (compliance.regexScore || compliance.score || 0) + '점)</span>'
+          : '';
         gptHtml = '<div class="result-section">' +
-          '<div class="result-section-title" style="color:var(--purple)">&#129302; GPT 평가</div>' +
+          '<div class="result-section-title" style="color:var(--purple)">&#129302; GPT 평가 (최종 판정 기준)</div>' +
           '<div class="result-section-body">' +
             '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">' +
               '<span style="font-size:16px;font-weight:800;color:' + gc + ';background:' + gc + '22;padding:2px 8px;border-radius:6px">' + gptEval.grade + '</span>' +
               '<span>' + (gptEval.score != null ? gptEval.score + '점' : '') + ' — ' +
                 (gptEval.passed ? '<span style="color:var(--green)">PASS</span>' : '<span style="color:var(--red)">FAIL</span>') +
-              '</span>' +
+              '</span>' + regexRef +
             '</div>' +
             (gptEval.summary ? '<div style="color:var(--text-dim);font-size:11px">' + escapeHtml(gptEval.summary) + '</div>' : '') +
             (gptEval.recommendation ? '<div style="margin-top:4px;padding:6px;background:var(--accent-dim);border-radius:4px;color:var(--accent);font-size:11px">&#128161; ' + escapeHtml(gptEval.recommendation) + '</div>' : '') +
           '</div></div>';
       }
 
+      // Header score display: GPT-first
+      let headerScore = '';
+      if (finalSource === 'gpt') {
+        const gc = gradeColors[gptEval.grade] || '#94a3b8';
+        headerScore = '<span style="font-size:10px;font-weight:700;color:' + gc + '">' + gptEval.grade + ' ' + (gptEval.score != null ? gptEval.score + '점' : '') + '</span>';
+        if (compliance && compliance.score != null) {
+          headerScore += '<span style="font-size:9px;color:var(--text-dim)" title="정규식 참고">(' + (compliance.regexScore || compliance.score) + ')</span>';
+        }
+      } else if (compliance && compliance.score != null) {
+        const rs = compliance.regexScore || compliance.score || 0;
+        headerScore = '<span style="font-size:10px;color:' + (compliance.violations && compliance.violations.length > 0 ? 'var(--red)' : 'var(--green)') + '">' + rs + '점</span>';
+      }
+
+      // Order: GPT first if available, then compliance as reference
+      const detailSections = finalSource === 'gpt' ? (gptHtml + complianceHtml) : (complianceHtml + gptHtml);
+
       return '<div class="result-card" id="result-' + idx + '">' +
         '<div class="result-card-header" onclick="toggleResult(' + idx + ')">' +
           '<span class="result-scenario-id">' + (r.scenarioId || 'S-' + (idx + 1)) + '</span>' +
           '<span class="result-status ' + statusClass + '">' + statusLabel + '</span>' +
+          '<span style="font-size:9px;color:var(--text-dim);background:var(--surface2);padding:1px 6px;border-radius:4px">' + sourceIndicator + '</span>' +
           '<span class="result-prompt" title="' + prompt.replace(/"/g, '&quot;') + '">' + truncPrompt + '</span>' +
           '<span class="result-time">' + respTime + '</span>' +
-          (compliance ? (function(){ var rs = compliance.regexScore || compliance.score || 0; var gs = (gptEval && gptEval.score != null) ? gptEval.score : null; var hs = gs !== null ? Math.min(rs, gs) : rs; return '<span style="font-size:10px;color:' + (compliance.violations && compliance.violations.length > 0 ? 'var(--red)' : 'var(--green)') + '" title="패턴:' + rs + (gs !== null ? ' GPT:' + gs : '') + '">' + hs + '점</span>'; })() : '') +
-          (gptEval && gptEval.grade ? '<span style="font-size:10px;font-weight:700;color:' + (gradeColors[gptEval.grade] || '#94a3b8') + '">' + gptEval.grade + '</span>' : '') +
+          headerScore +
           '<span class="result-expand-icon">&#9660;</span>' +
         '</div>' +
         '<div class="result-detail">' +
@@ -524,8 +548,7 @@
             '<div class="result-section-title">응답</div>' +
             '<div class="result-section-body" style="white-space:pre-wrap">' + escapeHtml(response) + '</div>' +
           '</div>' +
-          complianceHtml +
-          gptHtml +
+          detailSections +
         '</div>' +
       '</div>';
     }).join('');

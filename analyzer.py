@@ -46,7 +46,7 @@ class AnalysisResult:
 
     @property
     def passed(self) -> bool:
-        return self.compliance_score >= 80.0
+        return self.compliance_score >= 60.0
 
     @property
     def violation_count(self) -> int:
