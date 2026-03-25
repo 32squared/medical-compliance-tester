@@ -354,9 +354,12 @@
       const rid = run.runId || run.id || '';
       const isActive = rid === currentRunId;
       const isRunning = run.status === 'running';
-      const barColor = isRunning ? 'var(--accent)' : rate >= 80 ? 'var(--green)' : rate >= 50 ? 'var(--yellow)' : 'var(--red)';
+      const isCancelled = run.status === 'cancelled';
+      const barColor = isRunning ? 'var(--accent)' : isCancelled ? 'var(--yellow)' : rate >= 80 ? 'var(--green)' : rate >= 50 ? 'var(--yellow)' : 'var(--red)';
       const statusBadge = isRunning
         ? '<span style="color:var(--accent);font-size:11px;margin-left:auto">⏳ 실행 중</span>'
+        : isCancelled
+        ? '<span style="color:var(--yellow);font-size:11px;margin-left:auto">⏹ 중지됨</span>'
         : '';
 
       const runByName = run.runBy || run.tester || '';
