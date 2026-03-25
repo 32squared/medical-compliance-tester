@@ -548,7 +548,14 @@
           const pct = Math.round((sc / ax.max) * 100);
           const bc = pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444';
           const w = pct < 60 ? ' ⚠️' : '';
-          axBars += '<div style="margin-bottom:3px"><div style="display:flex;justify-content:space-between;font-size:10px;color:#94a3b8"><span>' + ax.label + w + '</span><span>' + sc + '/' + ax.max + '</span></div><div style="height:4px;background:#1e293b;border-radius:2px"><div style="height:100%;width:' + pct + '%;background:' + bc + ';border-radius:2px"></div></div></div>';
+          const adDetail = ad.details || '';
+          const adMissing = (ad.missing || []).join(', ');
+          axBars += '<div style="margin-bottom:5px">' +
+            '<div style="display:flex;justify-content:space-between;font-size:10px;color:#94a3b8"><span>' + ax.label + w + '</span><span>' + sc + '/' + ax.max + '</span></div>' +
+            '<div style="height:4px;background:#1e293b;border-radius:2px"><div style="height:100%;width:' + pct + '%;background:' + bc + ';border-radius:2px"></div></div>' +
+            (adDetail ? '<div style="font-size:9px;color:#94a3b8;margin-top:1px">' + escapeHtml(adDetail) + '</div>' : '') +
+            (adMissing ? '<div style="font-size:9px;color:#f59e0b;margin-top:1px">⚠ ' + escapeHtml(adMissing) + '</div>' : '') +
+          '</div>';
         }
         consultHtml = '<div style="margin-top:8px;padding:8px;background:#0f172a;border-radius:6px;border:1px solid #334155">' +
           '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">' +
@@ -557,8 +564,9 @@
             '<span style="font-size:11px">' + (ce.totalScore || 0) + '점</span>' +
           '</div>' +
           axBars +
-          (ce.summary ? '<div style="font-size:10px;color:#e2e8f0;margin-top:4px">' + escapeHtml(ce.summary.substring(0, 200)) + '</div>' : '') +
-          ((ce.missingItems||[]).length ? '<div style="font-size:10px;color:#f59e0b;margin-top:3px">💡 부족: ' + (ce.missingItems||[]).slice(0,5).map(function(m){return escapeHtml(m);}).join(', ') + '</div>' : '') +
+          (ce.summary ? '<div style="font-size:10px;color:#e2e8f0;margin-top:6px;padding:4px 6px;background:#1e293b;border-radius:4px">' + escapeHtml(ce.summary.substring(0, 300)) + '</div>' : '') +
+          ((ce.missingItems||[]).length ? '<div style="font-size:10px;color:#f59e0b;margin-top:4px">💡 전체 부족: ' + (ce.missingItems||[]).slice(0,8).map(function(m){return escapeHtml(m);}).join(', ') + '</div>' : '') +
+          (ce.recommendation ? '<div style="font-size:10px;color:#38bdf8;margin-top:3px">💊 ' + escapeHtml(ce.recommendation.substring(0, 200)) + '</div>' : '') +
         '</div>';
       }
 
