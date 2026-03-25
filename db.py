@@ -37,10 +37,19 @@ DEFAULT_CATEGORIES = [
     {"id": "edge", "name": "경계 사례", "prefix": "EDGE", "description": "정보 제공과 의료 행위의 경계", "color": "#06b6d4"},
 ]
 
-# ── 증상별 문진 체크리스트 기본 데이터 ──
-DEFAULT_CHECKLISTS = [
+# ── 증상별 문진 체크리스트 기본 데이터 (외부 파일 로드) ──
+def _load_default_checklists():
+    """consultation_checklists.json에서 42개 증상 체크리스트 로드"""
+    checklist_path = os.path.join(os.path.dirname(__file__), 'consultation_checklists.json')
+    try:
+        with open(checklist_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return []
+
+DEFAULT_CHECKLISTS = _load_default_checklists() or [
     {
-        "symptom_key": "headache", "symptom_name": "두통", "category": "신경계",
+        "symptom_key": "headache", "symptom_name": "두통", "category": "neuro",
         "required_questions": [
             {"id": "location", "label": "부위", "question": "어느 부위가 아프세요?", "keywords": ["앞머리","뒷머리","관자놀이","한쪽","양쪽","전체"]},
             {"id": "pattern", "label": "양상", "question": "어떤 느낌이에요?", "keywords": ["쑤시","찌르","묵직","욱신","조이","박동"]},
@@ -919,6 +928,12 @@ def init_checklists():
             existing = conn.execute("SELECT symptom_key FROM consultation_checklists WHERE symptom_key = ?",
                                     (cl['symptom_key'],)).fetchone()
             if not existing:
+                # guidance_criteria에 연령대별 키워드 + 진료과 + 세부증상 통합
+                guidance = {
+                    'department': cl.get('department', ''),
+                    'detail': cl.get('detail', ''),
+                    'ageSpecific': cl.get('age_specific', {}),
+                }
                 conn.execute(
                     """INSERT INTO consultation_checklists
                        (symptom_key, symptom_name, category, required_questions_json, red_flags_json,
@@ -928,7 +943,7 @@ def init_checklists():
                      json.dumps(cl.get('required_questions', []), ensure_ascii=False),
                      json.dumps(cl.get('red_flags', []), ensure_ascii=False),
                      json.dumps(cl.get('context_questions', []), ensure_ascii=False),
-                     json.dumps(cl.get('guidance_criteria', []), ensure_ascii=False),
+                     json.dumps(guidance, ensure_ascii=False),
                      now, now)
                 )
 
@@ -1023,16 +1038,71 @@ def delete_checklist(symptom_key):
 
 def match_checklists(query_text):
     """사용자 질문에서 증상 키워드 매칭하여 관련 체크리스트 반환"""
+    # 증상 유의어 매핑 (사용자 표현 → 체크리스트 키워드)
+    SYMPTOM_ALIASES = {
+        'headache': ['머리','두통','편두통','머리아','머리가','뒷머리','앞머리','관자놀이','두개'],
+        'abdominal_pain': ['배','복통','배아','배가','속','아랫배','윗배','명치','옆구리'],
+        'chest_pain': ['가슴','흉통','가슴아','가슴이','쥐어짜','답답'],
+        'chest_pain_resp': ['가슴','흉통','숨쉴때','가슴통'],
+        'cough': ['기침','콜록','가래','객담'],
+        'fatigue': ['피곤','피로','무기력','지침','기운','힘이 없','지쳤'],
+        'fever': ['열','발열','고열','미열','오한','38도','39도','40도','체온'],
+        'dizziness': ['어지러','어지럼','빙빙','현기증','핑','눈앞'],
+        'back_pain': ['허리','요통','디스크','척추','허리아','허리가'],
+        'knee_pain': ['무릎','관절','무릎아','무릎이'],
+        'shoulder_pain': ['어깨','오십견','어깨아','어깨가','팔이'],
+        'heartburn': ['속쓰림','역류','쓰린','속이','소화','체한','더부룩'],
+        'diarrhea': ['설사','묽은','물변'],
+        'constipation': ['변비','배변','못봐','안나'],
+        'bloody_stool': ['혈변','피','검은변','선혈'],
+        'dyspnea': ['숨','호흡','답답','헐떡','가빠','숨차'],
+        'palpitation': ['두근','심장','빨리뛰','심계'],
+        'insomnia': ['잠','불면','수면','못자','뒤척','깬다'],
+        'anxiety': ['불안','긴장','공황','초조','걱정'],
+        'depression': ['우울','무기력','슬프','의욕','흥미'],
+        'stress': ['스트레스','번아웃','지침','힘들'],
+        'rash': ['발진','두드러기','빨간','반점','좁쌀'],
+        'itching': ['가려','소양','긁','간지'],
+        'numbness': ['저림','저린','마비','감각','찌릿'],
+        'weight_change': ['체중','살이','빠지','쪘'],
+        'body_pain': ['몸살','근육통','온몸','전신'],
+        'dysuria': ['소변','배뇨','오줌','찌릿'],
+        'frequency': ['소변','자주','빈뇨','화장실'],
+        'hematuria': ['혈뇨','피','소변에'],
+        'menstrual': ['생리','월경','불규칙'],
+        'vision_loss': ['시력','안보','흐릿','눈','시야'],
+        'eye_pain': ['눈','충혈','이물감','눈아'],
+        'ear_pain': ['귀','이명','귀아','중이염'],
+        'nasal_congestion': ['코','코막','비염','축농'],
+        'throat_pain': ['목','인후','목아','쉰','삼킴'],
+        'seizure': ['경련','발작','의식','쓰러'],
+        'memory_loss': ['기억','깜빡','집중','건망'],
+        'myalgia': ['근육','근육통','뭉침','담','결림'],
+        'leg_edema': ['부종','붓','부은','발목'],
+        'bp_abnormal': ['혈압','고혈압','저혈압','어지러'],
+        'acne': ['여드름','뾰루지','피부'],
+        'skin_tumor': ['점','혹','피부','종양','사마귀'],
+    }
+
     checklists = get_checklists()
     matched = []
     text_lower = query_text.lower()
     for cl in checklists:
         name = cl.get('symptomName', '')
-        # 증상명 직접 매칭
+        key = cl.get('symptomKey', '')
+        # 1. 증상명 직접 매칭
         if name in query_text:
+            cl['_matchScore'] = 100
             matched.append(cl)
             continue
-        # 필수 질문의 키워드로 매칭
+        # 2. 유의어 매칭
+        aliases = SYMPTOM_ALIASES.get(key, [])
+        alias_score = sum(2 for a in aliases if a in text_lower)
+        if alias_score >= 2:
+            cl['_matchScore'] = alias_score * 5
+            matched.append(cl)
+            continue
+        # 3. 필수 질문의 키워드로 매칭
         score = 0
         for rq in cl.get('requiredQuestions', []):
             for kw in rq.get('keywords', []):
