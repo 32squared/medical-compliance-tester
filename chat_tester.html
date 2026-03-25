@@ -2262,17 +2262,33 @@ async function doExtractScenario(convId) {
       const sc = data.scenario;
       const resultDiv = document.getElementById('extractResult');
       resultDiv.style.display = 'block';
+      window._extractedScenario = sc;
+      const scId = sc.id || '';
       resultDiv.innerHTML = `<div style="background:var(--surface);border-radius:8px;padding:12px;border:1px solid var(--border)">
-        <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:8px">✅ 시나리오 생성 완료</div>
-        <div style="font-size:12px;color:var(--text)"><b>ID:</b> ${escapeHtml(sc.id)}</div>
-        <div style="font-size:12px;color:var(--text)"><b>카테고리:</b> ${escapeHtml(sc.category)}</div>
-        <div style="font-size:12px;color:var(--text)"><b>리스크:</b> ${escapeHtml(sc.riskLevel)}</div>
-        <div style="font-size:12px;color:var(--text)"><b>프롬프트:</b> ${escapeHtml(sc.prompt.substring(0, 100))}</div>
-        <div style="font-size:12px;color:var(--text)"><b>기대동작:</b> ${escapeHtml(sc.expectedBehavior)}</div>
-        <div style="margin-top:8px"><a href="/manager" style="color:var(--accent);font-size:12px">시나리오 관리에서 확인 →</a></div>
+        <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:10px">✅ 시나리오 추출 완료 — 내용을 확인 후 저장하세요</div>
+        <div style="margin-bottom:6px"><label style="font-size:11px;color:var(--text-dim)">ID</label>
+          <input id="extId" value="${escapeHtml(scId)}" readonly style="width:100%;padding:5px 8px;background:var(--bg);color:var(--text-dim);border:1px solid var(--border);border-radius:4px;font-size:12px;box-sizing:border-box"></div>
+        <div style="margin-bottom:6px"><label style="font-size:11px;color:var(--text-dim)">카테고리</label>
+          <select id="extCategory" style="width:100%;padding:5px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;font-size:12px">
+            ${(window._categories||[]).map(c => '<option value="'+c.id+'"'+(c.id===sc.category?' selected':'')+'>'+escapeHtml(c.name)+'</option>').join('')}
+          </select></div>
+        <div style="margin-bottom:6px"><label style="font-size:11px;color:var(--text-dim)">리스크</label>
+          <select id="extRisk" style="width:100%;padding:5px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;font-size:12px">
+            ${['LOW','MEDIUM','HIGH','CRITICAL'].map(r => '<option value="'+r+'"'+(r===sc.riskLevel?' selected':'')+'>'+r+'</option>').join('')}
+          </select></div>
+        <div style="margin-bottom:6px"><label style="font-size:11px;color:var(--text-dim)">프롬프트</label>
+          <textarea id="extPrompt" rows="2" style="width:100%;padding:5px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;font-size:12px;resize:vertical;box-sizing:border-box">${escapeHtml(sc.prompt)}</textarea></div>
+        <div style="margin-bottom:6px"><label style="font-size:11px;color:var(--text-dim)">기대 동작</label>
+          <textarea id="extExpected" rows="2" style="width:100%;padding:5px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;font-size:12px;resize:vertical;box-sizing:border-box">${escapeHtml(sc.expectedBehavior||'')}</textarea></div>
+        <div style="margin-bottom:6px"><label style="font-size:11px;color:var(--text-dim)">태그 (쉼표 구분)</label>
+          <input id="extTags" value="${escapeHtml((sc.tags||[]).join(', '))}" style="width:100%;padding:5px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;font-size:12px;box-sizing:border-box"></div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button onclick="saveExtractedScenario()" style="flex:1;padding:8px;background:var(--green);color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer">💾 시나리오 저장</button>
+          <button onclick="document.getElementById('extractResult').style.display='none'" style="padding:8px 16px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:13px;cursor:pointer">취소</button>
+        </div>
       </div>`;
-      btn.textContent = '완료!';
-      showToast(`시나리오 ${sc.id} 생성 완료`, 'success');
+      btn.disabled = false;
+      btn.textContent = '추출하기';
     } else {
       showToast(data.error || '추출 실패', 'error');
       btn.disabled = false;
@@ -2284,6 +2300,44 @@ async function doExtractScenario(convId) {
     btn.textContent = '추출하기';
   }
 }
+
+async function saveExtractedScenario() {
+  const sc = window._extractedScenario;
+  if (!sc) return showToast('저장할 시나리오가 없습니다', 'error');
+  const updated = {
+    category: document.getElementById('extCategory').value,
+    riskLevel: document.getElementById('extRisk').value,
+    prompt: document.getElementById('extPrompt').value.trim(),
+    expectedBehavior: document.getElementById('extExpected').value.trim(),
+    tags: document.getElementById('extTags').value.split(',').map(t => t.trim()).filter(Boolean),
+  };
+  if (!updated.prompt) return showToast('프롬프트를 입력하세요', 'error');
+  try {
+    const res = await fetch(`/api/scenarios/${sc.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updated)
+    });
+    if (res.ok) {
+      showToast('시나리오가 저장되었습니다', 'success');
+      document.getElementById('extractResult').innerHTML = `<div style="background:var(--surface);border-radius:8px;padding:12px;text-align:center;border:1px solid var(--green)">
+        <div style="font-size:13px;color:var(--green);font-weight:700">✅ 저장 완료: ${escapeHtml(sc.id)}</div>
+        <div style="margin-top:6px;font-size:12px;color:var(--text-dim)">시나리오 관리에서 확인하세요</div>
+      </div>`;
+    } else {
+      const err = await res.json().catch(() => ({}));
+      showToast(err.error || '저장 실패', 'error');
+    }
+  } catch(e) { showToast('저장 실패: ' + e.message, 'error'); }
+}
+
+// 카테고리 목록 로드 (추출 시 선택용)
+(async function loadCategories() {
+  try {
+    const res = await fetch('/api/categories');
+    if (res.ok) window._categories = (await res.json()).categories || [];
+  } catch(e) {}
+})();
 </script>
 </body>
 </html>
