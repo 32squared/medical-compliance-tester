@@ -87,6 +87,9 @@ CREATE TABLE IF NOT EXISTS comments (
     user_name TEXT NOT NULL,
     category TEXT NOT NULL,
     content TEXT NOT NULL CHECK(length(content) <= 2000),
+    selected_text TEXT DEFAULT '',
+    user_query TEXT DEFAULT '',
+    full_response TEXT DEFAULT '',
     created_at TEXT NOT NULL,
     FOREIGN KEY (message_id) REFERENCES messages(id),
     FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
@@ -153,11 +156,18 @@ def init_db(db_path=None):
     conn.execute("PRAGMA foreign_keys=ON")
     conn.execute("PRAGMA busy_timeout=5000")
     conn.executescript(SCHEMA)
-    # 마이그레이션: 기존 DB에 status 컬럼 추가
-    try:
-        conn.execute("ALTER TABLE test_runs ADD COLUMN status TEXT DEFAULT 'completed'")
-    except sqlite3.OperationalError:
-        pass  # 이미 존재
+    # 마이그레이션: 기존 DB에 컬럼 추가
+    migrations = [
+        "ALTER TABLE test_runs ADD COLUMN status TEXT DEFAULT 'completed'",
+        "ALTER TABLE comments ADD COLUMN selected_text TEXT DEFAULT ''",
+        "ALTER TABLE comments ADD COLUMN user_query TEXT DEFAULT ''",
+        "ALTER TABLE comments ADD COLUMN full_response TEXT DEFAULT ''",
+    ]
+    for sql in migrations:
+        try:
+            conn.execute(sql)
+        except sqlite3.OperationalError:
+            pass  # 이미 존재
     conn.commit()
     conn.close()
     return path
@@ -449,9 +459,11 @@ def add_comment(conv_id, msg_id, data):
 
         actual_msg_id = msg['id']
         conn.execute(
-            "INSERT INTO comments (id, message_id, conversation_id, user_id, user_name, category, content, created_at) VALUES (?,?,?,?,?,?,?,?)",
+            "INSERT INTO comments (id, message_id, conversation_id, user_id, user_name, category, content, selected_text, user_query, full_response, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
             (comment_id, actual_msg_id, conv_id, data.get('userId', ''), data.get('userName', ''),
-             data.get('category', '기타'), content, now)
+             data.get('category', '기타'), content,
+             data.get('selectedText', ''), data.get('userQuery', ''), data.get('fullResponse', ''),
+             now)
         )
     return {"commentId": comment_id, "msgId": actual_msg_id, "createdAt": now}
 

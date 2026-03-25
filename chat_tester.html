@@ -2054,6 +2054,22 @@ function exportChat() {
   });
 
   function openContextComment(msgDiv, msgId, selectedText) {
+    // 해당 턴의 질문 추출 (이전 user 메시지)
+    let userQuery = '';
+    let prev = msgDiv.previousElementSibling;
+    while (prev) {
+      if (prev.classList.contains('user')) {
+        const bubble = prev.querySelector('.bubble');
+        userQuery = bubble ? bubble.textContent.trim() : '';
+        break;
+      }
+      prev = prev.previousElementSibling;
+    }
+
+    // 해당 턴의 AI 답변 전체 추출
+    const assistantBubble = msgDiv.querySelector('.bubble');
+    const fullResponse = assistantBubble ? assistantBubble.textContent.trim() : '';
+
     // 선택 텍스트 하이라이트
     const sel = window.getSelection();
     if (sel.rangeCount > 0) {
@@ -2065,6 +2081,9 @@ function exportChat() {
       } catch(e) { /* cross-node selection — 무시 */ }
     }
 
+    // 컨텍스트를 임시 저장
+    window._ctxCommentData = { msgId, selectedText, userQuery, fullResponse };
+
     // 인라인 커멘트 폼 생성
     const existing = document.getElementById('ctxCommentForm');
     if (existing) existing.remove();
@@ -2074,7 +2093,14 @@ function exportChat() {
     form.style.cssText = 'margin-top:10px;padding:12px;background:var(--bg);border:1px solid var(--accent);border-radius:8px;';
     form.innerHTML = `
       <div style="font-size:12px;font-weight:600;margin-bottom:6px;color:var(--accent)">💬 선택 텍스트 커멘트</div>
-      <div style="font-size:11px;color:var(--text-dim);background:var(--surface);padding:6px 8px;border-radius:4px;margin-bottom:8px;border-left:3px solid var(--yellow);max-height:60px;overflow-y:auto">${escapeHtml(selectedText)}</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:6px">
+        <div style="background:var(--surface);padding:4px 8px;border-radius:4px;margin-bottom:4px;border-left:3px solid var(--accent)">
+          <strong>질문:</strong> ${escapeHtml(userQuery).substring(0, 100)}${userQuery.length > 100 ? '...' : ''}
+        </div>
+        <div style="background:var(--surface);padding:4px 8px;border-radius:4px;border-left:3px solid var(--yellow);max-height:40px;overflow-y:auto">
+          <strong>선택:</strong> ${escapeHtml(selectedText).substring(0, 150)}${selectedText.length > 150 ? '...' : ''}
+        </div>
+      </div>
       <select id="ctxCommentCat" style="width:100%;padding:6px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px;margin-bottom:6px">
         <option value="부정확한 정보">부정확한 정보</option><option value="불충분한 답변">불충분한 답변</option>
         <option value="위험한 조언">위험한 조언</option><option value="면책 조항 누락">면책 조항 누락</option>
@@ -2083,38 +2109,42 @@ function exportChat() {
       </select>
       <textarea id="ctxCommentText" rows="2" placeholder="의견을 입력하세요..." style="width:100%;padding:6px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px;resize:none;box-sizing:border-box"></textarea>
       <div style="display:flex;gap:6px;margin-top:6px">
-        <button onclick="submitCtxComment('${msgId}', '${escapeHtml(selectedText).replace(/'/g, "\\'")}')" style="padding:6px 16px;background:var(--accent);color:#0f172a;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">등록</button>
+        <button onclick="submitCtxComment()" style="padding:6px 16px;background:var(--accent);color:#0f172a;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">등록</button>
         <button onclick="document.getElementById('ctxCommentForm').remove();document.querySelectorAll('.highlight-comment').forEach(m=>{const p=m.parentNode;p.replaceChild(document.createTextNode(m.textContent),m);p.normalize()})" style="padding:6px 16px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer">취소</button>
       </div>
     `;
 
-    // msgDiv 하단에 추가
-    const bubble = msgDiv.querySelector('.bubble');
-    if (bubble) bubble.parentNode.insertBefore(form, bubble.nextSibling);
+    if (assistantBubble) assistantBubble.parentNode.insertBefore(form, assistantBubble.nextSibling);
     else msgDiv.appendChild(form);
-
     document.getElementById('ctxCommentText').focus();
   }
 })();
 
-async function submitCtxComment(msgId, selectedText) {
+async function submitCtxComment() {
+  const data = window._ctxCommentData;
+  if (!data) { showToast('커멘트 데이터 없음', 'error'); return; }
   const cat = document.getElementById('ctxCommentCat').value;
   const content = document.getElementById('ctxCommentText').value.trim();
   if (!content) { showToast('커멘트 내용을 입력하세요', 'error'); return; }
   if (!currentConvId) { showToast('대화가 저장되지 않았습니다', 'error'); return; }
 
-  const fullContent = `[선택: "${selectedText.substring(0, 100)}"]\n${content}`;
-
   try {
     const res = await fetch(`${getProxyUrl()}/api/conversations/${currentConvId}/comments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ msgId: msgId || window._lastAssistantMsgId, category: cat, content: fullContent })
+      body: JSON.stringify({
+        msgId: data.msgId || window._lastAssistantMsgId,
+        category: cat,
+        content: content,
+        selectedText: data.selectedText,
+        userQuery: data.userQuery,
+        fullResponse: data.fullResponse
+      })
     });
     if (res.ok) {
       showToast('커멘트가 등록되었습니다', 'success');
       document.getElementById('ctxCommentForm')?.remove();
-      // 하이라이트 유지
+      window._ctxCommentData = null;
     } else {
       const err = await res.json().catch(() => ({}));
       showToast(err.error || '커멘트 등록 실패', 'error');
