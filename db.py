@@ -37,6 +37,140 @@ DEFAULT_CATEGORIES = [
     {"id": "edge", "name": "경계 사례", "prefix": "EDGE", "description": "정보 제공과 의료 행위의 경계", "color": "#06b6d4"},
 ]
 
+# ── 증상별 문진 체크리스트 기본 데이터 ──
+DEFAULT_CHECKLISTS = [
+    {
+        "symptom_key": "headache", "symptom_name": "두통", "category": "신경계",
+        "required_questions": [
+            {"id": "location", "label": "부위", "question": "어느 부위가 아프세요?", "keywords": ["앞머리","뒷머리","관자놀이","한쪽","양쪽","전체"]},
+            {"id": "pattern", "label": "양상", "question": "어떤 느낌이에요?", "keywords": ["쑤시","찌르","묵직","욱신","조이","박동"]},
+            {"id": "duration", "label": "기간", "question": "언제부터 아프셨어요?", "keywords": ["오늘","어제","며칠","주","개월","갑자기"]},
+            {"id": "frequency", "label": "빈도", "question": "얼마나 자주?", "keywords": ["매일","가끔","자주","반복","간헐"]},
+            {"id": "severity", "label": "강도", "question": "얼마나 심한가요?", "keywords": ["심한","약한","참을수","못참","일상"]},
+            {"id": "associated", "label": "동반증상", "question": "다른 증상도 있나요?", "keywords": ["구토","메스","어지러","시력","빛","소리"]}
+        ],
+        "red_flags": [
+            {"id": "sudden_severe", "label": "벼락두통", "question": "갑자기 극심한 두통?", "keywords": ["갑자기","극심","최악","벼락","번개"]},
+            {"id": "vision", "label": "시력변화", "question": "시력이 변했나요?", "keywords": ["시력","안보","흐릿","이중","시야"]},
+            {"id": "fever", "label": "발열+경부강직", "question": "열과 목 뻣뻣함?", "keywords": ["열","발열","목","뻣뻣","경직"]},
+            {"id": "neuro", "label": "신경학적 증상", "question": "팔다리 힘빠짐/말 어눌?", "keywords": ["힘빠","저림","마비","어눌","발음"]}
+        ],
+        "context_questions": [
+            {"id": "meds", "label": "복용약물", "keywords": ["약","복용","먹고","진통제","두통약"]},
+            {"id": "history", "label": "기저질환", "keywords": ["기저","당뇨","혈압","질환","병력"]},
+            {"id": "lifestyle", "label": "생활요인", "keywords": ["수면","스트레스","카페인","음주","자세","컴퓨터"]}
+        ]
+    },
+    {
+        "symptom_key": "abdominal_pain", "symptom_name": "복통", "category": "소화기",
+        "required_questions": [
+            {"id": "location", "label": "부위", "question": "어디가 아프세요?", "keywords": ["윗배","아랫배","오른쪽","왼쪽","배꼽","옆구리","명치"]},
+            {"id": "pattern", "label": "양상", "question": "어떤 느낌?", "keywords": ["쑤시","찌르","쥐어짜","더부룩","타는","콕콕"]},
+            {"id": "duration", "label": "기간", "question": "언제부터?", "keywords": ["오늘","어제","며칠","주","갑자기","식후"]},
+            {"id": "meal_relation", "label": "식사관계", "question": "식사와 관련 있나요?", "keywords": ["식후","공복","먹으면","식사","음식"]},
+            {"id": "bowel", "label": "배변변화", "question": "대변에 변화가 있나요?", "keywords": ["설사","변비","혈변","점액","검은","색깔"]},
+            {"id": "associated", "label": "동반증상", "question": "다른 증상?", "keywords": ["구토","메스","발열","체중","식욕"]}
+        ],
+        "red_flags": [
+            {"id": "severe_sudden", "label": "급성복통", "question": "갑자기 극심한 통증?", "keywords": ["갑자기","극심","참을수","식은땀","쓰러"]},
+            {"id": "bloody", "label": "혈변/토혈", "question": "피가 섞여 나오나요?", "keywords": ["피","혈변","토혈","검은변","붉은"]},
+            {"id": "fever_high", "label": "고열", "question": "38도 이상 열?", "keywords": ["열","38","39","고열","오한"]},
+            {"id": "weight_loss", "label": "체중감소", "question": "체중이 줄었나요?", "keywords": ["체중","빠지","감소","마르","줄었"]}
+        ],
+        "context_questions": [
+            {"id": "meds", "label": "복용약물", "keywords": ["약","진통제","소화제","복용"]},
+            {"id": "history", "label": "수술/병력", "keywords": ["수술","입원","위염","장염","궤양","담석"]},
+            {"id": "diet", "label": "식습관", "keywords": ["음주","맵","기름","야식","불규칙"]}
+        ]
+    },
+    {
+        "symptom_key": "chest_pain", "symptom_name": "흉통", "category": "순환기",
+        "required_questions": [
+            {"id": "location", "label": "위치", "question": "어디가 아프세요?", "keywords": ["가슴","왼쪽","오른쪽","가운데","명치","등"]},
+            {"id": "pattern", "label": "양상", "question": "어떤 느낌?", "keywords": ["쥐어짜","찌르","누르","타는","조이","묵직"]},
+            {"id": "radiation", "label": "방사통", "question": "다른 곳으로 퍼지나요?", "keywords": ["팔","어깨","턱","등","목"]},
+            {"id": "exertion", "label": "운동관계", "question": "움직일 때 심해지나요?", "keywords": ["운동","계단","걸으면","쉬면","활동"]},
+            {"id": "breathing", "label": "호흡곤란", "question": "숨쉬기 힘든가요?", "keywords": ["숨","호흡","답답","헐떡","가빠"]},
+            {"id": "duration", "label": "지속시간", "question": "얼마나 지속?", "keywords": ["몇분","몇초","계속","왔다갔다","간헐"]}
+        ],
+        "red_flags": [
+            {"id": "severe_pressure", "label": "압박감+발한", "question": "가슴을 쥐어짜면서 땀?", "keywords": ["쥐어짜","압박","식은땀","땀","창백"]},
+            {"id": "radiating", "label": "방사통", "question": "팔/턱으로 퍼지나요?", "keywords": ["팔","턱","어깨","등","방사"]},
+            {"id": "syncope", "label": "실신/어지러움", "question": "쓰러질 것 같나요?", "keywords": ["실신","쓰러","어지러","의식","눈앞"]},
+            {"id": "sob", "label": "심한 호흡곤란", "question": "숨을 못 쉬겠나요?", "keywords": ["못쉬","심한","호흡곤란","질식","숨막"]}
+        ],
+        "context_questions": [
+            {"id": "cardiac_hx", "label": "심장병력", "keywords": ["심장","혈압","콜레스테롤","당뇨","가족력"]},
+            {"id": "smoking", "label": "흡연", "keywords": ["담배","흡연","피우","금연"]},
+            {"id": "age_risk", "label": "나이", "keywords": ["나이","살","세","연세"]}
+        ]
+    },
+    {
+        "symptom_key": "cough", "symptom_name": "기침", "category": "호흡기",
+        "required_questions": [
+            {"id": "duration", "label": "기간", "question": "언제부터?", "keywords": ["오늘","며칠","주","개월","갑자기"]},
+            {"id": "type", "label": "양상", "question": "마른기침? 가래?", "keywords": ["마른","가래","끈적","맑은","노란","초록"]},
+            {"id": "timing", "label": "시간대", "question": "언제 심해지나요?", "keywords": ["밤","새벽","아침","누우면","식후"]},
+            {"id": "associated", "label": "동반증상", "question": "다른 증상?", "keywords": ["열","콧물","목아","호흡","가슴"]},
+            {"id": "trigger", "label": "유발인자", "question": "어떤 상황에서?", "keywords": ["찬바람","먼지","운동","말하면","웃으면"]}
+        ],
+        "red_flags": [
+            {"id": "hemoptysis", "label": "객혈", "question": "피가 섞여 나오나요?", "keywords": ["피","빨간","객혈","피래","핏줄"]},
+            {"id": "weight_loss", "label": "체중감소", "question": "체중이 줄었나요?", "keywords": ["체중","빠지","감소","마르"]},
+            {"id": "chronic", "label": "3주 이상", "question": "3주 넘게 지속?", "keywords": ["3주","한달","오래","만성","낫지"]},
+            {"id": "dyspnea", "label": "호흡곤란", "question": "숨쉬기 힘든가요?", "keywords": ["숨","호흡","답답","가빠","힘들"]}
+        ],
+        "context_questions": [
+            {"id": "smoking", "label": "흡연", "keywords": ["담배","흡연","피우"]},
+            {"id": "allergy", "label": "알레르기", "keywords": ["알레르기","비염","천식","아토피"]},
+            {"id": "meds", "label": "복용약물", "keywords": ["약","복용","혈압약","ACE"]}
+        ]
+    },
+    {
+        "symptom_key": "fatigue", "symptom_name": "피로/무기력", "category": "전신",
+        "required_questions": [
+            {"id": "duration", "label": "기간", "question": "언제부터?", "keywords": ["오늘","며칠","주","개월","항상"]},
+            {"id": "severity", "label": "정도", "question": "일상에 지장?", "keywords": ["일상","직장","집안일","못하","힘들"]},
+            {"id": "sleep", "label": "수면", "question": "수면은 충분한가요?", "keywords": ["수면","잠","못자","불면","깬다","시간"]},
+            {"id": "mood", "label": "기분", "question": "기분이 우울하세요?", "keywords": ["우울","의욕","흥미","슬프","무기력","불안"]},
+            {"id": "weight", "label": "체중변화", "question": "체중 변화?", "keywords": ["체중","늘","빠지","살","변화"]},
+            {"id": "associated", "label": "동반증상", "question": "다른 증상?", "keywords": ["열","통증","어지러","숨","식욕"]}
+        ],
+        "red_flags": [
+            {"id": "weight_loss", "label": "체중감소", "question": "의도치 않게 체중 감소?", "keywords": ["체중","빠지","감소","식욕없"]},
+            {"id": "fever", "label": "발열", "question": "열이 있나요?", "keywords": ["열","발열","미열","오한"]},
+            {"id": "night_sweat", "label": "야간발한", "question": "밤에 땀을 많이?", "keywords": ["밤","땀","식은땀","야간","흠뻑"]},
+            {"id": "bleeding", "label": "출혈", "question": "출혈이 있나요?", "keywords": ["출혈","피","혈변","혈뇨","멍"]}
+        ],
+        "context_questions": [
+            {"id": "thyroid", "label": "갑상선", "keywords": ["갑상선","호르몬","대사"]},
+            {"id": "anemia", "label": "빈혈", "keywords": ["빈혈","철분","어지러"]},
+            {"id": "lifestyle", "label": "생활습관", "keywords": ["운동","식사","카페인","음주","스트레스"]}
+        ]
+    },
+    {
+        "symptom_key": "fever", "symptom_name": "발열", "category": "전신",
+        "required_questions": [
+            {"id": "temperature", "label": "체온", "question": "체온이 몇 도인가요?", "keywords": ["37","38","39","40","도","체온"]},
+            {"id": "duration", "label": "기간", "question": "언제부터?", "keywords": ["오늘","어제","며칠","주"]},
+            {"id": "pattern", "label": "양상", "question": "계속 열? 오르내림?", "keywords": ["계속","오르","내려","오한","떨림"]},
+            {"id": "associated", "label": "동반증상", "question": "다른 증상?", "keywords": ["기침","인후","두통","복통","설사","발진","소변"]},
+            {"id": "contact", "label": "접촉력", "question": "아픈 사람 접촉?", "keywords": ["접촉","주변","학교","유치원","직장"]}
+        ],
+        "red_flags": [
+            {"id": "high_fever", "label": "고열", "question": "39도 이상?", "keywords": ["39","40","고열","극심"]},
+            {"id": "rash", "label": "발진", "question": "피부 발진?", "keywords": ["발진","두드러기","붉은","반점"]},
+            {"id": "neck_stiff", "label": "경부강직", "question": "목이 뻣뻣?", "keywords": ["목","뻣뻣","경직","숙이"]},
+            {"id": "altered_mental", "label": "의식변화", "question": "의식이 흐리나요?", "keywords": ["의식","멍","헛소리","혼미"]}
+        ],
+        "context_questions": [
+            {"id": "immune", "label": "면역상태", "keywords": ["면역","항암","스테로이드","이식"]},
+            {"id": "travel", "label": "여행력", "keywords": ["여행","해외","출장"]},
+            {"id": "age", "label": "연령", "keywords": ["아이","노인","영아","신생아"]}
+        ]
+    }
+]
+
 # ── 스키마 ──
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
@@ -141,6 +275,18 @@ CREATE INDEX IF NOT EXISTS idx_comments_msg ON comments(message_id);
 CREATE INDEX IF NOT EXISTS idx_comments_conv ON comments(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_scenarios_category ON scenarios(category);
 CREATE INDEX IF NOT EXISTS idx_test_runs_date ON test_runs(run_at);
+
+CREATE TABLE IF NOT EXISTS consultation_checklists (
+    symptom_key TEXT PRIMARY KEY,
+    symptom_name TEXT NOT NULL,
+    category TEXT DEFAULT 'general',
+    required_questions_json TEXT NOT NULL,
+    red_flags_json TEXT,
+    context_questions_json TEXT,
+    guidance_criteria_json TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
 """
 
 
@@ -174,6 +320,11 @@ def init_db(db_path=None):
             pass  # 이미 존재
     conn.commit()
     conn.close()
+    # 기본 체크리스트 초기화
+    try:
+        init_checklists()
+    except Exception:
+        pass
     return path
 
 
@@ -754,6 +905,149 @@ def save_test_run(data):
              status)
         )
     return run_id
+
+
+# ════════════════════════════════════════
+#  문진 체크리스트 (Consultation Checklists)
+# ════════════════════════════════════════
+
+def init_checklists():
+    """기본 체크리스트 초기화 (이미 존재하면 건너뜀)"""
+    now = _now()
+    with get_conn() as conn:
+        for cl in DEFAULT_CHECKLISTS:
+            existing = conn.execute("SELECT symptom_key FROM consultation_checklists WHERE symptom_key = ?",
+                                    (cl['symptom_key'],)).fetchone()
+            if not existing:
+                conn.execute(
+                    """INSERT INTO consultation_checklists
+                       (symptom_key, symptom_name, category, required_questions_json, red_flags_json,
+                        context_questions_json, guidance_criteria_json, created_at, updated_at)
+                       VALUES (?,?,?,?,?,?,?,?,?)""",
+                    (cl['symptom_key'], cl['symptom_name'], cl.get('category', 'general'),
+                     json.dumps(cl.get('required_questions', []), ensure_ascii=False),
+                     json.dumps(cl.get('red_flags', []), ensure_ascii=False),
+                     json.dumps(cl.get('context_questions', []), ensure_ascii=False),
+                     json.dumps(cl.get('guidance_criteria', []), ensure_ascii=False),
+                     now, now)
+                )
+
+
+def get_checklists():
+    """전체 체크리스트 조회"""
+    with get_conn() as conn:
+        rows = conn.execute("SELECT * FROM consultation_checklists ORDER BY symptom_name").fetchall()
+        result = []
+        for r in rows:
+            d = _row_to_dict(r)
+            for jf in ['required_questions_json', 'red_flags_json', 'context_questions_json', 'guidance_criteria_json']:
+                key = jf.replace('_json', '').replace('_', '')
+                camel = jf.replace('_json', '')
+                # snake_case → camelCase
+                parts = camel.split('_')
+                camel_key = parts[0] + ''.join(p.capitalize() for p in parts[1:])
+                raw = d.pop(jf, None)
+                d[camel_key] = json.loads(raw) if raw else []
+            d['symptomKey'] = d.pop('symptom_key', '')
+            d['symptomName'] = d.pop('symptom_name', '')
+            d['createdAt'] = d.pop('created_at', '')
+            d['updatedAt'] = d.pop('updated_at', '')
+            result.append(d)
+        return result
+
+
+def get_checklist(symptom_key):
+    """단일 체크리스트 조회"""
+    with get_conn() as conn:
+        row = conn.execute("SELECT * FROM consultation_checklists WHERE symptom_key = ?",
+                           (symptom_key,)).fetchone()
+        if not row:
+            return None
+        d = _row_to_dict(row)
+        for jf in ['required_questions_json', 'red_flags_json', 'context_questions_json', 'guidance_criteria_json']:
+            parts = jf.replace('_json', '').split('_')
+            camel_key = parts[0] + ''.join(p.capitalize() for p in parts[1:])
+            raw = d.pop(jf, None)
+            d[camel_key] = json.loads(raw) if raw else []
+        d['symptomKey'] = d.pop('symptom_key', '')
+        d['symptomName'] = d.pop('symptom_name', '')
+        d['createdAt'] = d.pop('created_at', '')
+        d['updatedAt'] = d.pop('updated_at', '')
+        return d
+
+
+def save_checklist(data):
+    """체크리스트 저장 (생성 또는 업데이트)"""
+    now = _now()
+    key = data.get('symptomKey', '')
+    if not key:
+        raise ValueError("symptomKey 필수")
+    with get_conn() as conn:
+        existing = conn.execute("SELECT symptom_key FROM consultation_checklists WHERE symptom_key = ?",
+                                (key,)).fetchone()
+        if existing:
+            conn.execute(
+                """UPDATE consultation_checklists SET
+                   symptom_name=?, category=?, required_questions_json=?, red_flags_json=?,
+                   context_questions_json=?, guidance_criteria_json=?, updated_at=?
+                   WHERE symptom_key=?""",
+                (data.get('symptomName', ''), data.get('category', 'general'),
+                 json.dumps(data.get('requiredQuestions', []), ensure_ascii=False),
+                 json.dumps(data.get('redFlags', []), ensure_ascii=False),
+                 json.dumps(data.get('contextQuestions', []), ensure_ascii=False),
+                 json.dumps(data.get('guidanceCriteria', []), ensure_ascii=False),
+                 now, key)
+            )
+        else:
+            conn.execute(
+                """INSERT INTO consultation_checklists
+                   (symptom_key, symptom_name, category, required_questions_json, red_flags_json,
+                    context_questions_json, guidance_criteria_json, created_at, updated_at)
+                   VALUES (?,?,?,?,?,?,?,?,?)""",
+                (key, data.get('symptomName', ''), data.get('category', 'general'),
+                 json.dumps(data.get('requiredQuestions', []), ensure_ascii=False),
+                 json.dumps(data.get('redFlags', []), ensure_ascii=False),
+                 json.dumps(data.get('contextQuestions', []), ensure_ascii=False),
+                 json.dumps(data.get('guidanceCriteria', []), ensure_ascii=False),
+                 now, now)
+            )
+    return get_checklist(key)
+
+
+def delete_checklist(symptom_key):
+    """체크리스트 삭제"""
+    with get_conn() as conn:
+        conn.execute("DELETE FROM consultation_checklists WHERE symptom_key = ?", (symptom_key,))
+    return True
+
+
+def match_checklists(query_text):
+    """사용자 질문에서 증상 키워드 매칭하여 관련 체크리스트 반환"""
+    checklists = get_checklists()
+    matched = []
+    text_lower = query_text.lower()
+    for cl in checklists:
+        name = cl.get('symptomName', '')
+        # 증상명 직접 매칭
+        if name in query_text:
+            matched.append(cl)
+            continue
+        # 필수 질문의 키워드로 매칭
+        score = 0
+        for rq in cl.get('requiredQuestions', []):
+            for kw in rq.get('keywords', []):
+                if kw in text_lower:
+                    score += 1
+        for rf in cl.get('redFlags', []):
+            for kw in rf.get('keywords', []):
+                if kw in text_lower:
+                    score += 2  # red flag 키워드 가중치
+        if score >= 2:
+            cl['_matchScore'] = score
+            matched.append(cl)
+    # 점수 높은 순
+    matched.sort(key=lambda x: x.get('_matchScore', 0), reverse=True)
+    return matched[:3]  # 최대 3개
 
 
 # ════════════════════════════════════════
