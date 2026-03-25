@@ -1675,8 +1675,11 @@ function addRestoredAssistantMessage(text, meta = {}) {
     const cmtList = document.createElement('div');
     cmtList.style.cssText = 'margin-top:8px;';
     for (const cmt of comments) {
+      const selText = cmt.selectedText || cmt.selected_text || '';
+      const selHtml = selText ? `<div style="font-size:11px;color:var(--text-dim);background:var(--surface);padding:4px 8px;border-radius:4px;margin:4px 0;border-left:3px solid var(--yellow);max-height:40px;overflow-y:auto">📌 "${escapeHtml(selText.substring(0, 150))}"</div>` : '';
       cmtList.innerHTML += `<div class="comment-item">
         <span class="comment-category">[${escapeHtml(cmt.category)}]</span>
+        ${selHtml}
         <div class="comment-content">${escapeHtml(cmt.content)}</div>
         <div class="comment-meta">${escapeHtml(cmt.userName || '')} · ${cmt.createdAt ? new Date(cmt.createdAt).toLocaleDateString() : ''}</div>
       </div>`;
@@ -2145,6 +2148,8 @@ async function submitCtxComment() {
       showToast('커멘트가 등록되었습니다', 'success');
       document.getElementById('ctxCommentForm')?.remove();
       window._ctxCommentData = null;
+      // 대화 다시 로드하여 커멘트 즉시 반영
+      if (currentConvId) loadConversation(currentConvId);
     } else {
       const err = await res.json().catch(() => ({}));
       showToast(err.error || '커멘트 등록 실패', 'error');

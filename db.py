@@ -394,9 +394,21 @@ def update_message(conv_id, msg_id, updates):
         return False
     vals.extend([msg_id, conv_id])
     with get_conn() as conn:
-        conn.execute(f"UPDATE messages SET {', '.join(sets)} WHERE id = ? AND conversation_id = ?", vals)
+        result = conn.execute(f"UPDATE messages SET {', '.join(sets)} WHERE id = ? AND conversation_id = ?", vals)
+        if result.rowcount == 0:
+            return False
         conn.execute("UPDATE conversations SET updated_at = ? WHERE id = ?", (_now(), conv_id))
     return True
+
+
+def get_last_assistant_msg_id(conv_id):
+    """대화의 마지막 assistant 메시지 ID 반환"""
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT id FROM messages WHERE conversation_id = ? AND role = 'assistant' ORDER BY timestamp DESC LIMIT 1",
+            (conv_id,)
+        ).fetchone()
+        return row['id'] if row else None
 
 
 def delete_conversation(conv_id):
