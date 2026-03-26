@@ -1,19 +1,32 @@
 """
-SQLite 데이터베이스 래퍼 모듈
-- JSON 파일 기반 저장소를 SQLite로 대체
-- WAL 모드로 동시 읽기/단일 쓰기 보장
+SQLite / PostgreSQL 듀얼 모드 데이터베이스 래퍼 모듈
+- SQLite: 로컬/GCS FUSE 환경 (기본)
+- PostgreSQL: DATABASE_URL 환경변수 설정 시 자동 전환
 - 입력 검증 포함
 """
 
-import sqlite3
-import json
 import os
+import json
 import secrets
-from datetime import datetime, timezone
+import sqlite3
 from contextlib import contextmanager
+from datetime import datetime, timezone
+
+# PostgreSQL support (optional)
+try:
+    import psycopg2
+    from psycopg2 import pool as pg_pool
+    from psycopg2.extras import RealDictCursor
+    HAS_POSTGRES = True
+except ImportError:
+    HAS_POSTGRES = False
 
 # ── 경로 설정 ──
 DB_PATH = os.environ.get('DB_PATH', os.path.join(os.path.dirname(__file__), 'app.db'))
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+
+_pg_pool = None  # PostgreSQL connection pool
+_use_postgres = False
 
 # ── 입력 검증 상수 ──
 MAX_COMMENT_LENGTH = 2000
@@ -180,8 +193,8 @@ DEFAULT_CHECKLISTS = _load_default_checklists() or [
     }
 ]
 
-# ── 스키마 ──
-SCHEMA = """
+# ── 스키마 (SQLite) ──
+SCHEMA_SQLITE = """
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL CHECK(length(name) <= 30),
@@ -298,77 +311,304 @@ CREATE TABLE IF NOT EXISTS consultation_checklists (
 );
 """
 
+# ── 스키마 (PostgreSQL) ──
+SCHEMA_PG = """
+CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL CHECK(char_length(name) <= 30),
+    org TEXT DEFAULT '' CHECK(char_length(org) <= 100),
+    password_hash TEXT NOT NULL,
+    password_salt TEXT NOT NULL,
+    status TEXT DEFAULT 'pending',
+    role TEXT DEFAULT 'tester',
+    uid TEXT DEFAULT '',
+    created_at TEXT NOT NULL,
+    approved_at TEXT,
+    approved_by TEXT
+);
+
+CREATE TABLE IF NOT EXISTS conversations (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    user_name TEXT NOT NULL,
+    title TEXT DEFAULT '' CHECK(char_length(title) <= 100),
+    env TEXT DEFAULT 'dev',
+    conversation_strid TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS messages (
+    id TEXT PRIMARY KEY,
+    conversation_id TEXT NOT NULL,
+    role TEXT NOT NULL,
+    content TEXT NOT NULL,
+    timestamp TEXT NOT NULL,
+    response_time INTEGER,
+    compliance_json JSONB,
+    search_results_json JSONB,
+    follow_ups_json JSONB,
+    gpt_eval_json JSONB,
+    gpt_model TEXT,
+    consultation_eval_json JSONB,
+    FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS comments (
+    id TEXT PRIMARY KEY,
+    message_id TEXT NOT NULL,
+    conversation_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    user_name TEXT NOT NULL,
+    category TEXT NOT NULL,
+    content TEXT NOT NULL CHECK(char_length(content) <= 2000),
+    selected_text TEXT DEFAULT '',
+    user_query TEXT DEFAULT '',
+    full_response TEXT DEFAULT '',
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (message_id) REFERENCES messages(id),
+    FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS scenarios (
+    id TEXT PRIMARY KEY,
+    category TEXT NOT NULL,
+    subcategory TEXT DEFAULT '',
+    prompt TEXT NOT NULL CHECK(char_length(prompt) <= 5000),
+    expected_behavior TEXT DEFAULT '',
+    should_refuse INTEGER DEFAULT 0,
+    risk_level TEXT DEFAULT 'MEDIUM',
+    tags_json JSONB DEFAULT '[]',
+    enabled INTEGER DEFAULT 1,
+    source TEXT DEFAULT 'manual',
+    parent_id TEXT,
+    generation_info_json JSONB,
+    source_conversation_id TEXT,
+    follow_ups_json JSONB DEFAULT '[]',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS test_runs (
+    id TEXT PRIMARY KEY,
+    run_at TEXT NOT NULL,
+    total INTEGER DEFAULT 0,
+    passed INTEGER DEFAULT 0,
+    failed INTEGER DEFAULT 0,
+    env TEXT DEFAULT 'dev',
+    guideline_version TEXT,
+    tester TEXT DEFAULT '',
+    results_json JSONB,
+    status TEXT DEFAULT 'completed'
+);
+
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_conversations_user ON conversations(user_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_env ON conversations(env);
+CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_comments_msg ON comments(message_id);
+CREATE INDEX IF NOT EXISTS idx_comments_conv ON comments(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_scenarios_category ON scenarios(category);
+CREATE INDEX IF NOT EXISTS idx_test_runs_date ON test_runs(run_at);
+
+CREATE TABLE IF NOT EXISTS consultation_checklists (
+    symptom_key TEXT PRIMARY KEY,
+    symptom_name TEXT NOT NULL,
+    category TEXT DEFAULT 'general',
+    required_questions_json JSONB NOT NULL,
+    red_flags_json JSONB,
+    context_questions_json JSONB,
+    guidance_criteria_json JSONB,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+"""
+
+# Keep backward compat alias
+SCHEMA = SCHEMA_SQLITE
+
+
+# ════════════════════════════════════════
+#  SQL 헬퍼 (SQLite vs PostgreSQL 차이 흡수)
+# ════════════════════════════════════════
+
+def _ph(*args):
+    """Placeholder: ? (SQLite) vs %s (PostgreSQL). _ph(n) returns n comma-separated placeholders."""
+    n = args[0] if args else 1
+    return ','.join(['%s'] * n) if _use_postgres else ','.join(['?'] * n)
+
+
+def _p(n=1):
+    """Single placeholder string."""
+    return '%s' if _use_postgres else '?'
+
+
+def _upsert(table, key_col, key_val, columns, values):
+    """INSERT ... ON CONFLICT UPDATE helper. Returns (sql, params)."""
+    ph = _p()
+    col_list = ', '.join(columns)
+    ph_list = ', '.join([ph] * len(columns))
+    if _use_postgres:
+        update_parts = ', '.join(f"{c} = EXCLUDED.{c}" for c in columns if c != key_col)
+        sql = f"INSERT INTO {table} ({col_list}) VALUES ({ph_list}) ON CONFLICT ({key_col}) DO UPDATE SET {update_parts}"
+    else:
+        sql = f"INSERT OR REPLACE INTO {table} ({col_list}) VALUES ({ph_list})"
+    return sql, values
+
+
+def _row_to_dict(row):
+    """sqlite3.Row 또는 RealDictCursor dict -> dict 변환"""
+    if row is None:
+        return None
+    if isinstance(row, dict):
+        return dict(row)  # RealDictCursor already returns dict-like
+    return dict(row)
+
+
+def _pg_json_loads(val):
+    """PostgreSQL JSONB returns Python objects directly; SQLite stores as TEXT strings."""
+    if val is None:
+        return None
+    if isinstance(val, (dict, list)):
+        return val  # already parsed by psycopg2
+    try:
+        return json.loads(val)
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+
+def _pg_json_loads_or(val, default):
+    """Like _pg_json_loads but with a default."""
+    result = _pg_json_loads(val)
+    return result if result is not None else default
+
 
 # ════════════════════════════════════════
 #  DB 초기화 + 커넥션 관리
 # ════════════════════════════════════════
 
 def init_db(db_path=None):
-    """데이터베이스 초기화 (스키마 생성 + WAL 모드)"""
-    path = db_path or DB_PATH
-    os.makedirs(os.path.dirname(path) if os.path.dirname(path) else '.', exist_ok=True)
-    conn = sqlite3.connect(path)
-    # GCS FUSE 환경에서는 WAL 모드 사용 불가 (-shm 파일 충돌)
-    # DELETE 모드 사용 (단일 파일, GCS 호환)
-    conn.execute("PRAGMA journal_mode=DELETE")
-    conn.execute("PRAGMA foreign_keys=ON")
-    conn.execute("PRAGMA busy_timeout=10000")
-    conn.executescript(SCHEMA)
-    # 마이그레이션: 기존 DB에 컬럼 추가
-    migrations = [
-        "ALTER TABLE test_runs ADD COLUMN status TEXT DEFAULT 'completed'",
-        "ALTER TABLE comments ADD COLUMN selected_text TEXT DEFAULT ''",
-        "ALTER TABLE comments ADD COLUMN user_query TEXT DEFAULT ''",
-        "ALTER TABLE comments ADD COLUMN full_response TEXT DEFAULT ''",
-        "ALTER TABLE messages ADD COLUMN consultation_eval_json TEXT",
-    ]
-    for sql in migrations:
+    """데이터베이스 초기화 (스키마 생성)"""
+    global _pg_pool, _use_postgres
+
+    if DATABASE_URL and HAS_POSTGRES:
+        # ── PostgreSQL 모드 ──
+        _use_postgres = True
+        if _pg_pool is None:
+            _pg_pool = pg_pool.SimpleConnectionPool(1, 10, DATABASE_URL)
+
+        conn = _pg_pool.getconn()
         try:
-            conn.execute(sql)
+            conn.autocommit = True
+            cur = conn.cursor()
+            # PostgreSQL: executescript 없으므로 개별 실행
+            # 세미콜론으로 분리하여 실행
+            for statement in SCHEMA_PG.split(';'):
+                statement = statement.strip()
+                if statement:
+                    cur.execute(statement)
+            # 마이그레이션
+            migrations_pg = [
+                "ALTER TABLE test_runs ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'completed'",
+                "ALTER TABLE comments ADD COLUMN IF NOT EXISTS selected_text TEXT DEFAULT ''",
+                "ALTER TABLE comments ADD COLUMN IF NOT EXISTS user_query TEXT DEFAULT ''",
+                "ALTER TABLE comments ADD COLUMN IF NOT EXISTS full_response TEXT DEFAULT ''",
+                "ALTER TABLE messages ADD COLUMN IF NOT EXISTS consultation_eval_json JSONB",
+            ]
+            for sql in migrations_pg:
+                try:
+                    cur.execute(sql)
+                except Exception:
+                    pass
+            # 고아 running 배치 정리
+            try:
+                cur.execute("UPDATE test_runs SET status = 'cancelled' WHERE status = 'running'")
+            except Exception:
+                pass
+            cur.close()
+        finally:
+            _pg_pool.putconn(conn)
+    else:
+        # ── SQLite 모드 ──
+        _use_postgres = False
+        path = db_path or DB_PATH
+        os.makedirs(os.path.dirname(path) if os.path.dirname(path) else '.', exist_ok=True)
+        conn = sqlite3.connect(path)
+        conn.execute("PRAGMA journal_mode=DELETE")
+        conn.execute("PRAGMA foreign_keys=ON")
+        conn.execute("PRAGMA busy_timeout=10000")
+        conn.executescript(SCHEMA_SQLITE)
+        # 마이그레이션
+        migrations = [
+            "ALTER TABLE test_runs ADD COLUMN status TEXT DEFAULT 'completed'",
+            "ALTER TABLE comments ADD COLUMN selected_text TEXT DEFAULT ''",
+            "ALTER TABLE comments ADD COLUMN user_query TEXT DEFAULT ''",
+            "ALTER TABLE comments ADD COLUMN full_response TEXT DEFAULT ''",
+            "ALTER TABLE messages ADD COLUMN consultation_eval_json TEXT",
+        ]
+        for sql in migrations:
+            try:
+                conn.execute(sql)
+            except sqlite3.OperationalError:
+                pass
+        # 고아 running 배치 정리
+        try:
+            conn.execute("UPDATE test_runs SET status = 'cancelled' WHERE status = 'running'")
         except sqlite3.OperationalError:
-            pass  # 이미 존재
-    # 고아 running 배치 정리 (서버 재시작 시)
-    try:
-        conn.execute("UPDATE test_runs SET status = 'cancelled' WHERE status = 'running'")
-    except sqlite3.OperationalError:
-        pass
-    conn.commit()
-    conn.close()
+            pass
+        conn.commit()
+        conn.close()
+
     # 기본 체크리스트 초기화
     try:
         init_checklists()
     except Exception:
         pass
-    return path
+
+    return DATABASE_URL if _use_postgres else (db_path or DB_PATH)
 
 
 @contextmanager
 def get_conn(db_path=None):
-    """SQLite 커넥션 컨텍스트 매니저"""
-    path = db_path or DB_PATH
-    conn = sqlite3.connect(path)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys=ON")
-    conn.execute("PRAGMA busy_timeout=10000")
-    try:
-        yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
+    """듀얼 모드 커넥션 컨텍스트 매니저. yields (conn, cur)."""
+    if _use_postgres:
+        conn = _pg_pool.getconn()
+        try:
+            conn.autocommit = False
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            yield conn, cursor
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            cursor.close()
+            _pg_pool.putconn(conn)
+    else:
+        path = db_path or DB_PATH
+        conn = sqlite3.connect(path)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys=ON")
+        conn.execute("PRAGMA busy_timeout=10000")
+        cursor = conn.cursor()
+        try:
+            yield conn, cursor
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            cursor.close()
+            conn.close()
 
 
 def _now():
     return datetime.now(timezone.utc).isoformat()
-
-
-def _row_to_dict(row):
-    """sqlite3.Row → dict 변환"""
-    if row is None:
-        return None
-    return dict(row)
 
 
 # ════════════════════════════════════════
@@ -376,8 +616,9 @@ def _row_to_dict(row):
 # ════════════════════════════════════════
 
 def get_user(user_id):
-    with get_conn() as conn:
-        row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    with get_conn() as (conn, cur):
+        cur.execute(f"SELECT * FROM users WHERE id = {_p()}", (user_id,))
+        row = cur.fetchone()
         return _row_to_dict(row)
 
 
@@ -385,9 +626,10 @@ def create_user(data):
     name = data.get('name', '')[:MAX_NAME_LENGTH]
     org = data.get('org', '')[:MAX_ORG_LENGTH]
     now = _now()
-    with get_conn() as conn:
-        conn.execute(
-            "INSERT INTO users (id, name, org, password_hash, password_salt, status, role, uid, created_at) VALUES (?,?,?,?,?,?,?,?,?)",
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(
+            f"INSERT INTO users (id, name, org, password_hash, password_salt, status, role, uid, created_at) VALUES ({_ph(9)})",
             (data['id'], name, org, data['password_hash'], data['password_salt'],
              data.get('status', 'pending'), data.get('role', 'tester'), data.get('uid', ''), now)
         )
@@ -398,39 +640,43 @@ def update_user(user_id, updates):
     allowed = ['name', 'org', 'password_hash', 'password_salt', 'status', 'role', 'uid', 'approved_at', 'approved_by']
     sets = []
     vals = []
+    ph = _p()
     for k, v in updates.items():
         if k in allowed:
-            sets.append(f"{k} = ?")
+            sets.append(f"{k} = {ph}")
             vals.append(v)
     if not sets:
         return False
     vals.append(user_id)
-    with get_conn() as conn:
-        conn.execute(f"UPDATE users SET {', '.join(sets)} WHERE id = ?", vals)
+    with get_conn() as (conn, cur):
+        cur.execute(f"UPDATE users SET {', '.join(sets)} WHERE id = {ph}", vals)
     return True
 
 
 def get_pending_users():
-    with get_conn() as conn:
-        rows = conn.execute("SELECT * FROM users WHERE status = 'pending' ORDER BY created_at").fetchall()
+    with get_conn() as (conn, cur):
+        cur.execute("SELECT * FROM users WHERE status = 'pending' ORDER BY created_at")
+        rows = cur.fetchall()
         return [_row_to_dict(r) for r in rows]
 
 
 def get_all_users():
-    with get_conn() as conn:
-        rows = conn.execute("SELECT * FROM users ORDER BY created_at").fetchall()
+    with get_conn() as (conn, cur):
+        cur.execute("SELECT * FROM users ORDER BY created_at")
+        rows = cur.fetchall()
         return [_row_to_dict(r) for r in rows]
 
 
 def get_users_by_status(status):
-    with get_conn() as conn:
-        rows = conn.execute("SELECT * FROM users WHERE status = ? ORDER BY created_at", (status,)).fetchall()
+    with get_conn() as (conn, cur):
+        cur.execute(f"SELECT * FROM users WHERE status = {_p()} ORDER BY created_at", (status,))
+        rows = cur.fetchall()
         return [_row_to_dict(r) for r in rows]
 
 
 def delete_user(user_id):
-    with get_conn() as conn:
-        conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    with get_conn() as (conn, cur):
+        cur.execute(f"DELETE FROM users WHERE id = {_p()}", (user_id,))
     return True
 
 
@@ -439,40 +685,45 @@ def delete_user(user_id):
 # ════════════════════════════════════════
 
 def get_conversations(user_id=None, limit=50, offset=0):
-    with get_conn() as conn:
+    ph = _p()
+    with get_conn() as (conn, cur):
         if user_id:
-            rows = conn.execute(
-                """SELECT c.*, COUNT(m.id) as message_count
+            cur.execute(
+                f"""SELECT c.*, COUNT(m.id) as message_count
                    FROM conversations c LEFT JOIN messages m ON c.id = m.conversation_id
-                   WHERE c.user_id = ?
-                   GROUP BY c.id ORDER BY c.updated_at DESC LIMIT ? OFFSET ?""",
+                   WHERE c.user_id = {ph}
+                   GROUP BY c.id ORDER BY c.updated_at DESC LIMIT {ph} OFFSET {ph}""",
                 (user_id, limit, offset)
-            ).fetchall()
+            )
         else:
-            rows = conn.execute(
-                """SELECT c.*, COUNT(m.id) as message_count
+            cur.execute(
+                f"""SELECT c.*, COUNT(m.id) as message_count
                    FROM conversations c LEFT JOIN messages m ON c.id = m.conversation_id
-                   GROUP BY c.id ORDER BY c.updated_at DESC LIMIT ? OFFSET ?""",
+                   GROUP BY c.id ORDER BY c.updated_at DESC LIMIT {ph} OFFSET {ph}""",
                 (limit, offset)
-            ).fetchall()
+            )
+        rows = cur.fetchall()
         return [_row_to_dict(r) for r in rows]
 
 
 def get_conversation(conv_id):
-    with get_conn() as conn:
-        conv = conn.execute("SELECT * FROM conversations WHERE id = ?", (conv_id,)).fetchone()
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(f"SELECT * FROM conversations WHERE id = {ph}", (conv_id,))
+        conv = cur.fetchone()
         if not conv:
             return None
         result = _row_to_dict(conv)
 
         # 메시지 로드
-        msg_rows = conn.execute(
-            "SELECT * FROM messages WHERE conversation_id = ? ORDER BY timestamp", (conv_id,)
-        ).fetchall()
+        cur.execute(
+            f"SELECT * FROM messages WHERE conversation_id = {ph} ORDER BY timestamp", (conv_id,)
+        )
+        msg_rows = cur.fetchall()
         messages = []
         for mr in msg_rows:
             msg = _row_to_dict(mr)
-            # JSON 필드 파싱 (snake_case → camelCase)
+            # JSON 필드 파싱 (snake_case -> camelCase)
             json_field_map = {
                 'compliance_json': 'compliance',
                 'search_results_json': 'searchResults',
@@ -483,18 +734,16 @@ def get_conversation(conv_id):
             for jf, key in json_field_map.items():
                 raw = msg.pop(jf, None)
                 if raw:
-                    try:
-                        msg[key] = json.loads(raw)
-                    except (json.JSONDecodeError, TypeError):
-                        msg[key] = None
+                    msg[key] = _pg_json_loads(raw)
                 else:
                     msg[key] = None
             # 커멘트 로드
-            cmt_rows = conn.execute(
-                "SELECT * FROM comments WHERE message_id = ? ORDER BY created_at", (msg['id'],)
-            ).fetchall()
+            cur.execute(
+                f"SELECT * FROM comments WHERE message_id = {ph} ORDER BY created_at", (msg['id'],)
+            )
+            cmt_rows = cur.fetchall()
             msg['comments'] = [_row_to_dict(c) for c in cmt_rows]
-            # 필드명 정리 (snake_case → camelCase)
+            # 필드명 정리 (snake_case -> camelCase)
             msg['msgId'] = msg.pop('id')
             msg.pop('conversation_id', None)
             if 'response_time' in msg:
@@ -504,7 +753,7 @@ def get_conversation(conv_id):
             messages.append(msg)
 
         result['messages'] = messages
-        # 필드명 호환 (snake → camel)
+        # 필드명 호환 (snake -> camel)
         result['userId'] = result.pop('user_id', '')
         result['userName'] = result.pop('user_name', '')
         result['conversationStrid'] = result.pop('conversation_strid', '')
@@ -517,9 +766,9 @@ def create_conversation(data):
     title = (data.get('title', '') or '')[:MAX_TITLE_LENGTH]
     now = _now()
     conv_id = data.get('id') or f"conv-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}-{secrets.token_hex(4)}"
-    with get_conn() as conn:
-        conn.execute(
-            "INSERT INTO conversations (id, user_id, user_name, title, env, conversation_strid, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)",
+    with get_conn() as (conn, cur):
+        cur.execute(
+            f"INSERT INTO conversations (id, user_id, user_name, title, env, conversation_strid, created_at, updated_at) VALUES ({_ph(8)})",
             (conv_id, data.get('userId', ''), data.get('userName', ''), title,
              data.get('env', 'dev'), data.get('conversationStrid', ''), now, now)
         )
@@ -529,11 +778,12 @@ def create_conversation(data):
 def add_message(conv_id, msg_data):
     msg_id = msg_data.get('msgId') or f"msg-{secrets.token_hex(4)}"
     now = _now()
-    with get_conn() as conn:
-        conn.execute(
-            """INSERT INTO messages (id, conversation_id, role, content, timestamp, response_time,
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(
+            f"""INSERT INTO messages (id, conversation_id, role, content, timestamp, response_time,
                compliance_json, search_results_json, follow_ups_json, gpt_eval_json, gpt_model)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+               VALUES ({_ph(11)})""",
             (msg_id, conv_id, msg_data.get('role', 'user'), msg_data.get('content', ''),
              msg_data.get('timestamp', now), msg_data.get('responseTime'),
              json.dumps(msg_data.get('compliance'), ensure_ascii=False) if msg_data.get('compliance') else None,
@@ -542,7 +792,7 @@ def add_message(conv_id, msg_data):
              json.dumps(msg_data.get('gptEval'), ensure_ascii=False) if msg_data.get('gptEval') else None,
              msg_data.get('gptModel'))
         )
-        conn.execute("UPDATE conversations SET updated_at = ? WHERE id = ?", (now, conv_id))
+        cur.execute(f"UPDATE conversations SET updated_at = {ph} WHERE id = {ph}", (now, conv_id))
     return msg_id
 
 
@@ -552,66 +802,75 @@ def update_message(conv_id, msg_id, updates):
                     'followUps': 'follow_ups_json', 'gptEval': 'gpt_eval_json',
                     'consultationEval': 'consultation_eval_json'}
     allowed_plain = {'gptModel': 'gpt_model', 'responseTime': 'response_time'}
+    ph = _p()
     sets = []
     vals = []
     for k, v in updates.items():
         if k in allowed_json:
-            sets.append(f"{allowed_json[k]} = ?")
+            sets.append(f"{allowed_json[k]} = {ph}")
             vals.append(json.dumps(v, ensure_ascii=False) if v else None)
         elif k in allowed_plain:
-            sets.append(f"{allowed_plain[k]} = ?")
+            sets.append(f"{allowed_plain[k]} = {ph}")
             vals.append(v)
     if not sets:
         return False
     vals.extend([msg_id, conv_id])
-    with get_conn() as conn:
-        result = conn.execute(f"UPDATE messages SET {', '.join(sets)} WHERE id = ? AND conversation_id = ?", vals)
-        if result.rowcount == 0:
+    with get_conn() as (conn, cur):
+        cur.execute(f"UPDATE messages SET {', '.join(sets)} WHERE id = {ph} AND conversation_id = {ph}", vals)
+        rowcount = cur.rowcount
+        if rowcount == 0:
             return False
-        conn.execute("UPDATE conversations SET updated_at = ? WHERE id = ?", (_now(), conv_id))
+        cur.execute(f"UPDATE conversations SET updated_at = {ph} WHERE id = {ph}", (_now(), conv_id))
     return True
 
 
 def get_last_assistant_msg_id(conv_id):
     """대화의 마지막 assistant 메시지 ID 반환"""
-    with get_conn() as conn:
-        row = conn.execute(
-            "SELECT id FROM messages WHERE conversation_id = ? AND role = 'assistant' ORDER BY timestamp DESC LIMIT 1",
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(
+            f"SELECT id FROM messages WHERE conversation_id = {ph} AND role = 'assistant' ORDER BY timestamp DESC LIMIT 1",
             (conv_id,)
-        ).fetchone()
-        return row['id'] if row else None
+        )
+        row = cur.fetchone()
+        if row is None:
+            return None
+        r = _row_to_dict(row)
+        return r['id'] if r else None
 
 
 def delete_conversation(conv_id):
-    with get_conn() as conn:
-        conn.execute("DELETE FROM conversations WHERE id = ?", (conv_id,))
+    with get_conn() as (conn, cur):
+        cur.execute(f"DELETE FROM conversations WHERE id = {_p()}", (conv_id,))
     return True
 
 
 def search_conversations(user_id=None, query='', limit=50):
-    with get_conn() as conn:
+    ph = _p()
+    with get_conn() as (conn, cur):
         if user_id:
-            rows = conn.execute(
-                """SELECT DISTINCT c.*, COUNT(m.id) as message_count
+            cur.execute(
+                f"""SELECT DISTINCT c.*, COUNT(m.id) as message_count
                    FROM conversations c
                    LEFT JOIN messages m ON c.id = m.conversation_id
-                   WHERE c.user_id = ? AND (c.title LIKE ? OR EXISTS (
-                     SELECT 1 FROM messages m2 WHERE m2.conversation_id = c.id AND m2.content LIKE ?
+                   WHERE c.user_id = {ph} AND (c.title LIKE {ph} OR EXISTS (
+                     SELECT 1 FROM messages m2 WHERE m2.conversation_id = c.id AND m2.content LIKE {ph}
                    ))
-                   GROUP BY c.id ORDER BY c.updated_at DESC LIMIT ?""",
+                   GROUP BY c.id ORDER BY c.updated_at DESC LIMIT {ph}""",
                 (user_id, f'%{query}%', f'%{query}%', limit)
-            ).fetchall()
+            )
         else:
-            rows = conn.execute(
-                """SELECT DISTINCT c.*, COUNT(m.id) as message_count
+            cur.execute(
+                f"""SELECT DISTINCT c.*, COUNT(m.id) as message_count
                    FROM conversations c
                    LEFT JOIN messages m ON c.id = m.conversation_id
-                   WHERE c.title LIKE ? OR EXISTS (
-                     SELECT 1 FROM messages m2 WHERE m2.conversation_id = c.id AND m2.content LIKE ?
+                   WHERE c.title LIKE {ph} OR EXISTS (
+                     SELECT 1 FROM messages m2 WHERE m2.conversation_id = c.id AND m2.content LIKE {ph}
                    )
-                   GROUP BY c.id ORDER BY c.updated_at DESC LIMIT ?""",
+                   GROUP BY c.id ORDER BY c.updated_at DESC LIMIT {ph}""",
                 (f'%{query}%', f'%{query}%', limit)
-            ).fetchall()
+            )
+        rows = cur.fetchall()
         return [_row_to_dict(r) for r in rows]
 
 
@@ -628,21 +887,25 @@ def add_comment(conv_id, msg_id, data):
 
     comment_id = f"cmt-{secrets.token_hex(4)}"
     now = _now()
+    ph = _p()
 
-    with get_conn() as conn:
+    with get_conn() as (conn, cur):
         # msg_id 확인, 없으면 마지막 assistant 메시지에 fallback
-        msg = conn.execute("SELECT id FROM messages WHERE id = ? AND conversation_id = ?", (msg_id, conv_id)).fetchone()
+        cur.execute(f"SELECT id FROM messages WHERE id = {ph} AND conversation_id = {ph}", (msg_id, conv_id))
+        msg = cur.fetchone()
         if not msg:
-            msg = conn.execute(
-                "SELECT id FROM messages WHERE conversation_id = ? AND role = 'assistant' ORDER BY timestamp DESC LIMIT 1",
+            cur.execute(
+                f"SELECT id FROM messages WHERE conversation_id = {ph} AND role = 'assistant' ORDER BY timestamp DESC LIMIT 1",
                 (conv_id,)
-            ).fetchone()
+            )
+            msg = cur.fetchone()
         if not msg:
             raise ValueError("메시지를 찾을 수 없습니다")
 
-        actual_msg_id = msg['id']
-        conn.execute(
-            "INSERT INTO comments (id, message_id, conversation_id, user_id, user_name, category, content, selected_text, user_query, full_response, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+        msg_dict = _row_to_dict(msg)
+        actual_msg_id = msg_dict['id']
+        cur.execute(
+            f"INSERT INTO comments (id, message_id, conversation_id, user_id, user_name, category, content, selected_text, user_query, full_response, created_at) VALUES ({_ph(11)})",
             (comment_id, actual_msg_id, conv_id, data.get('userId', ''), data.get('userName', ''),
              data.get('category', '기타'), content,
              data.get('selectedText', ''), data.get('userQuery', ''), data.get('fullResponse', ''),
@@ -652,30 +915,32 @@ def add_comment(conv_id, msg_id, data):
 
 
 def delete_comment(comment_id):
-    with get_conn() as conn:
-        conn.execute("DELETE FROM comments WHERE id = ?", (comment_id,))
+    with get_conn() as (conn, cur):
+        cur.execute(f"DELETE FROM comments WHERE id = {_p()}", (comment_id,))
     return True
 
 
 def export_comments(user_id=None):
-    with get_conn() as conn:
+    ph = _p()
+    with get_conn() as (conn, cur):
         if user_id:
-            rows = conn.execute(
-                """SELECT c.*, co.title as conv_title, m.content as msg_content, m.role
+            cur.execute(
+                f"""SELECT c.*, co.title as conv_title, m.content as msg_content, m.role
                    FROM comments c
                    JOIN conversations co ON c.conversation_id = co.id
                    JOIN messages m ON c.message_id = m.id
-                   WHERE c.user_id = ?
+                   WHERE c.user_id = {ph}
                    ORDER BY c.created_at""", (user_id,)
-            ).fetchall()
+            )
         else:
-            rows = conn.execute(
+            cur.execute(
                 """SELECT c.*, co.title as conv_title, m.content as msg_content, m.role
                    FROM comments c
                    JOIN conversations co ON c.conversation_id = co.id
                    JOIN messages m ON c.message_id = m.id
                    ORDER BY c.created_at"""
-            ).fetchall()
+            )
+        rows = cur.fetchall()
 
         comments = [_row_to_dict(r) for r in rows]
 
@@ -700,8 +965,10 @@ def export_comments(user_id=None):
 
 def get_scenarios():
     """scenarios.json 호환 형식으로 반환"""
-    with get_conn() as conn:
-        rows = conn.execute("SELECT * FROM scenarios ORDER BY id").fetchall()
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute("SELECT * FROM scenarios ORDER BY id")
+        rows = cur.fetchall()
         scenarios = []
         for r in rows:
             s = _row_to_dict(r)
@@ -709,19 +976,24 @@ def get_scenarios():
             s['shouldRefuse'] = bool(s.pop('should_refuse', 0))
             s['riskLevel'] = s.pop('risk_level', 'MEDIUM')
             s['expectedBehavior'] = s.pop('expected_behavior', '')
-            s['tags'] = json.loads(s.pop('tags_json', '[]'))
+            s['tags'] = _pg_json_loads_or(s.pop('tags_json', '[]'), [])
             s['enabled'] = bool(s.pop('enabled', 1))
             s['parentId'] = s.pop('parent_id', None)
-            s['generationInfo'] = json.loads(s.pop('generation_info_json', 'null') or 'null')
+            s['generationInfo'] = _pg_json_loads(s.pop('generation_info_json', None))
             s['sourceConversationId'] = s.pop('source_conversation_id', None)
-            s['followUps'] = json.loads(s.pop('follow_ups_json', '[]'))
+            s['followUps'] = _pg_json_loads_or(s.pop('follow_ups_json', '[]'), [])
             s['createdAt'] = s.pop('created_at', '')
             s['updatedAt'] = s.pop('updated_at', '')
             scenarios.append(s)
 
         # 카테고리 (settings 테이블 또는 기본값)
-        cat_row = conn.execute("SELECT value FROM settings WHERE key = 'categories'").fetchone()
-        categories = json.loads(cat_row['value']) if cat_row else DEFAULT_CATEGORIES
+        cur.execute(f"SELECT value FROM settings WHERE key = {ph}", ('categories',))
+        cat_row = cur.fetchone()
+        if cat_row:
+            cat_dict = _row_to_dict(cat_row)
+            categories = _pg_json_loads_or(cat_dict['value'], DEFAULT_CATEGORIES)
+        else:
+            categories = DEFAULT_CATEGORIES
 
     return {
         "version": "1.0",
@@ -732,20 +1004,22 @@ def get_scenarios():
 
 
 def get_scenario(scenario_id):
-    with get_conn() as conn:
-        row = conn.execute("SELECT * FROM scenarios WHERE id = ?", (scenario_id,)).fetchone()
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(f"SELECT * FROM scenarios WHERE id = {ph}", (scenario_id,))
+        row = cur.fetchone()
         if not row:
             return None
         s = _row_to_dict(row)
         s['shouldRefuse'] = bool(s.pop('should_refuse', 0))
         s['riskLevel'] = s.pop('risk_level', 'MEDIUM')
         s['expectedBehavior'] = s.pop('expected_behavior', '')
-        s['tags'] = json.loads(s.pop('tags_json', '[]'))
+        s['tags'] = _pg_json_loads_or(s.pop('tags_json', '[]'), [])
         s['enabled'] = bool(s.pop('enabled', 1))
         s['parentId'] = s.pop('parent_id', None)
-        s['generationInfo'] = json.loads(s.pop('generation_info_json', 'null') or 'null')
+        s['generationInfo'] = _pg_json_loads(s.pop('generation_info_json', None))
         s['sourceConversationId'] = s.pop('source_conversation_id', None)
-        s['followUps'] = json.loads(s.pop('follow_ups_json', '[]'))
+        s['followUps'] = _pg_json_loads_or(s.pop('follow_ups_json', '[]'), [])
         s['createdAt'] = s.pop('created_at', '')
         s['updatedAt'] = s.pop('updated_at', '')
         return s
@@ -765,18 +1039,20 @@ def create_scenario(data):
 
     now = _now()
     scenario_id = data.get('id') or _generate_scenario_id(data.get('category', 'general'))
+    ph = _p()
 
-    with get_conn() as conn:
+    with get_conn() as (conn, cur):
         # 중복 체크
-        existing = conn.execute("SELECT id FROM scenarios WHERE id = ?", (scenario_id,)).fetchone()
+        cur.execute(f"SELECT id FROM scenarios WHERE id = {ph}", (scenario_id,))
+        existing = cur.fetchone()
         if existing:
             raise ValueError(f"이미 존재하는 ID: {scenario_id}")
 
-        conn.execute(
-            """INSERT INTO scenarios (id, category, subcategory, prompt, expected_behavior, should_refuse,
+        cur.execute(
+            f"""INSERT INTO scenarios (id, category, subcategory, prompt, expected_behavior, should_refuse,
                risk_level, tags_json, enabled, source, parent_id, generation_info_json,
                source_conversation_id, follow_ups_json, created_at, updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+               VALUES ({_ph(16)})""",
             (scenario_id, data.get('category', 'general'), data.get('subcategory', ''),
              prompt, data.get('expectedBehavior', ''), int(data.get('shouldRefuse', False)),
              data.get('riskLevel', 'MEDIUM'), json.dumps(tags, ensure_ascii=False),
@@ -791,6 +1067,7 @@ def create_scenario(data):
 
 def update_scenario(scenario_id, data):
     now = _now()
+    ph = _p()
     updates = {}
     field_map = {
         'category': 'category', 'subcategory': 'subcategory', 'prompt': 'prompt',
@@ -816,33 +1093,36 @@ def update_scenario(scenario_id, data):
 
     updates['updated_at'] = now
 
-    sets = [f"{k} = ?" for k in updates.keys()]
+    sets = [f"{k} = {ph}" for k in updates.keys()]
     vals = list(updates.values()) + [scenario_id]
 
-    with get_conn() as conn:
-        conn.execute(f"UPDATE scenarios SET {', '.join(sets)} WHERE id = ?", vals)
+    with get_conn() as (conn, cur):
+        cur.execute(f"UPDATE scenarios SET {', '.join(sets)} WHERE id = {ph}", vals)
     return get_scenario(scenario_id)
 
 
 def delete_scenario(scenario_id):
-    with get_conn() as conn:
-        conn.execute("DELETE FROM scenarios WHERE id = ?", (scenario_id,))
+    with get_conn() as (conn, cur):
+        cur.execute(f"DELETE FROM scenarios WHERE id = {_p()}", (scenario_id,))
     return True
 
 
 def delete_scenarios_bulk(scenario_ids):
-    placeholders = ','.join('?' * len(scenario_ids))
-    with get_conn() as conn:
-        conn.execute(f"DELETE FROM scenarios WHERE id IN ({placeholders})", scenario_ids)
+    placeholders = _ph(len(scenario_ids))
+    with get_conn() as (conn, cur):
+        cur.execute(f"DELETE FROM scenarios WHERE id IN ({placeholders})", scenario_ids)
     return True
 
 
 def get_categories():
     """카테고리 목록 반환 (DB 저장값 또는 기본값)"""
-    with get_conn() as conn:
-        cat_row = conn.execute("SELECT value FROM settings WHERE key = 'categories'").fetchone()
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(f"SELECT value FROM settings WHERE key = {ph}", ('categories',))
+        cat_row = cur.fetchone()
         if cat_row:
-            return json.loads(cat_row['value'])
+            cat_dict = _row_to_dict(cat_row)
+            return _pg_json_loads_or(cat_dict['value'], list(DEFAULT_CATEGORIES))
     return list(DEFAULT_CATEGORIES)
 
 
@@ -855,11 +1135,14 @@ def _generate_scenario_id(category_id):
             break
     if not prefix:
         prefix = category_id[:4].upper()
-    with get_conn() as conn:
-        rows = conn.execute("SELECT id FROM scenarios WHERE id LIKE ?", (f"{prefix}-%",)).fetchall()
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(f"SELECT id FROM scenarios WHERE id LIKE {ph}", (f"{prefix}-%",))
+        rows = cur.fetchall()
         nums = []
         for r in rows:
-            parts = r['id'].split('-')
+            rd = _row_to_dict(r)
+            parts = rd['id'].split('-')
             if len(parts) >= 2 and parts[-1].isdigit():
                 nums.append(int(parts[-1]))
         next_num = max(nums, default=0) + 1
@@ -867,12 +1150,12 @@ def _generate_scenario_id(category_id):
 
 
 def save_scenario_categories(categories):
-    with get_conn() as conn:
+    with get_conn() as (conn, cur):
         now = _now()
-        conn.execute(
-            "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, ?)",
-            ('categories', json.dumps(categories, ensure_ascii=False), now)
-        )
+        sql, params = _upsert('settings', 'key', 'categories',
+                              ['key', 'value', 'updated_at'],
+                              ('categories', json.dumps(categories, ensure_ascii=False), now))
+        cur.execute(sql, params)
 
 
 # ════════════════════════════════════════
@@ -880,27 +1163,31 @@ def save_scenario_categories(categories):
 # ════════════════════════════════════════
 
 def get_test_runs(limit=50):
-    with get_conn() as conn:
-        rows = conn.execute("SELECT * FROM test_runs ORDER BY run_at DESC LIMIT ?", (limit,)).fetchall()
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(f"SELECT * FROM test_runs ORDER BY run_at DESC LIMIT {ph}", (limit,))
+        rows = cur.fetchall()
         result = []
         for r in rows:
             d = _row_to_dict(r)
             d['runAt'] = d.pop('run_at', '')
             d['guidelineVersion'] = d.pop('guideline_version', '')
-            d['results'] = json.loads(d.pop('results_json', '[]') or '[]')
+            d['results'] = _pg_json_loads_or(d.pop('results_json', '[]'), [])
             result.append(d)
         return result
 
 
 def get_test_run(run_id):
-    with get_conn() as conn:
-        row = conn.execute("SELECT * FROM test_runs WHERE id = ?", (run_id,)).fetchone()
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(f"SELECT * FROM test_runs WHERE id = {ph}", (run_id,))
+        row = cur.fetchone()
         if not row:
             return None
         d = _row_to_dict(row)
         d['runAt'] = d.pop('run_at', '')
         d['guidelineVersion'] = d.pop('guideline_version', '')
-        d['results'] = json.loads(d.pop('results_json', '[]') or '[]')
+        d['results'] = _pg_json_loads_or(d.pop('results_json', '[]'), [])
         return d
 
 
@@ -908,16 +1195,17 @@ def save_test_run(data):
     run_id = data.get('id') or f"run-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}-{secrets.token_hex(2)}"
     now = _now()
     status = data.get('status', 'completed')
-    with get_conn() as conn:
-        conn.execute(
-            """INSERT OR REPLACE INTO test_runs (id, run_at, total, passed, failed, env, guideline_version, tester, results_json, status)
-               VALUES (?,?,?,?,?,?,?,?,?,?)""",
+    with get_conn() as (conn, cur):
+        sql, params = _upsert(
+            'test_runs', 'id', run_id,
+            ['id', 'run_at', 'total', 'passed', 'failed', 'env', 'guideline_version', 'tester', 'results_json', 'status'],
             (run_id, data.get('runAt', now), data.get('total', 0), data.get('passed', 0),
              data.get('failed', 0), data.get('env', 'dev'), data.get('guidelineVersion', ''),
              data.get('tester', ''),
              json.dumps(data.get('results', []), ensure_ascii=False),
              status)
         )
+        cur.execute(sql, params)
     return run_id
 
 
@@ -928,22 +1216,23 @@ def save_test_run(data):
 def init_checklists():
     """기본 체크리스트 초기화 (이미 존재하면 건너뜀)"""
     now = _now()
-    with get_conn() as conn:
+    ph = _p()
+    with get_conn() as (conn, cur):
         for cl in DEFAULT_CHECKLISTS:
-            existing = conn.execute("SELECT symptom_key FROM consultation_checklists WHERE symptom_key = ?",
-                                    (cl['symptom_key'],)).fetchone()
+            cur.execute(f"SELECT symptom_key FROM consultation_checklists WHERE symptom_key = {ph}",
+                        (cl['symptom_key'],))
+            existing = cur.fetchone()
             if not existing:
-                # guidance_criteria에 연령대별 키워드 + 진료과 + 세부증상 통합
                 guidance = {
                     'department': cl.get('department', ''),
                     'detail': cl.get('detail', ''),
                     'ageSpecific': cl.get('age_specific', {}),
                 }
-                conn.execute(
-                    """INSERT INTO consultation_checklists
+                cur.execute(
+                    f"""INSERT INTO consultation_checklists
                        (symptom_key, symptom_name, category, required_questions_json, red_flags_json,
                         context_questions_json, guidance_criteria_json, created_at, updated_at)
-                       VALUES (?,?,?,?,?,?,?,?,?)""",
+                       VALUES ({_ph(9)})""",
                     (cl['symptom_key'], cl['symptom_name'], cl.get('category', 'general'),
                      json.dumps(cl.get('required_questions', []), ensure_ascii=False),
                      json.dumps(cl.get('red_flags', []), ensure_ascii=False),
@@ -955,19 +1244,20 @@ def init_checklists():
 
 def get_checklists():
     """전체 체크리스트 조회"""
-    with get_conn() as conn:
-        rows = conn.execute("SELECT * FROM consultation_checklists ORDER BY symptom_name").fetchall()
+    with get_conn() as (conn, cur):
+        cur.execute("SELECT * FROM consultation_checklists ORDER BY symptom_name")
+        rows = cur.fetchall()
         result = []
         for r in rows:
             d = _row_to_dict(r)
             for jf in ['required_questions_json', 'red_flags_json', 'context_questions_json', 'guidance_criteria_json']:
                 key = jf.replace('_json', '').replace('_', '')
                 camel = jf.replace('_json', '')
-                # snake_case → camelCase
+                # snake_case -> camelCase
                 parts = camel.split('_')
                 camel_key = parts[0] + ''.join(p.capitalize() for p in parts[1:])
                 raw = d.pop(jf, None)
-                d[camel_key] = json.loads(raw) if raw else []
+                d[camel_key] = _pg_json_loads_or(raw, [])
             d['symptomKey'] = d.pop('symptom_key', '')
             d['symptomName'] = d.pop('symptom_name', '')
             d['createdAt'] = d.pop('created_at', '')
@@ -978,9 +1268,11 @@ def get_checklists():
 
 def get_checklist(symptom_key):
     """단일 체크리스트 조회"""
-    with get_conn() as conn:
-        row = conn.execute("SELECT * FROM consultation_checklists WHERE symptom_key = ?",
-                           (symptom_key,)).fetchone()
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(f"SELECT * FROM consultation_checklists WHERE symptom_key = {ph}",
+                    (symptom_key,))
+        row = cur.fetchone()
         if not row:
             return None
         d = _row_to_dict(row)
@@ -988,7 +1280,7 @@ def get_checklist(symptom_key):
             parts = jf.replace('_json', '').split('_')
             camel_key = parts[0] + ''.join(p.capitalize() for p in parts[1:])
             raw = d.pop(jf, None)
-            d[camel_key] = json.loads(raw) if raw else []
+            d[camel_key] = _pg_json_loads_or(raw, [])
         d['symptomKey'] = d.pop('symptom_key', '')
         d['symptomName'] = d.pop('symptom_name', '')
         d['createdAt'] = d.pop('created_at', '')
@@ -999,18 +1291,20 @@ def get_checklist(symptom_key):
 def save_checklist(data):
     """체크리스트 저장 (생성 또는 업데이트)"""
     now = _now()
+    ph = _p()
     key = data.get('symptomKey', '')
     if not key:
         raise ValueError("symptomKey 필수")
-    with get_conn() as conn:
-        existing = conn.execute("SELECT symptom_key FROM consultation_checklists WHERE symptom_key = ?",
-                                (key,)).fetchone()
+    with get_conn() as (conn, cur):
+        cur.execute(f"SELECT symptom_key FROM consultation_checklists WHERE symptom_key = {ph}",
+                    (key,))
+        existing = cur.fetchone()
         if existing:
-            conn.execute(
-                """UPDATE consultation_checklists SET
-                   symptom_name=?, category=?, required_questions_json=?, red_flags_json=?,
-                   context_questions_json=?, guidance_criteria_json=?, updated_at=?
-                   WHERE symptom_key=?""",
+            cur.execute(
+                f"""UPDATE consultation_checklists SET
+                   symptom_name={ph}, category={ph}, required_questions_json={ph}, red_flags_json={ph},
+                   context_questions_json={ph}, guidance_criteria_json={ph}, updated_at={ph}
+                   WHERE symptom_key={ph}""",
                 (data.get('symptomName', ''), data.get('category', 'general'),
                  json.dumps(data.get('requiredQuestions', []), ensure_ascii=False),
                  json.dumps(data.get('redFlags', []), ensure_ascii=False),
@@ -1019,11 +1313,11 @@ def save_checklist(data):
                  now, key)
             )
         else:
-            conn.execute(
-                """INSERT INTO consultation_checklists
+            cur.execute(
+                f"""INSERT INTO consultation_checklists
                    (symptom_key, symptom_name, category, required_questions_json, red_flags_json,
                     context_questions_json, guidance_criteria_json, created_at, updated_at)
-                   VALUES (?,?,?,?,?,?,?,?,?)""",
+                   VALUES ({_ph(9)})""",
                 (key, data.get('symptomName', ''), data.get('category', 'general'),
                  json.dumps(data.get('requiredQuestions', []), ensure_ascii=False),
                  json.dumps(data.get('redFlags', []), ensure_ascii=False),
@@ -1036,14 +1330,14 @@ def save_checklist(data):
 
 def delete_checklist(symptom_key):
     """체크리스트 삭제"""
-    with get_conn() as conn:
-        conn.execute("DELETE FROM consultation_checklists WHERE symptom_key = ?", (symptom_key,))
+    with get_conn() as (conn, cur):
+        cur.execute(f"DELETE FROM consultation_checklists WHERE symptom_key = {_p()}", (symptom_key,))
     return True
 
 
 def match_checklists(query_text):
     """사용자 질문에서 증상 키워드 매칭하여 관련 체크리스트 반환"""
-    # 증상 유의어 매핑 (사용자 표현 → 체크리스트 키워드)
+    # 증상 유의어 매핑 (사용자 표현 -> 체크리스트 키워드)
     SYMPTOM_ALIASES = {
         'headache': ['머리','두통','편두통','머리아','머리가','뒷머리','앞머리','관자놀이','두개'],
         'abdominal_pain': ['배','복통','배아','배가','속','아랫배','윗배','명치','옆구리'],
@@ -1131,52 +1425,59 @@ def match_checklists(query_text):
 
 def get_settings():
     """모든 설정을 하나의 dict로 반환 (기존 settings.json 호환)"""
-    with get_conn() as conn:
-        rows = conn.execute("SELECT key, value FROM settings").fetchall()
+    with get_conn() as (conn, cur):
+        cur.execute("SELECT key, value FROM settings")
+        rows = cur.fetchall()
         result = {}
         for r in rows:
-            try:
-                result[r['key']] = json.loads(r['value'])
-            except (json.JSONDecodeError, TypeError):
-                result[r['key']] = r['value']
+            rd = _row_to_dict(r)
+            val = _pg_json_loads(rd['value'])
+            if val is not None:
+                result[rd['key']] = val
+            else:
+                result[rd['key']] = rd['value']
         return result
 
 
 def save_settings(data):
     """dict를 개별 키-값으로 저장 (기존 settings.json 호환)"""
     now = _now()
+    ph = _p()
     # 민감 데이터는 별도 처리 (users 테이블로 이동됨)
     skip_keys = {'adminPasswordHash', 'adminPasswordSalt', 'testerAccounts', 'users'}
-    with get_conn() as conn:
+    with get_conn() as (conn, cur):
         for k, v in data.items():
             if k in skip_keys:
                 continue
             val_str = json.dumps(v, ensure_ascii=False) if not isinstance(v, str) else v
-            conn.execute(
-                "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, ?)",
-                (k, val_str, now)
-            )
+            sql, params = _upsert('settings', 'key', k,
+                                  ['key', 'value', 'updated_at'],
+                                  (k, val_str, now))
+            cur.execute(sql, params)
 
 
 def get_setting(key, default=None):
-    with get_conn() as conn:
-        row = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(f"SELECT value FROM settings WHERE key = {ph}", (key,))
+        row = cur.fetchone()
         if not row:
             return default
-        try:
-            return json.loads(row['value'])
-        except (json.JSONDecodeError, TypeError):
-            return row['value']
+        rd = _row_to_dict(row)
+        val = _pg_json_loads(rd['value'])
+        if val is not None:
+            return val
+        return rd['value']
 
 
 def set_setting(key, value):
     now = _now()
     val_str = json.dumps(value, ensure_ascii=False) if not isinstance(value, str) else value
-    with get_conn() as conn:
-        conn.execute(
-            "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, ?)",
-            (key, val_str, now)
-        )
+    with get_conn() as (conn, cur):
+        sql, params = _upsert('settings', 'key', key,
+                              ['key', 'value', 'updated_at'],
+                              (key, val_str, now))
+        cur.execute(sql, params)
 
 
 # ════════════════════════════════════════
