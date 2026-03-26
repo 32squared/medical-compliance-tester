@@ -712,6 +712,10 @@ class ProxyHandler(BaseHTTPRequestHandler):
         # ── 대화 이력 API (로컬 저장) ──
         if path == '/api/comments/export':
             return self._export_comments()
+        if path == '/api/report/consultation':
+            return self._consultation_report()
+        if path == '/api/report/summary':
+            return self._summary_report()
         if path == '/api/conversations':
             return self._list_local_conversations(parsed.query)
         if path == '/api/conversations/search':
@@ -3101,6 +3105,139 @@ AI 건강상담 서비스의 응답이 한국 의료법을 준수하는지 평�
             "totalComments": len(report),
             "categorySummary": category_count,
             "comments": report,
+        })
+
+    def _consultation_report(self):
+        """GET /api/report/consultation — 문진 품질 리포트 (배치별 추이 + 축별 평균)"""
+        runs = db.get_test_runs(limit=100)
+        report_runs = []
+        axis_totals = {'symptomExploration': [], 'redFlagScreening': [], 'patientContext': [],
+                       'structuredApproach': [], 'appropriateGuidance': []}
+        grade_counts = {'A': 0, 'B': 0, 'C': 0, 'D': 0, 'F': 0}
+        total_scores = []
+        category_scores = {}  # {category: [scores]}
+
+        for r in runs:
+            results = r.get('results', [])
+            run_scores = []
+            run_grades = []
+            for res in results:
+                ce = res.get('consultationEval')
+                if not ce or ce.get('totalScore') is None:
+                    continue
+                score = ce['totalScore']
+                grade = ce.get('grade', '?')
+                run_scores.append(score)
+                total_scores.append(score)
+                if grade in grade_counts:
+                    grade_counts[grade] += 1
+                run_grades.append(grade)
+                # 축별 점수 수집
+                axes = ce.get('axes', {})
+                for ax_key in axis_totals:
+                    ax_score = (axes.get(ax_key) or {}).get('score')
+                    if ax_score is not None:
+                        axis_totals[ax_key].append(ax_score)
+                # 카테고리별
+                cat = res.get('category', res.get('scenarioId', '')[:4])
+                if cat:
+                    category_scores.setdefault(cat, []).append(score)
+
+            if run_scores:
+                report_runs.append({
+                    'runId': r.get('id', ''),
+                    'runAt': r.get('runAt', ''),
+                    'env': r.get('env', ''),
+                    'tester': r.get('tester', ''),
+                    'scenarioCount': len(run_scores),
+                    'avgScore': round(sum(run_scores) / len(run_scores), 1),
+                    'minScore': min(run_scores),
+                    'maxScore': max(run_scores),
+                    'gradeDistribution': {g: run_grades.count(g) for g in set(run_grades)},
+                })
+
+        # 축별 평균
+        axis_avg = {}
+        axis_max = {'symptomExploration': 30, 'redFlagScreening': 25, 'patientContext': 20,
+                    'structuredApproach': 15, 'appropriateGuidance': 10}
+        axis_names = {'symptomExploration': '증상 탐색', 'redFlagScreening': '위험 선별',
+                      'patientContext': '환자 맥락', 'structuredApproach': '단계적 접근',
+                      'appropriateGuidance': '적절한 안내'}
+        for ax_key, scores in axis_totals.items():
+            if scores:
+                avg = round(sum(scores) / len(scores), 1)
+                mx = axis_max.get(ax_key, 100)
+                axis_avg[ax_key] = {
+                    'name': axis_names.get(ax_key, ax_key),
+                    'avg': avg, 'max': mx,
+                    'pct': round(avg / mx * 100, 1) if mx else 0,
+                    'count': len(scores),
+                }
+
+        # 카테고리별 평균
+        cat_avg = {}
+        for cat, scores in category_scores.items():
+            cat_avg[cat] = {
+                'avg': round(sum(scores) / len(scores), 1),
+                'count': len(scores),
+                'min': min(scores), 'max': max(scores),
+            }
+
+        self._send_json(200, {
+            'totalEvaluations': len(total_scores),
+            'overallAvg': round(sum(total_scores) / len(total_scores), 1) if total_scores else 0,
+            'gradeDistribution': grade_counts,
+            'axisAverage': axis_avg,
+            'categoryAverage': cat_avg,
+            'runs': report_runs,  # 시간순 추이 데이터
+        })
+
+    def _summary_report(self):
+        """GET /api/report/summary — 전체 테스트 요약 리포트 (법률준수 + 문진 + 커멘트)"""
+        runs = db.get_test_runs(limit=100)
+        total_scenarios = 0
+        total_pass = 0
+        total_fail = 0
+        compliance_scores = []
+        consultation_scores = []
+        env_stats = {}
+
+        for r in runs:
+            env = r.get('env', 'dev')
+            env_stats.setdefault(env, {'runs': 0, 'scenarios': 0, 'passed': 0})
+            env_stats[env]['runs'] += 1
+            for res in r.get('results', []):
+                total_scenarios += 1
+                env_stats[env]['scenarios'] += 1
+                st = res.get('status', '')
+                if st == 'pass':
+                    total_pass += 1
+                    env_stats[env]['passed'] += 1
+                elif st == 'fail':
+                    total_fail += 1
+                comp = res.get('compliance', {})
+                if comp and comp.get('score') is not None:
+                    compliance_scores.append(comp['score'])
+                ce = res.get('consultationEval', {})
+                if ce and ce.get('totalScore') is not None:
+                    consultation_scores.append(ce['totalScore'])
+
+        # 커멘트 집계
+        comments_export = db.export_comments()
+        comment_cats = {}
+        for cmt in comments_export.get('comments', []):
+            cat = cmt.get('category', '기타')
+            comment_cats[cat] = comment_cats.get(cat, 0) + 1
+
+        self._send_json(200, {
+            'totalRuns': len(runs),
+            'totalScenarios': total_scenarios,
+            'passRate': round(total_pass / total_scenarios * 100, 1) if total_scenarios else 0,
+            'complianceAvg': round(sum(compliance_scores) / len(compliance_scores), 1) if compliance_scores else 0,
+            'consultationAvg': round(sum(consultation_scores) / len(consultation_scores), 1) if consultation_scores else 0,
+            'envStats': env_stats,
+            'totalComments': sum(comment_cats.values()),
+            'commentCategories': comment_cats,
         })
 
     # ════════════════════════════════════════════

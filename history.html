@@ -142,6 +142,69 @@
   ::-webkit-scrollbar { width:6px; }
   ::-webkit-scrollbar-track { background:transparent; }
   ::-webkit-scrollbar-thumb { background:var(--surface2); border-radius:3px; }
+
+  /* ── Report Tabs ── */
+  .report-tabs { display:flex; gap:2px; padding:12px 24px 0; background:var(--surface); border-bottom:1px solid var(--border); }
+  .report-tab { padding:8px 20px; border:none; background:none; color:var(--text-dim); font-size:13px;
+                font-weight:600; cursor:pointer; border-bottom:2px solid transparent; transition:all .15s;
+                font-family:inherit; border-radius:8px 8px 0 0; }
+  .report-tab:hover { color:var(--text); background:var(--surface2); }
+  .report-tab.active { color:var(--accent); border-bottom-color:var(--accent); background:var(--accent-dim); }
+
+  /* ── Report Dashboard ── */
+  .report-dashboard { flex:1; overflow-y:auto; padding:24px; display:none; }
+  .report-dashboard.visible { display:block; }
+  .report-section { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+                    padding:20px; margin-bottom:16px; }
+  .report-section-title { font-size:14px; font-weight:700; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+
+  /* Summary strip */
+  .report-summary-strip { display:flex; flex-wrap:wrap; gap:12px; }
+  .report-summary-item { flex:1; min-width:120px; text-align:center; padding:14px 12px; background:var(--bg);
+                         border-radius:10px; border:1px solid var(--border); }
+  .report-summary-item .rsi-value { font-size:22px; font-weight:800; margin-bottom:2px; }
+  .report-summary-item .rsi-label { font-size:11px; color:var(--text-dim); font-weight:600; }
+
+  /* Horizontal bar chart */
+  .hbar-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .hbar-label { min-width:24px; font-size:14px; font-weight:800; text-align:center; }
+  .hbar-track { flex:1; height:24px; background:var(--bg); border-radius:6px; overflow:hidden; position:relative; }
+  .hbar-fill { height:100%; border-radius:6px; transition:width .5s ease; min-width:2px; }
+  .hbar-info { min-width:100px; font-size:12px; color:var(--text-dim); text-align:right; white-space:nowrap; }
+
+  /* Progress bar chart (axes) */
+  .pbar-row { margin-bottom:10px; }
+  .pbar-header { display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px; }
+  .pbar-header-label { color:var(--text); font-weight:600; }
+  .pbar-header-value { color:var(--text-dim); }
+  .pbar-track { height:10px; background:var(--bg); border-radius:5px; overflow:hidden; }
+  .pbar-fill { height:100%; border-radius:5px; transition:width .5s ease; }
+
+  /* Vertical bar chart */
+  .vbar-chart { display:flex; align-items:flex-end; gap:6px; height:180px; padding:0 4px; border-left:1px solid var(--border);
+                border-bottom:1px solid var(--border); position:relative; }
+  .vbar-y-axis { position:absolute; left:-32px; top:0; bottom:0; display:flex; flex-direction:column-reverse;
+                 justify-content:space-between; font-size:10px; color:var(--text-dim); }
+  .vbar-col { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; min-width:0; }
+  .vbar-bar { width:100%; max-width:36px; border-radius:4px 4px 0 0; transition:height .5s ease; cursor:default; position:relative; }
+  .vbar-bar:hover { opacity:.85; }
+  .vbar-bar-tooltip { display:none; position:absolute; bottom:calc(100% + 4px); left:50%; transform:translateX(-50%);
+                      background:var(--surface2); color:var(--text); font-size:10px; padding:2px 6px; border-radius:4px;
+                      white-space:nowrap; pointer-events:none; z-index:10; }
+  .vbar-bar:hover .vbar-bar-tooltip { display:block; }
+  .vbar-label { font-size:10px; color:var(--text-dim); margin-top:6px; white-space:nowrap; overflow:hidden;
+                text-overflow:ellipsis; max-width:100%; text-align:center; }
+
+  /* Comment summary */
+  .comment-list { display:flex; flex-direction:column; gap:6px; }
+  .comment-row { display:flex; align-items:center; gap:10px; padding:8px 12px; background:var(--bg);
+                 border-radius:8px; border:1px solid var(--border); }
+  .comment-row-label { flex:1; font-size:13px; }
+  .comment-row-count { font-size:14px; font-weight:700; color:var(--accent); }
+
+  /* Report loading */
+  .report-loading { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:60px 20px; color:var(--text-dim); }
+  .report-loading .loader-spinner { margin-bottom:12px; }
 </style>
 </head>
 <body>
@@ -209,6 +272,14 @@
 
   <!-- Right Panel: Detail -->
   <div class="main" id="detailPanel">
+    <!-- Tab Buttons -->
+    <div class="report-tabs">
+      <button class="report-tab active" onclick="switchMainTab('history')" id="tabHistory">📋 테스트 이력</button>
+      <button class="report-tab" onclick="switchMainTab('report')" id="tabReport">📊 리포트</button>
+    </div>
+
+    <!-- History Tab Content -->
+    <div id="historyTabContent" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
     <div class="empty-state" id="emptySelect">
       <div class="empty-icon">&#128203;</div>
       <div class="empty-title">왼쪽에서 테스트 이력을 선택하세요</div>
@@ -254,6 +325,46 @@
         <!-- Populated by JS -->
       </div>
     </div>
+    </div><!-- /historyTabContent -->
+
+    <!-- Report Tab Content -->
+    <div id="reportTabContent" class="report-dashboard">
+      <div class="report-loading" id="reportLoading">
+        <div class="loader-spinner"></div>
+        <div>리포트 데이터 로딩 중...</div>
+      </div>
+      <div id="reportBody" style="display:none">
+        <!-- Section A: 전체 요약 -->
+        <div class="report-section">
+          <div class="report-section-title">📈 전체 요약</div>
+          <div class="report-summary-strip" id="reportSummaryStrip"></div>
+        </div>
+        <!-- Section B: 등급 분포 -->
+        <div class="report-section">
+          <div class="report-section-title">🏷️ 등급 분포</div>
+          <div id="reportGradeDist"></div>
+        </div>
+        <!-- Section C: 축별 평균 점수 -->
+        <div class="report-section">
+          <div class="report-section-title">🎯 축별 평균 점수</div>
+          <div id="reportAxesScores"></div>
+        </div>
+        <!-- Section D: 배치별 추이 -->
+        <div class="report-section">
+          <div class="report-section-title">📊 배치별 추이 (최근 10회)</div>
+          <div style="position:relative;margin-left:36px">
+            <div class="vbar-y-axis" id="reportVbarYAxis"></div>
+            <div class="vbar-chart" id="reportTrendChart"></div>
+          </div>
+        </div>
+        <!-- Section E: 커멘트 요약 -->
+        <div class="report-section">
+          <div class="report-section-title">💬 커멘트 요약</div>
+          <div class="comment-list" id="reportComments"></div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
 </div>
@@ -927,6 +1038,180 @@
     } catch(e) {
       showToast('중지 요청 실패', 'error');
     }
+  }
+
+  // ── Report Tab ──
+  let currentMainTab = 'history';
+  let reportLoaded = false;
+
+  function switchMainTab(tab) {
+    currentMainTab = tab;
+    document.getElementById('tabHistory').classList.toggle('active', tab === 'history');
+    document.getElementById('tabReport').classList.toggle('active', tab === 'report');
+    document.getElementById('historyTabContent').style.display = tab === 'history' ? 'flex' : 'none';
+    var reportEl = document.getElementById('reportTabContent');
+    if (tab === 'report') {
+      reportEl.classList.add('visible');
+      if (!reportLoaded) loadReport();
+    } else {
+      reportEl.classList.remove('visible');
+    }
+  }
+
+  async function loadReport() {
+    var loading = document.getElementById('reportLoading');
+    var body = document.getElementById('reportBody');
+    loading.style.display = '';
+    body.style.display = 'none';
+
+    try {
+      var results = await Promise.all([
+        fetch('/api/report/consultation').then(function(r) { return r.ok ? r.json() : {}; }).catch(function() { return {}; }),
+        fetch('/api/report/summary').then(function(r) { return r.ok ? r.json() : {}; }).catch(function() { return {}; })
+      ]);
+      var consultation = results[0];
+      var summary = results[1];
+      renderReport(consultation, summary);
+      reportLoaded = true;
+    } catch(e) {
+      showToast('리포트 로딩 실패: ' + e.message, 'error');
+    } finally {
+      loading.style.display = 'none';
+      body.style.display = '';
+    }
+  }
+
+  function renderReport(consultation, summary) {
+    // Merge data — handle different possible shapes
+    var data = Object.assign({}, summary, consultation);
+
+    // Section A: 전체 요약
+    var totalTests = data.totalTests || data.total || 0;
+    var totalScenarios = data.totalScenarios || data.scenarios || 0;
+    var passRate = data.passRate != null ? data.passRate : 0;
+    var complianceAvg = data.complianceAvg != null ? data.complianceAvg : (data.avgComplianceScore || 0);
+    var consultAvg = data.consultationAvg != null ? data.consultationAvg : (data.avgConsultationScore || 0);
+
+    document.getElementById('reportSummaryStrip').innerHTML =
+      '<div class="report-summary-item"><div class="rsi-value" style="color:var(--text)">' + totalTests + '</div><div class="rsi-label">총 테스트</div></div>' +
+      '<div class="report-summary-item"><div class="rsi-value" style="color:var(--accent)">' + totalScenarios + '</div><div class="rsi-label">시나리오</div></div>' +
+      '<div class="report-summary-item"><div class="rsi-value" style="color:var(--green)">' + passRate + '%</div><div class="rsi-label">통과율</div></div>' +
+      '<div class="report-summary-item"><div class="rsi-value" style="color:var(--yellow)">' + complianceAvg + '</div><div class="rsi-label">법률준수 평균</div></div>' +
+      '<div class="report-summary-item"><div class="rsi-value" style="color:var(--purple)">' + consultAvg + '</div><div class="rsi-label">문진품질 평균</div></div>';
+
+    // Section B: 등급 분포
+    var gradeColors = { A: '#22c55e', B: '#38bdf8', C: '#f59e0b', D: '#f97316', F: '#ef4444' };
+    var gradeDist = data.gradeDist || data.gradeDistribution || {};
+    var gradeKeys = ['A', 'B', 'C', 'D', 'F'];
+    var gradeTotal = 0;
+    for (var gi = 0; gi < gradeKeys.length; gi++) { gradeTotal += (gradeDist[gradeKeys[gi]] || 0); }
+    var maxGradeCount = 0;
+    for (var gi2 = 0; gi2 < gradeKeys.length; gi2++) { if ((gradeDist[gradeKeys[gi2]] || 0) > maxGradeCount) maxGradeCount = gradeDist[gradeKeys[gi2]] || 0; }
+
+    var gradeHtml = '';
+    for (var gi3 = 0; gi3 < gradeKeys.length; gi3++) {
+      var g = gradeKeys[gi3];
+      var cnt = gradeDist[g] || 0;
+      var pct = gradeTotal > 0 ? Math.round((cnt / gradeTotal) * 100) : 0;
+      var barW = maxGradeCount > 0 ? Math.round((cnt / maxGradeCount) * 100) : 0;
+      gradeHtml += '<div class="hbar-row">' +
+        '<div class="hbar-label" style="color:' + gradeColors[g] + '">' + g + '</div>' +
+        '<div class="hbar-track"><div class="hbar-fill" style="width:' + barW + '%;background:' + gradeColors[g] + '"></div></div>' +
+        '<div class="hbar-info">' + cnt + '건 (' + pct + '%)</div>' +
+      '</div>';
+    }
+    document.getElementById('reportGradeDist').innerHTML = gradeHtml;
+
+    // Section C: 축별 평균 점수
+    var axes = data.axes || data.axisScores || {};
+    var axesDefs = [
+      { key: 'symptomExploration', label: '증상 탐색', max: 30 },
+      { key: 'redFlagScreening', label: '위험 선별', max: 25 },
+      { key: 'patientContext', label: '환자 맥락', max: 20 },
+      { key: 'structuredApproach', label: '단계적 접근', max: 15 },
+      { key: 'appropriateGuidance', label: '적절한 안내', max: 10 }
+    ];
+    var axesHtml = '';
+    for (var ai = 0; ai < axesDefs.length; ai++) {
+      var ax = axesDefs[ai];
+      var axScore = 0;
+      if (typeof axes[ax.key] === 'object' && axes[ax.key] !== null) {
+        axScore = axes[ax.key].avg || axes[ax.key].score || 0;
+      } else {
+        axScore = axes[ax.key] || 0;
+      }
+      axScore = Math.round(axScore * 10) / 10;
+      var axPct = ax.max > 0 ? Math.round((axScore / ax.max) * 100) : 0;
+      var axColor = axPct >= 80 ? '#22c55e' : axPct >= 60 ? '#f59e0b' : '#ef4444';
+      var axWarn = axPct < 40 ? ' \u274C' : axPct < 60 ? ' \u26A0\uFE0F' : '';
+      axesHtml += '<div class="pbar-row">' +
+        '<div class="pbar-header"><span class="pbar-header-label">' + ax.label + axWarn + '</span>' +
+        '<span class="pbar-header-value">' + axScore + '/' + ax.max + ' (' + axPct + '%)</span></div>' +
+        '<div class="pbar-track"><div class="pbar-fill" style="width:' + axPct + '%;background:' + axColor + '"></div></div>' +
+      '</div>';
+    }
+    document.getElementById('reportAxesScores').innerHTML = axesHtml;
+
+    // Section D: 배치별 추이 (vertical bar chart)
+    var trend = data.trend || data.recentRuns || [];
+    if (!Array.isArray(trend)) trend = [];
+    var last10 = trend.slice(-10);
+    var yLabels = [0, 20, 40, 60, 80, 100];
+    var yAxisHtml = '';
+    for (var yi = 0; yi < yLabels.length; yi++) {
+      yAxisHtml += '<span>' + yLabels[yi] + '</span>';
+    }
+    document.getElementById('reportVbarYAxis').innerHTML = yAxisHtml;
+
+    var trendHtml = '';
+    if (last10.length === 0) {
+      trendHtml = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-dim);font-size:13px">데이터가 없습니다</div>';
+    } else {
+      for (var ti = 0; ti < last10.length; ti++) {
+        var tr = last10[ti];
+        var trRate = tr.passRate != null ? tr.passRate : (tr.rate || 0);
+        var trDate = tr.date || tr.label || '';
+        if (!trDate && tr.startedAt) {
+          var dd = new Date(tr.startedAt);
+          trDate = (dd.getMonth() + 1) + '/' + dd.getDate();
+        }
+        var barH = Math.max(trRate, 2);
+        var barColor = trRate >= 80 ? '#22c55e' : trRate >= 60 ? '#f59e0b' : trRate >= 40 ? '#f97316' : '#ef4444';
+        trendHtml += '<div class="vbar-col">' +
+          '<div class="vbar-bar" style="height:' + barH + '%;background:' + barColor + '">' +
+            '<div class="vbar-bar-tooltip">' + trRate + '%</div>' +
+          '</div>' +
+          '<div class="vbar-label">' + escapeHtml(trDate) + '</div>' +
+        '</div>';
+      }
+    }
+    document.getElementById('reportTrendChart').innerHTML = trendHtml;
+
+    // Section E: 커멘트 요약
+    var comments = data.comments || data.commentSummary || {};
+    var commTotal = comments.total || 0;
+    var commCategories = comments.categories || comments.items || {};
+    var commHtml = '<div class="comment-row"><div class="comment-row-label" style="font-weight:700">총 커멘트</div><div class="comment-row-count">' + commTotal + '건</div></div>';
+
+    if (typeof commCategories === 'object' && commCategories !== null) {
+      if (Array.isArray(commCategories)) {
+        for (var ci = 0; ci < commCategories.length; ci++) {
+          var cc = commCategories[ci];
+          commHtml += '<div class="comment-row"><div class="comment-row-label">' + escapeHtml(cc.label || cc.name || cc.category || '') + '</div>' +
+            '<div class="comment-row-count">' + (cc.count || 0) + '건</div></div>';
+        }
+      } else {
+        var commKeys = Object.keys(commCategories);
+        for (var ck = 0; ck < commKeys.length; ck++) {
+          commHtml += '<div class="comment-row"><div class="comment-row-label">' + escapeHtml(commKeys[ck]) + '</div>' +
+            '<div class="comment-row-count">' + (commCategories[commKeys[ck]] || 0) + '건</div></div>';
+        }
+      }
+    }
+    if (commTotal === 0 && Object.keys(commCategories).length === 0) {
+      commHtml += '<div class="comment-row"><div class="comment-row-label" style="color:var(--text-dim)">커멘트 데이터가 없습니다</div></div>';
+    }
+    document.getElementById('reportComments').innerHTML = commHtml;
   }
 </script>
 </body>
