@@ -16,16 +16,24 @@ Write-Host "Service:      $ServiceName"
 Write-Host "Cloud SQL:    $SqlConnection"
 Write-Host ""
 
-# DB 비밀번호 확인
+# DB 비밀번호: 파라미터 → 환경변수 → Secret Manager → 에러
 if (-not $DbPassword) {
     $DbPassword = $env:DB_PASSWORD
 }
 if (-not $DbPassword) {
-    Write-Host "DB 비밀번호가 필요합니다. 다음 중 하나로 전달하세요:" -ForegroundColor Red
-    Write-Host '  .\deploy.ps1 -DbPassword "your_password"'
-    Write-Host '  $env:DB_PASSWORD = "your_password"; .\deploy.ps1'
+    Write-Host "Secret Manager에서 DB 비밀번호를 가져옵니다..." -ForegroundColor Yellow
+    try {
+        $DbPassword = gcloud secrets versions access latest --secret=db-password --project=$ProjectId 2>$null
+    } catch {}
+}
+if (-not $DbPassword) {
+    Write-Host "DB 비밀번호를 찾을 수 없습니다. 다음 중 하나로 설정하세요:" -ForegroundColor Red
+    Write-Host '  1. Secret Manager (권장): echo -n "password" | gcloud secrets create db-password --data-file=-'
+    Write-Host '  2. 파라미터: .\deploy.ps1 -DbPassword "password"'
+    Write-Host '  3. 환경변수: $env:DB_PASSWORD = "password"; .\deploy.ps1'
     exit 1
 }
+Write-Host "DB Password:  ****" -ForegroundColor Green
 
 $DatabaseUrl = "postgresql://app_user:${DbPassword}@/medical_app?host=/cloudsql/${SqlConnection}"
 
