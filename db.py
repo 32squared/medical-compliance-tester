@@ -327,6 +327,11 @@ def init_db(db_path=None):
             conn.execute(sql)
         except sqlite3.OperationalError:
             pass  # 이미 존재
+    # 고아 running 배치 정리 (서버 재시작 시)
+    try:
+        conn.execute("UPDATE test_runs SET status = 'cancelled' WHERE status = 'running'")
+    except sqlite3.OperationalError:
+        pass
     conn.commit()
     conn.close()
     # 기본 체크리스트 초기화
