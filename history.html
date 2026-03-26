@@ -508,6 +508,18 @@
       el.classList.toggle('active', el.getAttribute('onclick').includes(runId));
     });
 
+    // running 상태인지 먼저 확인
+    const runItem = historyData.find(r => (r.runId || r.id) === runId);
+    if (runItem && runItem.status === 'running') {
+      // running 배치: 즉시 폴링 UI 표시
+      document.getElementById('emptySelect').style.display = 'none';
+      const dc = document.getElementById('detailContent');
+      dc.style.display = '';
+      dc.innerHTML = '<div style="padding:20px;text-align:center;color:var(--accent)"><div style="font-size:24px;margin-bottom:8px">⏳</div><div>배치 실행 중... 결과가 도착하면 아래에 표시됩니다.</div></div><div id="runningResults"></div>';
+      startProgressPolling(runId);
+      return;
+    }
+
     fetch('/api/history/' + runId)
       .then(r => {
         if (!r.ok) throw new Error('이력 조회 실패');
@@ -970,7 +982,7 @@
 
         // 상세 패널에도 표시 (선택된 run인 경우)
         if (currentRunId === runId) {
-          const detailEl = document.getElementById('runDetail');
+          const detailEl = document.getElementById('detailContent');
           if (detailEl) {
             const pct = Math.round((status.completed / status.total) * 100);
             const elapsed = (Date.now() - _pollingStartTimes[runId]) / 1000;
