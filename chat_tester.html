@@ -1506,9 +1506,11 @@ function finalizeAssistantMessage(fullText, meta = {}) {
       window._lastGptEval = null;
       window._lastConsultEval = null;
 
+      var _compRetry = 0;
       const checkAndShowComparison = function() {
-        // GPT + 문진 평가 모두 완료될 때까지 대기
-        if (!window._lastGptEval || !window._lastConsultEval) {
+        _compRetry++;
+        // GPT + 문진 평가 + 서버 ID 모두 완료될 때까지 대기 (최대 30초)
+        if ((!window._lastGptEval || !window._lastConsultEval || !window._lastAssistantMsgId) && _compRetry < 15) {
           setTimeout(checkAndShowComparison, 2000);
           return;
         }
