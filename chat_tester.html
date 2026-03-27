@@ -1499,17 +1499,25 @@ function finalizeAssistantMessage(fullText, meta = {}) {
       window._isEnhancedMessage = false;
       const ctx = window._enhancementContext;
 
+      // 보강 전 값을 미리 저장 (보강 후 평가가 덮어쓰기 전에)
+      const _origGptEval = ctx.originalEval.gptEval || {};
+      const _origConsultEval = ctx.originalEval.consultationEval || {};
+      // 보강 후 평가를 받기 위해 현재 값 초기화
+      window._lastGptEval = null;
+      window._lastConsultEval = null;
+
       const checkAndShowComparison = function() {
-        if (!window._lastGptEval) {
+        // GPT + 문진 평가 모두 완료될 때까지 대기
+        if (!window._lastGptEval || !window._lastConsultEval) {
           setTimeout(checkAndShowComparison, 2000);
           return;
         }
 
-        var origGpt = (ctx.originalEval.gptEval || {}).score || 0;
-        var origGrade = (ctx.originalEval.gptEval || {}).grade || '?';
+        var origGpt = _origGptEval.score || 0;
+        var origGrade = _origGptEval.grade || '?';
         var enhGpt = (window._lastGptEval || {}).score || 0;
         var enhGrade = (window._lastGptEval || {}).grade || '?';
-        var origConsult = (ctx.originalEval.consultationEval || {}).totalScore || 0;
+        var origConsult = _origConsultEval.totalScore || 0;
         var enhConsult = (window._lastConsultEval || {}).totalScore || 0;
         var gptDelta = enhGpt - origGpt;
         var consultDelta = enhConsult - origConsult;
