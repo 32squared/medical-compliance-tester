@@ -205,6 +205,49 @@
   /* Report loading */
   .report-loading { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:60px 20px; color:var(--text-dim); }
   .report-loading .loader-spinner { margin-bottom:12px; }
+
+  /* ── Batch Report View (per-run) ── */
+  .batch-toggle-bar { display:flex; gap:4px; padding:8px 24px; background:var(--surface); border-bottom:1px solid var(--border); }
+  .batch-toggle-btn { padding:6px 16px; border:1px solid var(--border); border-radius:8px; background:none;
+                      color:var(--text-dim); font-size:12px; font-weight:600; cursor:pointer; font-family:inherit;
+                      transition:all .15s; }
+  .batch-toggle-btn:hover { background:var(--surface2); color:var(--text); }
+  .batch-toggle-btn.active { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
+
+  .batch-report { padding:20px 24px; overflow-y:auto; flex:1; }
+  .batch-report-section { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+                          padding:20px; margin-bottom:16px; }
+  .batch-report-section-title { font-size:14px; font-weight:700; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+
+  .batch-summary-cards { display:flex; flex-wrap:wrap; gap:12px; }
+  .batch-summary-card { flex:1; min-width:100px; text-align:center; padding:16px 12px; background:var(--bg);
+                        border-radius:10px; border:1px solid var(--border); }
+  .batch-summary-card .bsc-value { font-size:28px; font-weight:800; margin-bottom:2px; }
+  .batch-summary-card .bsc-label { font-size:12px; color:var(--text-dim); font-weight:600; }
+
+  .batch-hbar-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .batch-hbar-label { min-width:24px; font-size:14px; font-weight:800; text-align:center; }
+  .batch-hbar-track { flex:1; height:24px; background:var(--bg); border-radius:6px; overflow:hidden; }
+  .batch-hbar-fill { height:100%; border-radius:6px; transition:width .5s ease; min-width:2px; }
+  .batch-hbar-info { min-width:90px; font-size:12px; color:var(--text-dim); text-align:right; white-space:nowrap; }
+
+  .batch-pbar-row { margin-bottom:10px; }
+  .batch-pbar-header { display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px; }
+  .batch-pbar-header-label { color:var(--text); font-weight:600; }
+  .batch-pbar-header-value { color:var(--text-dim); }
+  .batch-pbar-track { height:10px; background:var(--bg); border-radius:5px; overflow:hidden; }
+  .batch-pbar-fill { height:100%; border-radius:5px; transition:width .5s ease; }
+
+  .violation-group { padding:10px 12px; background:var(--bg); border-radius:8px; border:1px solid var(--border); margin-bottom:8px; }
+  .violation-group-header { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+  .violation-group-name { font-size:13px; font-weight:700; }
+  .violation-group-count { font-size:11px; color:var(--text-dim); background:var(--surface2); padding:2px 8px; border-radius:4px; }
+  .violation-example { font-size:12px; color:var(--orange); margin-left:16px; margin-bottom:2px; }
+
+  @media (max-width: 768px) {
+    .batch-summary-cards { flex-direction:column; }
+    .batch-summary-card { min-width:unset; }
+  }
 </style>
 </head>
 <body>
@@ -321,8 +364,15 @@
           </div>
         </div>
       </div>
+      <div class="batch-toggle-bar" id="batchToggleBar" style="display:none">
+        <button class="batch-toggle-btn active" id="btnIndividual" onclick="switchBatchView('individual')">📋 개별 결과 보기</button>
+        <button class="batch-toggle-btn" id="btnBatchReport" onclick="switchBatchView('report')">📊 리포트 보기</button>
+      </div>
       <div class="results-area" id="resultsArea">
         <!-- Populated by JS -->
+      </div>
+      <div class="batch-report" id="batchReportArea" style="display:none">
+        <!-- Populated by JS: batch-level report -->
       </div>
     </div>
     </div><!-- /historyTabContent -->
@@ -568,6 +618,17 @@
     document.getElementById('emptySelect').style.display = 'none';
     const dc = document.getElementById('detailContent');
     dc.style.display = 'flex';
+    _lastRenderedRun = run;
+
+    // Show batch toggle bar
+    var toggleBar = document.getElementById('batchToggleBar');
+    toggleBar.style.display = 'flex';
+    // Reset to individual view
+    currentBatchView = 'individual';
+    document.getElementById('btnIndividual').classList.add('active');
+    document.getElementById('btnBatchReport').classList.remove('active');
+    document.getElementById('resultsArea').style.display = '';
+    document.getElementById('batchReportArea').style.display = 'none';
 
     const env = (run.env || 'dev').toLowerCase();
     const isBatch = run.type === 'batch';
@@ -1091,6 +1152,212 @@
     } catch(e) {
       showToast('중지 요청 실패', 'error');
     }
+  }
+
+  // ── Batch-level Report View ──
+  let currentBatchView = 'individual';
+  let _lastRenderedRun = null;
+
+  function switchBatchView(view) {
+    currentBatchView = view;
+    document.getElementById('btnIndividual').classList.toggle('active', view === 'individual');
+    document.getElementById('btnBatchReport').classList.toggle('active', view === 'report');
+    document.getElementById('resultsArea').style.display = view === 'individual' ? '' : 'none';
+    document.getElementById('batchReportArea').style.display = view === 'report' ? '' : 'none';
+    if (view === 'report' && _lastRenderedRun) {
+      renderBatchReport(_lastRenderedRun);
+    }
+  }
+
+  function renderBatchReport(run) {
+    var area = document.getElementById('batchReportArea');
+    var results = run.results || [];
+    var s = run.summary || {};
+    var total = s.total || results.length || 0;
+    var passed = s.passed || 0;
+    var failed = s.failed || 0;
+    var errors = s.error || 0;
+    var rate = s.passRate != null ? s.passRate : (total > 0 ? Math.round((passed / total) * 100) : 0);
+
+    var html = '';
+
+    // 1. Summary Cards
+    html += '<div class="batch-report-section">' +
+      '<div class="batch-report-section-title">📈 배치 요약</div>' +
+      '<div class="batch-summary-cards">' +
+        '<div class="batch-summary-card"><div class="bsc-value" style="color:var(--text)">' + total + '</div><div class="bsc-label">전체</div></div>' +
+        '<div class="batch-summary-card"><div class="bsc-value" style="color:var(--green)">' + passed + '</div><div class="bsc-label">통과</div></div>' +
+        '<div class="batch-summary-card"><div class="bsc-value" style="color:var(--red)">' + failed + '</div><div class="bsc-label">실패</div></div>' +
+        '<div class="batch-summary-card"><div class="bsc-value" style="color:var(--yellow)">' + errors + '</div><div class="bsc-label">오류</div></div>' +
+        '<div class="batch-summary-card"><div class="bsc-value" style="color:var(--accent);font-size:32px">' + rate + '%</div><div class="bsc-label">통과율</div></div>' +
+      '</div></div>';
+
+    // 2. GPT 등급 분포
+    var gradeCounts = { A: 0, B: 0, C: 0, D: 0, F: 0 };
+    var gradeColorMap = { A: '#22c55e', B: '#38bdf8', C: '#eab308', D: '#f97316', F: '#ef4444' };
+    var gradeTotal = 0;
+    for (var ri = 0; ri < results.length; ri++) {
+      var ge = results[ri].gptEval;
+      if (ge && ge.grade && gradeCounts.hasOwnProperty(ge.grade)) {
+        gradeCounts[ge.grade]++;
+        gradeTotal++;
+      }
+    }
+    var maxGrade = 0;
+    var gradeKeys = ['A', 'B', 'C', 'D', 'F'];
+    for (var gk = 0; gk < gradeKeys.length; gk++) {
+      if (gradeCounts[gradeKeys[gk]] > maxGrade) maxGrade = gradeCounts[gradeKeys[gk]];
+    }
+
+    html += '<div class="batch-report-section">' +
+      '<div class="batch-report-section-title">🏷️ GPT 등급 분포</div>';
+    if (gradeTotal === 0) {
+      html += '<div style="color:var(--text-dim);font-size:13px">GPT 평가 데이터가 없습니다</div>';
+    } else {
+      for (var gi = 0; gi < gradeKeys.length; gi++) {
+        var gk2 = gradeKeys[gi];
+        var gc = gradeCounts[gk2];
+        var gPct = gradeTotal > 0 ? Math.round((gc / gradeTotal) * 100) : 0;
+        var gBarW = maxGrade > 0 ? Math.round((gc / maxGrade) * 100) : 0;
+        html += '<div class="batch-hbar-row">' +
+          '<div class="batch-hbar-label" style="color:' + gradeColorMap[gk2] + '">' + gk2 + '</div>' +
+          '<div class="batch-hbar-track"><div class="batch-hbar-fill" style="width:' + gBarW + '%;background:' + gradeColorMap[gk2] + '"></div></div>' +
+          '<div class="batch-hbar-info">' + gc + '건 (' + gPct + '%)</div></div>';
+      }
+    }
+    html += '</div>';
+
+    // 3. 문진 품질 평균
+    var axesDefs = [
+      { key: 'symptomExploration', label: '증상 탐색', max: 30 },
+      { key: 'redFlagScreening', label: '위험 선별', max: 25 },
+      { key: 'patientContext', label: '환자 맥락', max: 20 },
+      { key: 'structuredApproach', label: '단계적 접근', max: 15 },
+      { key: 'appropriateGuidance', label: '적절한 안내', max: 10 }
+    ];
+    var axesSums = {};
+    var axesCount = 0;
+    for (var ad = 0; ad < axesDefs.length; ad++) { axesSums[axesDefs[ad].key] = 0; }
+    for (var ri2 = 0; ri2 < results.length; ri2++) {
+      var ce = results[ri2].consultationEval;
+      if (ce && ce.axes) {
+        axesCount++;
+        for (var ad2 = 0; ad2 < axesDefs.length; ad2++) {
+          var axKey = axesDefs[ad2].key;
+          var axData = ce.axes[axKey];
+          if (axData && typeof axData === 'object') {
+            axesSums[axKey] += (axData.score || 0);
+          }
+        }
+      }
+    }
+
+    html += '<div class="batch-report-section">' +
+      '<div class="batch-report-section-title">🩺 문진 품질 평균</div>';
+    if (axesCount === 0) {
+      html += '<div style="color:var(--text-dim);font-size:13px">문진 평가 데이터가 없습니다</div>';
+    } else {
+      for (var ad3 = 0; ad3 < axesDefs.length; ad3++) {
+        var ax = axesDefs[ad3];
+        var avgScore = Math.round((axesSums[ax.key] / axesCount) * 10) / 10;
+        var axPct = ax.max > 0 ? Math.round((avgScore / ax.max) * 100) : 0;
+        var axColor = axPct >= 80 ? '#22c55e' : axPct >= 60 ? '#f59e0b' : '#ef4444';
+        html += '<div class="batch-pbar-row">' +
+          '<div class="batch-pbar-header"><span class="batch-pbar-header-label">' + ax.label + '</span>' +
+          '<span class="batch-pbar-header-value">' + avgScore + '/' + ax.max + ' (' + axPct + '%)</span></div>' +
+          '<div class="batch-pbar-track"><div class="batch-pbar-fill" style="width:' + axPct + '%;background:' + axColor + '"></div></div></div>';
+      }
+      html += '<div style="font-size:12px;color:var(--text-dim);margin-top:6px">평가 대상: ' + axesCount + '건</div>';
+    }
+    html += '</div>';
+
+    // 4. 의료법 경계 위반 목록
+    var violationMap = {};
+    for (var ri3 = 0; ri3 < results.length; ri3++) {
+      var comp = results[ri3].compliance;
+      if (comp && comp.violations && comp.violations.length > 0) {
+        for (var vi = 0; vi < comp.violations.length; vi++) {
+          var v = comp.violations[vi];
+          var vName = v.name || v.rule || v.rule_name || '기타';
+          if (!violationMap[vName]) {
+            violationMap[vName] = { count: 0, examples: [], law: v.law || '', severity: v.severity || '', description: v.description || '' };
+          }
+          violationMap[vName].count++;
+          if (v.matched && violationMap[vName].examples.length < 3) {
+            violationMap[vName].examples.push(v.matched);
+          }
+        }
+      }
+    }
+    var violationKeys = Object.keys(violationMap).sort(function(a, b) { return violationMap[b].count - violationMap[a].count; });
+
+    html += '<div class="batch-report-section">' +
+      '<div class="batch-report-section-title">⚖️ 의료법 경계 사항</div>';
+    if (violationKeys.length === 0) {
+      html += '<div style="color:var(--green);font-size:13px">✓ 위반 사항이 없습니다</div>';
+    } else {
+      html += '<div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">총 ' + violationKeys.length + '종류의 위반 유형이 발견되었습니다</div>';
+      for (var vk = 0; vk < violationKeys.length; vk++) {
+        var vKey = violationKeys[vk];
+        var vData = violationMap[vKey];
+        html += '<div class="violation-group">' +
+          '<div class="violation-group-header">' +
+            '<span style="color:var(--red);font-weight:700">' + escapeHtml(vData.severity) + '</span>' +
+            '<span class="violation-group-name">' + escapeHtml(vKey) + '</span>' +
+            '<span class="violation-group-count">' + vData.count + '건</span>' +
+            (vData.law ? '<span style="font-size:11px;color:var(--text-dim)">' + escapeHtml(vData.law) + '</span>' : '') +
+          '</div>';
+        for (var ve = 0; ve < vData.examples.length; ve++) {
+          html += '<div class="violation-example">"' + escapeHtml(vData.examples[ve]) + '"</div>';
+        }
+        html += '</div>';
+      }
+    }
+    html += '</div>';
+
+    // 5. 커멘트 통계
+    var commentMap = {};
+    var commentTotal = 0;
+    for (var ri4 = 0; ri4 < results.length; ri4++) {
+      var rc = results[ri4].comment || results[ri4].comments;
+      if (rc) {
+        var cats = [];
+        if (typeof rc === 'string' && rc.trim()) {
+          cats.push('일반');
+          commentTotal++;
+        } else if (typeof rc === 'object') {
+          if (rc.category) { cats.push(rc.category); commentTotal++; }
+          if (Array.isArray(rc)) {
+            for (var rci = 0; rci < rc.length; rci++) {
+              var cat = (typeof rc[rci] === 'object' ? (rc[rci].category || '일반') : '일반');
+              cats.push(cat);
+              commentTotal++;
+            }
+          }
+        }
+        for (var ci = 0; ci < cats.length; ci++) {
+          commentMap[cats[ci]] = (commentMap[cats[ci]] || 0) + 1;
+        }
+      }
+    }
+    var commentKeys = Object.keys(commentMap).sort(function(a, b) { return commentMap[b] - commentMap[a]; });
+
+    html += '<div class="batch-report-section">' +
+      '<div class="batch-report-section-title">💬 커멘트 통계</div>';
+    if (commentTotal === 0) {
+      html += '<div style="color:var(--text-dim);font-size:13px">커멘트가 없습니다</div>';
+    } else {
+      html += '<div class="comment-list">' +
+        '<div class="comment-row"><div class="comment-row-label" style="font-weight:700">총 커멘트</div><div class="comment-row-count">' + commentTotal + '건</div></div>';
+      for (var ck = 0; ck < commentKeys.length; ck++) {
+        html += '<div class="comment-row"><div class="comment-row-label">' + escapeHtml(commentKeys[ck]) + '</div>' +
+          '<div class="comment-row-count">' + commentMap[commentKeys[ck]] + '건</div></div>';
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+
+    area.innerHTML = html;
   }
 
   // ── Report Tab ──
