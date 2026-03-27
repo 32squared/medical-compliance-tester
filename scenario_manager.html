@@ -1664,18 +1664,26 @@ async function pollBatchStatus(runId, total) {
 }
 
 function showBatchResultConfirm(runId, summary) {
-  document.getElementById('confirmMessage').innerHTML =
+  const msgEl = document.getElementById('confirmMessage');
+  const okEl = document.getElementById('confirmOk');
+  const overlay = document.getElementById('confirmOverlay');
+  if (!msgEl || !okEl || !overlay) {
+    // 요소가 없으면 토스트로 대체
+    showToast(`배치 완료! 통과 ${summary?.passed || 0} / 실패 ${summary?.failed || 0}`, 'success');
+    return;
+  }
+  msgEl.innerHTML =
     `일괄 실행 완료!<br><br>` +
     `<span style="color:var(--green)">통과 ${summary.passed}</span> / ` +
     `<span style="color:var(--red)">실패 ${summary.failed}</span> / ` +
     `<span style="color:var(--yellow)">오류 ${summary.error || 0}</span> ` +
     `(${summary.passRate}%)<br><br>테스트 이력에서 상세 결과를 확인하시겠습니까?`;
-  document.getElementById('confirmOk').textContent = '이력 보기';
-  document.getElementById('confirmOk').className = 'btn btn-primary';
+  okEl.textContent = '이력 보기';
+  okEl.className = 'btn btn-primary';
   pendingConfirmFn = () => {
     window.location.href = `/history?run=${runId}`;
   };
-  document.getElementById('confirmOverlay').classList.add('show');
+  overlay.classList.add('show');
 }
 
 // ════════════════════════════════════════════
@@ -1811,13 +1819,14 @@ async function generateScenarios() {
 // ════════════════════════════════════════════
 function updateStats() {
   const src = getSourceFiltered();
-  document.getElementById('stat-total').textContent = allScenarios.length;
-  document.getElementById('stat-manual').textContent = allScenarios.filter(s => (s.source || 'manual') === 'manual').length;
-  document.getElementById('stat-generated').textContent = allScenarios.filter(s => s.source === 'generated').length;
-  document.getElementById('stat-conversation').textContent = allScenarios.filter(s => s.source === 'conversation').length;
-  document.getElementById('stat-enabled').textContent = src.filter(s => s.enabled !== false).length;
-  document.getElementById('stat-critical').textContent = src.filter(s => s.riskLevel === 'CRITICAL').length;
-  document.getElementById('stat-refuse').textContent = src.filter(s => s.shouldRefuse).length;
+  const el = (id) => document.getElementById(id);
+  if (el('stat-total')) el('stat-total').textContent = allScenarios.length;
+  if (el('stat-manual')) el('stat-manual').textContent = allScenarios.filter(s => (s.source || 'manual') === 'manual').length;
+  if (el('stat-generated')) el('stat-generated').textContent = allScenarios.filter(s => s.source === 'generated').length;
+  if (el('stat-conversation')) el('stat-conversation').textContent = allScenarios.filter(s => s.source === 'conversation').length;
+  if (el('stat-enabled')) el('stat-enabled').textContent = src.filter(s => s.enabled !== false).length;
+  if (el('stat-critical')) el('stat-critical').textContent = src.filter(s => s.riskLevel === 'CRITICAL').length;
+  if (el('stat-refuse')) el('stat-refuse').textContent = src.filter(s => s.shouldRefuse).length;
 }
 
 // ════════════════════════════════════════════
