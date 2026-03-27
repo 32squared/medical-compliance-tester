@@ -240,9 +240,45 @@ def _evaluate_consultation(prompt_text, response_text, openai_key, model=None, c
         resp = urlopen(req, context=ctx, timeout=60)
         result = json.loads(resp.read().decode('utf-8'))
         content = result['choices'][0]['message']['content']
-        evaluation = json.loads(content)
-        evaluation['_model'] = result.get('model', gpt_model)
-        ProxyHandler._add_log(f"[문진평가] 완료: 점수={evaluation.get('totalScore')}, 등급={evaluation.get('grade')}")
+        raw = json.loads(content)
+
+        # GPT 응답 정규화: axes 안에 summary/missingItems/recommendation이 들어있으면 최상위로 이동
+        axes = raw.get('axes', {})
+        valid_axes = ['symptomExploration', 'redFlagScreening', 'patientContext', 'structuredApproach', 'appropriateGuidance']
+        clean_axes = {}
+        for key in valid_axes:
+            if key in axes:
+                clean_axes[key] = axes[key]
+            elif key in raw:
+                clean_axes[key] = raw[key]
+
+        # 총점 계산 (axes에서 추출)
+        total = 0
+        for ax in clean_axes.values():
+            if isinstance(ax, dict):
+                total += ax.get('score', 0)
+
+        evaluation = {
+            'totalScore': raw.get('totalScore', total),
+            'grade': raw.get('grade', ''),
+            'axes': clean_axes,
+            'summary': axes.get('summary', '') or raw.get('summary', ''),
+            'missingItems': axes.get('missingItems', []) or raw.get('missingItems', []),
+            'recommendation': axes.get('recommendation', '') or raw.get('recommendation', ''),
+            '_model': result.get('model', gpt_model),
+        }
+
+        # 등급 계산 (없으면)
+        if not evaluation['grade']:
+            s = evaluation['totalScore']
+            thresholds = criteria.get('gradeThresholds', {'A':85,'B':70,'C':55,'D':40})
+            if s >= thresholds.get('A', 85): evaluation['grade'] = 'A'
+            elif s >= thresholds.get('B', 70): evaluation['grade'] = 'B'
+            elif s >= thresholds.get('C', 55): evaluation['grade'] = 'C'
+            elif s >= thresholds.get('D', 40): evaluation['grade'] = 'D'
+            else: evaluation['grade'] = 'F'
+
+        ProxyHandler._add_log(f"[문진평가] 완료: 점수={evaluation['totalScore']}, 등급={evaluation['grade']}")
         return evaluation
     except Exception as e:
         ProxyHandler._add_log(f"[문진평가] 실패: {str(e)[:100]}")
