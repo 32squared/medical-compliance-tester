@@ -663,7 +663,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       setText('대화 기록 로딩 중...');
       await Promise.allSettled([
         loadConversations(),
-        loadScenarioPresets(),
       ]);
     } else {
       showTesterModal();
