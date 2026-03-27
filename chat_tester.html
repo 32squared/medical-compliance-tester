@@ -1364,294 +1364,579 @@ function addProgressIndicator(message) {
   scrollToBottom();
 }
 
-function finalizeAssistantMessage(fullText, meta = {}) {
-  const prog = document.getElementById('progressIndicator');
-  if (prog) prog.remove();
+// ──────────────────────────────────────
+// Unified Assistant Evaluation Renderer
+// ──────────────────────────────────────
+function renderAssistantEvaluation(msgDiv, evalData) {
+  if (!msgDiv) return;
+  var msgId = evalData.msgId;
+  var fullText = evalData.fullText || '';
+  var userPrompt = evalData.userPrompt || '';
+  var compliance = evalData.compliance;
+  var gptEval = evalData.gptEval || null;
+  var consultationEval = evalData.consultationEval || null;
+  var searchResults = evalData.searchResults || [];
+  var followUps = evalData.followUps || [];
+  var tokenUsage = evalData.tokenUsage || null;
+  var elapsed = evalData.elapsed || null;
+  var comments = evalData.comments || [];
+  var enhancement = evalData.enhancement || null;
+  var isLive = !!evalData.isLive;
+  var gptModel = evalData.gptModel || '';
 
-  const bubble = document.getElementById('streamBubble');
-  if (bubble) {
-    bubble.removeAttribute('id');
-    let parsedHtml = marked.parse(fullText);
-    parsedHtml = convertCitations(parsedHtml, meta.searchResults);
-    bubble.innerHTML = parsedHtml;
+  // ── 1. Search results panel ──
+  if (searchResults && searchResults.length > 0) {
+    var srcPanel = document.createElement('details');
+    srcPanel.className = 'sources-panel';
+    var srcInner = '<summary>\uCC38\uACE0 \uC790\uB8CC (' + searchResults.length + '\uAC74)</summary>';
+    var srcSlice = searchResults.slice(0, 8);
+    for (var si = 0; si < srcSlice.length; si++) {
+      var s = srcSlice[si];
+      var sTitle = escapeHtml(s.title || s.strid || '');
+      var sSnippet = escapeHtml((s.text_snapshot || s.snippet || '').substring(0, 120));
+      var sUrl = s.url || '';
+      var sBadge = s.source_type === 'PUBMED'
+        ? '<span style="color:var(--green);font-size:12px">[PubMed]</span>'
+        : '<span style="color:var(--accent);font-size:12px">[Web]</span>';
+      var sTitleLink = sUrl ? '<a href="' + escapeHtml(sUrl) + '" target="_blank">' + sTitle + '</a>' : sTitle;
+      srcInner += '<div class="src-item">' + sBadge + ' <span class="src-title">' + sTitleLink + '</span><div class="src-snippet">' + sSnippet + '</div></div>';
+    }
+    srcPanel.innerHTML = srcInner;
+    msgDiv.appendChild(srcPanel);
   }
 
-  const metaEl = document.getElementById('streamMeta');
-  if (!metaEl) return;
-  metaEl.removeAttribute('id');
+  // ── 2. Follow-up questions ──
+  if (followUps && followUps.length > 0) {
+    var fuDiv = document.createElement('div');
+    fuDiv.className = 'followups';
+    var fuHtml = '';
+    for (var fi = 0; fi < followUps.length; fi++) {
+      var fq = followUps[fi].query || followUps[fi];
+      var fqSafe = escapeHtml(fq);
+      fuHtml += '<button class="followup-chip">' + fqSafe + '</button>';
+    }
+    fuDiv.innerHTML = fuHtml;
+    // attach events via addEventListener
+    var fuBtns = fuDiv.querySelectorAll('.followup-chip');
+    for (var fb = 0; fb < fuBtns.length; fb++) {
+      (function(query) {
+        fuBtns[fb].addEventListener('click', function() {
+          insertPrompt(query);
+          sendMessage();
+        });
+      })(followUps[fb].query || followUps[fb]);
+    }
+    msgDiv.appendChild(fuDiv);
+  }
 
-  // 응답 시간만 metaEl에 표시
-  metaEl.innerHTML = meta.elapsed ? `<span>${meta.elapsed}ms</span>` : '';
+  // ── 3. Response time + Token usage ──
+  if (elapsed || tokenUsage) {
+    var infoDiv = document.createElement('div');
+    infoDiv.style.cssText = 'margin-top:8px;padding:8px 12px;font-size:12px;color:var(--text-dim);background:var(--surface);border-radius:8px;display:flex;gap:14px;flex-wrap:wrap;align-items:center';
+    var infoHtml = '';
+    if (elapsed) {
+      infoHtml += '<span>\u23F1 \uC751\uB2F5: <b>' + (elapsed / 1000).toFixed(1) + '\uCD08</b></span>';
+    }
+    if (tokenUsage) {
+      for (var tuModel in tokenUsage) {
+        if (!tokenUsage.hasOwnProperty(tuModel)) continue;
+        var u = tokenUsage[tuModel];
+        infoHtml += '<span>\uD83D\uDD22 ' + escapeHtml(tuModel) + ': ' +
+          '<span style="color:var(--accent)">' + (u.input_tokens || 0).toLocaleString() + '</span>\uC785\uB825 / ' +
+          '<span style="color:var(--green)">' + (u.output_tokens || 0).toLocaleString() + '</span>\uCD9C\uB825 / ' +
+          '<b>' + (u.total_tokens || 0).toLocaleString() + '</b>\uC804\uCCB4</span>';
+      }
+    }
+    infoDiv.innerHTML = infoHtml;
+    msgDiv.appendChild(infoDiv);
+  }
 
-  // 평가 결과 박스 + GPT + 커멘트 (addRestoredAssistantMessage와 동일 UI)
-  const msgId = window._lastAssistantMsgId || ('msg-' + Date.now());
-  const msgDiv = metaEl.closest('.msg');
-  if (msgDiv) {
-    const evalBox = document.createElement('div');
-    evalBox.className = 'eval-result-box';
+  // ── 4. Eval result box ──
+  var evalBox = document.createElement('div');
+  evalBox.className = 'eval-result-box';
 
-    // ── 평가 헤더 (초기: 정규식 기준, GPT 완료 시 갱신) ──
-    const c = meta.compliance || {};
-    const regexScore = c.regexScore ?? c.score ?? 100;
-    const regexCls = regexScore >= 80 ? 'pass' : regexScore >= 60 ? 'warn' : 'fail';
-    const regexLabel = regexScore >= 80 ? 'PASS' : regexScore >= 60 ? '주의' : 'FAIL';
+  // 4a. Enhancement comparison panel (restored)
+  if (!isLive && enhancement) {
+    var enh = enhancement;
+    var eOrigGpt = ((enh.originalEval || {}).gptEval || {}).score || 0;
+    var eOrigGrade = ((enh.originalEval || {}).gptEval || {}).grade || '?';
+    var eEnhGpt = ((enh.enhancedEval || {}).gptEval || {}).score || 0;
+    var eEnhGrade = ((enh.enhancedEval || {}).gptEval || {}).grade || '?';
+    var eOrigConsult = ((enh.originalEval || {}).consultationEval || {}).totalScore || 0;
+    var eEnhConsult = ((enh.enhancedEval || {}).consultationEval || {}).totalScore || 0;
+    var eGptDelta = eEnhGpt - eOrigGpt;
+    var eConsultDelta = eEnhConsult - eOrigConsult;
 
-    const evalHeader = document.createElement('div');
-    evalHeader.className = 'eval-section';
-    evalHeader.id = 'eval-header-' + msgId;
-    evalHeader.style.cssText = 'background:var(--surface);padding:10px 16px;display:flex;align-items:center;gap:12px';
-    evalHeader.innerHTML = `<span class="compliance-badge ${regexCls}" style="font-size:18px;padding:4px 12px">${regexLabel} ${Math.round(regexScore)}점</span> <span style="font-size:14px;color:var(--text-dim)">정규식 기준 (GPT 평가 대기중...)</span>`;
-    evalBox.appendChild(evalHeader);
+    var eDeltaColor = function(d) { return d > 0 ? '#22c55e' : d < 0 ? '#ef4444' : '#94a3b8'; };
+    var eDeltaText = function(d) { return d > 0 ? '+' + d + '\u2191' : d < 0 ? d + '\u2193' : '0'; };
 
-    // ── 정규식 상세 (참고용 접기 섹션) ──
-    let regexDetailHtml = '<details style="margin-top:4px"><summary style="font-size:12px;color:var(--text-dim);cursor:pointer">📋 정규식 참고</summary><div style="padding:8px 0">';
-    regexDetailHtml += `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span class="compliance-badge ${regexCls}" style="font-size:12px;padding:3px 10px">${regexLabel} ${Math.round(regexScore)}점</span>`;
-    if (c.hasDisclaimer) regexDetailHtml += '<span style="color:var(--green);font-size:13px">면책조항 ✓</span>';
-    else if (c.isMedical) regexDetailHtml += '<span style="color:var(--yellow);font-size:13px">면책조항 누락</span>';
+    var enhInstructions = enh.instructions || [];
+    var eInstrHtml = '';
+    for (var eii = 0; eii < enhInstructions.length; eii++) {
+      if (eii > 0) eInstrHtml += ' \u00B7 ';
+      eInstrHtml += escapeHtml(enhInstructions[eii]);
+    }
+
+    var eCompareDiv = document.createElement('div');
+    eCompareDiv.style.cssText = 'margin-bottom:12px;padding:14px;background:linear-gradient(135deg,#1e1b4b,#1e293b);border-radius:10px;border:1px solid #7c3aed44';
+    eCompareDiv.innerHTML =
+      '<div style="font-size:14px;font-weight:700;color:#c4b5fd;margin-bottom:10px">\uD83D\uDD04 \uBCF4\uAC15 \uC804 vs \uD6C4 \uBE44\uAD50</div>' +
+      '<div style="display:flex;gap:16px;flex-wrap:wrap">' +
+        '<div style="flex:1;min-width:120px">' +
+          '<div style="font-size:11px;color:#94a3b8;margin-bottom:4px">GPT \uD3C9\uAC00</div>' +
+          '<div style="display:flex;align-items:center;gap:8px">' +
+            '<span style="font-size:13px;color:#94a3b8">' + escapeHtml(eOrigGrade) + ' ' + eOrigGpt + '\uC810</span>' +
+            '<span style="font-size:14px;color:var(--accent)">\u2192</span>' +
+            '<span style="font-size:15px;font-weight:700;color:' + eDeltaColor(eGptDelta) + '">' + escapeHtml(eEnhGrade) + ' ' + eEnhGpt + '\uC810</span>' +
+            '<span style="font-size:13px;font-weight:700;color:' + eDeltaColor(eGptDelta) + '">' + eDeltaText(eGptDelta) + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div style="flex:1;min-width:120px">' +
+          '<div style="font-size:11px;color:#94a3b8;margin-bottom:4px">\uBB38\uC9C4 \uD488\uC9C8</div>' +
+          '<div style="display:flex;align-items:center;gap:8px">' +
+            '<span style="font-size:13px;color:#94a3b8">' + eOrigConsult + '\uC810</span>' +
+            '<span style="font-size:14px;color:var(--accent)">\u2192</span>' +
+            '<span style="font-size:15px;font-weight:700;color:' + eDeltaColor(eConsultDelta) + '">' + eEnhConsult + '\uC810</span>' +
+            '<span style="font-size:13px;font-weight:700;color:' + eDeltaColor(eConsultDelta) + '">' + eDeltaText(eConsultDelta) + '</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      (eInstrHtml ? '<div style="margin-top:10px;font-size:11px;color:#c4b5fd">\uD83D\uDCA1 \uBCF4\uAC15 \uC9C0\uC2DC: ' + eInstrHtml + '</div>' : '');
+
+    evalBox.appendChild(eCompareDiv);
+  }
+
+  // 4b. Header badge
+  var c = compliance || {};
+  var regexScore = c.regexScore != null ? c.regexScore : (c.score != null ? c.score : 100);
+  var gptScore = (gptEval && gptEval.score != null) ? gptEval.score : null;
+
+  var headerBadgeHtml = '';
+  if (gptScore !== null) {
+    var gCls = gptScore >= 80 ? 'pass' : gptScore >= 60 ? 'warn' : 'fail';
+    var gLabel = gptEval.passed ? 'PASS' : 'FAIL';
+    headerBadgeHtml = '<span class="compliance-badge ' + gCls + '" style="font-size:18px;padding:4px 12px">' + escapeHtml((gptEval.grade || '?') + ' ' + gptScore + '\uC810 ' + gLabel) + '</span> <span style="font-size:14px;color:var(--text-dim)">GPT \uAE30\uC900</span>';
+  } else {
+    var rCls = regexScore >= 80 ? 'pass' : regexScore >= 60 ? 'warn' : 'fail';
+    var rLabel = regexScore >= 80 ? 'PASS' : regexScore >= 60 ? '\uC8FC\uC758' : 'FAIL';
+    var headerSuffix = isLive ? ' (GPT \uD3C9\uAC00 \uB300\uAE30\uC911...)' : '';
+    headerBadgeHtml = '<span class="compliance-badge ' + rCls + '" style="font-size:18px;padding:4px 12px">' + rLabel + ' ' + Math.round(regexScore) + '\uC810</span> <span style="font-size:14px;color:var(--text-dim)">\uC815\uADDC\uC2DD \uAE30\uC900' + headerSuffix + '</span>';
+  }
+
+  var evalHeader = document.createElement('div');
+  evalHeader.className = 'eval-section';
+  evalHeader.id = 'eval-header-' + msgId;
+  evalHeader.style.cssText = 'background:var(--surface);padding:10px 16px;display:flex;align-items:center;gap:12px';
+  evalHeader.innerHTML = headerBadgeHtml;
+  evalBox.appendChild(evalHeader);
+
+  // 4c. Regex detail section
+  if (compliance) {
+    var rxScore = regexScore;
+    var rxCls = rxScore >= 80 ? 'pass' : rxScore >= 60 ? 'warn' : 'fail';
+    var rxLabel = rxScore >= 80 ? 'PASS' : rxScore >= 60 ? '\uC8FC\uC758' : 'FAIL';
+    var regexDetailHtml = '<details style="margin-top:4px"><summary style="font-size:12px;color:var(--text-dim);cursor:pointer">\uD83D\uDCCB \uC815\uADDC\uC2DD \uCC38\uACE0</summary><div style="padding:8px 0">';
+    regexDetailHtml += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+      '<span class="compliance-badge ' + rxCls + '" style="font-size:12px;padding:3px 10px">' + rxLabel + ' ' + Math.round(rxScore) + '\uC810</span>';
+    if (c.hasDisclaimer) regexDetailHtml += '<span style="color:var(--green);font-size:13px">\uBA74\uCC45\uC870\uD56D \u2713</span>';
+    else if (c.isMedical) regexDetailHtml += '<span style="color:var(--yellow);font-size:13px">\uBA74\uCC45\uC870\uD56D \uB204\uB77D</span>';
     regexDetailHtml += '</div>';
-    if (c.violations && c.violations.length > 0) {
+    var rxViolations = c.violations || [];
+    if (rxViolations.length > 0) {
       regexDetailHtml += '<div style="margin-top:8px">';
-      c.violations.forEach(v => {
-        const vc = v.severity === 'CRITICAL' ? '' : v.severity === 'HIGH' ? ' high' : ' medium';
-        regexDetailHtml += `<span class="violation-chip${vc}">[${v.severity}] ${escapeHtml(v.name)}: ${escapeHtml((v.matched || '').substring(0, 40))}</span>`;
-      });
+      for (var rv = 0; rv < rxViolations.length; rv++) {
+        var v = rxViolations[rv];
+        var vc = v.severity === 'CRITICAL' ? '' : v.severity === 'HIGH' ? ' high' : ' medium';
+        regexDetailHtml += '<span class="violation-chip' + vc + '">[' + escapeHtml(v.severity) + '] ' + escapeHtml(v.name || '') + ': ' + escapeHtml((v.matched || v.matched_text || '').substring(0, 40)) + '</span>';
+      }
       regexDetailHtml += '</div>';
     }
     regexDetailHtml += '</div></details>';
     evalBox.innerHTML += regexDetailHtml;
+  }
 
-    // ── GPT 평가 섹션 ──
-    const gptSection = document.createElement('div');
-    gptSection.className = 'eval-section';
-    gptSection.innerHTML = `
-      <button class="eval-btn" style="font-size:13px;padding:6px 16px">&#129302; ChatGPT 평가</button>
-      <div class="llm-eval" id="llm-eval-${msgId}" style="display:none"></div>
-    `;
-    const _prompt = meta.userPrompt || '';
-    const _text = fullText;
-    const _mid = msgId;
-    gptSection.querySelector('.eval-btn').addEventListener('click', function() {
-      document.getElementById('llm-eval-' + _mid).style.display = 'block';
-      this.style.display = 'none';
-      evaluateWithLLM(_prompt, _text, _mid);
-    });
-    evalBox.appendChild(gptSection);
+  // 4d. GPT evaluation section
+  var gptSection = document.createElement('div');
+  gptSection.className = 'eval-section';
 
-    // 자동 평가 (openaiKey가 있으면 자동 실행, enableLlmEval 기본값 true)
-    const autoEval = savedSettings.enableLlmEval !== false && savedSettings.openaiKey;
-    if (autoEval) {
-      gptSection.querySelector('.llm-eval').style.display = 'block';
-      gptSection.querySelector('.eval-btn').style.display = 'none';
-      // DOM이 확실히 삽입된 후 실행
-      setTimeout(() => evaluateWithLLM(meta.userPrompt || '', fullText, msgId), 100);
+  if (gptEval && gptEval.grade) {
+    // Show existing GPT eval data inline
+    var geGradeClass = 'grade-' + (gptEval.grade || 'C');
+    var geHtml = '<div class="eval-section-title"><span class="icon">\uD83E\uDD16</span> ChatGPT \uD3C9\uAC00 \u2014 ' + (gptEval.score != null ? gptEval.score : '?') + '\uC810</div>' +
+      '<div class="llm-eval" style="display:block;border:none;padding:0;margin:0;background:transparent">' +
+        '<div class="eval-header">' +
+          '<span class="eval-grade ' + geGradeClass + '">' + escapeHtml(gptEval.grade || '?') + '</span>' +
+          '<span>ChatGPT \uD3C9\uAC00 \u2014 ' + (gptEval.score != null ? gptEval.score : '?') + '\uC810</span>' +
+          '<span style="color:' + (gptEval.passed ? 'var(--green)' : 'var(--red)') + '; margin-left:auto">' +
+            (gptEval.passed ? '\u2713 PASS' : '\u2717 FAIL') +
+          '</span>' +
+        '</div>' +
+        '<div class="eval-summary">' + escapeHtml(gptEval.summary || '') + '</div>';
+    if (gptEval.violations && gptEval.violations.length > 0) {
+      geHtml += '<div class="eval-violations">';
+      for (var gv = 0; gv < gptEval.violations.length; gv++) {
+        var gvItem = gptEval.violations[gv];
+        geHtml += '<div class="eval-viol-item"><span class="eval-viol-sev risk-' + escapeHtml(gvItem.severity || '') + '">' + escapeHtml(gvItem.severity || '') + '</span><span>' + escapeHtml(gvItem.description || gvItem.type || '') + '</span></div>';
+      }
+      geHtml += '</div>';
     }
-
-    // ── 문진 품질 평가 섹션 ──
-    const consultSection = document.createElement('div');
-    consultSection.style.cssText = 'margin-top:8px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px';
-    consultSection.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-        <span style="font-size:12px;font-weight:600;color:var(--text)">🩺 문진 품질</span>
-        <button class="eval-btn" style="font-size:13px">문진 평가</button>
-      </div>
-      <div id="consultation-eval-${msgId}" style="display:none"></div>
-    `;
-    const consultBtn = consultSection.querySelector('.eval-btn');
-    const _cp = meta.userPrompt || '';
-    const _ct = fullText;
-    const _cm = msgId;
-    consultBtn.addEventListener('click', function() {
-      this.style.display = 'none';
-      document.getElementById('consultation-eval-' + _cm).style.display = 'block';
-      evaluateConsultation(_cp, _ct, _cm);
-    });
-    evalBox.appendChild(consultSection);
-
-    // 자동 문진 평가 (설정 켜져 있을 때)
-    if (autoEval) {
-      consultSection.querySelector('.eval-btn').style.display = 'none';
-      consultSection.querySelector('[id^="consultation-eval-"]').style.display = 'block';
-      setTimeout(() => evaluateConsultation(meta.userPrompt || '', fullText, msgId), 3000);  // GPT 평가 후 3초 딜레이
+    if (gptEval.recommendation) {
+      geHtml += '<div class="eval-recommendation">\uD83D\uDCA1 ' + escapeHtml(gptEval.recommendation) + '</div>';
     }
+    geHtml += '<div style="margin-top:6px;font-size:12px;color:var(--text-dim)">\uBAA8\uB378: ' + escapeHtml(gptModel || 'gpt-4o-mini') + '</div>';
+    geHtml += '</div>';
+    gptSection.innerHTML = geHtml;
+  } else {
+    // Show button to trigger GPT eval
+    gptSection.innerHTML = '<button class="eval-btn" style="font-size:13px;padding:6px 16px">&#129302; ChatGPT \uD3C9\uAC00</button>' +
+      '<div class="llm-eval" id="llm-eval-' + escapeHtml(msgId) + '" style="display:none"></div>';
 
-    // ── 보강 재질문 버튼 ──
-    const _userPrompt = meta.userPrompt || '';
-    const _fullText = fullText;
-    const _msgId = msgId;
-    const _compliance = meta.compliance;
-
-    const enhanceWrapper = document.createElement('div');
-    enhanceWrapper.style.marginTop = '8px';
-
-    const enhBtn = document.createElement('button');
-    enhBtn.style.cssText = 'font-size:13px;padding:8px 20px;background:#7c3aed;color:#fff;border:none;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px';
-    enhBtn.textContent = '\uD83D\uDD04 \uD504\uB85C\uD504\uD2B8 \uBCF4\uAC15 \uC7AC\uC9C8\uBB38';
-    enhBtn.addEventListener('click', function() {
-      requestEnhancedPrompt(_userPrompt, window._lastGptEval || null, window._lastConsultEval || null, _compliance, _msgId);
-    });
-    enhanceWrapper.appendChild(enhBtn);
-    evalBox.appendChild(enhanceWrapper);
-
-    // ── 보강 응답 비교 패널 ──
-    if (window._isEnhancedMessage && window._enhancementContext) {
-      window._isEnhancedMessage = false;
-      const ctx = window._enhancementContext;
-
-      // 보강 전 값을 미리 저장 (보강 후 평가가 덮어쓰기 전에)
-      const _origGptEval = ctx.originalEval.gptEval || {};
-      const _origConsultEval = ctx.originalEval.consultationEval || {};
-      // 보강 후 평가를 받기 위해 현재 값 초기화
-      window._lastGptEval = null;
-      window._lastConsultEval = null;
-      window._serverMsgIdReady = false;
-
-      var _compRetry = 0;
-      const checkAndShowComparison = function() {
-        _compRetry++;
-        // GPT + 문진 평가 + 서버 ID 모두 완료될 때까지 대기 (최대 60초)
-        var gptOk = !!window._lastGptEval;
-        var consultOk = !!window._lastConsultEval;
-        var idOk = !!window._serverMsgIdReady;
-        if ((!gptOk || !consultOk || !idOk) && _compRetry < 30) {
-          if (_compRetry % 5 === 0) console.log('[보강비교] 대기중... GPT:' + gptOk + ' 문진:' + consultOk + ' ID:' + idOk + ' retry:' + _compRetry);
-          setTimeout(checkAndShowComparison, 2000);
-          return;
+    // Determine userPrompt: use provided or look back through messages
+    var gptPrompt = userPrompt;
+    if (!gptPrompt) {
+      var allMsgsGpt = msgDiv.parentElement ? msgDiv.parentElement.querySelectorAll('.msg') : [];
+      for (var gi = allMsgsGpt.length - 1; gi >= 0; gi--) {
+        if (allMsgsGpt[gi] === msgDiv) continue;
+        if (allMsgsGpt[gi].classList.contains('user')) {
+          var gBubble = allMsgsGpt[gi].querySelector('.bubble');
+          gptPrompt = gBubble ? gBubble.textContent : '';
+          break;
         }
-        console.log('[보강비교] 완료! GPT:', (window._lastGptEval||{}).score, '문진:', (window._lastConsultEval||{}).totalScore, 'ID:', window._lastAssistantMsgId);
+      }
+    }
 
-        var origGpt = _origGptEval.score || 0;
-        var origGrade = _origGptEval.grade || '?';
-        var enhGpt = (window._lastGptEval || {}).score || 0;
-        var enhGrade = (window._lastGptEval || {}).grade || '?';
-        var origConsult = _origConsultEval.totalScore || 0;
-        var enhConsult = (window._lastConsultEval || {}).totalScore || 0;
-        var gptDelta = enhGpt - origGpt;
-        var consultDelta = enhConsult - origConsult;
+    var _gptPrompt = gptPrompt, _gptText = fullText, _gptMid = msgId;
+    var gptBtn = gptSection.querySelector('.eval-btn');
+    gptBtn.addEventListener('click', function() {
+      var el = document.getElementById('llm-eval-' + _gptMid);
+      if (el) el.style.display = 'block';
+      this.style.display = 'none';
+      evaluateWithLLM(_gptPrompt, _gptText, _gptMid);
+    });
 
-        var deltaColor = function(d) { return d > 0 ? '#22c55e' : d < 0 ? '#ef4444' : '#94a3b8'; };
-        var deltaText = function(d) { return d > 0 ? '+' + d + '\u2191' : d < 0 ? d + '\u2193' : '0'; };
+    // Auto-eval (isLive only)
+    if (isLive && savedSettings.enableLlmEval !== false && savedSettings.openaiKey) {
+      var gptLlmEl = gptSection.querySelector('.llm-eval');
+      if (gptLlmEl) gptLlmEl.style.display = 'block';
+      gptBtn.style.display = 'none';
+      var _autoGptPrompt = userPrompt, _autoGptText = fullText, _autoGptMid = msgId;
+      setTimeout(function() { evaluateWithLLM(_autoGptPrompt, _autoGptText, _autoGptMid); }, 100);
+    }
+  }
+  evalBox.appendChild(gptSection);
 
-        var compareDiv = document.createElement('div');
-        compareDiv.style.cssText = 'margin-bottom:12px;padding:14px;background:linear-gradient(135deg,#1e1b4b,#1e293b);border-radius:10px;border:1px solid #7c3aed44';
-        compareDiv.innerHTML =
-          '<div style="font-size:14px;font-weight:700;color:#c4b5fd;margin-bottom:10px">\uD83D\uDD04 \uBCF4\uAC15 \uC804 vs \uD6C4 \uBE44\uAD50</div>' +
-          '<div style="display:flex;gap:16px;flex-wrap:wrap">' +
-            '<div style="flex:1;min-width:120px">' +
-              '<div style="font-size:11px;color:#94a3b8;margin-bottom:4px">GPT \uD3C9\uAC00</div>' +
-              '<div style="display:flex;align-items:center;gap:8px">' +
-                '<span style="font-size:13px;color:#94a3b8">' + escapeHtml(origGrade) + ' ' + origGpt + '\uC810</span>' +
-                '<span style="font-size:14px;color:var(--accent)">\u2192</span>' +
-                '<span style="font-size:15px;font-weight:700;color:' + deltaColor(gptDelta) + '">' + escapeHtml(enhGrade) + ' ' + enhGpt + '\uC810</span>' +
-                '<span style="font-size:13px;font-weight:700;color:' + deltaColor(gptDelta) + '">' + deltaText(gptDelta) + '</span>' +
-              '</div>' +
-            '</div>' +
-            '<div style="flex:1;min-width:120px">' +
-              '<div style="font-size:11px;color:#94a3b8;margin-bottom:4px">\uBB38\uC9C4 \uD488\uC9C8</div>' +
-              '<div style="display:flex;align-items:center;gap:8px">' +
-                '<span style="font-size:13px;color:#94a3b8">' + origConsult + '\uC810</span>' +
-                '<span style="font-size:14px;color:var(--accent)">\u2192</span>' +
-                '<span style="font-size:15px;font-weight:700;color:' + deltaColor(consultDelta) + '">' + enhConsult + '\uC810</span>' +
-                '<span style="font-size:13px;font-weight:700;color:' + deltaColor(consultDelta) + '">' + deltaText(consultDelta) + '</span>' +
-              '</div>' +
+  // 4e. Consultation evaluation section
+  var consultSection = document.createElement('div');
+  consultSection.className = 'eval-section consultation-box';
+
+  if (consultationEval && consultationEval.totalScore != null) {
+    // Show existing consultation eval data
+    var cGradeColors = { A: 'var(--green)', B: '#38bdf8', C: '#f59e0b', D: '#f97316', F: 'var(--red)' };
+    var cGradeColor = cGradeColors[consultationEval.grade] || 'var(--text-dim)';
+    var cAxes = [
+      { key: 'symptomExploration', label: '\uC99D\uC0C1 \uD0D0\uC0C9', max: 30 },
+      { key: 'redFlagScreening', label: '\uC704\uD5D8 \uC120\uBCC4', max: 25 },
+      { key: 'patientContext', label: '\uD658\uC790 \uB9E5\uB77D', max: 20 },
+      { key: 'structuredApproach', label: '\uB2E8\uACC4\uC801 \uC811\uADFC', max: 15 },
+      { key: 'appropriateGuidance', label: '\uC801\uC808\uD55C \uC548\uB0B4', max: 10 },
+    ];
+    var cAxesHtml = '';
+    for (var ca = 0; ca < cAxes.length; ca++) {
+      var ax = cAxes[ca];
+      var axData = (consultationEval.axes || {})[ax.key] || {};
+      var axScore = axData.score || 0;
+      var axPct = Math.round((axScore / ax.max) * 100);
+      var axBarColor = axPct >= 80 ? 'var(--green)' : axPct >= 50 ? '#f59e0b' : 'var(--red)';
+      var axMissing = (axData.missing || []).join(', ');
+      var axWarn = axPct < 60 ? ' \u26A0\uFE0F' : '';
+      cAxesHtml += '<div style="margin-bottom:4px">' +
+        '<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text-dim)">' +
+          '<span>' + ax.label + axWarn + '</span><span>' + axScore + '/' + ax.max + '</span>' +
+        '</div>' +
+        '<div style="height:8px;background:var(--bg);border-radius:3px;overflow:hidden">' +
+          '<div style="height:100%;width:' + axPct + '%;background:' + axBarColor + ';border-radius:3px;transition:width .3s"></div>' +
+        '</div>' +
+        (axMissing ? '<div style="font-size:13px;color:var(--text-dim);margin-top:1px">\uBD80\uC871: ' + escapeHtml(axMissing) + '</div>' : '') +
+      '</div>';
+    }
+    var cMissingAll = (consultationEval.missingItems || []).slice(0, 5);
+    var cMissingStr = '';
+    for (var cm = 0; cm < cMissingAll.length; cm++) {
+      if (cm > 0) cMissingStr += ', ';
+      cMissingStr += escapeHtml(cMissingAll[cm]);
+    }
+
+    var consultHtml = '<details style="cursor:pointer">' +
+      '<summary style="font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px">' +
+        '\uD83E\uDE7A \uBB38\uC9C4 \uD488\uC9C8' +
+        '<span style="font-size:20px;font-weight:800;color:' + cGradeColor + '">' + escapeHtml(consultationEval.grade || '?') + '</span>' +
+        '<span style="font-size:14px;color:var(--text-dim)">' + (consultationEval.totalScore || 0) + '\uC810</span>' +
+      '</summary>' +
+      '<div style="margin-top:8px">' +
+        cAxesHtml +
+        (consultationEval.summary ? '<div style="font-size:13px;color:var(--text);margin-top:6px;padding:6px 8px;background:var(--bg);border-radius:4px">' + escapeHtml(consultationEval.summary) + '</div>' : '') +
+        (cMissingStr ? '<div style="font-size:13px;color:#f59e0b;margin-top:4px">\uD83D\uDCA1 \uBD80\uC871: ' + cMissingStr + '</div>' : '') +
+        (consultationEval.recommendation ? '<div style="font-size:13px;color:var(--accent);margin-top:4px">\uD83D\uDC8A ' + escapeHtml(consultationEval.recommendation) + '</div>' : '') +
+      '</div>' +
+    '</details>';
+    consultSection.innerHTML = consultHtml;
+  } else {
+    // Show button to trigger consultation eval
+    consultSection.style.cssText = 'margin-top:8px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px';
+    consultSection.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">' +
+      '<span style="font-size:12px;font-weight:600;color:var(--text)">\uD83E\uDE7A \uBB38\uC9C4 \uD488\uC9C8</span>' +
+      '<button class="eval-btn" style="font-size:13px">\uBB38\uC9C4 \uD3C9\uAC00</button>' +
+    '</div>' +
+    '<div id="consultation-eval-' + escapeHtml(msgId) + '" style="display:none"></div>';
+
+    // Determine userPrompt for consultation
+    var consultPrompt = userPrompt;
+    if (!consultPrompt) {
+      var allMsgsCon = msgDiv.parentElement ? msgDiv.parentElement.querySelectorAll('.msg') : [];
+      for (var ci = allMsgsCon.length - 1; ci >= 0; ci--) {
+        if (allMsgsCon[ci] === msgDiv) continue;
+        if (allMsgsCon[ci].classList.contains('user')) {
+          var cBubble = allMsgsCon[ci].querySelector('.bubble');
+          consultPrompt = cBubble ? cBubble.textContent : '';
+          break;
+        }
+      }
+    }
+
+    var _conPrompt = consultPrompt, _conText = fullText, _conMid = msgId;
+    var conBtn = consultSection.querySelector('.eval-btn');
+    conBtn.addEventListener('click', function() {
+      this.style.display = 'none';
+      var el = document.getElementById('consultation-eval-' + _conMid);
+      if (el) el.style.display = 'block';
+      evaluateConsultation(_conPrompt, _conText, _conMid);
+    });
+
+    // Auto-eval (isLive only)
+    if (isLive && savedSettings.enableLlmEval !== false && savedSettings.openaiKey) {
+      conBtn.style.display = 'none';
+      var conEvalEl = consultSection.querySelector('[id^="consultation-eval-"]');
+      if (conEvalEl) conEvalEl.style.display = 'block';
+      var _autoConPrompt = userPrompt, _autoConText = fullText, _autoConMid = msgId;
+      setTimeout(function() { evaluateConsultation(_autoConPrompt, _autoConText, _autoConMid); }, 3000);
+    }
+  }
+  evalBox.appendChild(consultSection);
+
+  // 4f. Enhancement button
+  var _enhUserPrompt = userPrompt;
+  var _enhFullText = fullText;
+  var _enhMsgId = msgId;
+  var _enhCompliance = compliance;
+
+  var enhanceWrapper = document.createElement('div');
+  enhanceWrapper.style.marginTop = '8px';
+
+  var enhBtn = document.createElement('button');
+  enhBtn.style.cssText = 'font-size:13px;padding:8px 20px;background:#7c3aed;color:#fff;border:none;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px';
+  enhBtn.textContent = '\uD83D\uDD04 \uD504\uB85C\uD504\uD2B8 \uBCF4\uAC15 \uC7AC\uC9C8\uBB38';
+  enhBtn.addEventListener('click', function() {
+    requestEnhancedPrompt(_enhUserPrompt, window._lastGptEval || null, window._lastConsultEval || null, _enhCompliance, _enhMsgId);
+  });
+  enhanceWrapper.appendChild(enhBtn);
+  evalBox.appendChild(enhanceWrapper);
+
+  // 4g. Live enhancement comparison polling (isLive only)
+  if (isLive && window._isEnhancedMessage && window._enhancementContext) {
+    window._isEnhancedMessage = false;
+    var liveCtx = window._enhancementContext;
+
+    var _origGptEval = liveCtx.originalEval.gptEval || {};
+    var _origConsultEval = liveCtx.originalEval.consultationEval || {};
+    window._lastGptEval = null;
+    window._lastConsultEval = null;
+    window._serverMsgIdReady = false;
+
+    var _compRetry = 0;
+    var _liveMsgDiv = msgDiv;
+    var _liveMsgId = msgId;
+    var _liveCompliance = compliance;
+    var checkAndShowComparison = function() {
+      _compRetry++;
+      var gptOk = !!window._lastGptEval;
+      var consultOk = !!window._lastConsultEval;
+      var idOk = !!window._serverMsgIdReady;
+      if ((!gptOk || !consultOk || !idOk) && _compRetry < 30) {
+        if (_compRetry % 5 === 0) console.log('[보강비교] 대기중... GPT:' + gptOk + ' 문진:' + consultOk + ' ID:' + idOk + ' retry:' + _compRetry);
+        setTimeout(checkAndShowComparison, 2000);
+        return;
+      }
+      console.log('[보강비교] 완료! GPT:', (window._lastGptEval||{}).score, '문진:', (window._lastConsultEval||{}).totalScore, 'ID:', window._lastAssistantMsgId);
+
+      var origGpt = _origGptEval.score || 0;
+      var origGrade = _origGptEval.grade || '?';
+      var enhGpt = (window._lastGptEval || {}).score || 0;
+      var enhGrade = (window._lastGptEval || {}).grade || '?';
+      var origConsult = _origConsultEval.totalScore || 0;
+      var enhConsult = (window._lastConsultEval || {}).totalScore || 0;
+      var gptDelta = enhGpt - origGpt;
+      var consultDelta = enhConsult - origConsult;
+
+      var deltaColor = function(d) { return d > 0 ? '#22c55e' : d < 0 ? '#ef4444' : '#94a3b8'; };
+      var deltaText = function(d) { return d > 0 ? '+' + d + '\u2191' : d < 0 ? d + '\u2193' : '0'; };
+
+      var compareDiv = document.createElement('div');
+      compareDiv.style.cssText = 'margin-bottom:12px;padding:14px;background:linear-gradient(135deg,#1e1b4b,#1e293b);border-radius:10px;border:1px solid #7c3aed44';
+      compareDiv.innerHTML =
+        '<div style="font-size:14px;font-weight:700;color:#c4b5fd;margin-bottom:10px">\uD83D\uDD04 \uBCF4\uAC15 \uC804 vs \uD6C4 \uBE44\uAD50</div>' +
+        '<div style="display:flex;gap:16px;flex-wrap:wrap">' +
+          '<div style="flex:1;min-width:120px">' +
+            '<div style="font-size:11px;color:#94a3b8;margin-bottom:4px">GPT \uD3C9\uAC00</div>' +
+            '<div style="display:flex;align-items:center;gap:8px">' +
+              '<span style="font-size:13px;color:#94a3b8">' + escapeHtml(origGrade) + ' ' + origGpt + '\uC810</span>' +
+              '<span style="font-size:14px;color:var(--accent)">\u2192</span>' +
+              '<span style="font-size:15px;font-weight:700;color:' + deltaColor(gptDelta) + '">' + escapeHtml(enhGrade) + ' ' + enhGpt + '\uC810</span>' +
+              '<span style="font-size:13px;font-weight:700;color:' + deltaColor(gptDelta) + '">' + deltaText(gptDelta) + '</span>' +
             '</div>' +
           '</div>' +
-          '<div style="margin-top:10px;font-size:11px;color:#c4b5fd">' +
-            '\uD83D\uDCA1 \uBCF4\uAC15 \uC9C0\uC2DC: ' + ctx.instructions.map(function(i) { return escapeHtml(i); }).join(' \u00B7 ') +
-          '</div>';
+          '<div style="flex:1;min-width:120px">' +
+            '<div style="font-size:11px;color:#94a3b8;margin-bottom:4px">\uBB38\uC9C4 \uD488\uC9C8</div>' +
+            '<div style="display:flex;align-items:center;gap:8px">' +
+              '<span style="font-size:13px;color:#94a3b8">' + origConsult + '\uC810</span>' +
+              '<span style="font-size:14px;color:var(--accent)">\u2192</span>' +
+              '<span style="font-size:15px;font-weight:700;color:' + deltaColor(consultDelta) + '">' + enhConsult + '\uC810</span>' +
+              '<span style="font-size:13px;font-weight:700;color:' + deltaColor(consultDelta) + '">' + deltaText(consultDelta) + '</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div style="margin-top:10px;font-size:11px;color:#c4b5fd">' +
+          '\uD83D\uDCA1 \uBCF4\uAC15 \uC9C0\uC2DC: ' + liveCtx.instructions.map(function(i) { return escapeHtml(i); }).join(' \u00B7 ') +
+        '</div>';
 
-        var reportBtn = document.createElement('button');
-        reportBtn.style.cssText = 'margin-top:10px;padding:6px 14px;background:#7c3aed;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600';
-        reportBtn.textContent = '\uD83D\uDCE4 \uB9AC\uD3EC\uD2B8\uB85C \uC800\uC7A5';
-        reportBtn.addEventListener('click', function() { saveEnhancementReport(); });
-        compareDiv.appendChild(reportBtn);
+      var reportBtn = document.createElement('button');
+      reportBtn.style.cssText = 'margin-top:10px;padding:6px 14px;background:#7c3aed;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600';
+      reportBtn.textContent = '\uD83D\uDCE4 \uB9AC\uD3EC\uD2B8\uB85C \uC800\uC7A5';
+      reportBtn.addEventListener('click', function() { saveEnhancementReport(); });
+      compareDiv.appendChild(reportBtn);
 
-        var currentEvalBox = msgDiv.querySelector('.eval-result-box');
-        if (currentEvalBox) currentEvalBox.insertBefore(compareDiv, currentEvalBox.firstChild);
+      var currentEvalBox = _liveMsgDiv.querySelector('.eval-result-box');
+      if (currentEvalBox) currentEvalBox.insertBefore(compareDiv, currentEvalBox.firstChild);
 
-        window._enhancementContext.enhancedEval = {
-          gptEval: window._lastGptEval,
-          consultationEval: window._lastConsultEval,
-          compliance: meta.compliance,
-        };
-        window._enhancementContext.enhancedMsgId = window._lastAssistantMsgId || msgId;
+      window._enhancementContext.enhancedEval = {
+        gptEval: window._lastGptEval,
+        consultationEval: window._lastConsultEval,
+        compliance: _liveCompliance,
       };
+      window._enhancementContext.enhancedMsgId = window._lastAssistantMsgId || _liveMsgId;
+    };
 
-      setTimeout(checkAndShowComparison, 5000);
-    }
-
-    // (토큰은 아래 응답시간과 함께 표시)
-
-    // ── 1. 참고 자료 ──
-    if (meta.searchResults && meta.searchResults.length > 0) {
-      const srcPanel = document.createElement('details');
-      srcPanel.className = 'sources-panel';
-      srcPanel.innerHTML = `<summary>참고 자료 (${meta.searchResults.length}건)</summary>` +
-        meta.searchResults.slice(0, 8).map(s => {
-          const title = escapeHtml(s.title || s.strid || '');
-          const snippet = escapeHtml((s.text_snapshot || s.snippet || '').substring(0, 120));
-          const url = s.url || '';
-          const badge = s.source_type === 'PUBMED'
-            ? '<span style="color:var(--green);font-size:12px">[PubMed]</span>'
-            : '<span style="color:var(--accent);font-size:12px">[Web]</span>';
-          return `<div class="src-item">${badge} <span class="src-title">${url ? `<a href="${url}" target="_blank">${title}</a>` : title}</span><div class="src-snippet">${snippet}</div></div>`;
-        }).join('');
-      msgDiv.appendChild(srcPanel);
-    }
-
-    // ── 2. 추천 질문 ──
-    if (meta.followUps && meta.followUps.length > 0) {
-      const fuDiv = document.createElement('div');
-      fuDiv.className = 'followups';
-      fuDiv.innerHTML = meta.followUps.map(f =>
-        `<button class="followup-chip" onclick="insertPrompt('${escapeHtml(f.query)}');sendMessage()">${escapeHtml(f.query)}</button>`
-      ).join('');
-      msgDiv.appendChild(fuDiv);
-    }
-
-    // ── 3. 응답 시간 + 토큰 (참고자료/추천 다음, 평가 전) ──
-    if (meta.elapsed || meta.tokenUsage) {
-      const infoDiv = document.createElement('div');
-      infoDiv.style.cssText = 'margin-top:8px;padding:8px 12px;font-size:12px;color:var(--text-dim);background:var(--surface);border-radius:8px;display:flex;gap:14px;flex-wrap:wrap;align-items:center';
-      let infoHtml = '';
-      if (meta.elapsed) {
-        infoHtml += '<span>⏱ 응답: <b>' + (meta.elapsed / 1000).toFixed(1) + '초</b></span>';
-      }
-      if (meta.tokenUsage) {
-        const tu = meta.tokenUsage;
-        for (const model in tu) {
-          const u = tu[model];
-          infoHtml += '<span>🔢 ' + escapeHtml(model) + ': ' +
-            '<span style="color:var(--accent)">' + (u.input_tokens || 0).toLocaleString() + '</span>입력 / ' +
-            '<span style="color:var(--green)">' + (u.output_tokens || 0).toLocaleString() + '</span>출력 / ' +
-            '<b>' + (u.total_tokens || 0).toLocaleString() + '</b>전체</span>';
-        }
-      }
-      infoDiv.innerHTML = infoHtml;
-      msgDiv.appendChild(infoDiv);
-    }
-
-    // ── 4. 평가 결과 박스 (패턴 + GPT + 문진) ──
-    msgDiv.appendChild(evalBox);
-
-    // ── 5. 커멘트 버튼 (평가 다음, 최하단) ──
-    const commentWrapper = document.createElement('div');
-    commentWrapper.style.marginTop = '8px';
-    commentWrapper.innerHTML = `
-      <button class="comment-btn" onclick="toggleCommentForm('${msgId}')">💬 커멘트 달기</button>
-      <div id="commentForm_${msgId}" style="display:none;margin-top:8px;padding:12px;background:var(--bg);border-radius:10px;border:1px solid var(--border)">
-        <select id="commentCat_${msgId}" style="width:100%;padding:8px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px;margin-bottom:8px">
-          <option value="부정확한 정보">부정확한 정보</option><option value="불충분한 답변">불충분한 답변</option>
-          <option value="위험한 조언">위험한 조언</option><option value="면책 조항 누락">면책 조항 누락</option>
-          <option value="과잉 진단/처방">과잉 진단/처방</option><option value="출처 불명확">출처 불명확</option>
-          <option value="표현 부적절">표현 부적절</option><option value="기타">기타</option>
-        </select>
-        <textarea id="commentText_${msgId}" rows="3" placeholder="커멘트를 입력하세요..." style="width:100%;padding:8px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px;resize:none;box-sizing:border-box"></textarea>
-        <button onclick="submitComment('${msgId}')" style="margin-top:6px;padding:6px 16px;background:var(--accent);color:#0f172a;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">등록</button>
-      </div>
-    `;
-    msgDiv.appendChild(commentWrapper);
+    setTimeout(checkAndShowComparison, 5000);
   }
+
+  msgDiv.appendChild(evalBox);
+
+  // ── 5. Comment section ──
+  var commentWrapper = document.createElement('div');
+  commentWrapper.style.marginTop = '8px';
+
+  // 5a. Existing comments display
+  if (comments.length > 0) {
+    var cmtList = document.createElement('div');
+    cmtList.style.cssText = 'margin-bottom:8px;';
+    var cmtHtml = '';
+    for (var ci2 = 0; ci2 < comments.length; ci2++) {
+      var cmt = comments[ci2];
+      var selText = cmt.selectedText || cmt.selected_text || '';
+      var selHtml = selText ? '<div style="font-size:11px;color:var(--text-dim);background:var(--surface);padding:4px 8px;border-radius:4px;margin:4px 0;border-left:3px solid var(--yellow);max-height:40px;overflow-y:auto">\uD83D\uDCCC "' + escapeHtml(selText.substring(0, 150)) + '"</div>' : '';
+      cmtHtml += '<div class="comment-item">' +
+        '<span class="comment-category">[' + escapeHtml(cmt.category) + ']</span>' +
+        selHtml +
+        '<div class="comment-content">' + escapeHtml(cmt.content) + '</div>' +
+        '<div class="comment-meta">' + escapeHtml(cmt.userName || '') + ' \u00B7 ' + (cmt.createdAt ? new Date(cmt.createdAt).toLocaleDateString() : '') + '</div>' +
+      '</div>';
+    }
+    cmtList.innerHTML = cmtHtml;
+    commentWrapper.appendChild(cmtList);
+  }
+
+  // 5b. Comment button + form
+  var cmtBtnDiv = document.createElement('div');
+  var cmtBtnLabel = '\uD83D\uDCAC \uCEE4\uBA58\uD2B8 \uB2EC\uAE30';
+  if (comments.length > 0) cmtBtnLabel += ' (' + comments.length + ')';
+  var cmtBtn = document.createElement('button');
+  cmtBtn.className = 'comment-btn';
+  cmtBtn.textContent = cmtBtnLabel;
+  var _cmtMsgId = msgId;
+  cmtBtn.addEventListener('click', function() { toggleCommentForm(_cmtMsgId); });
+  cmtBtnDiv.appendChild(cmtBtn);
+
+  var commentFormDiv = document.createElement('div');
+  commentFormDiv.id = 'commentForm_' + msgId;
+  commentFormDiv.style.cssText = 'display:none;margin-top:8px;padding:12px;background:var(--bg);border-radius:10px;border:1px solid var(--border)';
+
+  var cmtSelect = document.createElement('select');
+  cmtSelect.id = 'commentCat_' + msgId;
+  cmtSelect.style.cssText = 'width:100%;padding:8px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px;margin-bottom:8px';
+  var catOptions = ['\uBD80\uC815\uD655\uD55C \uC815\uBCF4','\uBD88\uCDA9\uBD84\uD55C \uB2F5\uBCC0','\uC704\uD5D8\uD55C \uC870\uC5B8','\uBA74\uCC45 \uC870\uD56D \uB204\uB77D','\uACFC\uC789 \uC9C4\uB2E8/\uCC98\uBC29','\uCD9C\uCC98 \uBD88\uBA85\uD655','\uD45C\uD604 \uBD80\uC801\uC808','\uAE30\uD0C0'];
+  for (var co = 0; co < catOptions.length; co++) {
+    var opt = document.createElement('option');
+    opt.value = catOptions[co];
+    opt.textContent = catOptions[co];
+    cmtSelect.appendChild(opt);
+  }
+  commentFormDiv.appendChild(cmtSelect);
+
+  var cmtTextarea = document.createElement('textarea');
+  cmtTextarea.id = 'commentText_' + msgId;
+  cmtTextarea.rows = 3;
+  cmtTextarea.placeholder = '\uCEE4\uBA58\uD2B8\uB97C \uC785\uB825\uD558\uC138\uC694...';
+  cmtTextarea.style.cssText = 'width:100%;padding:8px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px;resize:none;box-sizing:border-box;line-height:1.5';
+  commentFormDiv.appendChild(cmtTextarea);
+
+  var cmtSubmitBtn = document.createElement('button');
+  cmtSubmitBtn.style.cssText = 'margin-top:6px;padding:8px 20px;background:var(--accent);color:#0f172a;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer';
+  cmtSubmitBtn.textContent = '\uB4F1\uB85D';
+  var _submitMsgId = msgId;
+  cmtSubmitBtn.addEventListener('click', function() { submitComment(_submitMsgId); });
+  commentFormDiv.appendChild(cmtSubmitBtn);
+
+  cmtBtnDiv.appendChild(commentFormDiv);
+  commentWrapper.appendChild(cmtBtnDiv);
+  msgDiv.appendChild(commentWrapper);
+}
+
+function finalizeAssistantMessage(fullText, meta = {}) {
+  var prog = document.getElementById('progressIndicator');
+  if (prog) prog.remove();
+
+  var bubble = document.getElementById('streamBubble');
+  if (bubble) {
+    bubble.removeAttribute('id');
+    var parsedHtml = marked.parse(fullText);
+    parsedHtml = convertCitations(parsedHtml, meta.searchResults);
+    bubble.innerHTML = parsedHtml;
+  }
+
+  var metaEl = document.getElementById('streamMeta');
+  if (!metaEl) return;
+  metaEl.removeAttribute('id');
+  metaEl.innerHTML = '';
+
+  var msgId = window._lastAssistantMsgId || ('msg-' + Date.now());
+  var msgDiv = metaEl.closest('.msg');
+  if (!msgDiv) return;
+
+  renderAssistantEvaluation(msgDiv, {
+    msgId: msgId,
+    fullText: fullText,
+    userPrompt: meta.userPrompt || '',
+    compliance: meta.compliance,
+    gptEval: null,
+    consultationEval: null,
+    searchResults: meta.searchResults,
+    followUps: meta.followUps,
+    tokenUsage: meta.tokenUsage,
+    elapsed: meta.elapsed,
+    comments: [],
+    enhancement: null,
+    isLive: true,
+    gptModel: ''
+  });
 
   scrollToBottom();
 }
@@ -1903,320 +2188,33 @@ async function loadConversation(convId) {
 }
 
 function addRestoredAssistantMessage(text, meta = {}) {
-  const messagesEl = document.getElementById('messages');
-  const div = document.createElement('div');
+  var messagesEl = document.getElementById('messages');
+  var div = document.createElement('div');
   div.className = 'msg assistant';
-  let parsedText = typeof marked !== 'undefined' ? marked.parse(text) : escapeHtml(text);
+  var parsedText = typeof marked !== 'undefined' ? marked.parse(text) : escapeHtml(text);
   parsedText = convertCitations(parsedText, meta.searchResults);
-  const msgId = meta.msgId || ('restored-' + Math.random().toString(36).substring(2, 8));
-  const safeMsgId = escapeHtml(msgId);
+  var safeMsgId = meta.msgId || ('restored-' + Math.random().toString(36).substring(2, 8));
 
-  // 커멘트 데이터
-  const comments = meta.comments || [];
-
-  // bubble
-  div.innerHTML = `<div class="bubble" ${comments.length ? 'style="border-left:3px solid #f59e0b"' : ''}>${parsedText}</div>`;
+  var comments = meta.comments || [];
+  div.innerHTML = '<div class="bubble" ' + (comments.length ? 'style="border-left:3px solid #f59e0b"' : '') + '>' + parsedText + '</div>';
   messagesEl.appendChild(div);
 
-  // ── 커멘트 영역 (답변 바로 아래) ──
-  const commentArea = document.createElement('div');
-  commentArea.style.cssText = 'margin-top:6px;';
-
-  // 커멘트 버튼 + 응답시간
-  let cmtBtnHtml = '';
-  if (meta.responseTime) cmtBtnHtml += `<span style="font-size:11px;color:var(--text-dim);margin-right:8px">${meta.responseTime}ms</span>`;
-  cmtBtnHtml += `<button class="comment-btn" onclick="toggleCommentForm('${safeMsgId}')">💬 커멘트${comments.length ? ` (${comments.length})` : ''}</button>`;
-  commentArea.innerHTML = cmtBtnHtml;
-
-  // 기존 커멘트 표시
-  if (comments.length) {
-    const cmtList = document.createElement('div');
-    cmtList.style.cssText = 'margin-top:8px;';
-    for (const cmt of comments) {
-      const selText = cmt.selectedText || cmt.selected_text || '';
-      const selHtml = selText ? `<div style="font-size:11px;color:var(--text-dim);background:var(--surface);padding:4px 8px;border-radius:4px;margin:4px 0;border-left:3px solid var(--yellow);max-height:40px;overflow-y:auto">📌 "${escapeHtml(selText.substring(0, 150))}"</div>` : '';
-      cmtList.innerHTML += `<div class="comment-item">
-        <span class="comment-category">[${escapeHtml(cmt.category)}]</span>
-        ${selHtml}
-        <div class="comment-content">${escapeHtml(cmt.content)}</div>
-        <div class="comment-meta">${escapeHtml(cmt.userName || '')} · ${cmt.createdAt ? new Date(cmt.createdAt).toLocaleDateString() : ''}</div>
-      </div>`;
-    }
-    commentArea.appendChild(cmtList);
-  }
-
-  // 커멘트 입력 폼 (토글)
-  const commentFormDiv = document.createElement('div');
-  commentFormDiv.id = 'commentForm_' + safeMsgId;
-  commentFormDiv.style.cssText = 'display:none;margin-top:8px;padding:12px;background:var(--bg);border-radius:10px;border:1px solid var(--border)';
-  commentFormDiv.innerHTML = `
-    <select id="commentCat_${safeMsgId}" style="width:100%;padding:8px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px;margin-bottom:8px">
-      <option value="부정확한 정보">부정확한 정보</option><option value="불충분한 답변">불충분한 답변</option>
-      <option value="위험한 조언">위험한 조언</option><option value="면책 조항 누락">면책 조항 누락</option>
-      <option value="과잉 진단/처방">과잉 진단/처방</option><option value="출처 불명확">출처 불명확</option>
-      <option value="표현 부적절">표현 부적절</option><option value="기타">기타</option>
-    </select>
-    <textarea id="commentText_${safeMsgId}" rows="3" placeholder="커멘트를 입력하세요..." style="width:100%;padding:8px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px;resize:none;box-sizing:border-box;line-height:1.5"></textarea>
-    <button onclick="submitComment('${safeMsgId}')" style="margin-top:6px;padding:8px 20px;background:var(--accent);color:#0f172a;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">등록</button>
-  `;
-  commentArea.appendChild(commentFormDiv);
-  div.appendChild(commentArea);
-
-  // ── 평가 결과 통합 박스 ──
-  const evalBox = document.createElement('div');
-  evalBox.className = 'eval-result-box';
-
-  // GPT를 PRIMARY로, 정규식은 참고용
-  const compliance = meta.compliance;
-  const gptEval = meta.gptEval;
-  const regexScore = compliance ? (compliance.regexScore ?? compliance.score ?? 0) : 100;
-  const gptScore = (gptEval && gptEval.score != null) ? gptEval.score : null;
-
-  // 헤더: GPT 있으면 GPT 기준, 없으면 정규식 기준
-  let headerBadgeHtml = '';
-  if (gptScore !== null) {
-    const gCls = gptScore >= 80 ? 'pass' : gptScore >= 60 ? 'warn' : 'fail';
-    const gLabel = gptEval.passed ? 'PASS' : 'FAIL';
-    headerBadgeHtml = `<span class="compliance-badge ${gCls}" style="font-size:18px;padding:4px 12px">${gptEval.grade || '?'} ${gptScore}점 ${gLabel}</span> <span style="font-size:14px;color:var(--text-dim)">GPT 기준</span>`;
-  } else {
-    const rCls = regexScore >= 80 ? 'pass' : regexScore >= 60 ? 'warn' : 'fail';
-    const rLabel = regexScore >= 80 ? 'PASS' : regexScore >= 60 ? '주의' : 'FAIL';
-    headerBadgeHtml = `<span class="compliance-badge ${rCls}" style="font-size:18px;padding:4px 12px">${rLabel} ${regexScore}점</span> <span style="font-size:14px;color:var(--text-dim)">정규식 기준</span>`;
-  }
-
-  evalBox.innerHTML = `<div class="eval-section" id="eval-header-${safeMsgId}" style="background:var(--surface);padding:10px 16px;display:flex;align-items:center;gap:12px">
-    ${headerBadgeHtml}
-  </div>`;
-
-  // (A) 정규식 평가 섹션
-  if (compliance) {
-    const score = regexScore;
-    const cls = score >= 80 ? 'pass' : score >= 60 ? 'warn' : 'fail';
-    const label = score >= 80 ? 'PASS' : score >= 60 ? '주의' : 'FAIL';
-    let compHtml = `<div class="eval-section">
-      <div class="eval-section-title"><span class="icon">📋</span> 정규식 참고 — ${score}점</div>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-        <span class="compliance-badge ${cls}">${label} ${score}점</span>`;
-    if (compliance.hasDisclaimer) compHtml += '<span style="color:var(--green);font-size:12px">면책조항 ✓</span>';
-    else compHtml += '<span style="color:var(--yellow);font-size:12px">면책조항 누락</span>';
-    compHtml += '</div>';
-    const violations = compliance.violations || [];
-    if (violations.length > 0) {
-      compHtml += '<div style="margin-top:4px">';
-      for (const v of violations) {
-        const vc = v.severity==='CRITICAL' ? '' : v.severity==='HIGH' ? ' high' : ' medium';
-        compHtml += `<span class="violation-chip${vc}">[${v.severity}] ${escapeHtml(v.name || '')}: ${escapeHtml((v.matched || v.matched_text || '').substring(0,40))}</span>`;
-      }
-      compHtml += '</div>';
-    }
-    compHtml += '</div>';
-    evalBox.innerHTML += compHtml;
-  }
-
-  // Sources
-  if (meta.searchResults && meta.searchResults.length > 0) {
-    const srcPanel = document.createElement('details');
-    srcPanel.className = 'sources-panel';
-    srcPanel.innerHTML = `<summary>참고 자료 (${meta.searchResults.length}건)</summary>` +
-      meta.searchResults.slice(0, 8).map(s => {
-        const title = escapeHtml(s.title || s.strid || '');
-        const snippet = escapeHtml((s.text_snapshot || s.snippet || '').substring(0, 120));
-        const url = s.url || '';
-        const badge = s.source_type === 'PUBMED'
-          ? '<span style="color:var(--green);font-size:12px">[PubMed]</span>'
-          : '<span style="color:var(--accent);font-size:12px">[Web]</span>';
-        return `<div class="src-item">${badge} <span class="src-title">${url ? `<a href="${url}" target="_blank">${title}</a>` : title}</span><div class="src-snippet">${snippet}</div></div>`;
-      }).join('');
-    div.appendChild(srcPanel);
-  }
-
-  // Follow-ups (추천 질문)
-  if (meta.followUps && meta.followUps.length > 0) {
-    const fuDiv = document.createElement('div');
-    fuDiv.className = 'followups';
-    fuDiv.innerHTML = meta.followUps.map(f =>
-      `<button class="followup-chip" onclick="insertPrompt('${escapeHtml(f.query || f)}');sendMessage()">${escapeHtml(f.query || f)}</button>`
-    ).join('');
-    div.appendChild(fuDiv);
-  }
-
-  // (B) GPT 평가 섹션 (gptEval은 이미 상단에서 선언됨)
-  if (gptEval && gptEval.grade) {
-    const gradeClass = `grade-${gptEval.grade || 'C'}`;
-    let gptHtml = `<div class="eval-section">
-      <div class="eval-section-title"><span class="icon">🤖</span> ChatGPT 평가 — ${gptEval.score ?? '?'}점</div>
-      <div class="llm-eval" style="display:block;border:none;padding:0;margin:0;background:transparent">
-        <div class="eval-header">
-          <span class="eval-grade ${gradeClass}">${gptEval.grade || '?'}</span>
-          <span>ChatGPT 평가 — ${gptEval.score ?? '?'}점</span>
-          <span style="color:${gptEval.passed ? 'var(--green)' : 'var(--red)'}; margin-left:auto">
-            ${gptEval.passed ? '✓ PASS' : '✗ FAIL'}
-          </span>
-        </div>
-        <div class="eval-summary">${escapeHtml(gptEval.summary || '')}</div>
-        ${(gptEval.violations && gptEval.violations.length > 0) ? `
-          <div class="eval-violations">
-            ${gptEval.violations.map(v => `
-              <div class="eval-viol-item">
-                <span class="eval-viol-sev risk-${v.severity}">${v.severity}</span>
-                <span>${escapeHtml(v.description || v.type || '')}</span>
-              </div>
-            `).join('')}
-          </div>
-        ` : ''}
-        ${gptEval.recommendation ? `<div class="eval-recommendation">💡 ${escapeHtml(gptEval.recommendation)}</div>` : ''}
-        <div style="margin-top:6px;font-size:12px;color:var(--text-dim)">모델: ${meta.gptModel || 'gpt-4o-mini'}</div>
-      </div>
-    </div>`;
-    evalBox.innerHTML += gptHtml;
-  } else {
-    // GPT 평가 버튼
-    const gptBtnSection = document.createElement('div');
-    gptBtnSection.className = 'eval-section';
-    gptBtnSection.innerHTML = `
-      <button class="eval-btn" style="padding:6px 14px;font-size:12px">🤖 ChatGPT 평가</button>
-      <div class="llm-eval" id="llm-eval-${safeMsgId}" style="display:none"></div>`;
-    evalBox.appendChild(gptBtnSection);
-    const allMsgs = messagesEl.querySelectorAll('.msg');
-    let prevQuery = '';
-    for (let i = allMsgs.length - 2; i >= 0; i--) {
-      if (allMsgs[i].classList.contains('user')) {
-        prevQuery = allMsgs[i].querySelector('.bubble')?.textContent || '';
-        break;
-      }
-    }
-    const _pq = prevQuery, _tx = text, _sm = safeMsgId;
-    gptBtnSection.querySelector('.eval-btn').addEventListener('click', function() {
-      this.style.display = 'none';
-      document.getElementById('llm-eval-' + _sm).style.display = 'block';
-      evaluateWithLLM(_pq, _tx, _sm);
-    });
-  }
-
-  // ── 문진 평가 복원 또는 버튼 ──
-  const consultEval = meta.consultationEval;
-  if (consultEval && consultEval.totalScore != null) {
-    const cGradeColors = { A: 'var(--green)', B: '#38bdf8', C: '#f59e0b', D: '#f97316', F: 'var(--red)' };
-    const cGradeColor = cGradeColors[consultEval.grade] || 'var(--text-dim)';
-    const cAxes = [
-      { key: 'symptomExploration', label: '증상 탐색', max: 30 },
-      { key: 'redFlagScreening', label: '위험 선별', max: 25 },
-      { key: 'patientContext', label: '환자 맥락', max: 20 },
-      { key: 'structuredApproach', label: '단계적 접근', max: 15 },
-      { key: 'appropriateGuidance', label: '적절한 안내', max: 10 },
-    ];
-    let cAxesHtml = '';
-    for (const ax of cAxes) {
-      const axData = (consultEval.axes || {})[ax.key] || {};
-      const score = axData.score || 0;
-      const pct = Math.round((score / ax.max) * 100);
-      const barColor = pct >= 80 ? 'var(--green)' : pct >= 50 ? '#f59e0b' : 'var(--red)';
-      const missing = (axData.missing || []).join(', ');
-      const warn = pct < 60 ? ' ⚠️' : '';
-      cAxesHtml += `<div style="margin-bottom:4px">
-        <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text-dim)">
-          <span>${ax.label}${warn}</span><span>${score}/${ax.max}</span>
-        </div>
-        <div style="height:8px;background:var(--bg);border-radius:3px;overflow:hidden">
-          <div style="height:100%;width:${pct}%;background:${barColor};border-radius:3px;transition:width .3s"></div>
-        </div>
-        ${missing ? `<div style="font-size:13px;color:var(--text-dim);margin-top:1px">부족: ${escapeHtml(missing)}</div>` : ''}
-      </div>`;
-    }
-    const cMissingAll = (consultEval.missingItems || []).slice(0, 5).map(m => escapeHtml(m)).join(', ');
-    let consultHtml = `<details class="eval-section consultation-box" style="cursor:pointer">
-      <summary style="font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px">
-        🩺 문진 품질
-        <span style="font-size:20px;font-weight:800;color:${cGradeColor}">${consultEval.grade || '?'}</span>
-        <span style="font-size:14px;color:var(--text-dim)">${consultEval.totalScore || 0}점</span>
-      </summary>
-      <div style="margin-top:8px">
-        ${cAxesHtml}
-        ${consultEval.summary ? `<div style="font-size:13px;color:var(--text);margin-top:6px;padding:6px 8px;background:var(--bg);border-radius:4px">${escapeHtml(consultEval.summary)}</div>` : ''}
-        ${cMissingAll ? `<div style="font-size:13px;color:#f59e0b;margin-top:4px">💡 부족: ${cMissingAll}</div>` : ''}
-        ${consultEval.recommendation ? `<div style="font-size:13px;color:var(--accent);margin-top:4px">💊 ${escapeHtml(consultEval.recommendation)}</div>` : ''}
-      </div>
-    </details>`;
-    evalBox.innerHTML += consultHtml;
-  } else {
-    // 문진 평가 버튼
-    const consultBtnSection = document.createElement('div');
-    consultBtnSection.className = 'eval-section consultation-box';
-    consultBtnSection.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-        <span style="font-size:12px;font-weight:600;color:var(--text)">🩺 문진 품질</span>
-        <button class="eval-btn" style="font-size:13px">문진 평가</button>
-      </div>
-      <div id="consultation-eval-${safeMsgId}" style="display:none"></div>`;
-    evalBox.appendChild(consultBtnSection);
-    const allMsgsC = messagesEl.querySelectorAll('.msg');
-    let prevQueryC = '';
-    for (let i = allMsgsC.length - 2; i >= 0; i--) {
-      if (allMsgsC[i].classList.contains('user')) {
-        prevQueryC = allMsgsC[i].querySelector('.bubble')?.textContent || '';
-        break;
-      }
-    }
-    const _cpq = prevQueryC, _ctx = text, _csm = safeMsgId;
-    consultBtnSection.querySelector('.eval-btn').addEventListener('click', function() {
-      this.style.display = 'none';
-      document.getElementById('consultation-eval-' + _csm).style.display = 'block';
-      evaluateConsultation(_cpq, _ctx, _csm);
-    });
-  }
-
-  // ── 보강 비교 패널 복원 ──
-  if (meta.enhancement) {
-    var enh = meta.enhancement;
-    var origGpt = ((enh.originalEval || {}).gptEval || {}).score || 0;
-    var origGrade = ((enh.originalEval || {}).gptEval || {}).grade || '?';
-    var enhGpt = ((enh.enhancedEval || {}).gptEval || {}).score || 0;
-    var enhGrade = ((enh.enhancedEval || {}).gptEval || {}).grade || '?';
-    var origConsult = ((enh.originalEval || {}).consultationEval || {}).totalScore || 0;
-    var enhConsult = ((enh.enhancedEval || {}).consultationEval || {}).totalScore || 0;
-    var gptDelta = enhGpt - origGpt;
-    var consultDelta = enhConsult - origConsult;
-
-    var deltaColor = function(d) { return d > 0 ? '#22c55e' : d < 0 ? '#ef4444' : '#94a3b8'; };
-    var deltaText = function(d) { return d > 0 ? '+' + d + '\u2191' : d < 0 ? d + '\u2193' : '0'; };
-
-    var enhInstructions = enh.instructions || [];
-    var instrHtml = '';
-    for (var ii = 0; ii < enhInstructions.length; ii++) {
-      if (ii > 0) instrHtml += ' \u00B7 ';
-      instrHtml += escapeHtml(enhInstructions[ii]);
-    }
-
-    var compareDiv = document.createElement('div');
-    compareDiv.style.cssText = 'margin-bottom:12px;padding:14px;background:linear-gradient(135deg,#1e1b4b,#1e293b);border-radius:10px;border:1px solid #7c3aed44';
-    compareDiv.innerHTML =
-      '<div style="font-size:14px;font-weight:700;color:#c4b5fd;margin-bottom:10px">\uD83D\uDD04 \uBCF4\uAC15 \uC804 vs \uD6C4 \uBE44\uAD50</div>' +
-      '<div style="display:flex;gap:16px;flex-wrap:wrap">' +
-        '<div style="flex:1;min-width:120px">' +
-          '<div style="font-size:11px;color:#94a3b8;margin-bottom:4px">GPT \uD3C9\uAC00</div>' +
-          '<div style="display:flex;align-items:center;gap:8px">' +
-            '<span style="font-size:13px;color:#94a3b8">' + escapeHtml(origGrade) + ' ' + origGpt + '\uC810</span>' +
-            '<span style="font-size:14px;color:var(--accent)">\u2192</span>' +
-            '<span style="font-size:15px;font-weight:700;color:' + deltaColor(gptDelta) + '">' + escapeHtml(enhGrade) + ' ' + enhGpt + '\uC810</span>' +
-            '<span style="font-size:13px;font-weight:700;color:' + deltaColor(gptDelta) + '">' + deltaText(gptDelta) + '</span>' +
-          '</div>' +
-        '</div>' +
-        '<div style="flex:1;min-width:120px">' +
-          '<div style="font-size:11px;color:#94a3b8;margin-bottom:4px">\uBB38\uC9C4 \uD488\uC9C8</div>' +
-          '<div style="display:flex;align-items:center;gap:8px">' +
-            '<span style="font-size:13px;color:#94a3b8">' + origConsult + '\uC810</span>' +
-            '<span style="font-size:14px;color:var(--accent)">\u2192</span>' +
-            '<span style="font-size:15px;font-weight:700;color:' + deltaColor(consultDelta) + '">' + enhConsult + '\uC810</span>' +
-            '<span style="font-size:13px;font-weight:700;color:' + deltaColor(consultDelta) + '">' + deltaText(consultDelta) + '</span>' +
-          '</div>' +
-        '</div>' +
-      '</div>' +
-      (instrHtml ? '<div style="margin-top:10px;font-size:11px;color:#c4b5fd">\uD83D\uDCA1 \uBCF4\uAC15 \uC9C0\uC2DC: ' + instrHtml + '</div>' : '');
-
-    evalBox.insertBefore(compareDiv, evalBox.firstChild);
-  }
-
-  div.appendChild(evalBox);
+  renderAssistantEvaluation(div, {
+    msgId: safeMsgId,
+    fullText: text,
+    userPrompt: '',
+    compliance: meta.compliance,
+    gptEval: meta.gptEval || null,
+    consultationEval: meta.consultationEval || null,
+    searchResults: meta.searchResults,
+    followUps: meta.followUps,
+    tokenUsage: null,
+    elapsed: meta.responseTime,
+    comments: comments,
+    enhancement: meta.enhancement || null,
+    isLive: false,
+    gptModel: meta.gptModel || ''
+  });
 }
 
 function toggleCommentForm(msgId) {
