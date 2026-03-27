@@ -375,6 +375,7 @@
 <script>
   let currentRunId = null;
   let historyData = [];
+  let _resultPollInterval = null;
 
   // ── Toast ──
   function showToast(msg, type = 'info') {
@@ -499,6 +500,33 @@
     });
   }
 
+  // ── Result Polling for running batches ──
+  function startResultPolling(runId) {
+    if (_resultPollInterval) clearInterval(_resultPollInterval);
+    _resultPollInterval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/history/' + runId);
+        if (!res.ok) return;
+        const detail = await res.json();
+        renderDetail(detail);
+        // Also update sidebar item
+        const item = document.querySelector('[data-runid="' + runId + '"]');
+        if (item) {
+          const summaryEl = item.querySelector('.run-summary');
+          const s = detail.summary || {};
+          if (summaryEl && detail.status === 'running') {
+            summaryEl.textContent = (s.passed + s.failed + (s.error||0)) + '/' + s.total + ' 완료 (통과 ' + s.passed + ')';
+          }
+        }
+        if (detail.status !== 'running') {
+          clearInterval(_resultPollInterval);
+          _resultPollInterval = null;
+          loadHistory(); // full refresh
+        }
+      } catch(e) { /* ignore */ }
+    }, 5000);
+  }
+
   // ── Select Run ──
   function selectRun(runId) {
     currentRunId = runId;
@@ -525,7 +553,14 @@
         if (!r.ok) throw new Error('이력 조회 실패');
         return r.json();
       })
-      .then(run => renderDetail(run))
+      .then(run => {
+        renderDetail(run);
+        if (run.status === 'running') {
+          startResultPolling(runId);
+        } else {
+          if (_resultPollInterval) { clearInterval(_resultPollInterval); _resultPollInterval = null; }
+        }
+      })
       .catch(e => showToast(e.message, 'error'));
   }
 
@@ -564,12 +599,18 @@
     const results = run.results || [];
     const area = document.getElementById('resultsArea');
 
+    let progressHtml = '';
+    if (run.status === 'running') {
+      const completed = (run.summary?.passed || 0) + (run.summary?.failed || 0) + (run.summary?.error || 0);
+      progressHtml = '<div style="color:var(--accent);font-size:12px;margin-bottom:12px">\u23F3 ' + completed + '/' + (run.summary?.total || 0) + ' \uC644\uB8CC \u2014 \uC790\uB3D9 \uAC31\uC2E0 \uC911...</div>';
+    }
+
     if (results.length === 0) {
-      area.innerHTML = '<div class="empty-state"><div class="empty-desc">결과 데이터가 없습니다.</div></div>';
+      area.innerHTML = progressHtml + '<div class="empty-state"><div class="empty-desc">결과 데이터가 없습니다.</div></div>';
       return;
     }
 
-    area.innerHTML = results.map((r, idx) => {
+    area.innerHTML = progressHtml + results.map((r, idx) => {
       const st = (r.status || '').toLowerCase();
       let statusLabel, statusClass;
       if (st === 'pass') { statusLabel = '\u2705 PASS'; statusClass = 'pass'; }
