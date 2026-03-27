@@ -112,6 +112,10 @@ AI 건강상담 서비스의 응답이 한국 의료법을 준수하는지 평�
         )
         ctx = ssl.create_default_context()
         resp = urlopen(req, context=ctx, timeout=60)
+        try:
+            resp.fp.raw._sock.settimeout(30)
+        except Exception:
+            pass
         result = json.loads(resp.read().decode('utf-8'))
         content = result['choices'][0]['message']['content']
         return json.loads(content)
@@ -238,6 +242,10 @@ def _evaluate_consultation(prompt_text, response_text, openai_key, model=None, c
         )
         ctx = ssl.create_default_context()
         resp = urlopen(req, context=ctx, timeout=60)
+        try:
+            resp.fp.raw._sock.settimeout(30)
+        except Exception:
+            pass
         result = json.loads(resp.read().decode('utf-8'))
         content = result['choices'][0]['message']['content']
         raw = json.loads(content)
@@ -1918,17 +1926,18 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
                     if openai_key and full_text:
                         from concurrent.futures import ThreadPoolExecutor as _EvalTPE
                         try:
-                            with _EvalTPE(max_workers=2) as eval_exec:
-                                gpt_f = eval_exec.submit(_evaluate_gpt, sc['prompt'], full_text, openai_key, gpt_model)
-                                consult_f = eval_exec.submit(_evaluate_consultation, sc['prompt'], full_text, openai_key, gpt_model)
-                                try:
-                                    gpt = gpt_f.result(timeout=65)
-                                except Exception:
-                                    gpt = None
-                                try:
-                                    consult = consult_f.result(timeout=65)
-                                except Exception:
-                                    consult = None
+                            eval_exec = _EvalTPE(max_workers=2)
+                            gpt_f = eval_exec.submit(_evaluate_gpt, sc['prompt'], full_text, openai_key, gpt_model)
+                            consult_f = eval_exec.submit(_evaluate_consultation, sc['prompt'], full_text, openai_key, gpt_model)
+                            try:
+                                gpt = gpt_f.result(timeout=65)
+                            except Exception:
+                                gpt = None
+                            try:
+                                consult = consult_f.result(timeout=65)
+                            except Exception:
+                                consult = None
+                            eval_exec.shutdown(wait=False, cancel_futures=True)
                         except Exception:
                             pass
 

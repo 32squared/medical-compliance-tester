@@ -705,10 +705,11 @@ function updateTabCounts() {
   const manual = allScenarios.filter(s => (s.source || 'manual') === 'manual').length;
   const generated = allScenarios.filter(s => s.source === 'generated').length;
   const conversation = allScenarios.filter(s => s.source === 'conversation').length;
-  document.getElementById('tab-count-all').textContent = allScenarios.length;
-  document.getElementById('tab-count-manual').textContent = manual;
-  document.getElementById('tab-count-generated').textContent = generated;
-  document.getElementById('tab-count-conversation').textContent = conversation;
+  const _tc = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  _tc('tab-count-all', allScenarios.length);
+  _tc('tab-count-manual', manual);
+  _tc('tab-count-generated', generated);
+  _tc('tab-count-conversation', conversation);
 }
 
 // ════════════════════════════════════════════
@@ -730,7 +731,8 @@ function renderCategories() {
     </div>`;
   }).join('');
 
-  document.getElementById('count-all').textContent = filtered.length;
+  const countAll = document.getElementById('count-all');
+  if (countAll) countAll.textContent = filtered.length;
 
   catSelect.innerHTML = categories.map(c =>
     `<option value="${c.id}">${c.name}</option>`
@@ -785,7 +787,8 @@ function renderList() {
       <p>${emptyMsg}</p>
       ${selectedSource !== 'generated' ? '<button class="btn btn-primary" onclick="openCreateModal()">+ 새 시나리오 만들기</button>' : ''}
     </div>`;
-    document.getElementById('statusText').textContent = '검색 결과 없음';
+    const stEl = document.getElementById('statusText');
+    if (stEl) stEl.textContent = '검색 결과 없음';
     return;
   }
 
@@ -833,10 +836,10 @@ function renderList() {
     </div>`;
   }).join('');
 
-  document.getElementById('statusText').textContent =
-    `${filtered.length}개 시나리오 표시 (전체 ${allScenarios.length}개)`;
-  document.getElementById('statusRight').textContent =
-    checkedIds.size > 0 ? `${checkedIds.size}개 선택됨` : '';
+  const stText = document.getElementById('statusText');
+  if (stText) stText.textContent = `${filtered.length}개 시나리오 표시 (전체 ${allScenarios.length}개)`;
+  const stRight = document.getElementById('statusRight');
+  if (stRight) stRight.textContent = checkedIds.size > 0 ? `${checkedIds.size}개 선택됨` : '';
 
   document.getElementById('bulkActions').style.display = checkedIds.size > 0 ? 'flex' : 'none';
 
