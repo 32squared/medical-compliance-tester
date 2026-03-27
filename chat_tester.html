@@ -2149,6 +2149,57 @@ function addRestoredAssistantMessage(text, meta = {}) {
     });
   }
 
+  // ── 보강 비교 패널 복원 ──
+  if (meta.enhancement) {
+    var enh = meta.enhancement;
+    var origGpt = ((enh.originalEval || {}).gptEval || {}).score || 0;
+    var origGrade = ((enh.originalEval || {}).gptEval || {}).grade || '?';
+    var enhGpt = ((enh.enhancedEval || {}).gptEval || {}).score || 0;
+    var enhGrade = ((enh.enhancedEval || {}).gptEval || {}).grade || '?';
+    var origConsult = ((enh.originalEval || {}).consultationEval || {}).totalScore || 0;
+    var enhConsult = ((enh.enhancedEval || {}).consultationEval || {}).totalScore || 0;
+    var gptDelta = enhGpt - origGpt;
+    var consultDelta = enhConsult - origConsult;
+
+    var deltaColor = function(d) { return d > 0 ? '#22c55e' : d < 0 ? '#ef4444' : '#94a3b8'; };
+    var deltaText = function(d) { return d > 0 ? '+' + d + '\u2191' : d < 0 ? d + '\u2193' : '0'; };
+
+    var enhInstructions = enh.instructions || [];
+    var instrHtml = '';
+    for (var ii = 0; ii < enhInstructions.length; ii++) {
+      if (ii > 0) instrHtml += ' \u00B7 ';
+      instrHtml += escapeHtml(enhInstructions[ii]);
+    }
+
+    var compareDiv = document.createElement('div');
+    compareDiv.style.cssText = 'margin-bottom:12px;padding:14px;background:linear-gradient(135deg,#1e1b4b,#1e293b);border-radius:10px;border:1px solid #7c3aed44';
+    compareDiv.innerHTML =
+      '<div style="font-size:14px;font-weight:700;color:#c4b5fd;margin-bottom:10px">\uD83D\uDD04 \uBCF4\uAC15 \uC804 vs \uD6C4 \uBE44\uAD50</div>' +
+      '<div style="display:flex;gap:16px;flex-wrap:wrap">' +
+        '<div style="flex:1;min-width:120px">' +
+          '<div style="font-size:11px;color:#94a3b8;margin-bottom:4px">GPT \uD3C9\uAC00</div>' +
+          '<div style="display:flex;align-items:center;gap:8px">' +
+            '<span style="font-size:13px;color:#94a3b8">' + escapeHtml(origGrade) + ' ' + origGpt + '\uC810</span>' +
+            '<span style="font-size:14px;color:var(--accent)">\u2192</span>' +
+            '<span style="font-size:15px;font-weight:700;color:' + deltaColor(gptDelta) + '">' + escapeHtml(enhGrade) + ' ' + enhGpt + '\uC810</span>' +
+            '<span style="font-size:13px;font-weight:700;color:' + deltaColor(gptDelta) + '">' + deltaText(gptDelta) + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div style="flex:1;min-width:120px">' +
+          '<div style="font-size:11px;color:#94a3b8;margin-bottom:4px">\uBB38\uC9C4 \uD488\uC9C8</div>' +
+          '<div style="display:flex;align-items:center;gap:8px">' +
+            '<span style="font-size:13px;color:#94a3b8">' + origConsult + '\uC810</span>' +
+            '<span style="font-size:14px;color:var(--accent)">\u2192</span>' +
+            '<span style="font-size:15px;font-weight:700;color:' + deltaColor(consultDelta) + '">' + enhConsult + '\uC810</span>' +
+            '<span style="font-size:13px;font-weight:700;color:' + deltaColor(consultDelta) + '">' + deltaText(consultDelta) + '</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      (instrHtml ? '<div style="margin-top:10px;font-size:11px;color:#c4b5fd">\uD83D\uDCA1 \uBCF4\uAC15 \uC9C0\uC2DC: ' + instrHtml + '</div>' : '');
+
+    evalBox.insertBefore(compareDiv, evalBox.firstChild);
+  }
+
   div.appendChild(evalBox);
 }
 

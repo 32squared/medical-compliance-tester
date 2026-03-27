@@ -319,6 +319,7 @@
     <div class="report-tabs">
       <button class="report-tab active" onclick="switchMainTab('history')" id="tabHistory">📋 테스트 이력</button>
       <button class="report-tab" onclick="switchMainTab('report')" id="tabReport">📊 리포트</button>
+      <button class="report-tab" onclick="switchMainTab('enhancement')" id="tabEnhancement">📊 보강 리포트</button>
     </div>
 
     <!-- History Tab Content -->
@@ -413,6 +414,15 @@
           <div class="comment-list" id="reportComments"></div>
         </div>
       </div>
+    </div>
+
+    <!-- Enhancement Report Tab Content -->
+    <div id="enhancementTabContent" class="report-dashboard">
+      <div class="report-loading" id="enhancementLoading" style="display:none">
+        <div class="loader-spinner"></div>
+        <div>보강 리포트 로딩 중...</div>
+      </div>
+      <div id="enhancementBody" style="display:none"></div>
     </div>
 
   </div>
@@ -1368,13 +1378,21 @@
     currentMainTab = tab;
     document.getElementById('tabHistory').classList.toggle('active', tab === 'history');
     document.getElementById('tabReport').classList.toggle('active', tab === 'report');
+    document.getElementById('tabEnhancement').classList.toggle('active', tab === 'enhancement');
     document.getElementById('historyTabContent').style.display = tab === 'history' ? 'flex' : 'none';
     var reportEl = document.getElementById('reportTabContent');
+    var enhEl = document.getElementById('enhancementTabContent');
     if (tab === 'report') {
       reportEl.classList.add('visible');
       if (!reportLoaded) loadReport();
     } else {
       reportEl.classList.remove('visible');
+    }
+    if (tab === 'enhancement') {
+      enhEl.classList.add('visible');
+      if (!enhancementReportLoaded) loadEnhancementReport();
+    } else {
+      enhEl.classList.remove('visible');
     }
   }
 
@@ -1532,6 +1550,139 @@
       commHtml += '<div class="comment-row"><div class="comment-row-label" style="color:var(--text-dim)">커멘트 데이터가 없습니다</div></div>';
     }
     document.getElementById('reportComments').innerHTML = commHtml;
+  }
+
+  // ── Enhancement Report Tab ──
+  var enhancementReportLoaded = false;
+
+  async function loadEnhancementReport() {
+    var loading = document.getElementById('enhancementLoading');
+    var body = document.getElementById('enhancementBody');
+    if (loading) loading.style.display = '';
+    if (body) body.style.display = 'none';
+
+    try {
+      var results = await Promise.all([
+        fetch('/api/prompt-enhancements/report').then(function(r) { return r.ok ? r.json() : {}; }).catch(function() { return {}; }),
+        fetch('/api/prompt-enhancements').then(function(r) { return r.ok ? r.json() : { enhancements: [] }; }).catch(function() { return { enhancements: [] }; })
+      ]);
+      var report = results[0];
+      var listData = results[1];
+      renderEnhancementReport(report, listData.enhancements || []);
+      enhancementReportLoaded = true;
+    } catch(e) {
+      showToast('\uBCF4\uAC15 \uB9AC\uD3EC\uD2B8 \uB85C\uB4DC \uC2E4\uD328', 'error');
+    } finally {
+      if (loading) loading.style.display = 'none';
+      if (body) body.style.display = '';
+    }
+  }
+
+  function renderEnhancementReport(report, enhancements) {
+    var body = document.getElementById('enhancementBody');
+    if (!body) return;
+
+    var total = report.total || 0;
+    var avgGpt = report.avgGptDelta != null ? Math.round(report.avgGptDelta * 10) / 10 : 0;
+    var avgConsult = report.avgConsultDelta != null ? Math.round(report.avgConsultDelta * 10) / 10 : 0;
+    var topInstr = report.topInstructions || [];
+
+    var html = '';
+
+    // 1. Summary Cards
+    var gptColor = avgGpt > 0 ? 'var(--green)' : avgGpt < 0 ? 'var(--red)' : 'var(--text-dim)';
+    var consultColor = avgConsult > 0 ? 'var(--green)' : avgConsult < 0 ? 'var(--red)' : 'var(--text-dim)';
+    html += '<div class="report-section">' +
+      '<div class="report-section-title" style="color:#c4b5fd">\uD83D\uDD04 \uBCF4\uAC15 \uC694\uC57D</div>' +
+      '<div class="report-summary-strip">' +
+        '<div class="report-summary-item" style="border-color:#7c3aed44"><div class="rsi-value" style="color:#c4b5fd">' + total + '</div><div class="rsi-label">\uCD1D \uBCF4\uAC15 \uD69F\uC218</div></div>' +
+        '<div class="report-summary-item" style="border-color:#7c3aed44"><div class="rsi-value" style="color:' + gptColor + '">' + (avgGpt > 0 ? '+' : '') + avgGpt + '</div><div class="rsi-label">\uD3C9\uADE0 GPT \uAC1C\uC120</div></div>' +
+        '<div class="report-summary-item" style="border-color:#7c3aed44"><div class="rsi-value" style="color:' + consultColor + '">' + (avgConsult > 0 ? '+' : '') + avgConsult + '</div><div class="rsi-label">\uD3C9\uADE0 \uBB38\uC9C4 \uAC1C\uC120</div></div>' +
+      '</div></div>';
+
+    // 2. Top Instructions
+    html += '<div class="report-section">' +
+      '<div class="report-section-title" style="color:#c4b5fd">\uD83D\uDCCB \uAC00\uC7A5 \uB9CE\uC774 \uC0AC\uC6A9\uB41C \uBCF4\uAC15 \uC9C0\uC2DC\uBB38</div>';
+    if (topInstr.length === 0) {
+      html += '<div style="color:var(--text-dim);font-size:13px;padding:12px">\uBCF4\uAC15 \uC9C0\uC2DC\uBB38 \uB370\uC774\uD130\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4</div>';
+    } else {
+      var maxCount = topInstr.length > 0 ? topInstr[0].count : 1;
+      for (var ti = 0; ti < topInstr.length && ti < 10; ti++) {
+        var inst = topInstr[ti];
+        var pct = maxCount > 0 ? Math.round((inst.count / maxCount) * 100) : 0;
+        html += '<div class="hbar-row">' +
+          '<div class="hbar-label" style="min-width:30px;font-size:13px;color:#c4b5fd">' + (ti + 1) + '</div>' +
+          '<div class="hbar-track"><div class="hbar-fill" style="width:' + pct + '%;background:linear-gradient(90deg,#7c3aed,#a855f7)"></div></div>' +
+          '<div class="hbar-info" style="min-width:200px">' + escapeHtml(inst.instruction || '') + ' (' + inst.count + '\uD68C)</div>' +
+        '</div>';
+      }
+    }
+    html += '</div>';
+
+    // 3. Enhancement List
+    html += '<div class="report-section">' +
+      '<div class="report-section-title" style="color:#c4b5fd">\uD83D\uDCCA \uAC1C\uBCC4 \uBCF4\uAC15 \uBE44\uAD50 \uBAA9\uB85D</div>';
+    if (enhancements.length === 0) {
+      html += '<div style="color:var(--text-dim);font-size:13px;padding:12px">\uBCF4\uAC15 \uAE30\uB85D\uC774 \uC5C6\uC2B5\uB2C8\uB2E4</div>';
+    } else {
+      for (var ei = 0; ei < enhancements.length; ei++) {
+        var e = enhancements[ei];
+        var oEval = e.originalEval || {};
+        var eEval = e.enhancedEval || {};
+        var oGpt = (oEval.gptEval || {}).score || 0;
+        var oGrade = (oEval.gptEval || {}).grade || '?';
+        var eGpt = (eEval.gptEval || {}).score || 0;
+        var eGrade = (eEval.gptEval || {}).grade || '?';
+        var oConsult = (oEval.consultationEval || {}).totalScore || 0;
+        var eConsult = (eEval.consultationEval || {}).totalScore || 0;
+        var gd = eGpt - oGpt;
+        var cd = eConsult - oConsult;
+        var gdColor = gd > 0 ? '#22c55e' : gd < 0 ? '#ef4444' : '#94a3b8';
+        var cdColor = cd > 0 ? '#22c55e' : cd < 0 ? '#ef4444' : '#94a3b8';
+        var gdSign = gd > 0 ? '+' + gd : '' + gd;
+        var cdSign = cd > 0 ? '+' + cd : '' + cd;
+
+        var eInst = e.instructions || [];
+        var eInstStr = '';
+        for (var ij = 0; ij < eInst.length; ij++) {
+          if (ij > 0) eInstStr += ', ';
+          eInstStr += escapeHtml(eInst[ij]);
+        }
+
+        var queryStr = e.original_query || e.originalQuery || '';
+        var dateStr = e.created_at || e.createdAt || '';
+        if (dateStr) {
+          try { dateStr = new Date(dateStr).toLocaleDateString('ko-KR'); } catch(ex) { /* keep raw */ }
+        }
+
+        html += '<div style="padding:14px;margin-bottom:8px;background:linear-gradient(135deg,#1e1b4b,#1e293b);border-radius:10px;border:1px solid #7c3aed44">' +
+          '<div style="font-size:13px;color:var(--text);margin-bottom:8px;word-break:break-word">\uD83D\uDCAC ' + escapeHtml(queryStr.length > 100 ? queryStr.substring(0, 100) + '...' : queryStr) + '</div>' +
+          '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:6px">' +
+            '<div style="flex:1;min-width:120px">' +
+              '<div style="font-size:11px;color:#94a3b8;margin-bottom:2px">GPT</div>' +
+              '<div style="font-size:13px">' +
+                '<span style="color:#94a3b8">' + escapeHtml(oGrade) + ' ' + oGpt + '\uC810</span> ' +
+                '<span style="color:var(--accent)">\u2192</span> ' +
+                '<span style="font-weight:700;color:' + gdColor + '">' + escapeHtml(eGrade) + ' ' + eGpt + '\uC810 (' + gdSign + ')</span>' +
+              '</div>' +
+            '</div>' +
+            '<div style="flex:1;min-width:120px">' +
+              '<div style="font-size:11px;color:#94a3b8;margin-bottom:2px">\uBB38\uC9C4</div>' +
+              '<div style="font-size:13px">' +
+                '<span style="color:#94a3b8">' + oConsult + '\uC810</span> ' +
+                '<span style="color:var(--accent)">\u2192</span> ' +
+                '<span style="font-weight:700;color:' + cdColor + '">' + eConsult + '\uC810 (' + cdSign + ')</span>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+          (eInstStr ? '<div style="font-size:11px;color:#c4b5fd">\uD83D\uDCA1 ' + eInstStr + '</div>' : '') +
+          (dateStr ? '<div style="font-size:11px;color:var(--text-dim);margin-top:4px">' + escapeHtml(dateStr) + '</div>' : '') +
+        '</div>';
+      }
+    }
+    html += '</div>';
+
+    body.innerHTML = html;
   }
 </script>
 </body>
