@@ -1573,42 +1573,9 @@ function finalizeAssistantMessage(fullText, meta = {}) {
       setTimeout(checkAndShowComparison, 5000);
     }
 
-    // ── 토큰 사용량 표시 ──
-    if (meta.tokenUsage) {
-      const tokenDiv = document.createElement('div');
-      tokenDiv.style.cssText = 'margin-top:6px;padding:6px 10px;background:var(--bg);border-radius:6px;font-size:12px;color:var(--text-dim);display:flex;gap:12px;flex-wrap:wrap;align-items:center';
-      let tokenHtml = '<span style="font-weight:600;color:var(--text)">🔢 토큰</span>';
-      const tu = meta.tokenUsage;
-      for (const model in tu) {
-        const u = tu[model];
-        tokenHtml += '<span>' + escapeHtml(model) + ': ' +
-          '<span style="color:var(--accent)">' + (u.input_tokens || 0).toLocaleString() + '</span>입력 / ' +
-          '<span style="color:var(--green)">' + (u.output_tokens || 0).toLocaleString() + '</span>출력 / ' +
-          '<span style="font-weight:600">' + (u.total_tokens || 0).toLocaleString() + '</span>전체</span>';
-      }
-      tokenDiv.innerHTML = tokenHtml;
-      evalBox.appendChild(tokenDiv);
-    }
+    // (토큰은 아래 응답시간과 함께 표시)
 
-    // ── 1. 커멘트 버튼 (답변 직후) ──
-    const commentWrapper = document.createElement('div');
-    commentWrapper.style.marginTop = '6px';
-    commentWrapper.innerHTML = `
-      <button class="comment-btn" onclick="toggleCommentForm('${msgId}')">💬 커멘트 달기</button>
-      <div id="commentForm_${msgId}" style="display:none;margin-top:8px;padding:12px;background:var(--bg);border-radius:10px;border:1px solid var(--border)">
-        <select id="commentCat_${msgId}" style="width:100%;padding:8px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px;margin-bottom:8px">
-          <option value="부정확한 정보">부정확한 정보</option><option value="불충분한 답변">불충분한 답변</option>
-          <option value="위험한 조언">위험한 조언</option><option value="면책 조항 누락">면책 조항 누락</option>
-          <option value="과잉 진단/처방">과잉 진단/처방</option><option value="출처 불명확">출처 불명확</option>
-          <option value="표현 부적절">표현 부적절</option><option value="기타">기타</option>
-        </select>
-        <textarea id="commentText_${msgId}" rows="3" placeholder="커멘트를 입력하세요..." style="width:100%;padding:8px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px;resize:none;box-sizing:border-box"></textarea>
-        <button onclick="submitComment('${msgId}')" style="margin-top:6px;padding:6px 16px;background:var(--accent);color:#0f172a;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">등록</button>
-      </div>
-    `;
-    msgDiv.appendChild(commentWrapper);
-
-    // ── 2. 참고 자료 ──
+    // ── 1. 참고 자료 ──
     if (meta.searchResults && meta.searchResults.length > 0) {
       const srcPanel = document.createElement('details');
       srcPanel.className = 'sources-panel';
@@ -1625,7 +1592,7 @@ function finalizeAssistantMessage(fullText, meta = {}) {
       msgDiv.appendChild(srcPanel);
     }
 
-    // ── 3. 추천 질문 ──
+    // ── 2. 추천 질문 ──
     if (meta.followUps && meta.followUps.length > 0) {
       const fuDiv = document.createElement('div');
       fuDiv.className = 'followups';
@@ -1635,8 +1602,48 @@ function finalizeAssistantMessage(fullText, meta = {}) {
       msgDiv.appendChild(fuDiv);
     }
 
-    // ── 4. 평가 결과 박스 (패턴 + GPT) — 최하단 ──
+    // ── 3. 응답 시간 + 토큰 (참고자료/추천 다음, 평가 전) ──
+    if (meta.elapsed || meta.tokenUsage) {
+      const infoDiv = document.createElement('div');
+      infoDiv.style.cssText = 'margin-top:8px;padding:8px 12px;font-size:12px;color:var(--text-dim);background:var(--surface);border-radius:8px;display:flex;gap:14px;flex-wrap:wrap;align-items:center';
+      let infoHtml = '';
+      if (meta.elapsed) {
+        infoHtml += '<span>⏱ 응답: <b>' + (meta.elapsed / 1000).toFixed(1) + '초</b></span>';
+      }
+      if (meta.tokenUsage) {
+        const tu = meta.tokenUsage;
+        for (const model in tu) {
+          const u = tu[model];
+          infoHtml += '<span>🔢 ' + escapeHtml(model) + ': ' +
+            '<span style="color:var(--accent)">' + (u.input_tokens || 0).toLocaleString() + '</span>입력 / ' +
+            '<span style="color:var(--green)">' + (u.output_tokens || 0).toLocaleString() + '</span>출력 / ' +
+            '<b>' + (u.total_tokens || 0).toLocaleString() + '</b>전체</span>';
+        }
+      }
+      infoDiv.innerHTML = infoHtml;
+      msgDiv.appendChild(infoDiv);
+    }
+
+    // ── 4. 평가 결과 박스 (패턴 + GPT + 문진) ──
     msgDiv.appendChild(evalBox);
+
+    // ── 5. 커멘트 버튼 (평가 다음, 최하단) ──
+    const commentWrapper = document.createElement('div');
+    commentWrapper.style.marginTop = '8px';
+    commentWrapper.innerHTML = `
+      <button class="comment-btn" onclick="toggleCommentForm('${msgId}')">💬 커멘트 달기</button>
+      <div id="commentForm_${msgId}" style="display:none;margin-top:8px;padding:12px;background:var(--bg);border-radius:10px;border:1px solid var(--border)">
+        <select id="commentCat_${msgId}" style="width:100%;padding:8px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px;margin-bottom:8px">
+          <option value="부정확한 정보">부정확한 정보</option><option value="불충분한 답변">불충분한 답변</option>
+          <option value="위험한 조언">위험한 조언</option><option value="면책 조항 누락">면책 조항 누락</option>
+          <option value="과잉 진단/처방">과잉 진단/처방</option><option value="출처 불명확">출처 불명확</option>
+          <option value="표현 부적절">표현 부적절</option><option value="기타">기타</option>
+        </select>
+        <textarea id="commentText_${msgId}" rows="3" placeholder="커멘트를 입력하세요..." style="width:100%;padding:8px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px;resize:none;box-sizing:border-box"></textarea>
+        <button onclick="submitComment('${msgId}')" style="margin-top:6px;padding:6px 16px;background:var(--accent);color:#0f172a;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">등록</button>
+      </div>
+    `;
+    msgDiv.appendChild(commentWrapper);
   }
 
   scrollToBottom();
