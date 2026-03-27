@@ -389,7 +389,7 @@
 
   // ── Env Switching ──
   function switchEnv(env) {
-    fetch('/api/settings', {
+    fetch('/api/settings/env', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ currentEnv: env })
