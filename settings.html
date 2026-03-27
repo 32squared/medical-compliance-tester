@@ -33,11 +33,29 @@
   .nav-btn:hover { background:var(--surface2); color:var(--text); }
   .nav-btn.active { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
 
-  /* Env indicator in topbar (read-only in settings page — use the card section to edit) */
+  /* Env indicator in topbar */
   #envSelectorTop { display:flex; gap:2px; background:var(--bg); border-radius:8px; padding:2px; border:1px solid var(--border); }
 
   /* ── Content ── */
   .content { flex:1; padding:24px; max-width:800px; margin:0 auto; width:100%; }
+
+  /* ── Settings Tab Bar ── */
+  .settings-tab-bar {
+    display:flex; gap:0; background:var(--surface); border:1px solid var(--border);
+    border-radius:12px 12px 0 0; overflow-x:auto; -webkit-overflow-scrolling:touch;
+    scrollbar-width:none; margin-bottom:0;
+  }
+  .settings-tab-bar::-webkit-scrollbar { display:none; }
+  .settings-tab {
+    flex:0 0 auto; padding:12px 20px; font-size:13px; font-weight:600;
+    color:var(--text-dim); cursor:pointer; white-space:nowrap; transition:all .15s;
+    border-bottom:2px solid transparent; background:none; border-top:none; border-left:none; border-right:none;
+    display:flex; align-items:center; gap:6px;
+  }
+  .settings-tab:hover { color:var(--text); background:var(--surface2); }
+  .settings-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+  .settings-tab-content { display:none; }
+  .settings-tab-content.active { display:block; }
 
   .card { background:var(--surface); border:1px solid var(--border); border-radius:16px;
           padding:24px; margin-bottom:20px; }
@@ -150,252 +168,282 @@
 <!-- ── Content (Admin 인증 후 표시) ── -->
 <div class="content" id="mainContent" style="display:none">
 
-  <!-- API 연결 설정 -->
-  <div class="card">
-    <h2>&#9881; API 연결 설정</h2>
+  <!-- ── Settings Tab Bar ── -->
+  <div class="settings-tab-bar" id="settingsTabBar">
+    <button class="settings-tab active" data-tab="tab-api" onclick="switchSettingsTab('tab-api')">🔌 API 연결 설정</button>
+    <button class="settings-tab" data-tab="tab-gpt" onclick="switchSettingsTab('tab-gpt')">🤖 GPT 연결 설정</button>
+    <button class="settings-tab" data-tab="tab-users" onclick="switchSettingsTab('tab-users')" style="display:none">👥 사용자 관리</button>
+    <button class="settings-tab" data-tab="tab-criteria" onclick="switchSettingsTab('tab-criteria')" style="display:none">🩺 문진 평가 기준</button>
+    <button class="settings-tab" data-tab="tab-logs" onclick="switchSettingsTab('tab-logs')" style="display:none">📋 서버 실시간 로그</button>
+  </div>
 
-    <div class="field">
-      <label>환경 선택</label>
-      <div class="env-chips">
-        <div class="env-chip active" data-env="dev" onclick="selectEnv('dev',this)">DEV</div>
-        <div class="env-chip" data-env="stg" onclick="selectEnv('stg',this)">STG</div>
-        <div class="env-chip" data-env="prod" onclick="selectEnv('prod',this)">PROD</div>
-      </div>
-    </div>
+  <!-- ══════════════════════════════════════════ -->
+  <!-- Tab 1: API 연결 설정 -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="settings-tab-content active" id="tab-api">
+    <div class="card" style="border-radius:0 0 16px 16px;border-top:none;margin-bottom:20px">
+      <h2>🔌 API 연결 설정</h2>
 
-    <div class="field-row">
       <div class="field">
-        <label>Base URL</label>
-        <input type="url" id="apiUrl" value="https://dev-skix.phnyx.ai" readonly style="opacity:.7">
-      </div>
-      <div class="field">
-        <label>X-tenant-Domain</label>
-        <input type="text" id="xTenantDomain" value="dev-skix">
-        <div class="hint">환경 선택시 자동 설정됩니다</div>
-      </div>
-    </div>
-
-    <div class="field">
-      <label>X-API-Key</label>
-      <input type="password" id="xApiKey" placeholder="발급받은 API 키 입력">
-    </div>
-
-    <div class="field">
-      <label>X-Api-UID (사용자 식별 키)</label>
-      <input type="text" id="xApiUid" placeholder="사용자 식별 키 입력">
-    </div>
-
-    <div class="field">
-      <label>Graph Type</label>
-      <input type="text" id="graphType" value="SUPERVISED_HYBRID_SEARCH">
-    </div>
-
-    <div class="field">
-      <label>CORS 프록시 URL (선택)</label>
-      <input type="url" id="proxyUrl" placeholder="비워두면 자동 감지">
-      <div class="hint">비워두면 현재 서버 주소를 자동 사용합니다. 별도 프록시 서버 사용 시에만 입력하세요.</div>
-    </div>
-
-    <div class="field">
-      <label>검색 소스</label>
-      <div class="source-checks">
-        <label><input type="checkbox" id="srcWeb" checked> WEB</label>
-        <label><input type="checkbox" id="srcPubmed" checked> PUBMED</label>
-      </div>
-    </div>
-
-    <div style="display:flex;gap:10px;align-items:center">
-      <button class="btn-primary" onclick="testConnection()">연결 테스트</button>
-      <span id="connResult" style="font-size:12px;"></span>
-    </div>
-  </div>
-
-  <!-- 의료법 검수 설정 -->
-  <div class="card">
-    <h2>&#128203; 의료법 검수 설정</h2>
-    <div class="field">
-      <label style="display:flex;align-items:center;gap:8px;font-size:13px">
-        <input type="checkbox" id="enableCompliance" checked style="width:auto">
-        실시간 의료법 준수 검사 (정규식)
-      </label>
-    </div>
-  </div>
-
-  <!-- ChatGPT 평가 설정 -->
-  <div class="card">
-    <h2>&#129302; ChatGPT 평가 설정</h2>
-    <div class="field">
-      <label>OpenAI API Key</label>
-      <input type="password" id="openaiKey" placeholder="sk-... (평가 기능 사용 시 필수)">
-      <div class="hint">ChatGPT로 의료법 준수를 심층 평가합니다</div>
-    </div>
-    <div class="field">
-      <label>GPT 모델</label>
-      <select id="openaiModel" style="width:100%;padding:8px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px">
-        <optgroup label="GPT-5.4 (최신)">
-          <option value="gpt-5.4-pro">gpt-5.4-pro (최고 성능, 복잡한 추론)</option>
-          <option value="gpt-5.4">gpt-5.4 (플래그십, 1M 컨텍스트)</option>
-          <option value="gpt-5.4-mini">gpt-5.4-mini (빠름, 고성능 소형)</option>
-          <option value="gpt-5.4-nano">gpt-5.4-nano (초경량, 최저 비용)</option>
-        </optgroup>
-        <optgroup label="GPT-4o">
-          <option value="gpt-4o">gpt-4o (안정적 고성능)</option>
-          <option value="gpt-4o-mini" selected>gpt-4o-mini (빠름, 저렴 — 기본)</option>
-        </optgroup>
-      </select>
-      <div class="hint">평가 및 시나리오 자동 생성에 사용할 GPT 모델</div>
-    </div>
-    <div class="field">
-      <label style="display:flex;align-items:center;gap:8px;font-size:13px">
-        <input type="checkbox" id="enableLlmEval" style="width:auto">
-        응답마다 자동 ChatGPT 평가
-      </label>
-    </div>
-  </div>
-
-  <!-- 저장 버튼 -->
-  <div style="display:flex;gap:10px;justify-content:flex-end">
-    <button class="btn-outline" onclick="loadSettings()">되돌리기</button>
-    <button class="btn-primary" onclick="saveSettings(); showToast('설정이 저장되었습니다','success')">설정 저장</button>
-  </div>
-
-  <hr class="divider">
-
-  <!-- 가입 승인 대기 -->
-  <div class="card">
-    <h2>⏳ 가입 승인 대기</h2>
-    <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px">회원가입 신청자를 승인하거나 거부합니다</p>
-    <div id="pendingUserList"></div>
-  </div>
-
-  <!-- 사용자 관리 -->
-  <div class="card">
-    <h2>👥 사용자 관리</h2>
-    <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px">승인된 사용자 목록 및 관리 (직접 생성도 가능)</p>
-    <div id="testerAccountList" style="margin-bottom:12px"></div>
-    <hr class="divider" style="margin:12px 0">
-    <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:10px">직접 사용자 생성</div>
-    <div class="field-row">
-      <div class="field"><label>ID</label><input type="text" id="newTesterId" placeholder="로그인 ID (2자 이상)"></div>
-      <div class="field"><label>이름</label><input type="text" id="newTesterAlias" placeholder="이름 (예: 김의사)"></div>
-    </div>
-    <div class="field-row">
-      <div class="field"><label>소속</label><input type="text" id="newTesterOrg" placeholder="소속 (예: 서울대병원)"></div>
-      <div class="field"><label>비밀번호</label><input type="password" id="newTesterPw" placeholder="4자 이상"></div>
-    </div>
-    <div class="field-row">
-      <div class="field"><label>X-Api-UID</label><input type="text" id="newTesterUid" placeholder="SKIX API UID"></div>
-    </div>
-    <button class="btn-primary" onclick="createTesterAccount()" style="font-size:12px;padding:8px 20px">사용자 생성</button>
-  </div>
-
-  <!-- 테스터 허용 환경 -->
-  <div class="card">
-    <h2>🌐 테스터 허용 환경</h2>
-    <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px">테스터가 사용할 수 있는 환경을 선택합니다</p>
-    <div style="display:flex;gap:20px">
-      <label style="font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--text)">
-        <input type="checkbox" id="allowDev" checked style="width:auto"> DEV
-      </label>
-      <label style="font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--text)">
-        <input type="checkbox" id="allowStg" style="width:auto"> STG
-      </label>
-      <label style="font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--text)">
-        <input type="checkbox" id="allowProd" style="width:auto"> PROD
-      </label>
-    </div>
-  </div>
-
-  <!-- 비밀번호 변경 -->
-  <div class="card">
-    <h2>🔑 Admin 비밀번호 변경</h2>
-    <div class="field">
-      <label>현재 비밀번호</label>
-      <input type="password" id="currentPw" placeholder="현재 비밀번호">
-    </div>
-    <div class="field">
-      <label>새 비밀번호</label>
-      <input type="password" id="newPw" placeholder="새 비밀번호 (4자 이상)">
-    </div>
-    <div class="field">
-      <label>새 비밀번호 확인</label>
-      <input type="password" id="newPwConfirm" placeholder="새 비밀번호 확인" onkeydown="if(event.key==='Enter')changePassword()">
-    </div>
-    <button class="btn-outline" onclick="changePassword()">비밀번호 변경</button>
-  </div>
-
-  <!-- Admin 로그아웃 -->
-  <div style="text-align:center;margin-top:10px;margin-bottom:20px">
-    <button class="btn-outline" onclick="doLogout()" style="color:var(--red);border-color:var(--red)">🚪 Admin 로그아웃</button>
-  </div>
-
-  <!-- 문진 평가 기준 관리 (Admin only) -->
-  <div class="card" id="criteriaSection" style="display:none;margin-top:20px">
-    <h2 style="cursor:pointer;user-select:none" onclick="toggleCriteriaSection()">
-      <span id="criteriaToggleIcon">▶</span> &#129658; 문진 평가 기준 관리
-    </h2>
-    <div id="criteriaBody" style="display:none">
-      <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px">문진 평가 축(Axis), 등급 기준, 의료법 경계 규칙을 관리합니다</p>
-
-      <!-- 축 및 항목 -->
-      <div id="criteriaAxes"></div>
-
-      <hr class="divider">
-
-      <!-- 등급 임계값 -->
-      <div style="margin-bottom:18px">
-        <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:10px">등급 임계값 (Grade Thresholds)</div>
-        <div class="field-row" style="flex-wrap:wrap;gap:12px">
-          <div class="field" style="flex:1;min-width:120px">
-            <label>A 등급 이상</label>
-            <input type="number" id="thresholdA" min="0" max="100" step="1" placeholder="90">
-          </div>
-          <div class="field" style="flex:1;min-width:120px">
-            <label>B 등급 이상</label>
-            <input type="number" id="thresholdB" min="0" max="100" step="1" placeholder="75">
-          </div>
-          <div class="field" style="flex:1;min-width:120px">
-            <label>C 등급 이상</label>
-            <input type="number" id="thresholdC" min="0" max="100" step="1" placeholder="60">
-          </div>
-          <div class="field" style="flex:1;min-width:120px">
-            <label>D 등급 미만</label>
-            <input type="number" id="thresholdD" min="0" max="100" step="1" placeholder="60">
-          </div>
+        <label>환경 선택</label>
+        <div class="env-chips">
+          <div class="env-chip active" data-env="dev" onclick="selectEnv('dev',this)">DEV</div>
+          <div class="env-chip" data-env="stg" onclick="selectEnv('stg',this)">STG</div>
+          <div class="env-chip" data-env="prod" onclick="selectEnv('prod',this)">PROD</div>
         </div>
       </div>
 
-      <hr class="divider">
+      <div class="field">
+        <label>X-API-Key</label>
+        <input type="password" id="xApiKey" placeholder="발급받은 API 키 입력">
+      </div>
 
-      <!-- 의료법 경계 규칙 -->
-      <div style="margin-bottom:18px">
-        <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:10px">의료법 경계 규칙 (Medical Law Boundary Rules)</div>
-        <div id="boundaryRulesList"></div>
-        <button class="btn-outline" onclick="addBoundaryRule()" style="font-size:12px;padding:6px 14px;margin-top:8px">+ 규칙 추가</button>
+      <div class="field">
+        <label>X-Api-UID (사용자 식별 키)</label>
+        <input type="text" id="xApiUid" placeholder="사용자 식별 키 입력">
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>X-tenant-Domain</label>
+          <input type="text" id="xTenantDomain" value="dev-skix">
+          <div class="hint">환경 선택시 자동 설정됩니다</div>
+        </div>
+        <div class="field">
+          <label>Base URL</label>
+          <input type="url" id="apiUrl" value="https://dev-skix.phnyx.ai" readonly style="opacity:.7">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>검색 소스</label>
+        <div class="source-checks">
+          <label><input type="checkbox" id="srcWeb" checked> WEB</label>
+          <label><input type="checkbox" id="srcPubmed" checked> PUBMED</label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Graph Type</label>
+        <input type="text" id="graphType" value="SUPERVISED_HYBRID_SEARCH">
+      </div>
+
+      <div class="field">
+        <label>CORS 프록시 URL (선택)</label>
+        <input type="url" id="proxyUrl" placeholder="비워두면 자동 감지">
+        <div class="hint">비워두면 현재 서버 주소를 자동 사용합니다. 별도 프록시 서버 사용 시에만 입력하세요.</div>
+      </div>
+
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:20px">
+        <button class="btn-primary" onclick="testConnection()">연결 테스트</button>
+        <span id="connResult" style="font-size:12px;"></span>
       </div>
 
       <hr class="divider">
 
-      <!-- 저장 / 초기화 -->
+      <div class="field">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px">
+          <input type="checkbox" id="enableCompliance" checked style="width:auto">
+          실시간 의료법 준수 검사 (정규식)
+        </label>
+      </div>
+
       <div style="display:flex;gap:10px;justify-content:flex-end">
-        <button class="btn-outline" onclick="resetCriteriaToDefaults()" style="color:var(--orange);border-color:var(--orange)">기본값 초기화</button>
-        <button class="btn-primary" onclick="saveCriteria()">평가 기준 저장</button>
+        <button class="btn-outline" onclick="loadSettings()">되돌리기</button>
+        <button class="btn-primary" onclick="saveSettings(); showToast('설정이 저장되었습니다','success')">설정 저장</button>
       </div>
     </div>
   </div>
 
-  <!-- 서버 실시간 로그 -->
-  <div class="card" style="margin-top:20px">
-    <h2>🖥️ 서버 실시간 로그</h2>
-    <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
-      <button class="btn-primary" onclick="toggleLogStream()" id="logToggleBtn" style="font-size:12px;padding:6px 14px">▶ 실시간 로그 시작</button>
-      <button class="btn-outline" onclick="clearLogView()" style="font-size:12px;padding:6px 14px">🗑 화면 지우기</button>
-      <input type="text" id="logFilter" placeholder="필터 (예: 프록시, ERROR)..." oninput="filterLogs()"
-             style="flex:1;min-width:120px;padding:6px 10px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px">
-      <span id="logCount" style="font-size:11px;color:var(--text-dim);align-self:center"></span>
+  <!-- ══════════════════════════════════════════ -->
+  <!-- Tab 2: GPT 연결 설정 -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="settings-tab-content" id="tab-gpt">
+    <div class="card" style="border-radius:0 0 16px 16px;border-top:none;margin-bottom:20px">
+      <h2>🤖 ChatGPT 평가 설정</h2>
+      <div class="field">
+        <label>OpenAI API Key</label>
+        <input type="password" id="openaiKey" placeholder="sk-... (평가 기능 사용 시 필수)">
+        <div class="hint">ChatGPT로 의료법 준수를 심층 평가합니다</div>
+      </div>
+      <div class="field">
+        <label>GPT 모델</label>
+        <select id="openaiModel" style="width:100%;padding:8px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px">
+          <optgroup label="GPT-5.4 (최신)">
+            <option value="gpt-5.4-pro">gpt-5.4-pro (최고 성능, 복잡한 추론)</option>
+            <option value="gpt-5.4">gpt-5.4 (플래그십, 1M 컨텍스트)</option>
+            <option value="gpt-5.4-mini">gpt-5.4-mini (빠름, 고성능 소형)</option>
+            <option value="gpt-5.4-nano">gpt-5.4-nano (초경량, 최저 비용)</option>
+          </optgroup>
+          <optgroup label="GPT-4o">
+            <option value="gpt-4o">gpt-4o (안정적 고성능)</option>
+            <option value="gpt-4o-mini" selected>gpt-4o-mini (빠름, 저렴 — 기본)</option>
+          </optgroup>
+        </select>
+        <div class="hint">평가 및 시나리오 자동 생성에 사용할 GPT 모델</div>
+      </div>
+      <div class="field">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px">
+          <input type="checkbox" id="enableLlmEval" style="width:auto">
+          응답마다 자동 ChatGPT 평가
+        </label>
+      </div>
+
+      <hr class="divider">
+
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn-outline" onclick="loadSettings()">되돌리기</button>
+        <button class="btn-primary" onclick="saveSettings(); showToast('설정이 저장되었습니다','success')">설정 저장</button>
+      </div>
     </div>
-    <div id="logViewer" style="height:400px;overflow-y:auto;background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:10px;font-family:'Consolas','Courier New',monospace;font-size:11px;line-height:1.6;color:#c9d1d9">
-      <div style="color:#8b949e">▶ 시작 버튼을 눌러 실시간 로그를 확인하세요</div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- Tab 3: 사용자 관리 (Admin only) -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="settings-tab-content" id="tab-users">
+    <!-- 가입 승인 대기 -->
+    <div class="card">
+      <h2>⏳ 가입 승인 대기</h2>
+      <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px">회원가입 신청자를 승인하거나 거부합니다</p>
+      <div id="pendingUserList"></div>
+    </div>
+
+    <!-- 사용자 관리 -->
+    <div class="card">
+      <h2>👥 사용자 관리</h2>
+      <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px">승인된 사용자 목록 및 관리 (직접 생성도 가능)</p>
+      <div id="testerAccountList" style="margin-bottom:12px"></div>
+      <hr class="divider" style="margin:12px 0">
+      <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:10px">직접 사용자 생성</div>
+      <div class="field-row">
+        <div class="field"><label>ID</label><input type="text" id="newTesterId" placeholder="로그인 ID (2자 이상)"></div>
+        <div class="field"><label>이름</label><input type="text" id="newTesterAlias" placeholder="이름 (예: 김의사)"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>소속</label><input type="text" id="newTesterOrg" placeholder="소속 (예: 서울대병원)"></div>
+        <div class="field"><label>비밀번호</label><input type="password" id="newTesterPw" placeholder="4자 이상"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>X-Api-UID</label><input type="text" id="newTesterUid" placeholder="SKIX API UID"></div>
+      </div>
+      <button class="btn-primary" onclick="createTesterAccount()" style="font-size:12px;padding:8px 20px">사용자 생성</button>
+    </div>
+
+    <!-- 테스터 허용 환경 -->
+    <div class="card">
+      <h2>🌐 테스터 허용 환경</h2>
+      <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px">테스터가 사용할 수 있는 환경을 선택합니다</p>
+      <div style="display:flex;gap:20px">
+        <label style="font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--text)">
+          <input type="checkbox" id="allowDev" checked style="width:auto"> DEV
+        </label>
+        <label style="font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--text)">
+          <input type="checkbox" id="allowStg" style="width:auto"> STG
+        </label>
+        <label style="font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--text)">
+          <input type="checkbox" id="allowProd" style="width:auto"> PROD
+        </label>
+      </div>
+    </div>
+
+    <!-- 비밀번호 변경 -->
+    <div class="card">
+      <h2>🔑 Admin 비밀번호 변경</h2>
+      <div class="field">
+        <label>현재 비밀번호</label>
+        <input type="password" id="currentPw" placeholder="현재 비밀번호">
+      </div>
+      <div class="field">
+        <label>새 비밀번호</label>
+        <input type="password" id="newPw" placeholder="새 비밀번호 (4자 이상)">
+      </div>
+      <div class="field">
+        <label>새 비밀번호 확인</label>
+        <input type="password" id="newPwConfirm" placeholder="새 비밀번호 확인" onkeydown="if(event.key==='Enter')changePassword()">
+      </div>
+      <button class="btn-outline" onclick="changePassword()">비밀번호 변경</button>
+    </div>
+
+    <!-- Admin 로그아웃 -->
+    <div style="text-align:center;margin-top:10px;margin-bottom:20px">
+      <button class="btn-outline" onclick="doLogout()" style="color:var(--red);border-color:var(--red)">🚪 Admin 로그아웃</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- Tab 4: 문진 평가 기준 (Admin only) -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="settings-tab-content" id="tab-criteria">
+    <div class="card" id="criteriaSection">
+      <h2>🩺 문진 평가 기준 관리</h2>
+      <div id="criteriaBody">
+        <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px">문진 평가 축(Axis), 등급 기준, 의료법 경계 규칙을 관리합니다</p>
+
+        <!-- 축 및 항목 -->
+        <div id="criteriaAxes"></div>
+
+        <hr class="divider">
+
+        <!-- 등급 임계값 -->
+        <div style="margin-bottom:18px">
+          <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:10px">등급 임계값 (Grade Thresholds)</div>
+          <div class="field-row" style="flex-wrap:wrap;gap:12px">
+            <div class="field" style="flex:1;min-width:120px">
+              <label>A 등급 이상</label>
+              <input type="number" id="thresholdA" min="0" max="100" step="1" placeholder="90">
+            </div>
+            <div class="field" style="flex:1;min-width:120px">
+              <label>B 등급 이상</label>
+              <input type="number" id="thresholdB" min="0" max="100" step="1" placeholder="75">
+            </div>
+            <div class="field" style="flex:1;min-width:120px">
+              <label>C 등급 이상</label>
+              <input type="number" id="thresholdC" min="0" max="100" step="1" placeholder="60">
+            </div>
+            <div class="field" style="flex:1;min-width:120px">
+              <label>D 등급 미만</label>
+              <input type="number" id="thresholdD" min="0" max="100" step="1" placeholder="60">
+            </div>
+          </div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- 의료법 경계 규칙 -->
+        <div style="margin-bottom:18px">
+          <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:10px">의료법 경계 규칙 (Medical Law Boundary Rules)</div>
+          <div id="boundaryRulesList"></div>
+          <button class="btn-outline" onclick="addBoundaryRule()" style="font-size:12px;padding:6px 14px;margin-top:8px">+ 규칙 추가</button>
+        </div>
+
+        <hr class="divider">
+
+        <!-- 저장 / 초기화 -->
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button class="btn-outline" onclick="resetCriteriaToDefaults()" style="color:var(--orange);border-color:var(--orange)">기본값 초기화</button>
+          <button class="btn-primary" onclick="saveCriteria()">평가 기준 저장</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- Tab 5: 서버 실시간 로그 (Admin only) -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="settings-tab-content" id="tab-logs">
+    <div class="card">
+      <h2>🖥️ 서버 실시간 로그</h2>
+      <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+        <button class="btn-primary" onclick="toggleLogStream()" id="logToggleBtn" style="font-size:12px;padding:6px 14px">▶ 실시간 로그 시작</button>
+        <button class="btn-outline" onclick="clearLogView()" style="font-size:12px;padding:6px 14px">🗑 화면 지우기</button>
+        <input type="text" id="logFilter" placeholder="필터 (예: 프록시, ERROR)..." oninput="filterLogs()"
+               style="flex:1;min-width:120px;padding:6px 10px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px">
+        <span id="logCount" style="font-size:11px;color:var(--text-dim);align-self:center"></span>
+      </div>
+      <div id="logViewer" style="height:400px;overflow-y:auto;background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:10px;font-family:'Consolas','Courier New',monospace;font-size:11px;line-height:1.6;color:#c9d1d9">
+        <div style="color:#8b949e">▶ 시작 버튼을 눌러 실시간 로그를 확인하세요</div>
+      </div>
     </div>
   </div>
 
@@ -409,21 +457,56 @@
 
 <script>
 // ══════════════════════════════════════════
+// Tab Switching
+// ══════════════════════════════════════════
+function switchSettingsTab(tabId) {
+  // Hide all tab contents
+  document.querySelectorAll('.settings-tab-content').forEach(function(el) {
+    el.classList.remove('active');
+  });
+  // Show selected tab content
+  var target = document.getElementById(tabId);
+  if (target) target.classList.add('active');
+  // Update tab bar active state
+  document.querySelectorAll('.settings-tab').forEach(function(btn) {
+    btn.classList.toggle('active', btn.getAttribute('data-tab') === tabId);
+  });
+  // Save last active tab to localStorage
+  try { localStorage.setItem('settings_active_tab', tabId); } catch(e) {}
+}
+
+function restoreLastTab() {
+  try {
+    var saved = localStorage.getItem('settings_active_tab');
+    if (saved) {
+      var tabBtn = document.querySelector('.settings-tab[data-tab="' + saved + '"]');
+      // Only restore if tab exists and is visible
+      if (tabBtn && tabBtn.style.display !== 'none') {
+        switchSettingsTab(saved);
+        return;
+      }
+    }
+  } catch(e) {}
+  // Default to tab 1
+  switchSettingsTab('tab-api');
+}
+
+// ══════════════════════════════════════════
 // Constants
 // ══════════════════════════════════════════
-const ENVS = {
+var ENVS = {
   dev:  { url: 'https://dev-skix.phnyx.ai',     tenant: 'dev-skix' },
   stg:  { url: 'https://staging-skix.phnyx.ai',  tenant: 'staging-skix-test' },
   prod: { url: 'https://skix.phnyx.ai',          tenant: 'prod-skix-test' },
 };
-let currentEnv = 'dev';
+var currentEnv = 'dev';
 
 // 환경별 독립 필드 vs 공통 필드
-const ENV_KEYS = ['xApiKey', 'xApiUid', 'xTenantDomain', 'apiUrl'];  // 환경마다 다른 값
-const COMMON_KEYS = ['graphType', 'proxyUrl', 'srcWeb', 'srcPubmed', 'enableCompliance', 'openaiKey', 'openaiModel', 'enableLlmEval'];
+var ENV_KEYS = ['xApiKey', 'xApiUid', 'xTenantDomain', 'apiUrl'];
+var COMMON_KEYS = ['graphType', 'proxyUrl', 'srcWeb', 'srcPubmed', 'enableCompliance', 'openaiKey', 'openaiModel', 'enableLlmEval'];
 
 // 메모리에 환경별 설정 저장
-let envSettings = {
+var envSettings = {
   dev:  { xApiKey: '', xApiUid: '', apiUrl: ENVS.dev.url,  xTenantDomain: ENVS.dev.tenant },
   stg:  { xApiKey: '', xApiUid: '', apiUrl: ENVS.stg.url,  xTenantDomain: ENVS.stg.tenant },
   prod: { xApiKey: '', xApiUid: '', apiUrl: ENVS.prod.url, xTenantDomain: ENVS.prod.tenant },
@@ -433,26 +516,24 @@ let envSettings = {
 // Environment Switching
 // ══════════════════════════════════════════
 function selectEnv(env, el) {
-  // 현재 환경의 입력값을 메모리에 저장
   storeCurrentEnvValues();
-  // 환경 전환
   currentEnv = env;
-  document.querySelectorAll('.env-chip').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('.env-chip').forEach(function(c) { c.classList.remove('active'); });
   el.classList.add('active');
-  // 새 환경의 값을 폼에 로드
   loadEnvToForm(env);
   autoSaveSettings();
 }
 
 function storeCurrentEnvValues() {
-  for (const key of ENV_KEYS) {
-    const el = document.getElementById(key);
+  for (var i = 0; i < ENV_KEYS.length; i++) {
+    var key = ENV_KEYS[i];
+    var el = document.getElementById(key);
     if (el) envSettings[currentEnv][key] = el.value;
   }
 }
 
 function loadEnvToForm(env) {
-  const es = envSettings[env];
+  var es = envSettings[env];
   document.getElementById('apiUrl').value = es.apiUrl || ENVS[env].url;
   document.getElementById('xTenantDomain').value = es.xTenantDomain || ENVS[env].tenant;
   document.getElementById('xApiKey').value = es.xApiKey || '';
@@ -463,442 +544,37 @@ function loadEnvToForm(env) {
 // Settings Persistence (환경별 구조)
 // ══════════════════════════════════════════
 async function saveSettings() {
-  // 현재 환경 값을 메모리에 저장
   storeCurrentEnvValues();
 
-  const settings = {
+  var settings = {
     currentEnv: currentEnv,
     environments: {},
     runMode: 'live',
-  };
-
-  // 환경별 설정
-  for (const env of ['dev', 'stg', 'prod']) {
-    settings.environments[env] = { ...envSettings[env] };
-  }
-
-  // 공통 설정
-  for (const key of COMMON_KEYS) {
-    const el = document.getElementById(key);
-    if (!el) continue;
-    if (el.type === 'checkbox') settings[key] = el.checked;
-    else settings[key] = el.value;
-  }
-
-  try {
-    await fetch('/api/settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(settings)
-    });
-    document.getElementById('statusBar').textContent =
-      `설정 저장 완료 — ${currentEnv.toUpperCase()} (${new Date().toLocaleTimeString()})`;
-  } catch(e) {
-    showToast('저장 실패: ' + e.message, 'error');
-  }
-}
-
-async function loadSettings() {
-  try {
-    const res = await fetch('/api/settings');
-    if (!res.ok) return;
-    const settings = await res.json();
-    if (!settings || Object.keys(settings).length === 0) {
-      document.getElementById('statusBar').textContent = '설정 없음 — 새로 설정해주세요';
-      return;
-    }
-
-    // 환경별 설정 로드
-    if (settings.environments) {
-      for (const env of ['dev', 'stg', 'prod']) {
-        if (settings.environments[env]) {
-          envSettings[env] = { ...envSettings[env], ...settings.environments[env] };
-        }
-      }
-    }
-
-    // 공통 설정 로드
-    for (const key of COMMON_KEYS) {
-      if (!(key in settings)) continue;
-      const el = document.getElementById(key);
-      if (!el) continue;
-      if (el.type === 'checkbox') el.checked = settings[key];
-      else el.value = settings[key];
-    }
-
-    // 현재 환경 복원
-    if (settings.currentEnv) {
-      currentEnv = settings.currentEnv;
-      document.querySelectorAll('.env-chip').forEach(c => {
-        c.classList.toggle('active', c.dataset.env === currentEnv);
-      });
-    }
-
-    // 현재 환경의 값을 폼에 로드
-    loadEnvToForm(currentEnv);
-    // topbar 인디케이터 업데이트
-    document.querySelectorAll('.env-chip-sm-top').forEach(c => {
-      const isActive = c.dataset.env === currentEnv;
-      c.style.background = isActive ? 'var(--accent)' : '';
-      c.style.color = isActive ? '#0f172a' : 'var(--text-dim)';
-    });
-
-    document.getElementById('statusBar').textContent =
-      `설정 로드 완료 — ${currentEnv.toUpperCase()} 환경 / 마지막 저장: ${settings.updatedAt ? new Date(settings.updatedAt).toLocaleString() : '알 수 없음'}`;
-  } catch(e) {
-    document.getElementById('statusBar').textContent = '설정 로드 실패';
-  }
-}
-
-let saveTimer = null;
-function autoSaveSettings() {
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(saveSettings, 1000);
-}
-
-// ══════════════════════════════════════════
-// Connection Test
-// ══════════════════════════════════════════
-async function testConnection() {
-  const result = document.getElementById('connResult');
-  result.textContent = '테스트 중...';
-  result.style.color = 'var(--yellow)';
-
-  // 서버에서 실제 키를 사용하여 테스트 (마스킹 키 전송 방지)
-  const proxy = window.location.origin;
-  const apiUrl = document.getElementById('apiUrl').value.trim();
-  const graphType = document.getElementById('graphType').value.trim() || 'SUPERVISED_HYBRID_SEARCH';
-  const targetUrl = `${apiUrl}/api/service/conversations/${graphType}`;
-
-  try {
-    const res = await fetch(proxy, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'text/event-stream',
-        'X-Target-URL': targetUrl,
-      },
-      body: JSON.stringify({
-        query: '연결테스트',
-        conversation_strid: null,
-        source_types: ['WEB']
-      }),
-    });
-
-    if (res.ok) {
-      result.textContent = `${currentEnv.toUpperCase()} 연결 성공!`;
-      result.style.color = 'var(--green)';
-    } else {
-      const errText = await res.text().catch(() => '');
-      result.textContent = `실패 (${res.status}) ${errText.substring(0, 50)}`;
-      result.style.color = 'var(--red)';
-    }
-  } catch (e) {
-    result.textContent = '연결 실패: ' + e.message;
-    result.style.color = 'var(--red)';
-  }
-}
-
-// ══════════════════════════════════════════
-// Toast
-// ══════════════════════════════════════════
-function showToast(msg, type = 'info') {
-  const container = document.getElementById('toastContainer');
-  const t = document.createElement('div');
-  t.className = `toast toast-${type}`;
-  t.textContent = msg;
-  container.appendChild(t);
-  setTimeout(() => { t.remove(); }, 3500);
-}
-
-// ══════════════════════════════════════════
-// Auth: Login Gate / Setup
-// ══════════════════════════════════════════
-async function checkAuth() {
-  try {
-    const res = await fetch('/api/auth/status');
-    const status = await res.json();
-
-    if (!status.isSetup) {
-      // 최초 비밀번호 설정
-      document.getElementById('setupGate').style.display = 'flex';
-      document.getElementById('loginGate').style.display = 'none';
-      document.getElementById('mainContent').style.display = 'none';
-      return;
-    }
-
-    if (!status.isAdmin) {
-      // 로그인 필요
-      document.getElementById('loginGate').style.display = 'flex';
-      document.getElementById('setupGate').style.display = 'none';
-      document.getElementById('mainContent').style.display = 'none';
-      return;
-    }
-
-    // Admin 인증됨
-    document.getElementById('loginGate').style.display = 'none';
-    document.getElementById('setupGate').style.display = 'none';
-    document.getElementById('mainContent').style.display = '';
-    loadSettings();
-  } catch(e) {
-    // 서버 연결 실패 시 로그인 게이트
-    document.getElementById('loginGate').style.display = 'flex';
-  }
-}
-
-async function doSetup() {
-  const pw = document.getElementById('setupPassword').value;
-  const pw2 = document.getElementById('setupPasswordConfirm').value;
-  const errEl = document.getElementById('setupError');
-
-  if (pw.length < 4) { errEl.textContent = '비밀번호는 4자 이상이어야 합니다'; return; }
-  if (pw !== pw2) { errEl.textContent = '비밀번호가 일치하지 않습니다'; return; }
-
-  try {
-    const res = await fetch('/api/auth/setup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: pw })
-    });
-    const data = await res.json();
-    if (data.success) {
-      showToast('Admin 비밀번호가 설정되었습니다', 'success');
-      // 자동 로그인
-      await doLoginWithPassword(pw);
-    } else {
-      errEl.textContent = data.error || '설정 실패';
-    }
-  } catch(e) { errEl.textContent = '서버 연결 실패'; }
-}
-
-async function doLogin() {
-  const pw = document.getElementById('loginPassword').value;
-  await doLoginWithPassword(pw);
-}
-
-async function doLoginWithPassword(pw) {
-  const errEl = document.getElementById('loginError');
-  try {
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: pw })
-    });
-    const data = await res.json();
-    if (data.success) {
-      document.getElementById('loginGate').style.display = 'none';
-      document.getElementById('setupGate').style.display = 'none';
-      document.getElementById('mainContent').style.display = '';
-      loadSettings();
-      showCriteriaSectionIfAdmin();
-    } else {
-      if (errEl) errEl.textContent = data.error || '로그인 실패';
-    }
-  } catch(e) {
-    if (errEl) errEl.textContent = '서버 연결 실패';
-  }
-}
-
-async function doLogout() {
-  await fetch('/api/auth/logout', { method: 'POST' });
-  showToast('로그아웃 되었습니다', 'info');
-  setTimeout(() => location.reload(), 500);
-}
-
-async function changePassword() {
-  const cur = document.getElementById('currentPw').value;
-  const newPw = document.getElementById('newPw').value;
-  const confirm = document.getElementById('newPwConfirm').value;
-
-  if (newPw.length < 4) return showToast('새 비밀번호는 4자 이상이어야 합니다', 'error');
-  if (newPw !== confirm) return showToast('새 비밀번호가 일치하지 않습니다', 'error');
-
-  try {
-    const res = await fetch('/api/auth/change-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ currentPassword: cur, newPassword: newPw })
-    });
-    const data = await res.json();
-    if (data.success) {
-      showToast('비밀번호가 변경되었습니다', 'success');
-      document.getElementById('currentPw').value = '';
-      document.getElementById('newPw').value = '';
-      document.getElementById('newPwConfirm').value = '';
-    } else {
-      showToast(data.error || '변경 실패', 'error');
-    }
-  } catch(e) { showToast('서버 연결 실패', 'error'); }
-}
-
-// ══════════════════════════════════════════
-// Tester Account Management (Admin)
-// ══════════════════════════════════════════
-function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-
-async function loadTesterAccounts() {
-  try {
-    const res = await fetch('/api/tester/accounts');
-    const data = await res.json();
-    renderTesterAccounts(data.accounts || []);
-  } catch(e) { console.warn('loadTesterAccounts failed', e); }
-}
-
-async function loadPendingUsers() {
-  try {
-    const res = await fetch('/api/auth/pending-users');
-    const data = await res.json();
-    renderPendingUsers(data.pendingUsers || []);
-  } catch(e) { console.warn('loadPendingUsers failed', e); }
-}
-
-function renderPendingUsers(users) {
-  const container = document.getElementById('pendingUserList');
-  if (!users.length) {
-    container.innerHTML = '<div style="color:var(--text-dim);font-size:12px;padding:8px">승인 대기 중인 사용자가 없습니다</div>';
-    return;
-  }
-  container.innerHTML = users.map(u => `
-    <div style="display:flex;gap:8px;margin-bottom:6px;align-items:center;padding:10px 12px;background:var(--bg);border-radius:8px;border:1px solid #f59e0b33">
-      <div style="flex:1">
-        <div style="font-size:13px;font-weight:600;color:var(--text)">${escHtml(u.name)} <span style="font-size:11px;color:var(--text-dim)">(${escHtml(u.id)})</span></div>
-        <div style="font-size:11px;color:var(--text-dim);margin-top:2px">${escHtml(u.org || '소속 미입력')} · ${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : ''}</div>
-      </div>
-      <div style="display:flex;gap:4px">
-        <input type="text" id="uid_${escHtml(u.id)}" placeholder="X-Api-UID" style="width:120px;font-size:11px;padding:4px 8px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px">
-        <button onclick="approveUser('${escHtml(u.id)}')" style="background:#22c55e;color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:11px;font-weight:600;cursor:pointer">승인</button>
-        <button onclick="rejectUser('${escHtml(u.id)}')" style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:11px;font-weight:600;cursor:pointer">거부</button>
-      </div>
-    </div>
-  `).join('');
-}
-
-async function approveUser(userId) {
-  const uidInput = document.getElementById('uid_' + userId);
-  const uid = uidInput ? uidInput.value.trim() : '';
-  try {
-    const res = await fetch('/api/auth/approve-user', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ userId, uid })
-    });
-    const data = await res.json();
-    if (data.success) { showToast(data.message, 'success'); loadPendingUsers(); loadTesterAccounts(); }
-    else showToast(data.error || '승인 실패', 'error');
-  } catch(e) { showToast('서버 연결 실패', 'error'); }
-}
-
-async function rejectUser(userId) {
-  if (!confirm(`'${userId}' 사용자를 거부하시겠습니까?`)) return;
-  try {
-    const res = await fetch('/api/auth/reject-user', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ userId })
-    });
-    const data = await res.json();
-    if (data.success) { showToast(data.message, 'success'); loadPendingUsers(); }
-    else showToast(data.error || '거부 실패', 'error');
-  } catch(e) { showToast('서버 연결 실패', 'error'); }
-}
-
-function renderTesterAccounts(accounts) {
-  const container = document.getElementById('testerAccountList');
-  const approved = accounts.filter(a => a.status !== 'pending' && a.status !== 'rejected');
-  if (!approved.length) {
-    container.innerHTML = '<div style="color:var(--text-dim);font-size:12px;padding:8px">등록된 사용자가 없습니다</div>';
-    return;
-  }
-  container.innerHTML = approved.map(a => `
-    <div style="display:flex;gap:8px;margin-bottom:6px;align-items:center;padding:8px 10px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
-      <span style="font-size:12px;font-weight:600;color:var(--accent);min-width:70px">${escHtml(a.id)}</span>
-      <span style="font-size:12px;color:var(--text);min-width:60px">${escHtml(a.name || a.alias)}</span>
-      <span style="font-size:11px;color:var(--text-dim);flex:1">${escHtml(a.org || '')}</span>
-      <span style="font-size:10px;color:var(--text-dim);min-width:90px">UID: ${escHtml(a.uid||'-')}</span>
-      <button onclick="deleteTesterAccount('${escHtml(a.id)}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 6px" title="삭제">✕</button>
-    </div>
-  `).join('');
-}
-
-async function createTesterAccount() {
-  const id = document.getElementById('newTesterId').value.trim();
-  const alias = document.getElementById('newTesterAlias').value.trim();
-  const org = document.getElementById('newTesterOrg')?.value.trim() || '';
-  const pw = document.getElementById('newTesterPw').value.trim();
-  const uid = document.getElementById('newTesterUid').value.trim();
-
-  if (!id || !pw) return showToast('ID와 비밀번호를 입력하세요', 'error');
-
-  try {
-    const res = await fetch('/api/tester/create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, alias: alias || id, name: alias || id, org, password: pw, uid })
-    });
-    const data = await res.json();
-    if (data.success) {
-      showToast(data.message, 'success');
-      document.getElementById('newTesterId').value = '';
-      document.getElementById('newTesterAlias').value = '';
-      document.getElementById('newTesterPw').value = '';
-      document.getElementById('newTesterUid').value = '';
-      loadTesterAccounts();
-    } else {
-      showToast(data.error || '생성 실패', 'error');
-    }
-  } catch(e) { showToast('서버 연결 실패', 'error'); }
-}
-
-async function deleteTesterAccount(id) {
-  if (!confirm(`테스터 '${id}'를 삭제하시겠습니까?`)) return;
-  try {
-    const res = await fetch('/api/tester/delete', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id })
-    });
-    const data = await res.json();
-    if (data.success) {
-      showToast(data.message, 'success');
-      loadTesterAccounts();
-    } else { showToast(data.error || '삭제 실패', 'error'); }
-  } catch(e) { showToast('서버 연결 실패', 'error'); }
-}
-
-// ══════════════════════════════════════════
-// Extended Save/Load (UID + 허용환경 포함)
-// ══════════════════════════════════════════
-const _origSaveSettings = saveSettings;
-saveSettings = async function() {
-  // UID 데이터 동기화
-  storeCurrentEnvValues();
-
-  const settings = {
-    currentEnv: currentEnv,
-    environments: {},
-    runMode: 'live',
-    // registeredUIDs는 testerAccounts로 대체됨 (별도 API로 관리)
     allowedEnvironments: [],
   };
 
   // 환경별 설정
-  for (const env of ['dev', 'stg', 'prod']) {
-    settings.environments[env] = { ...envSettings[env] };
+  for (var ei = 0; ei < ['dev','stg','prod'].length; ei++) {
+    var env = ['dev','stg','prod'][ei];
+    settings.environments[env] = Object.assign({}, envSettings[env]);
   }
 
   // 허용 환경
-  if (document.getElementById('allowDev')?.checked) settings.allowedEnvironments.push('dev');
-  if (document.getElementById('allowStg')?.checked) settings.allowedEnvironments.push('stg');
-  if (document.getElementById('allowProd')?.checked) settings.allowedEnvironments.push('prod');
+  if (document.getElementById('allowDev') && document.getElementById('allowDev').checked) settings.allowedEnvironments.push('dev');
+  if (document.getElementById('allowStg') && document.getElementById('allowStg').checked) settings.allowedEnvironments.push('stg');
+  if (document.getElementById('allowProd') && document.getElementById('allowProd').checked) settings.allowedEnvironments.push('prod');
 
   // 공통 설정
-  for (const key of COMMON_KEYS) {
-    const el = document.getElementById(key);
+  for (var ci = 0; ci < COMMON_KEYS.length; ci++) {
+    var key = COMMON_KEYS[ci];
+    var el = document.getElementById(key);
     if (!el) continue;
     if (el.type === 'checkbox') settings[key] = el.checked;
     else settings[key] = el.value;
   }
 
   try {
-    const res = await fetch('/api/settings', {
+    var res = await fetch('/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(settings)
@@ -908,36 +584,37 @@ saveSettings = async function() {
       return;
     }
     document.getElementById('statusBar').textContent =
-      `설정 저장 완료 — ${currentEnv.toUpperCase()} (${new Date().toLocaleTimeString()})`;
+      '\uC124\uC815 \uC800\uC7A5 \uC644\uB8CC \u2014 ' + currentEnv.toUpperCase() + ' (' + new Date().toLocaleTimeString() + ')';
   } catch(e) {
-    showToast('저장 실패: ' + e.message, 'error');
+    showToast('\uC800\uC7A5 \uC2E4\uD328: ' + e.message, 'error');
   }
-};
+}
 
-const _origLoadSettings = loadSettings;
-loadSettings = async function() {
+async function loadSettings() {
   try {
-    const res = await fetch('/api/settings');
+    var res = await fetch('/api/settings');
     if (!res.ok) return;
-    const settings = await res.json();
+    var settings = await res.json();
     if (!settings || Object.keys(settings).length === 0) {
-      document.getElementById('statusBar').textContent = '설정 없음 — 새로 설정해주세요';
+      document.getElementById('statusBar').textContent = '\uC124\uC815 \uC5C6\uC74C \u2014 \uC0C8\uB85C \uC124\uC815\uD574\uC8FC\uC138\uC694';
       return;
     }
 
     // 환경별 설정 로드
     if (settings.environments) {
-      for (const env of ['dev', 'stg', 'prod']) {
+      for (var ei = 0; ei < ['dev','stg','prod'].length; ei++) {
+        var env = ['dev','stg','prod'][ei];
         if (settings.environments[env]) {
-          envSettings[env] = { ...envSettings[env], ...settings.environments[env] };
+          envSettings[env] = Object.assign({}, envSettings[env], settings.environments[env]);
         }
       }
     }
 
     // 공통 설정 로드
-    for (const key of COMMON_KEYS) {
+    for (var ci = 0; ci < COMMON_KEYS.length; ci++) {
+      var key = COMMON_KEYS[ci];
       if (!(key in settings)) continue;
-      const el = document.getElementById(key);
+      var el = document.getElementById(key);
       if (!el) continue;
       if (el.type === 'checkbox') el.checked = settings[key];
       else el.value = settings[key];
@@ -946,14 +623,14 @@ loadSettings = async function() {
     // 현재 환경 복원
     if (settings.currentEnv) {
       currentEnv = settings.currentEnv;
-      document.querySelectorAll('.env-chip').forEach(c => {
+      document.querySelectorAll('.env-chip').forEach(function(c) {
         c.classList.toggle('active', c.dataset.env === currentEnv);
       });
     }
 
     loadEnvToForm(currentEnv);
-    document.querySelectorAll('.env-chip-sm-top').forEach(c => {
-      const isActive = c.dataset.env === currentEnv;
+    document.querySelectorAll('.env-chip-sm-top').forEach(function(c) {
+      var isActive = c.dataset.env === currentEnv;
       c.style.background = isActive ? 'var(--accent)' : '';
       c.style.color = isActive ? '#0f172a' : 'var(--text-dim)';
     });
@@ -963,32 +640,365 @@ loadSettings = async function() {
     loadPendingUsers();
 
     // 허용 환경 로드
-    const allowed = settings.allowedEnvironments || ['dev', 'stg', 'prod'];
-    document.getElementById('allowDev').checked = allowed.includes('dev');
-    document.getElementById('allowStg').checked = allowed.includes('stg');
-    document.getElementById('allowProd').checked = allowed.includes('prod');
+    var allowed = settings.allowedEnvironments || ['dev', 'stg', 'prod'];
+    if (document.getElementById('allowDev')) document.getElementById('allowDev').checked = allowed.includes('dev');
+    if (document.getElementById('allowStg')) document.getElementById('allowStg').checked = allowed.includes('stg');
+    if (document.getElementById('allowProd')) document.getElementById('allowProd').checked = allowed.includes('prod');
 
     document.getElementById('statusBar').textContent =
-      `설정 로드 완료 — ${currentEnv.toUpperCase()} 환경 / 마지막 저장: ${settings.updatedAt ? new Date(settings.updatedAt).toLocaleString() : '알 수 없음'}`;
+      '\uC124\uC815 \uB85C\uB4DC \uC644\uB8CC \u2014 ' + currentEnv.toUpperCase() + ' \uD658\uACBD / \uB9C8\uC9C0\uB9C9 \uC800\uC7A5: ' + (settings.updatedAt ? new Date(settings.updatedAt).toLocaleString() : '\uC54C \uC218 \uC5C6\uC74C');
   } catch(e) {
-    document.getElementById('statusBar').textContent = '설정 로드 실패';
+    document.getElementById('statusBar').textContent = '\uC124\uC815 \uB85C\uB4DC \uC2E4\uD328';
   }
-};
+}
+
+var saveTimer = null;
+function autoSaveSettings() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveSettings, 1000);
+}
+
+// ══════════════════════════════════════════
+// Connection Test
+// ══════════════════════════════════════════
+async function testConnection() {
+  var result = document.getElementById('connResult');
+  result.textContent = '\uD14C\uC2A4\uD2B8 \uC911...';
+  result.style.color = 'var(--yellow)';
+
+  var proxy = window.location.origin;
+  var apiUrl = document.getElementById('apiUrl').value.trim();
+  var graphType = document.getElementById('graphType').value.trim() || 'SUPERVISED_HYBRID_SEARCH';
+  var targetUrl = apiUrl + '/api/service/conversations/' + graphType;
+
+  try {
+    var res = await fetch(proxy, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'text/event-stream',
+        'X-Target-URL': targetUrl,
+      },
+      body: JSON.stringify({
+        query: '\uC5F0\uACB0\uD14C\uC2A4\uD2B8',
+        conversation_strid: null,
+        source_types: ['WEB']
+      }),
+    });
+
+    if (res.ok) {
+      result.textContent = currentEnv.toUpperCase() + ' \uC5F0\uACB0 \uC131\uACF5!';
+      result.style.color = 'var(--green)';
+    } else {
+      var errText = await res.text().catch(function() { return ''; });
+      result.textContent = '\uC2E4\uD328 (' + res.status + ') ' + errText.substring(0, 50);
+      result.style.color = 'var(--red)';
+    }
+  } catch (e) {
+    result.textContent = '\uC5F0\uACB0 \uC2E4\uD328: ' + e.message;
+    result.style.color = 'var(--red)';
+  }
+}
+
+// ══════════════════════════════════════════
+// Toast
+// ══════════════════════════════════════════
+function showToast(msg, type) {
+  if (!type) type = 'info';
+  var container = document.getElementById('toastContainer');
+  var t = document.createElement('div');
+  t.className = 'toast toast-' + type;
+  t.textContent = msg;
+  container.appendChild(t);
+  setTimeout(function() { t.remove(); }, 3500);
+}
+
+// ══════════════════════════════════════════
+// Auth: Login Gate / Setup
+// ══════════════════════════════════════════
+async function checkAuth() {
+  try {
+    var res = await fetch('/api/auth/status');
+    var status = await res.json();
+
+    if (!status.isSetup) {
+      document.getElementById('setupGate').style.display = 'flex';
+      document.getElementById('loginGate').style.display = 'none';
+      document.getElementById('mainContent').style.display = 'none';
+      return;
+    }
+
+    if (!status.isAdmin) {
+      document.getElementById('loginGate').style.display = 'flex';
+      document.getElementById('setupGate').style.display = 'none';
+      document.getElementById('mainContent').style.display = 'none';
+      return;
+    }
+
+    document.getElementById('loginGate').style.display = 'none';
+    document.getElementById('setupGate').style.display = 'none';
+    document.getElementById('mainContent').style.display = '';
+    loadSettings();
+  } catch(e) {
+    document.getElementById('loginGate').style.display = 'flex';
+  }
+}
+
+async function doSetup() {
+  var pw = document.getElementById('setupPassword').value;
+  var pw2 = document.getElementById('setupPasswordConfirm').value;
+  var errEl = document.getElementById('setupError');
+
+  if (pw.length < 4) { errEl.textContent = '\uBE44\uBC00\uBC88\uD638\uB294 4\uC790 \uC774\uC0C1\uC774\uC5B4\uC57C \uD569\uB2C8\uB2E4'; return; }
+  if (pw !== pw2) { errEl.textContent = '\uBE44\uBC00\uBC88\uD638\uAC00 \uC77C\uCE58\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4'; return; }
+
+  try {
+    var res = await fetch('/api/auth/setup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw })
+    });
+    var data = await res.json();
+    if (data.success) {
+      showToast('Admin \uBE44\uBC00\uBC88\uD638\uAC00 \uC124\uC815\uB418\uC5C8\uC2B5\uB2C8\uB2E4', 'success');
+      await doLoginWithPassword(pw);
+    } else {
+      errEl.textContent = data.error || '\uC124\uC815 \uC2E4\uD328';
+    }
+  } catch(e) { errEl.textContent = '\uC11C\uBC84 \uC5F0\uACB0 \uC2E4\uD328'; }
+}
+
+async function doLogin() {
+  var pw = document.getElementById('loginPassword').value;
+  await doLoginWithPassword(pw);
+}
+
+async function doLoginWithPassword(pw) {
+  var errEl = document.getElementById('loginError');
+  try {
+    var res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw })
+    });
+    var data = await res.json();
+    if (data.success) {
+      document.getElementById('loginGate').style.display = 'none';
+      document.getElementById('setupGate').style.display = 'none';
+      document.getElementById('mainContent').style.display = '';
+      loadSettings();
+      showAdminTabs();
+    } else {
+      if (errEl) errEl.textContent = data.error || '\uB85C\uADF8\uC778 \uC2E4\uD328';
+    }
+  } catch(e) {
+    if (errEl) errEl.textContent = '\uC11C\uBC84 \uC5F0\uACB0 \uC2E4\uD328';
+  }
+}
+
+async function doLogout() {
+  await fetch('/api/auth/logout', { method: 'POST' });
+  showToast('\uB85C\uADF8\uC544\uC6C3 \uB418\uC5C8\uC2B5\uB2C8\uB2E4', 'info');
+  setTimeout(function() { location.reload(); }, 500);
+}
+
+async function changePassword() {
+  var cur = document.getElementById('currentPw').value;
+  var newPw = document.getElementById('newPw').value;
+  var confirmPw = document.getElementById('newPwConfirm').value;
+
+  if (newPw.length < 4) return showToast('\uC0C8 \uBE44\uBC00\uBC88\uD638\uB294 4\uC790 \uC774\uC0C1\uC774\uC5B4\uC57C \uD569\uB2C8\uB2E4', 'error');
+  if (newPw !== confirmPw) return showToast('\uC0C8 \uBE44\uBC00\uBC88\uD638\uAC00 \uC77C\uCE58\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4', 'error');
+
+  try {
+    var res = await fetch('/api/auth/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentPassword: cur, newPassword: newPw })
+    });
+    var data = await res.json();
+    if (data.success) {
+      showToast('\uBE44\uBC00\uBC88\uD638\uAC00 \uBCC0\uACBD\uB418\uC5C8\uC2B5\uB2C8\uB2E4', 'success');
+      document.getElementById('currentPw').value = '';
+      document.getElementById('newPw').value = '';
+      document.getElementById('newPwConfirm').value = '';
+    } else {
+      showToast(data.error || '\uBCC0\uACBD \uC2E4\uD328', 'error');
+    }
+  } catch(e) { showToast('\uC11C\uBC84 \uC5F0\uACB0 \uC2E4\uD328', 'error'); }
+}
+
+// ══════════════════════════════════════════
+// Admin-only tab visibility
+// ══════════════════════════════════════════
+function showAdminTabs() {
+  fetch('/api/auth/status').then(function(r) { return r.json(); }).then(function(s) {
+    if (s.isAdmin) {
+      // Show admin-only tabs
+      document.querySelector('.settings-tab[data-tab="tab-users"]').style.display = '';
+      document.querySelector('.settings-tab[data-tab="tab-criteria"]').style.display = '';
+      document.querySelector('.settings-tab[data-tab="tab-logs"]').style.display = '';
+      // Load criteria data
+      loadCriteria();
+      // Restore last tab (now that admin tabs are visible)
+      restoreLastTab();
+    } else {
+      // Hide admin-only tabs
+      document.querySelector('.settings-tab[data-tab="tab-users"]').style.display = 'none';
+      document.querySelector('.settings-tab[data-tab="tab-criteria"]').style.display = 'none';
+      document.querySelector('.settings-tab[data-tab="tab-logs"]').style.display = 'none';
+      restoreLastTab();
+    }
+  }).catch(function() {
+    restoreLastTab();
+  });
+}
+
+// ══════════════════════════════════════════
+// Tester Account Management (Admin)
+// ══════════════════════════════════════════
+function escHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+async function loadTesterAccounts() {
+  try {
+    var res = await fetch('/api/tester/accounts');
+    var data = await res.json();
+    renderTesterAccounts(data.accounts || []);
+  } catch(e) { console.warn('loadTesterAccounts failed', e); }
+}
+
+async function loadPendingUsers() {
+  try {
+    var res = await fetch('/api/auth/pending-users');
+    var data = await res.json();
+    renderPendingUsers(data.pendingUsers || []);
+  } catch(e) { console.warn('loadPendingUsers failed', e); }
+}
+
+function renderPendingUsers(users) {
+  var container = document.getElementById('pendingUserList');
+  if (!users.length) {
+    container.innerHTML = '<div style="color:var(--text-dim);font-size:12px;padding:8px">\uC2B9\uC778 \uB300\uAE30 \uC911\uC778 \uC0AC\uC6A9\uC790\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4</div>';
+    return;
+  }
+  container.innerHTML = users.map(function(u) { return '\
+    <div style="display:flex;gap:8px;margin-bottom:6px;align-items:center;padding:10px 12px;background:var(--bg);border-radius:8px;border:1px solid #f59e0b33">\
+      <div style="flex:1">\
+        <div style="font-size:13px;font-weight:600;color:var(--text)">' + escHtml(u.name) + ' <span style="font-size:11px;color:var(--text-dim)">(' + escHtml(u.id) + ')</span></div>\
+        <div style="font-size:11px;color:var(--text-dim);margin-top:2px">' + escHtml(u.org || '\uC18C\uC18D \uBBF8\uC785\uB825') + ' \u00B7 ' + (u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '') + '</div>\
+      </div>\
+      <div style="display:flex;gap:4px">\
+        <input type="text" id="uid_' + escHtml(u.id) + '" placeholder="X-Api-UID" style="width:120px;font-size:11px;padding:4px 8px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px">\
+        <button onclick="approveUser(\'' + escHtml(u.id) + '\')" style="background:#22c55e;color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:11px;font-weight:600;cursor:pointer">\uC2B9\uC778</button>\
+        <button onclick="rejectUser(\'' + escHtml(u.id) + '\')" style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:11px;font-weight:600;cursor:pointer">\uAC70\uBD80</button>\
+      </div>\
+    </div>'; }).join('');
+}
+
+async function approveUser(userId) {
+  var uidInput = document.getElementById('uid_' + userId);
+  var uid = uidInput ? uidInput.value.trim() : '';
+  try {
+    var res = await fetch('/api/auth/approve-user', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ userId: userId, uid: uid })
+    });
+    var data = await res.json();
+    if (data.success) { showToast(data.message, 'success'); loadPendingUsers(); loadTesterAccounts(); }
+    else showToast(data.error || '\uC2B9\uC778 \uC2E4\uD328', 'error');
+  } catch(e) { showToast('\uC11C\uBC84 \uC5F0\uACB0 \uC2E4\uD328', 'error'); }
+}
+
+async function rejectUser(userId) {
+  if (!confirm('\'' + userId + '\' \uC0AC\uC6A9\uC790\uB97C \uAC70\uBD80\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?')) return;
+  try {
+    var res = await fetch('/api/auth/reject-user', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ userId: userId })
+    });
+    var data = await res.json();
+    if (data.success) { showToast(data.message, 'success'); loadPendingUsers(); }
+    else showToast(data.error || '\uAC70\uBD80 \uC2E4\uD328', 'error');
+  } catch(e) { showToast('\uC11C\uBC84 \uC5F0\uACB0 \uC2E4\uD328', 'error'); }
+}
+
+function renderTesterAccounts(accounts) {
+  var container = document.getElementById('testerAccountList');
+  var approved = accounts.filter(function(a) { return a.status !== 'pending' && a.status !== 'rejected'; });
+  if (!approved.length) {
+    container.innerHTML = '<div style="color:var(--text-dim);font-size:12px;padding:8px">\uB4F1\uB85D\uB41C \uC0AC\uC6A9\uC790\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4</div>';
+    return;
+  }
+  container.innerHTML = approved.map(function(a) { return '\
+    <div style="display:flex;gap:8px;margin-bottom:6px;align-items:center;padding:8px 10px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">\
+      <span style="font-size:12px;font-weight:600;color:var(--accent);min-width:70px">' + escHtml(a.id) + '</span>\
+      <span style="font-size:12px;color:var(--text);min-width:60px">' + escHtml(a.name || a.alias) + '</span>\
+      <span style="font-size:11px;color:var(--text-dim);flex:1">' + escHtml(a.org || '') + '</span>\
+      <span style="font-size:10px;color:var(--text-dim);min-width:90px">UID: ' + escHtml(a.uid||'-') + '</span>\
+      <button onclick="deleteTesterAccount(\'' + escHtml(a.id) + '\')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 6px" title="\uC0AD\uC81C">\u2715</button>\
+    </div>'; }).join('');
+}
+
+async function createTesterAccount() {
+  var id = document.getElementById('newTesterId').value.trim();
+  var alias = document.getElementById('newTesterAlias').value.trim();
+  var org = document.getElementById('newTesterOrg') ? document.getElementById('newTesterOrg').value.trim() : '';
+  var pw = document.getElementById('newTesterPw').value.trim();
+  var uid = document.getElementById('newTesterUid').value.trim();
+
+  if (!id || !pw) return showToast('ID\uC640 \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD558\uC138\uC694', 'error');
+
+  try {
+    var res = await fetch('/api/tester/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: id, alias: alias || id, name: alias || id, org: org, password: pw, uid: uid })
+    });
+    var data = await res.json();
+    if (data.success) {
+      showToast(data.message, 'success');
+      document.getElementById('newTesterId').value = '';
+      document.getElementById('newTesterAlias').value = '';
+      document.getElementById('newTesterPw').value = '';
+      document.getElementById('newTesterUid').value = '';
+      loadTesterAccounts();
+    } else {
+      showToast(data.error || '\uC0DD\uC131 \uC2E4\uD328', 'error');
+    }
+  } catch(e) { showToast('\uC11C\uBC84 \uC5F0\uACB0 \uC2E4\uD328', 'error'); }
+}
+
+async function deleteTesterAccount(id) {
+  if (!confirm('\uD14C\uC2A4\uD130 \'' + id + '\'\uB97C \uC0AD\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?')) return;
+  try {
+    var res = await fetch('/api/tester/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: id })
+    });
+    var data = await res.json();
+    if (data.success) {
+      showToast(data.message, 'success');
+      loadTesterAccounts();
+    } else { showToast(data.error || '\uC0AD\uC81C \uC2E4\uD328', 'error'); }
+  } catch(e) { showToast('\uC11C\uBC84 \uC5F0\uACB0 \uC2E4\uD328', 'error'); }
+}
 
 // ══════════════════════════════════════════
 // Init
 // ══════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', async () => {
-  const bar = document.getElementById('loaderBar');
+document.addEventListener('DOMContentLoaded', async function() {
+  var bar = document.getElementById('loaderBar');
   if (bar) bar.style.width = '10%';
   try {
-    const [authRes] = await Promise.allSettled([
+    var results = await Promise.allSettled([
       fetch('/api/auth/status')
     ]);
+    var authRes = results[0];
     if (bar) bar.style.width = '60%';
 
     if (authRes.status === 'fulfilled' && authRes.value.ok) {
-      const status = await authRes.value.json();
+      var status = await authRes.value.json();
       if (!status.isSetup) {
         document.getElementById('setupGate').style.display = 'flex';
         document.getElementById('loginGate').style.display = 'none';
@@ -1002,7 +1012,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('setupGate').style.display = 'none';
         document.getElementById('mainContent').style.display = '';
         loadSettings();
-        showCriteriaSectionIfAdmin();
+        showAdminTabs();
       }
     } else {
       document.getElementById('loginGate').style.display = 'flex';
@@ -1012,133 +1022,122 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('loginGate').style.display = 'flex';
     console.error('Init error:', e);
   } finally {
-    const loader = document.getElementById('appLoader');
-    if (loader) { loader.classList.add('fade-out'); setTimeout(() => loader.remove(), 300); }
+    var loader = document.getElementById('appLoader');
+    if (loader) { loader.classList.add('fade-out'); setTimeout(function() { loader.remove(); }, 300); }
   }
 
-  setTimeout(() => {
-    [...ENV_KEYS, ...COMMON_KEYS].forEach(key => {
-      const el = document.getElementById(key);
+  setTimeout(function() {
+    var allKeys = ENV_KEYS.concat(COMMON_KEYS);
+    for (var i = 0; i < allKeys.length; i++) {
+      var el = document.getElementById(allKeys[i]);
       if (el) {
         el.addEventListener('input', autoSaveSettings);
         el.addEventListener('change', autoSaveSettings);
       }
-    });
+    }
   }, 500);
 });
 
 // ══════════════════════════════════════════
 // 실시간 로그 뷰어
 // ══════════════════════════════════════════
-let logEventSource = null;
-let logLines = [];
-let logLineCount = 0;
+var logEventSource = null;
+var logLines = [];
+var logLineCount = 0;
 
 function toggleLogStream() {
-  const btn = document.getElementById('logToggleBtn');
+  var btn = document.getElementById('logToggleBtn');
   if (logEventSource) {
     logEventSource.close();
     logEventSource = null;
-    btn.textContent = '▶ 실시간 로그 시작';
+    btn.textContent = '\u25B6 \uC2E4\uC2DC\uAC04 \uB85C\uADF8 \uC2DC\uC791';
     btn.classList.remove('btn-primary');
     btn.classList.add('btn-outline');
     return;
   }
 
-  const viewer = document.getElementById('logViewer');
-  viewer.innerHTML = '<div style="color:#8b949e">연결 중...</div>';
+  var viewer = document.getElementById('logViewer');
+  viewer.innerHTML = '<div style="color:#8b949e">\uC5F0\uACB0 \uC911...</div>';
   logLineCount = 0;
 
   logEventSource = new EventSource('/api/logs/stream');
-  btn.textContent = '⏹ 중지';
+  btn.textContent = '\u23F9 \uC911\uC9C0';
   btn.classList.remove('btn-outline');
   btn.classList.add('btn-primary');
 
-  logEventSource.onopen = () => {
+  logEventSource.onopen = function() {
     viewer.innerHTML = '';
   };
 
-  logEventSource.onmessage = (e) => {
+  logEventSource.onmessage = function(e) {
     if (!e.data) return;
     logLines.push(e.data);
     if (logLines.length > 1000) logLines.shift();
     logLineCount++;
     renderLogLine(e.data);
-    document.getElementById('logCount').textContent = logLineCount + '줄';
+    document.getElementById('logCount').textContent = logLineCount + '\uC904';
   };
 
-  logEventSource.onerror = () => {
+  logEventSource.onerror = function() {
     logEventSource.close();
     logEventSource = null;
-    btn.textContent = '▶ 실시간 로그 시작';
+    btn.textContent = '\u25B6 \uC2E4\uC2DC\uAC04 \uB85C\uADF8 \uC2DC\uC791';
     btn.classList.remove('btn-primary');
     btn.classList.add('btn-outline');
-    const div = document.createElement('div');
+    var div = document.createElement('div');
     div.style.color = '#f85149';
-    div.textContent = '[연결 끊김 — 다시 시작하세요]';
+    div.textContent = '[\uC5F0\uACB0 \uB04A\uAE40 \u2014 \uB2E4\uC2DC \uC2DC\uC791\uD558\uC138\uC694]';
     viewer.appendChild(div);
   };
 }
 
 function renderLogLine(line) {
-  const viewer = document.getElementById('logViewer');
-  const filter = (document.getElementById('logFilter').value || '').toLowerCase();
+  var viewer = document.getElementById('logViewer');
+  var filter = (document.getElementById('logFilter').value || '').toLowerCase();
   if (filter && !line.toLowerCase().includes(filter)) return;
 
-  let color = '#c9d1d9';
-  if (line.includes('ERROR') || line.includes('error') || line.includes('실패')) color = '#f85149';
-  else if (line.includes('WARN') || line.includes('warn') || line.includes('주의') || line.includes('경고')) color = '#d29922';
-  else if (line.includes('[프록시]') || line.includes('[SKIX]')) color = '#58a6ff';
-  else if (line.includes('[GPT]') || line.includes('[배치]')) color = '#a5d6ff';
-  else if (line.includes('200') || line.includes('성공')) color = '#3fb950';
+  var color = '#c9d1d9';
+  if (line.includes('ERROR') || line.includes('error') || line.includes('\uC2E4\uD328')) color = '#f85149';
+  else if (line.includes('WARN') || line.includes('warn') || line.includes('\uC8FC\uC758') || line.includes('\uACBD\uACE0')) color = '#d29922';
+  else if (line.includes('[\uD504\uB85D\uC2DC]') || line.includes('[SKIX]')) color = '#58a6ff';
+  else if (line.includes('[GPT]') || line.includes('[\uBC30\uCE58]')) color = '#a5d6ff';
+  else if (line.includes('200') || line.includes('\uC131\uACF5')) color = '#3fb950';
 
-  const div = document.createElement('div');
+  var div = document.createElement('div');
   div.style.color = color;
   div.style.borderBottom = '1px solid #21262d';
   div.style.padding = '1px 0';
   div.textContent = line;
   viewer.appendChild(div);
 
-  // 최대 1000줄 유지
   while (viewer.children.length > 1000) viewer.removeChild(viewer.firstChild);
   viewer.scrollTop = viewer.scrollHeight;
 }
 
 function clearLogView() {
-  document.getElementById('logViewer').innerHTML = '<div style="color:#8b949e">화면이 지워졌습니다. 새 로그가 계속 표시됩니다.</div>';
+  document.getElementById('logViewer').innerHTML = '<div style="color:#8b949e">\uD654\uBA74\uC774 \uC9C0\uC6CC\uC84C\uC2B5\uB2C8\uB2E4. \uC0C8 \uB85C\uADF8\uAC00 \uACC4\uC18D \uD45C\uC2DC\uB429\uB2C8\uB2E4.</div>';
   logLineCount = 0;
   document.getElementById('logCount').textContent = '';
 }
 
 function filterLogs() {
-  const viewer = document.getElementById('logViewer');
-  const filter = (document.getElementById('logFilter').value || '').toLowerCase();
+  var viewer = document.getElementById('logViewer');
+  var filter = (document.getElementById('logFilter').value || '').toLowerCase();
   viewer.innerHTML = '';
-  let count = 0;
-  for (const line of logLines) {
+  var count = 0;
+  for (var i = 0; i < logLines.length; i++) {
+    var line = logLines[i];
     if (filter && !line.toLowerCase().includes(filter)) continue;
     renderLogLine(line);
     count++;
   }
-  document.getElementById('logCount').textContent = count + '/' + logLines.length + '줄';
+  document.getElementById('logCount').textContent = count + '/' + logLines.length + '\uC904';
 }
 
 // ══════════════════════════════════════════
 // 문진 평가 기준 관리
 // ══════════════════════════════════════════
-let criteriaData = null;
-
-function toggleCriteriaSection() {
-  var body = document.getElementById('criteriaBody');
-  var icon = document.getElementById('criteriaToggleIcon');
-  if (body.style.display === 'none') {
-    body.style.display = '';
-    icon.textContent = '▼';
-  } else {
-    body.style.display = 'none';
-    icon.textContent = '▶';
-  }
-}
+var criteriaData = null;
 
 async function loadCriteria() {
   try {
@@ -1165,7 +1164,7 @@ function renderCriteria() {
 
     var headerHtml = '<div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">'
       + '<span style="font-size:13px;font-weight:700;color:var(--accent);min-width:60px">' + escHtml(axis.name) + '</span>'
-      + '<label style="font-size:11px;color:var(--text-dim)">최대 점수</label>'
+      + '<label style="font-size:11px;color:var(--text-dim)">\uCD5C\uB300 \uC810\uC218</label>'
       + '<input type="number" class="axis-max" data-ai="' + ai + '" value="' + (axis.maxScore || 0) + '" min="0" max="100" step="1" style="width:70px;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-size:12px">'
       + '</div>';
 
@@ -1175,7 +1174,7 @@ function renderCriteria() {
       itemsHtml += renderCriteriaItem(ai, ii, items[ii]);
     }
     itemsHtml += '</div>';
-    itemsHtml += '<button class="btn-outline" onclick="addCriteriaItem(' + ai + ')" style="font-size:11px;padding:4px 12px;margin-top:6px">+ 항목 추가</button>';
+    itemsHtml += '<button class="btn-outline" onclick="addCriteriaItem(' + ai + ')" style="font-size:11px;padding:4px 12px;margin-top:6px">+ \uD56D\uBAA9 \uCD94\uAC00</button>';
 
     axisDiv.innerHTML = headerHtml + itemsHtml;
     container.appendChild(axisDiv);
@@ -1195,16 +1194,16 @@ function renderCriteria() {
 function renderCriteriaItem(ai, ii, item) {
   return '<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;padding:6px 8px;background:var(--surface);border-radius:6px" data-ai="' + ai + '" data-ii="' + ii + '">'
     + '<span style="font-size:12px;color:var(--text);min-width:80px;font-weight:600">' + escHtml(item.name || '') + '</span>'
-    + '<label style="font-size:10px;color:var(--text-dim)">점수</label>'
+    + '<label style="font-size:10px;color:var(--text-dim)">\uC810\uC218</label>'
     + '<input type="number" class="item-score" data-ai="' + ai + '" data-ii="' + ii + '" value="' + (item.score || 0) + '" min="0" max="100" step="1" style="width:60px;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 6px;border-radius:4px;font-size:11px">'
-    + '<input type="text" class="item-desc" data-ai="' + ai + '" data-ii="' + ii + '" value="' + escHtml(item.desc || '') + '" placeholder="설명" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:4px;font-size:11px">'
-    + '<button onclick="removeCriteriaItem(' + ai + ',' + ii + ')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 4px" title="삭제">✕</button>'
+    + '<input type="text" class="item-desc" data-ai="' + ai + '" data-ii="' + ii + '" value="' + escHtml(item.desc || '') + '" placeholder="\uC124\uBA85" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:4px;font-size:11px">'
+    + '<button onclick="removeCriteriaItem(' + ai + ',' + ii + ')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 4px" title="\uC0AD\uC81C">\u2715</button>'
     + '</div>';
 }
 
 function addCriteriaItem(ai) {
   if (!criteriaData || !criteriaData.axes[ai]) return;
-  var name = prompt('항목 이름을 입력하세요:');
+  var name = prompt('\uD56D\uBAA9 \uC774\uB984\uC744 \uC785\uB825\uD558\uC138\uC694:');
   if (!name) return;
   criteriaData.axes[ai].items.push({ name: name, score: 0, desc: '' });
   renderCriteria();
@@ -1224,7 +1223,7 @@ function renderBoundaryRules() {
     var div = document.createElement('div');
     div.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:6px';
     div.innerHTML = '<input type="text" class="boundary-rule" data-ri="' + i + '" value="' + escHtml(rules[i]) + '" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:6px;font-size:12px">'
-      + '<button onclick="removeBoundaryRule(' + i + ')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 6px" title="삭제">✕</button>';
+      + '<button onclick="removeBoundaryRule(' + i + ')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 6px" title="\uC0AD\uC81C">\u2715</button>';
     container.appendChild(div);
   }
 }
@@ -1246,7 +1245,6 @@ function removeBoundaryRule(idx) {
 
 function collectCriteriaFromForm() {
   if (!criteriaData) return null;
-  // collect axis maxScores and item scores/descs
   document.querySelectorAll('.axis-max').forEach(function(el) {
     var ai = parseInt(el.getAttribute('data-ai'));
     if (criteriaData.axes[ai]) criteriaData.axes[ai].maxScore = parseInt(el.value) || 0;
@@ -1265,14 +1263,12 @@ function collectCriteriaFromForm() {
       criteriaData.axes[ai].items[ii].desc = el.value;
     }
   });
-  // thresholds
   criteriaData.gradeThresholds = {
     A: parseInt(document.getElementById('thresholdA').value) || 0,
     B: parseInt(document.getElementById('thresholdB').value) || 0,
     C: parseInt(document.getElementById('thresholdC').value) || 0,
     D: parseInt(document.getElementById('thresholdD').value) || 0
   };
-  // boundary rules
   var ruleInputs = document.querySelectorAll('.boundary-rule');
   criteriaData.boundaryRules = [];
   ruleInputs.forEach(function(el) { criteriaData.boundaryRules.push(el.value); });
@@ -1281,43 +1277,34 @@ function collectCriteriaFromForm() {
 
 async function saveCriteria() {
   var data = collectCriteriaFromForm();
-  if (!data) { showToast('저장할 데이터가 없습니다', 'error'); return; }
+  if (!data) { showToast('\uC800\uC7A5\uD560 \uB370\uC774\uD130\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4', 'error'); return; }
   try {
     var res = await fetch('/api/consultation-criteria', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
-    if (res.status === 403) { showToast('Admin 인증이 필요합니다', 'error'); return; }
-    if (!res.ok) { showToast('저장 실패 (' + res.status + ')', 'error'); return; }
-    showToast('평가 기준이 저장되었습니다', 'success');
+    if (res.status === 403) { showToast('Admin \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4', 'error'); return; }
+    if (!res.ok) { showToast('\uC800\uC7A5 \uC2E4\uD328 (' + res.status + ')', 'error'); return; }
+    showToast('\uD3C9\uAC00 \uAE30\uC900\uC774 \uC800\uC7A5\uB418\uC5C8\uC2B5\uB2C8\uB2E4', 'success');
   } catch(e) {
-    showToast('저장 실패: ' + e.message, 'error');
+    showToast('\uC800\uC7A5 \uC2E4\uD328: ' + e.message, 'error');
   }
 }
 
 async function resetCriteriaToDefaults() {
-  if (!confirm('평가 기준을 기본값으로 초기화하시겠습니까?')) return;
+  if (!confirm('\uD3C9\uAC00 \uAE30\uC900\uC744 \uAE30\uBCF8\uAC12\uC73C\uB85C \uCD08\uAE30\uD654\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?')) return;
   try {
     var res = await fetch('/api/consultation-criteria/reset', {
       method: 'POST'
     });
-    if (!res.ok) { showToast('초기화 실패', 'error'); return; }
+    if (!res.ok) { showToast('\uCD08\uAE30\uD654 \uC2E4\uD328', 'error'); return; }
     criteriaData = await res.json();
     renderCriteria();
-    showToast('기본값으로 초기화되었습니다', 'success');
+    showToast('\uAE30\uBCF8\uAC12\uC73C\uB85C \uCD08\uAE30\uD654\uB418\uC5C8\uC2B5\uB2C8\uB2E4', 'success');
   } catch(e) {
-    showToast('초기화 실패: ' + e.message, 'error');
+    showToast('\uCD08\uAE30\uD654 \uC2E4\uD328: ' + e.message, 'error');
   }
-}
-
-function showCriteriaSectionIfAdmin() {
-  fetch('/api/auth/status').then(function(r) { return r.json(); }).then(function(s) {
-    if (s.isAdmin) {
-      document.getElementById('criteriaSection').style.display = '';
-      loadCriteria();
-    }
-  }).catch(function() {});
 }
 </script>
 </body>
