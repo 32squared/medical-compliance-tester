@@ -1567,7 +1567,7 @@ function finalizeAssistantMessage(fullText, meta = {}) {
           consultationEval: window._lastConsultEval,
           compliance: meta.compliance,
         };
-        window._enhancementContext.enhancedMsgId = msgId;
+        window._enhancementContext.enhancedMsgId = window._lastAssistantMsgId || msgId;
       };
 
       setTimeout(checkAndShowComparison, 5000);
@@ -2775,7 +2775,7 @@ async function saveEnhancementReport() {
       body: JSON.stringify({
         conversationId: currentConvId,
         originalMsgId: ctx.originalMsgId,
-        enhancedMsgId: ctx.enhancedMsgId,
+        enhancedMsgId: window._lastAssistantMsgId || ctx.enhancedMsgId,
         originalQuery: ctx.originalQuery,
         enhancedPrompt: ctx.enhancedPrompt,
         instructions: ctx.instructions,
