@@ -717,11 +717,16 @@ function buildBody(query) {
   // 새 대화: null, 기존 대화: UUID 문자열
   // undefined나 빈 문자열("")은 허용 안 됨
   const strid = (conversationStrid && conversationStrid.trim()) ? conversationStrid.trim() : null;
-  return {
+  const body = {
     query: query,
     conversation_strid: strid,
     source_types: cfg.sourceTypes,
   };
+  // SKIX_A1 에이전트 지원
+  if (savedSettings.agentStrid) {
+    body.agent_strid = savedSettings.agentStrid;
+  }
+  return body;
 }
 
 function getProxyUrl() {
@@ -767,6 +772,7 @@ async function callSSE(query, { onGeneration, onProgress, onInfo, onDone, onErro
   let fullText = '';
   let searchResults = [];
   let followUps = [];
+  let tokenUsage = null;
 
   while (true) {
     if (cancelRequested) { reader.cancel(); break; }
@@ -799,7 +805,12 @@ async function callSSE(query, { onGeneration, onProgress, onInfo, onDone, onErro
         if (data.conversation_strid) conversationStrid = data.conversation_strid;
         if (data.search_results) searchResults = data.search_results;
         if (data.follow_ups) followUps = data.follow_ups;
+        if (data.token_usage) tokenUsage = data.token_usage;
         onInfo({ data, searchResults, followUps });
+
+      } else if (type === 'KEEP_ALIVE') {
+        // 연결 유지 신호 — 무시
+        continue;
 
       } else if (type === 'PROGRESS') {
         onProgress({
@@ -819,7 +830,7 @@ async function callSSE(query, { onGeneration, onProgress, onInfo, onDone, onErro
     }
   }
 
-  onDone({ fullText, searchResults, followUps });
+  onDone({ fullText, searchResults, followUps, tokenUsage });
 }
 
 // ──────────────────────────────────────
@@ -1554,6 +1565,23 @@ function finalizeAssistantMessage(fullText, meta = {}) {
       setTimeout(checkAndShowComparison, 5000);
     }
 
+    // ── 토큰 사용량 표시 ──
+    if (meta.tokenUsage) {
+      const tokenDiv = document.createElement('div');
+      tokenDiv.style.cssText = 'margin-top:6px;padding:6px 10px;background:var(--bg);border-radius:6px;font-size:12px;color:var(--text-dim);display:flex;gap:12px;flex-wrap:wrap;align-items:center';
+      let tokenHtml = '<span style="font-weight:600;color:var(--text)">🔢 토큰</span>';
+      const tu = meta.tokenUsage;
+      for (const model in tu) {
+        const u = tu[model];
+        tokenHtml += '<span>' + escapeHtml(model) + ': ' +
+          '<span style="color:var(--accent)">' + (u.input_tokens || 0).toLocaleString() + '</span>입력 / ' +
+          '<span style="color:var(--green)">' + (u.output_tokens || 0).toLocaleString() + '</span>출력 / ' +
+          '<span style="font-weight:600">' + (u.total_tokens || 0).toLocaleString() + '</span>전체</span>';
+      }
+      tokenDiv.innerHTML = tokenHtml;
+      evalBox.appendChild(tokenDiv);
+    }
+
     // ── 1. 커멘트 버튼 (답변 직후) ──
     const commentWrapper = document.createElement('div');
     commentWrapper.style.marginTop = '6px';
@@ -1641,8 +1669,9 @@ async function sendMessage() {
         if (sr && sr.length) searchResults = sr;
         if (fu && fu.length) followUps = fu;
       },
-      onDone({ fullText }) {
+      onDone({ fullText, tokenUsage: tu }) {
         finalText = fullText;
+        if (tu) window._lastTokenUsage = tu;
       },
       onError(msg) {
         finalText = `오류: ${msg}`;
@@ -1654,7 +1683,7 @@ async function sendMessage() {
     const compliance = (savedSettings.enableCompliance !== false)
       ? analyzeCompliance(finalText) : null;
 
-    finalizeAssistantMessage(finalText, { elapsed, compliance, searchResults, followUps, userPrompt: text });
+    finalizeAssistantMessage(finalText, { elapsed, compliance, searchResults, followUps, userPrompt: text, tokenUsage: window._lastTokenUsage || null });
     chatHistory.push({ role:'assistant', content: finalText, compliance, searchResults });
 
     // 로컬 대화 자동 저장
