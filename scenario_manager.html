@@ -159,7 +159,7 @@
   .gen-footer { display:flex; justify-content:space-between; align-items:center; margin-top:16px; }
   .gen-footer .cost-hint { font-size:11px; color:var(--text-dim); }
   .gen-progress { margin-top:12px; display:none; }
-  .gen-progress .bar { height:4px; background:var(--surface2); border-radius:2px; overflow:hidden; }
+  .gen-progress .bar { height:8px; background:var(--surface2); border-radius:2px; overflow:hidden; }
   .gen-progress .bar-fill { height:100%; background:var(--purple); border-radius:2px;
                             animation:progress 2s ease-in-out infinite; width:60%; }
   @keyframes progress { 0% { transform:translateX(-100%); } 100% { transform:translateX(200%); } }
@@ -1279,10 +1279,10 @@ async function sendToChat(id) {
       if (gptEv && gptEv.grade) {
         const gradeColors = { A: 'var(--green)', B: 'var(--accent)', C: 'var(--yellow)', D: 'var(--orange)', F: 'var(--red)' };
         const gc = gradeColors[gptEv.grade] || 'var(--text-dim)';
-        const regexInfo = compResult ? ` <span style="color:var(--text-dim);font-size:11px">(참고: 정규식 ${compResult.regexScore || compResult.score || 0}점)</span>` : '';
+        const regexInfo = compResult ? ` <span style="color:var(--text-dim);font-size:13px">(참고: 정규식 ${compResult.regexScore || compResult.score || 0}점)</span>` : '';
         finalJudgment.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--surface2);border-radius:8px;border:1px solid ${gc}44">
-          <span style="font-size:11px;color:var(--text-dim)">최종 판정 기준:</span>
-          <span style="font-size:14px;font-weight:800;color:${gc}">&#129302; GPT ${gptEv.grade} (${gptEv.score ?? '?'}점)</span>
+          <span style="font-size:14px;color:var(--text-dim)">최종 판정 기준:</span>
+          <span style="font-size:18px;font-weight:800;color:${gc}">&#129302; GPT ${gptEv.grade} (${gptEv.score ?? '?'}점)</span>
           <span style="font-weight:600">${gptEv.passed ? '<span style="color:var(--green)">PASS</span>' : '<span style="color:var(--red)">FAIL</span>'}</span>
           ${regexInfo}
         </div>`;
@@ -1291,8 +1291,8 @@ async function sendToChat(id) {
         const regexScore = compResult.regexScore || compResult.score || 0;
         const passed = (compResult.violations || []).length === 0;
         finalJudgment.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--surface2);border-radius:8px">
-          <span style="font-size:11px;color:var(--text-dim)">최종 판정 기준:</span>
-          <span style="font-size:14px;font-weight:700">&#128203; 정규식 ${regexScore}점</span>
+          <span style="font-size:14px;color:var(--text-dim)">최종 판정 기준:</span>
+          <span style="font-size:18px;font-weight:700">&#128203; 정규식 ${regexScore}점</span>
           <span style="font-weight:600">${passed ? '<span style="color:var(--green)">PASS</span>' : '<span style="color:var(--red)">FAIL</span>'}</span>
         </div>`;
         finalJudgment.style.display = 'block';
@@ -1338,27 +1338,27 @@ async function sendToChat(id) {
             const missing = (axData.missing || []).join(', ');
             const detail = axData.details || '';
             axesHtml += `<div style="margin-bottom:5px">
-              <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim)"><span>${ax.label}${warn}</span><span>${score}/${ax.max}</span></div>
-              <div style="height:5px;background:var(--surface);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${barColor};border-radius:3px"></div></div>
-              ${detail ? `<div style="font-size:10px;color:var(--text-dim);margin-top:1px">${escHtml(detail)}</div>` : ''}
-              ${missing ? `<div style="font-size:10px;color:#f59e0b;margin-top:1px">⚠ ${escHtml(missing)}</div>` : ''}
+              <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text-dim)"><span>${ax.label}${warn}</span><span>${score}/${ax.max}</span></div>
+              <div style="height:8px;background:var(--surface);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${barColor};border-radius:3px"></div></div>
+              ${detail ? `<div style="font-size:12px;color:var(--text-dim);margin-top:1px">${escHtml(detail)}</div>` : ''}
+              ${missing ? `<div style="font-size:13px;color:#f59e0b;margin-top:1px">⚠ ${escHtml(missing)}</div>` : ''}
             </div>`;
           }
           const gradeColors = { A: 'var(--green)', B: '#38bdf8', C: '#f59e0b', D: '#f97316', F: 'var(--red)' };
           consultContainer.innerHTML = `
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-              <span style="font-size:12px;font-weight:600">🩺 문진 품질</span>
-              <span style="font-size:16px;font-weight:800;color:${gradeColors[ev.grade] || 'var(--text-dim)'}">${ev.grade || '?'}</span>
-              <span style="font-size:12px">${ev.totalScore || 0}점</span>
+              <span style="font-size:15px;font-weight:600">🩺 문진 품질</span>
+              <span style="font-size:20px;font-weight:800;color:${gradeColors[ev.grade] || 'var(--text-dim)'}">${ev.grade || '?'}</span>
+              <span style="font-size:14px">${ev.totalScore || 0}점</span>
             </div>
             ${axesHtml}
-            ${ev.summary ? `<div style="font-size:11px;color:var(--text);margin-top:6px;padding:6px 8px;background:var(--surface);border-radius:4px">${escHtml(ev.summary)}</div>` : ''}
-            ${(ev.missingItems||[]).length ? `<div style="font-size:11px;color:#f59e0b;margin-top:4px">💡 전체 부족 항목: ${(ev.missingItems||[]).slice(0,8).map(m=>escHtml(m)).join(', ')}</div>` : ''}
-            ${ev.recommendation ? `<div style="font-size:11px;color:var(--accent);margin-top:4px">💊 ${escHtml(ev.recommendation)}</div>` : ''}
+            ${ev.summary ? `<div style="font-size:13px;color:var(--text);margin-top:6px;padding:6px 8px;background:var(--surface);border-radius:4px">${escHtml(ev.summary)}</div>` : ''}
+            ${(ev.missingItems||[]).length ? `<div style="font-size:13px;color:#f59e0b;margin-top:4px">💡 전체 부족 항목: ${(ev.missingItems||[]).slice(0,8).map(m=>escHtml(m)).join(', ')}</div>` : ''}
+            ${ev.recommendation ? `<div style="font-size:13px;color:var(--accent);margin-top:4px">💊 ${escHtml(ev.recommendation)}</div>` : ''}
           `;
         }
       } catch(e) {
-        consultContainer.innerHTML = `<div style="font-size:11px;color:var(--text-dim)">문진 평가 실패</div>`;
+        consultContainer.innerHTML = `<div style="font-size:13px;color:var(--text-dim)">문진 평가 실패</div>`;
       }
     }
 
@@ -1555,15 +1555,15 @@ function runComplianceCheck(text, scenario) {
 
   if (dedupViolations.length === 0) {
     result.innerHTML = `<span style="color:var(--green)">&#10003; 위반 없음 (패턴 분석: ${score}점)${hasDisclaimer ? ' / 면책조항 포함' : ''}${verLabel}</span>
-      <div style="color:var(--text-dim);font-size:10px;margin-top:4px">GPT 평가 포함 시 하이브리드 점수가 산출됩니다</div>`;
+      <div style="color:var(--text-dim);font-size:12px;margin-top:4px">GPT 평가 포함 시 하이브리드 점수가 산출됩니다</div>`;
   } else {
     result.innerHTML = `<div style="color:var(--red);font-weight:600;margin-bottom:6px">&#10007; ${dedupViolations.length}건 위반 감지 (패턴 분석: ${score}점)${verLabel}</div>
-      <div style="color:var(--text-dim);font-size:10px;margin-bottom:6px">GPT 평가 포함 시 하이브리드 점수가 산출됩니다</div>` +
+      <div style="color:var(--text-dim);font-size:12px;margin-bottom:6px">GPT 평가 포함 시 하이브리드 점수가 산출됩니다</div>` +
       dedupViolations.map(v => `<div style="padding:4px 8px;margin:3px 0;background:var(--surface2);border-radius:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-        <span class="sc-risk risk-${v.severity}" style="font-size:10px">${v.severity}</span>
+        <span class="sc-risk risk-${v.severity}" style="font-size:13px">${v.severity}</span>
         <span>${escHtml(v.name)}</span><span style="color:var(--text-dim)">— ${escHtml(v.law)}</span>
-        <span style="color:var(--orange);font-size:11px">"${escHtml(v.matched)}"</span>
-        ${v.recommendation ? `<span style="color:var(--green);font-size:10px">→ ${escHtml(v.recommendation)}</span>` : ''}
+        <span style="color:var(--orange);font-size:13px">"${escHtml(v.matched)}"</span>
+        ${v.recommendation ? `<span style="color:var(--green);font-size:13px">→ ${escHtml(v.recommendation)}</span>` : ''}
       </div>`).join('');
   }
   return { score, regexScore: score, violations: dedupViolations, hasDisclaimer, guidelineVersion: _smGuidelineVersion };
@@ -1597,7 +1597,7 @@ async function runGptEval(prompt, response, proxyUrl) {
         <span style="font-weight:600">${ev.score ?? '?'}점 — ${ev.passed ? '<span style="color:var(--green)">PASS</span>' : '<span style="color:var(--red)">FAIL</span>'}</span>
       </div>
       <div style="color:var(--text-dim);margin-bottom:6px">${escHtml(ev.summary || '')}</div>
-      ${ev.recommendation ? '<div style="padding:8px;background:var(--accent-dim);border-radius:6px;color:var(--accent);font-size:11px">&#128161; ' + escHtml(ev.recommendation) + '</div>' : ''}
+      ${ev.recommendation ? '<div style="padding:8px;background:var(--accent-dim);border-radius:6px;color:var(--accent);font-size:13px">&#128161; ' + escHtml(ev.recommendation) + '</div>' : ''}
     `;
     return ev;
   } catch(e) {

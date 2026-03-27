@@ -87,7 +87,7 @@
   .summary-card { flex:1; padding:14px 16px; background:var(--bg); border-radius:10px;
                   border:1px solid var(--border); text-align:center; }
   .summary-card .sc-value { font-size:24px; font-weight:800; margin-bottom:2px; }
-  .summary-card .sc-label { font-size:11px; color:var(--text-dim); font-weight:600; }
+  .summary-card .sc-label { font-size:13px; color:var(--text-dim); font-weight:600; }
   .summary-card.total .sc-value { color:var(--text); }
   .summary-card.passed .sc-value { color:var(--green); }
   .summary-card.failed .sc-value { color:var(--red); }
@@ -114,7 +114,7 @@
   .result-detail { display:none; padding:0 16px 16px; border-top:1px solid var(--border); }
   .result-card.expanded .result-detail { display:block; padding-top:14px; }
   .result-section { margin-bottom:12px; }
-  .result-section-title { font-size:11px; font-weight:700; color:var(--text-dim); text-transform:uppercase;
+  .result-section-title { font-size:14px; font-weight:700; color:var(--text-dim); text-transform:uppercase;
                           letter-spacing:1px; margin-bottom:6px; }
   .result-section-body { font-size:13px; line-height:1.7; background:var(--bg); padding:12px 14px;
                          border-radius:8px; border:1px solid var(--border); white-space:pre-wrap;
@@ -163,7 +163,7 @@
   .report-summary-item { flex:1; min-width:120px; text-align:center; padding:14px 12px; background:var(--bg);
                          border-radius:10px; border:1px solid var(--border); }
   .report-summary-item .rsi-value { font-size:22px; font-weight:800; margin-bottom:2px; }
-  .report-summary-item .rsi-label { font-size:11px; color:var(--text-dim); font-weight:600; }
+  .report-summary-item .rsi-label { font-size:13px; color:var(--text-dim); font-weight:600; }
 
   /* Horizontal bar chart */
   .hbar-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
@@ -192,7 +192,7 @@
                       background:var(--surface2); color:var(--text); font-size:10px; padding:2px 6px; border-radius:4px;
                       white-space:nowrap; pointer-events:none; z-index:10; }
   .vbar-bar:hover .vbar-bar-tooltip { display:block; }
-  .vbar-label { font-size:10px; color:var(--text-dim); margin-top:6px; white-space:nowrap; overflow:hidden;
+  .vbar-label { font-size:13px; color:var(--text-dim); margin-top:6px; white-space:nowrap; overflow:hidden;
                 text-overflow:ellipsis; max-width:100%; text-align:center; }
 
   /* Comment summary */
@@ -635,7 +635,7 @@
         const regexScore = compliance.regexScore || compliance.score || 0;
         const gptScore = (gptEval && gptEval.score != null) ? gptEval.score : null;
         const guideVer = compliance.guidelineVersion || r.guidelineVersion || '';
-        const verLabel = guideVer ? ' <span style="color:var(--text-dim);font-size:10px">[가이드라인 v' + escapeHtml(guideVer) + ']</span>' : '';
+        const verLabel = guideVer ? ' <span style="color:var(--text-dim);font-size:12px">[가이드라인 v' + escapeHtml(guideVer) + ']</span>' : '';
         let scoreLabel;
         if (finalSource === 'gpt') {
           scoreLabel = '참고 — 패턴 분석: ' + regexScore + '점';
@@ -647,15 +647,15 @@
           '<div class="result-section-body">' +
             (compliance.violations && compliance.violations.length > 0
               ? compliance.violations.map(v =>
-                  '<div style="padding:3px 6px;margin:2px 0;background:var(--surface2);border-radius:4px;font-size:11px">' +
+                  '<div style="padding:3px 6px;margin:2px 0;background:var(--surface2);border-radius:4px;font-size:13px">' +
                   '<span style="color:var(--red);font-weight:700">' + (v.severity || '') + '</span> ' +
                   (v.name || v.rule || '') + ' — ' + (v.law || '') +
                   (v.matched ? ' <span style="color:var(--orange)">"' + escapeHtml(v.matched) + '"</span>' : '') +
-                  (v.description ? ' <span style="color:var(--text-dim);font-size:10px">(' + escapeHtml(v.description) + ')</span>' : '') +
+                  (v.description ? ' <span style="color:var(--text-dim);font-size:12px">(' + escapeHtml(v.description) + ')</span>' : '') +
                   '</div>'
                 ).join('')
               : '<span style="color:var(--green)">&#10003; 위반 없음' + (compliance.hasDisclaimer ? ' / 면책조항 포함' : '') + '</span>') +
-            (compliance.summary ? '<div style="margin-top:4px;color:var(--text-dim);font-size:10px">' + escapeHtml(compliance.summary) + '</div>' : '') +
+            (compliance.summary ? '<div style="margin-top:4px;color:var(--text-dim);font-size:13px">' + escapeHtml(compliance.summary) + '</div>' : '') +
           '</div></div>';
       }
 
@@ -664,19 +664,19 @@
       if (gptEval && gptEval.grade) {
         const gc = gradeColors[gptEval.grade] || '#94a3b8';
         const regexRef = (compliance && compliance.score != null)
-          ? ' <span style="color:var(--text-dim);font-size:10px">(참고: 정규식 ' + (compliance.regexScore || compliance.score || 0) + '점)</span>'
+          ? ' <span style="color:var(--text-dim);font-size:12px">(참고: 정규식 ' + (compliance.regexScore || compliance.score || 0) + '점)</span>'
           : '';
         gptHtml = '<div class="result-section">' +
           '<div class="result-section-title" style="color:var(--purple)">&#129302; GPT 평가 (최종 판정 기준)</div>' +
           '<div class="result-section-body">' +
             '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">' +
-              '<span style="font-size:16px;font-weight:800;color:' + gc + ';background:' + gc + '22;padding:2px 8px;border-radius:6px">' + gptEval.grade + '</span>' +
+              '<span style="font-size:20px;font-weight:800;color:' + gc + ';background:' + gc + '22;padding:2px 8px;border-radius:6px">' + gptEval.grade + '</span>' +
               '<span>' + (gptEval.score != null ? gptEval.score + '점' : '') + ' — ' +
                 (gptEval.passed ? '<span style="color:var(--green)">PASS</span>' : '<span style="color:var(--red)">FAIL</span>') +
               '</span>' + regexRef +
             '</div>' +
-            (gptEval.summary ? '<div style="color:var(--text-dim);font-size:11px">' + escapeHtml(gptEval.summary) + '</div>' : '') +
-            (gptEval.recommendation ? '<div style="margin-top:4px;padding:6px;background:var(--accent-dim);border-radius:4px;color:var(--accent);font-size:11px">&#128161; ' + escapeHtml(gptEval.recommendation) + '</div>' : '') +
+            (gptEval.summary ? '<div style="color:var(--text-dim);font-size:13px">' + escapeHtml(gptEval.summary) + '</div>' : '') +
+            (gptEval.recommendation ? '<div style="margin-top:4px;padding:6px;background:var(--accent-dim);border-radius:4px;color:var(--accent);font-size:13px">&#128161; ' + escapeHtml(gptEval.recommendation) + '</div>' : '') +
           '</div></div>';
       }
 
@@ -684,13 +684,13 @@
       let headerScore = '';
       if (finalSource === 'gpt') {
         const gc = gradeColors[gptEval.grade] || '#94a3b8';
-        headerScore = '<span style="font-size:10px;font-weight:700;color:' + gc + '">' + gptEval.grade + ' ' + (gptEval.score != null ? gptEval.score + '점' : '') + '</span>';
+        headerScore = '<span style="font-size:13px;font-weight:700;color:' + gc + '">' + gptEval.grade + ' ' + (gptEval.score != null ? gptEval.score + '점' : '') + '</span>';
         if (compliance && compliance.score != null) {
-          headerScore += '<span style="font-size:9px;color:var(--text-dim)" title="정규식 참고">(' + (compliance.regexScore || compliance.score) + ')</span>';
+          headerScore += '<span style="font-size:12px;color:var(--text-dim)" title="정규식 참고">(' + (compliance.regexScore || compliance.score) + ')</span>';
         }
       } else if (compliance && compliance.score != null) {
         const rs = compliance.regexScore || compliance.score || 0;
-        headerScore = '<span style="font-size:10px;color:' + (compliance.violations && compliance.violations.length > 0 ? 'var(--red)' : 'var(--green)') + '">' + rs + '점</span>';
+        headerScore = '<span style="font-size:13px;color:' + (compliance.violations && compliance.violations.length > 0 ? 'var(--red)' : 'var(--green)') + '">' + rs + '점</span>';
       }
 
       // Consultation eval display
@@ -715,22 +715,22 @@
           const adDetail = ad.details || '';
           const adMissing = (ad.missing || []).join(', ');
           axBars += '<div style="margin-bottom:5px">' +
-            '<div style="display:flex;justify-content:space-between;font-size:10px;color:#94a3b8"><span>' + ax.label + w + '</span><span>' + sc + '/' + ax.max + '</span></div>' +
-            '<div style="height:4px;background:#1e293b;border-radius:2px"><div style="height:100%;width:' + pct + '%;background:' + bc + ';border-radius:2px"></div></div>' +
-            (adDetail ? '<div style="font-size:9px;color:#94a3b8;margin-top:1px">' + escapeHtml(adDetail) + '</div>' : '') +
-            (adMissing ? '<div style="font-size:9px;color:#f59e0b;margin-top:1px">⚠ ' + escapeHtml(adMissing) + '</div>' : '') +
+            '<div style="display:flex;justify-content:space-between;font-size:13px;color:#94a3b8"><span>' + ax.label + w + '</span><span>' + sc + '/' + ax.max + '</span></div>' +
+            '<div style="height:8px;background:#1e293b;border-radius:2px"><div style="height:100%;width:' + pct + '%;background:' + bc + ';border-radius:2px"></div></div>' +
+            (adDetail ? '<div style="font-size:12px;color:#94a3b8;margin-top:1px">' + escapeHtml(adDetail) + '</div>' : '') +
+            (adMissing ? '<div style="font-size:13px;color:#f59e0b;margin-top:1px">⚠ ' + escapeHtml(adMissing) + '</div>' : '') +
           '</div>';
         }
         consultHtml = '<div style="margin-top:8px;padding:8px;background:#0f172a;border-radius:6px;border:1px solid #334155">' +
           '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">' +
-            '<span style="font-size:11px;font-weight:600">🩺 문진 품질</span>' +
-            '<span style="font-size:14px;font-weight:800;color:' + (ceGradeColors[ce.grade] || '#94a3b8') + '">' + (ce.grade || '?') + '</span>' +
-            '<span style="font-size:11px">' + (ce.totalScore || 0) + '점</span>' +
+            '<span style="font-size:15px;font-weight:600">🩺 문진 품질</span>' +
+            '<span style="font-size:20px;font-weight:800;color:' + (ceGradeColors[ce.grade] || '#94a3b8') + '">' + (ce.grade || '?') + '</span>' +
+            '<span style="font-size:14px">' + (ce.totalScore || 0) + '점</span>' +
           '</div>' +
           axBars +
-          (ce.summary ? '<div style="font-size:10px;color:#e2e8f0;margin-top:6px;padding:4px 6px;background:#1e293b;border-radius:4px">' + escapeHtml(ce.summary.substring(0, 300)) + '</div>' : '') +
-          ((ce.missingItems||[]).length ? '<div style="font-size:10px;color:#f59e0b;margin-top:4px">💡 전체 부족: ' + (ce.missingItems||[]).slice(0,8).map(function(m){return escapeHtml(m);}).join(', ') + '</div>' : '') +
-          (ce.recommendation ? '<div style="font-size:10px;color:#38bdf8;margin-top:3px">💊 ' + escapeHtml(ce.recommendation.substring(0, 200)) + '</div>' : '') +
+          (ce.summary ? '<div style="font-size:13px;color:#e2e8f0;margin-top:6px;padding:4px 6px;background:#1e293b;border-radius:4px">' + escapeHtml(ce.summary.substring(0, 300)) + '</div>' : '') +
+          ((ce.missingItems||[]).length ? '<div style="font-size:13px;color:#f59e0b;margin-top:4px">💡 전체 부족: ' + (ce.missingItems||[]).slice(0,8).map(function(m){return escapeHtml(m);}).join(', ') + '</div>' : '') +
+          (ce.recommendation ? '<div style="font-size:13px;color:#38bdf8;margin-top:3px">💊 ' + escapeHtml(ce.recommendation.substring(0, 200)) + '</div>' : '') +
         '</div>';
       }
 
@@ -741,7 +741,7 @@
         '<div class="result-card-header" onclick="toggleResult(' + idx + ')">' +
           '<span class="result-scenario-id">' + (r.scenarioId || 'S-' + (idx + 1)) + '</span>' +
           '<span class="result-status ' + statusClass + '">' + statusLabel + '</span>' +
-          '<span style="font-size:9px;color:var(--text-dim);background:var(--surface2);padding:1px 6px;border-radius:4px">' + sourceIndicator + '</span>' +
+          '<span style="font-size:12px;color:var(--text-dim);background:var(--surface2);padding:1px 6px;border-radius:4px">' + sourceIndicator + '</span>' +
           '<span class="result-prompt" title="' + prompt.replace(/"/g, '&quot;') + '">' + truncPrompt + '</span>' +
           '<span class="result-time">' + respTime + '</span>' +
           headerScore +
@@ -1045,7 +1045,7 @@
                 '</div>' +
                 '<button onclick="cancelBatch(\'' + runId + '\')" style="margin-left:auto;padding:6px 14px;background:var(--red);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer">⏹ 중지</button>' +
               '</div>' +
-              '<div style="width:100%;height:6px;background:var(--border);border-radius:3px;margin-bottom:16px"><div style="width:' + pct + '%;height:100%;background:var(--accent);border-radius:3px;transition:width .3s"></div></div>';
+              '<div style="width:100%;height:8px;background:var(--border);border-radius:3px;margin-bottom:16px"><div style="width:' + pct + '%;height:100%;background:var(--accent);border-radius:3px;transition:width .3s"></div></div>';
 
             // 완료된 결과 목록
             const results = status.latestResults || [];
@@ -1060,9 +1060,9 @@
                   '<span>' + stIcon + '</span>' +
                   '<span style="font-weight:600;min-width:90px">' + escapeHtml(r.scenarioId) + '</span>' +
                   '<span style="color:' + stColor + ';min-width:50px">' + (r.finalScore || 0) + '점</span>' +
-                  '<span style="color:var(--text-dim);font-size:10px">' + srcLabel + '</span>' +
+                  '<span style="color:var(--text-dim);font-size:12px">' + srcLabel + '</span>' +
                   '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-dim)">' + escapeHtml(r.prompt || '') + '</span>' +
-                  '<span style="color:var(--text-dim);font-size:10px">' + (r.responseTime ? (r.responseTime/1000).toFixed(1) + 's' : '') + '</span>' +
+                  '<span style="color:var(--text-dim);font-size:12px">' + (r.responseTime ? (r.responseTime/1000).toFixed(1) + 's' : '') + '</span>' +
                 '</div>';
               }
               html += '</div>';

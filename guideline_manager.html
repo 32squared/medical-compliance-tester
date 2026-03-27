@@ -688,8 +688,8 @@ async function runTest() {
       html += '<span style="font-size:18px;font-weight:800;color:' + gc + ';background:' + gc + '22;padding:2px 10px;border-radius:6px">' + (gptEval.grade || '?') + '</span>';
       html += '<span style="font-weight:600">' + (gptEval.score != null ? gptEval.score + '점' : '') + ' — ' + (gptEval.passed ? '<span style="color:var(--green)">PASS</span>' : '<span style="color:var(--red)">FAIL</span>') + '</span>';
       html += '</div>';
-      if (gptEval.summary) html += '<div style="color:var(--text-dim);font-size:11px">' + esc(gptEval.summary) + '</div>';
-      if (gptEval.recommendation) html += '<div style="margin-top:4px;padding:6px;background:var(--accent-dim);border-radius:4px;color:var(--accent);font-size:11px">' + esc(gptEval.recommendation) + '</div>';
+      if (gptEval.summary) html += '<div style="color:var(--text-dim);font-size:13px">' + esc(gptEval.summary) + '</div>';
+      if (gptEval.recommendation) html += '<div style="margin-top:4px;padding:6px;background:var(--accent-dim);border-radius:4px;color:var(--accent);font-size:13px">' + esc(gptEval.recommendation) + '</div>';
       html += '</div>';
 
       // Regex as reference

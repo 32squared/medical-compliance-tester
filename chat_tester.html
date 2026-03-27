@@ -1145,7 +1145,7 @@ async function evaluateWithLLM(prompt, responseText, msgId) {
       ${ev.recommendation ? `
         <div class="eval-recommendation">&#128161; ${escapeHtml(ev.recommendation)}</div>
       ` : ''}
-      <div style="margin-top:6px;font-size:10px;color:var(--text-dim)">
+      <div style="margin-top:6px;font-size:12px;color:var(--text-dim)">
         모델: ${data.model || 'gpt-4o-mini'} · 토큰: ${data.usage?.total_tokens || '?'}
       </div>
     `;
@@ -1155,7 +1155,7 @@ async function evaluateWithLLM(prompt, responseText, msgId) {
     if (header) {
       const gCls = ev.score >= 80 ? 'pass' : ev.score >= 60 ? 'warn' : 'fail';
       const gLabel = ev.passed ? 'PASS' : 'FAIL';
-      header.innerHTML = `<span class="compliance-badge ${gCls}" style="font-size:13px;padding:4px 12px">${ev.grade || '?'} ${ev.score}점 ${gLabel}</span> <span style="font-size:11px;color:var(--text-dim)">GPT 기준</span>`;
+      header.innerHTML = `<span class="compliance-badge ${gCls}" style="font-size:18px;padding:4px 12px">${ev.grade || '?'} ${ev.score}점 ${gLabel}</span> <span style="font-size:14px;color:var(--text-dim)">GPT 기준</span>`;
     }
 
     // GPT 평가 결과를 DB에 저장 (msgId를 직접 사용 — 복원된 대화에서도 동작)
@@ -1222,13 +1222,13 @@ async function evaluateConsultation(prompt, responseText, msgId) {
       const missing = (axData.missing || []).join(', ');
       const warn = pct < 60 ? ' ⚠️' : '';
       axesHtml += `<div style="margin-bottom:4px">
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim)">
+        <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text-dim)">
           <span>${ax.label}${warn}</span><span>${score}/${ax.max}</span>
         </div>
-        <div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden">
+        <div style="height:8px;background:var(--bg);border-radius:3px;overflow:hidden">
           <div style="height:100%;width:${pct}%;background:${barColor};border-radius:3px;transition:width .3s"></div>
         </div>
-        ${missing ? `<div style="font-size:10px;color:var(--text-dim);margin-top:1px">부족: ${escapeHtml(missing)}</div>` : ''}
+        ${missing ? `<div style="font-size:13px;color:var(--text-dim);margin-top:1px">부족: ${escapeHtml(missing)}</div>` : ''}
       </div>`;
     }
 
@@ -1236,14 +1236,14 @@ async function evaluateConsultation(prompt, responseText, msgId) {
 
     evalContainer.innerHTML = `
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <span style="font-size:18px;font-weight:800;color:${gradeColor}">${ev.grade || '?'}</span>
-        <span style="font-size:13px;font-weight:600;color:var(--text)">${ev.totalScore || 0}점</span>
-        <span style="font-size:11px;color:var(--text-dim)">문진 품질</span>
+        <span style="font-size:20px;font-weight:800;color:${gradeColor}">${ev.grade || '?'}</span>
+        <span style="font-size:18px;font-weight:600;color:var(--text)">${ev.totalScore || 0}점</span>
+        <span style="font-size:14px;color:var(--text-dim)">문진 품질</span>
       </div>
       ${axesHtml}
-      ${ev.summary ? `<div style="font-size:11px;color:var(--text);margin-top:6px;padding:6px 8px;background:var(--bg);border-radius:4px">${escapeHtml(ev.summary)}</div>` : ''}
-      ${missingAll ? `<div style="font-size:11px;color:#f59e0b;margin-top:4px">💡 부족: ${missingAll}</div>` : ''}
-      ${ev.recommendation ? `<div style="font-size:11px;color:var(--accent);margin-top:4px">💊 ${escapeHtml(ev.recommendation)}</div>` : ''}
+      ${ev.summary ? `<div style="font-size:13px;color:var(--text);margin-top:6px;padding:6px 8px;background:var(--bg);border-radius:4px">${escapeHtml(ev.summary)}</div>` : ''}
+      ${missingAll ? `<div style="font-size:13px;color:#f59e0b;margin-top:4px">💡 부족: ${missingAll}</div>` : ''}
+      ${ev.recommendation ? `<div style="font-size:13px;color:var(--accent);margin-top:4px">💊 ${escapeHtml(ev.recommendation)}</div>` : ''}
     `;
 
     // DB에 저장
@@ -1258,7 +1258,7 @@ async function evaluateConsultation(prompt, responseText, msgId) {
       } catch(e2) { console.warn('문진 평가 저장 실패', e2); }
     }
   } catch(e) {
-    evalContainer.innerHTML = `<span style="color:var(--red);font-size:11px">문진 평가 실패: ${escapeHtml(e.message)}</span>`;
+    evalContainer.innerHTML = `<span style="color:var(--red);font-size:13px">문진 평가 실패: ${escapeHtml(e.message)}</span>`;
   }
 }
 
@@ -1388,15 +1388,15 @@ function finalizeAssistantMessage(fullText, meta = {}) {
     evalHeader.className = 'eval-section';
     evalHeader.id = 'eval-header-' + msgId;
     evalHeader.style.cssText = 'background:var(--surface);padding:10px 16px;display:flex;align-items:center;gap:12px';
-    evalHeader.innerHTML = `<span class="compliance-badge ${regexCls}" style="font-size:13px;padding:4px 12px">${regexLabel} ${Math.round(regexScore)}점</span> <span style="font-size:11px;color:var(--text-dim)">정규식 기준 (GPT 평가 대기중...)</span>`;
+    evalHeader.innerHTML = `<span class="compliance-badge ${regexCls}" style="font-size:18px;padding:4px 12px">${regexLabel} ${Math.round(regexScore)}점</span> <span style="font-size:14px;color:var(--text-dim)">정규식 기준 (GPT 평가 대기중...)</span>`;
     evalBox.appendChild(evalHeader);
 
     // ── 정규식 상세 (참고용 접기 섹션) ──
     let regexDetailHtml = '<details style="margin-top:4px"><summary style="font-size:12px;color:var(--text-dim);cursor:pointer">📋 정규식 참고</summary><div style="padding:8px 0">';
     regexDetailHtml += `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span class="compliance-badge ${regexCls}" style="font-size:12px;padding:3px 10px">${regexLabel} ${Math.round(regexScore)}점</span>`;
-    if (c.hasDisclaimer) regexDetailHtml += '<span style="color:var(--green);font-size:11px">면책조항 ✓</span>';
-    else if (c.isMedical) regexDetailHtml += '<span style="color:var(--yellow);font-size:11px">면책조항 누락</span>';
+    if (c.hasDisclaimer) regexDetailHtml += '<span style="color:var(--green);font-size:13px">면책조항 ✓</span>';
+    else if (c.isMedical) regexDetailHtml += '<span style="color:var(--yellow);font-size:13px">면책조항 누락</span>';
     regexDetailHtml += '</div>';
     if (c.violations && c.violations.length > 0) {
       regexDetailHtml += '<div style="margin-top:8px">';
@@ -1441,7 +1441,7 @@ function finalizeAssistantMessage(fullText, meta = {}) {
     consultSection.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
         <span style="font-size:12px;font-weight:600;color:var(--text)">🩺 문진 품질</span>
-        <button class="eval-btn" style="font-size:11px">문진 평가</button>
+        <button class="eval-btn" style="font-size:13px">문진 평가</button>
       </div>
       <div id="consultation-eval-${msgId}" style="display:none"></div>
     `;
@@ -1491,8 +1491,8 @@ function finalizeAssistantMessage(fullText, meta = {}) {
           const snippet = escapeHtml((s.text_snapshot || s.snippet || '').substring(0, 120));
           const url = s.url || '';
           const badge = s.source_type === 'PUBMED'
-            ? '<span style="color:var(--green);font-size:10px">[PubMed]</span>'
-            : '<span style="color:var(--accent);font-size:10px">[Web]</span>';
+            ? '<span style="color:var(--green);font-size:12px">[PubMed]</span>'
+            : '<span style="color:var(--accent);font-size:12px">[Web]</span>';
           return `<div class="src-item">${badge} <span class="src-title">${url ? `<a href="${url}" target="_blank">${title}</a>` : title}</span><div class="src-snippet">${snippet}</div></div>`;
         }).join('');
       msgDiv.appendChild(srcPanel);
@@ -1833,11 +1833,11 @@ function addRestoredAssistantMessage(text, meta = {}) {
   if (gptScore !== null) {
     const gCls = gptScore >= 80 ? 'pass' : gptScore >= 60 ? 'warn' : 'fail';
     const gLabel = gptEval.passed ? 'PASS' : 'FAIL';
-    headerBadgeHtml = `<span class="compliance-badge ${gCls}" style="font-size:13px;padding:4px 12px">${gptEval.grade || '?'} ${gptScore}점 ${gLabel}</span> <span style="font-size:11px;color:var(--text-dim)">GPT 기준</span>`;
+    headerBadgeHtml = `<span class="compliance-badge ${gCls}" style="font-size:18px;padding:4px 12px">${gptEval.grade || '?'} ${gptScore}점 ${gLabel}</span> <span style="font-size:14px;color:var(--text-dim)">GPT 기준</span>`;
   } else {
     const rCls = regexScore >= 80 ? 'pass' : regexScore >= 60 ? 'warn' : 'fail';
     const rLabel = regexScore >= 80 ? 'PASS' : regexScore >= 60 ? '주의' : 'FAIL';
-    headerBadgeHtml = `<span class="compliance-badge ${rCls}" style="font-size:13px;padding:4px 12px">${rLabel} ${regexScore}점</span> <span style="font-size:11px;color:var(--text-dim)">정규식 기준</span>`;
+    headerBadgeHtml = `<span class="compliance-badge ${rCls}" style="font-size:18px;padding:4px 12px">${rLabel} ${regexScore}점</span> <span style="font-size:14px;color:var(--text-dim)">정규식 기준</span>`;
   }
 
   evalBox.innerHTML = `<div class="eval-section" id="eval-header-${safeMsgId}" style="background:var(--surface);padding:10px 16px;display:flex;align-items:center;gap:12px">
@@ -1879,8 +1879,8 @@ function addRestoredAssistantMessage(text, meta = {}) {
         const snippet = escapeHtml((s.text_snapshot || s.snippet || '').substring(0, 120));
         const url = s.url || '';
         const badge = s.source_type === 'PUBMED'
-          ? '<span style="color:var(--green);font-size:10px">[PubMed]</span>'
-          : '<span style="color:var(--accent);font-size:10px">[Web]</span>';
+          ? '<span style="color:var(--green);font-size:12px">[PubMed]</span>'
+          : '<span style="color:var(--accent);font-size:12px">[Web]</span>';
         return `<div class="src-item">${badge} <span class="src-title">${url ? `<a href="${url}" target="_blank">${title}</a>` : title}</span><div class="src-snippet">${snippet}</div></div>`;
       }).join('');
     div.appendChild(srcPanel);
@@ -1921,7 +1921,7 @@ function addRestoredAssistantMessage(text, meta = {}) {
           </div>
         ` : ''}
         ${gptEval.recommendation ? `<div class="eval-recommendation">💡 ${escapeHtml(gptEval.recommendation)}</div>` : ''}
-        <div style="margin-top:6px;font-size:11px;color:var(--text-dim)">모델: ${meta.gptModel || 'gpt-4o-mini'}</div>
+        <div style="margin-top:6px;font-size:12px;color:var(--text-dim)">모델: ${meta.gptModel || 'gpt-4o-mini'}</div>
       </div>
     </div>`;
     evalBox.innerHTML += gptHtml;
@@ -1970,27 +1970,27 @@ function addRestoredAssistantMessage(text, meta = {}) {
       const missing = (axData.missing || []).join(', ');
       const warn = pct < 60 ? ' ⚠️' : '';
       cAxesHtml += `<div style="margin-bottom:4px">
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim)">
+        <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text-dim)">
           <span>${ax.label}${warn}</span><span>${score}/${ax.max}</span>
         </div>
-        <div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden">
+        <div style="height:8px;background:var(--bg);border-radius:3px;overflow:hidden">
           <div style="height:100%;width:${pct}%;background:${barColor};border-radius:3px;transition:width .3s"></div>
         </div>
-        ${missing ? `<div style="font-size:10px;color:var(--text-dim);margin-top:1px">부족: ${escapeHtml(missing)}</div>` : ''}
+        ${missing ? `<div style="font-size:13px;color:var(--text-dim);margin-top:1px">부족: ${escapeHtml(missing)}</div>` : ''}
       </div>`;
     }
     const cMissingAll = (consultEval.missingItems || []).slice(0, 5).map(m => escapeHtml(m)).join(', ');
     let consultHtml = `<details class="eval-section consultation-box" style="cursor:pointer">
-      <summary style="font-size:12px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px">
+      <summary style="font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px">
         🩺 문진 품질
-        <span style="font-size:16px;font-weight:800;color:${cGradeColor}">${consultEval.grade || '?'}</span>
-        <span style="font-size:12px;color:var(--text-dim)">${consultEval.totalScore || 0}점</span>
+        <span style="font-size:20px;font-weight:800;color:${cGradeColor}">${consultEval.grade || '?'}</span>
+        <span style="font-size:14px;color:var(--text-dim)">${consultEval.totalScore || 0}점</span>
       </summary>
       <div style="margin-top:8px">
         ${cAxesHtml}
-        ${consultEval.summary ? `<div style="font-size:11px;color:var(--text);margin-top:6px;padding:6px 8px;background:var(--bg);border-radius:4px">${escapeHtml(consultEval.summary)}</div>` : ''}
-        ${cMissingAll ? `<div style="font-size:11px;color:#f59e0b;margin-top:4px">💡 부족: ${cMissingAll}</div>` : ''}
-        ${consultEval.recommendation ? `<div style="font-size:11px;color:var(--accent);margin-top:4px">💊 ${escapeHtml(consultEval.recommendation)}</div>` : ''}
+        ${consultEval.summary ? `<div style="font-size:13px;color:var(--text);margin-top:6px;padding:6px 8px;background:var(--bg);border-radius:4px">${escapeHtml(consultEval.summary)}</div>` : ''}
+        ${cMissingAll ? `<div style="font-size:13px;color:#f59e0b;margin-top:4px">💡 부족: ${cMissingAll}</div>` : ''}
+        ${consultEval.recommendation ? `<div style="font-size:13px;color:var(--accent);margin-top:4px">💊 ${escapeHtml(consultEval.recommendation)}</div>` : ''}
       </div>
     </details>`;
     evalBox.innerHTML += consultHtml;
@@ -2001,7 +2001,7 @@ function addRestoredAssistantMessage(text, meta = {}) {
     consultBtnSection.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
         <span style="font-size:12px;font-weight:600;color:var(--text)">🩺 문진 품질</span>
-        <button class="eval-btn" style="font-size:11px">문진 평가</button>
+        <button class="eval-btn" style="font-size:13px">문진 평가</button>
       </div>
       <div id="consultation-eval-${safeMsgId}" style="display:none"></div>`;
     evalBox.appendChild(consultBtnSection);
