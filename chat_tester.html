@@ -1505,15 +1505,21 @@ function finalizeAssistantMessage(fullText, meta = {}) {
       // 보강 후 평가를 받기 위해 현재 값 초기화
       window._lastGptEval = null;
       window._lastConsultEval = null;
+      window._serverMsgIdReady = false;
 
       var _compRetry = 0;
       const checkAndShowComparison = function() {
         _compRetry++;
-        // GPT + 문진 평가 + 서버 ID 모두 완료될 때까지 대기 (최대 30초)
-        if ((!window._lastGptEval || !window._lastConsultEval || !window._lastAssistantMsgId) && _compRetry < 15) {
+        // GPT + 문진 평가 + 서버 ID 모두 완료될 때까지 대기 (최대 60초)
+        var gptOk = !!window._lastGptEval;
+        var consultOk = !!window._lastConsultEval;
+        var idOk = !!window._serverMsgIdReady;
+        if ((!gptOk || !consultOk || !idOk) && _compRetry < 30) {
+          if (_compRetry % 5 === 0) console.log('[보강비교] 대기중... GPT:' + gptOk + ' 문진:' + consultOk + ' ID:' + idOk + ' retry:' + _compRetry);
           setTimeout(checkAndShowComparison, 2000);
           return;
         }
+        console.log('[보강비교] 완료! GPT:', (window._lastGptEval||{}).score, '문진:', (window._lastConsultEval||{}).totalScore, 'ID:', window._lastAssistantMsgId);
 
         var origGpt = _origGptEval.score || 0;
         var origGrade = _origGptEval.grade || '?';
@@ -1730,9 +1736,11 @@ async function sendMessage() {
           })
         });
         const saveData = await saveRes.json();
-        // 서버에서 반환된 실제 msgId를 저장 (커멘트용)
+        // 서버에서 반환된 실제 msgId를 저장 (커멘트/보강용)
         if (saveData.assistantMsgId) {
           window._lastAssistantMsgId = saveData.assistantMsgId;
+          window._serverMsgIdReady = true;
+          console.log('[서버저장] assistantMsgId:', saveData.assistantMsgId);
         }
       }
     } catch(e) { console.warn('대화 저장 실패', e); }
