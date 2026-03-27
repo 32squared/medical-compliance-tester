@@ -309,6 +309,21 @@ CREATE TABLE IF NOT EXISTS consultation_checklists (
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS prompt_enhancements (
+    id TEXT PRIMARY KEY,
+    conversation_id TEXT,
+    original_msg_id TEXT,
+    enhanced_msg_id TEXT,
+    original_query TEXT NOT NULL,
+    enhanced_prompt TEXT NOT NULL,
+    instructions_json TEXT,
+    original_eval_json TEXT,
+    enhanced_eval_json TEXT,
+    improvement_json TEXT,
+    created_at TEXT NOT NULL,
+    created_by TEXT DEFAULT ''
+);
 """
 
 # ── 스키마 (PostgreSQL) ──
@@ -427,6 +442,21 @@ CREATE TABLE IF NOT EXISTS consultation_checklists (
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS prompt_enhancements (
+    id TEXT PRIMARY KEY,
+    conversation_id TEXT,
+    original_msg_id TEXT,
+    enhanced_msg_id TEXT,
+    original_query TEXT NOT NULL,
+    enhanced_prompt TEXT NOT NULL,
+    instructions_json JSONB,
+    original_eval_json JSONB,
+    enhanced_eval_json JSONB,
+    improvement_json JSONB,
+    created_at TEXT NOT NULL,
+    created_by TEXT DEFAULT ''
+);
 """
 
 # Keep backward compat alias
@@ -525,6 +555,24 @@ def init_db(db_path=None):
                     cur.execute(sql)
                 except Exception:
                     pass
+            # prompt_enhancements 테이블 마이그레이션
+            try:
+                cur.execute("""CREATE TABLE IF NOT EXISTS prompt_enhancements (
+                    id TEXT PRIMARY KEY,
+                    conversation_id TEXT,
+                    original_msg_id TEXT,
+                    enhanced_msg_id TEXT,
+                    original_query TEXT NOT NULL,
+                    enhanced_prompt TEXT NOT NULL,
+                    instructions_json JSONB,
+                    original_eval_json JSONB,
+                    enhanced_eval_json JSONB,
+                    improvement_json JSONB,
+                    created_at TEXT NOT NULL,
+                    created_by TEXT DEFAULT ''
+                )""")
+            except Exception:
+                pass
             # 고아 running 배치 정리
             try:
                 cur.execute("UPDATE test_runs SET status = 'cancelled' WHERE status = 'running'")
@@ -556,6 +604,24 @@ def init_db(db_path=None):
                 conn.execute(sql)
             except sqlite3.OperationalError:
                 pass
+        # prompt_enhancements 테이블 마이그레이션
+        try:
+            conn.execute("""CREATE TABLE IF NOT EXISTS prompt_enhancements (
+                id TEXT PRIMARY KEY,
+                conversation_id TEXT,
+                original_msg_id TEXT,
+                enhanced_msg_id TEXT,
+                original_query TEXT NOT NULL,
+                enhanced_prompt TEXT NOT NULL,
+                instructions_json TEXT,
+                original_eval_json TEXT,
+                enhanced_eval_json TEXT,
+                improvement_json TEXT,
+                created_at TEXT NOT NULL,
+                created_by TEXT DEFAULT ''
+            )""")
+        except sqlite3.OperationalError:
+            pass
         # 고아 running 배치 정리
         try:
             conn.execute("UPDATE test_runs SET status = 'cancelled' WHERE status = 'running'")
@@ -1478,6 +1544,122 @@ def set_setting(key, value):
                               ['key', 'value', 'updated_at'],
                               (key, val_str, now))
         cur.execute(sql, params)
+
+
+# ════════════════════════════════════════
+#  프롬프트 보강 (Prompt Enhancements)
+# ════════════════════════════════════════
+
+def save_prompt_enhancement(data):
+    """Save or update a prompt enhancement record"""
+    now = _now()
+    enhancement_id = data.get('id', f"enh-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}-{secrets.token_hex(3)}")
+    with get_conn() as (conn, cur):
+        sql, params = _upsert(
+            'prompt_enhancements', 'id', enhancement_id,
+            ['id', 'conversation_id', 'original_msg_id', 'enhanced_msg_id',
+             'original_query', 'enhanced_prompt', 'instructions_json',
+             'original_eval_json', 'enhanced_eval_json', 'improvement_json',
+             'created_at', 'created_by'],
+            (enhancement_id,
+             data.get('conversationId', ''),
+             data.get('originalMsgId', ''),
+             data.get('enhancedMsgId', ''),
+             data.get('originalQuery', ''),
+             data.get('enhancedPrompt', ''),
+             json.dumps(data.get('instructions', []), ensure_ascii=False),
+             json.dumps(data.get('originalEval', {}), ensure_ascii=False),
+             json.dumps(data.get('enhancedEval', {}), ensure_ascii=False),
+             json.dumps(data.get('improvement', {}), ensure_ascii=False),
+             now,
+             data.get('createdBy', ''))
+        )
+        cur.execute(sql, params)
+    return enhancement_id
+
+
+def get_prompt_enhancements(conversation_id=None, limit=50):
+    """List prompt enhancements, optionally filtered by conversation"""
+    ph = _p()
+    with get_conn() as (conn, cur):
+        if conversation_id:
+            cur.execute(
+                f"SELECT * FROM prompt_enhancements WHERE conversation_id = {ph} ORDER BY created_at DESC LIMIT {ph}",
+                (conversation_id, limit))
+        else:
+            cur.execute(
+                f"SELECT * FROM prompt_enhancements ORDER BY created_at DESC LIMIT {ph}",
+                (limit,))
+        rows = cur.fetchall()
+        results = []
+        for row in rows:
+            d = _row_to_dict(row)
+            d['instructions'] = _pg_json_loads_or(d.pop('instructions_json', None), [])
+            d['originalEval'] = _pg_json_loads_or(d.pop('original_eval_json', None), {})
+            d['enhancedEval'] = _pg_json_loads_or(d.pop('enhanced_eval_json', None), {})
+            d['improvement'] = _pg_json_loads_or(d.pop('improvement_json', None), {})
+            results.append(d)
+        return results
+
+
+def get_prompt_enhancement(enhancement_id):
+    """Get single enhancement by ID"""
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(f"SELECT * FROM prompt_enhancements WHERE id = {ph}", (enhancement_id,))
+        row = cur.fetchone()
+        if not row:
+            return None
+        d = _row_to_dict(row)
+        d['instructions'] = _pg_json_loads_or(d.pop('instructions_json', None), [])
+        d['originalEval'] = _pg_json_loads_or(d.pop('original_eval_json', None), {})
+        d['enhancedEval'] = _pg_json_loads_or(d.pop('enhanced_eval_json', None), {})
+        d['improvement'] = _pg_json_loads_or(d.pop('improvement_json', None), {})
+        return d
+
+
+def get_enhancement_report():
+    """Aggregate report: average improvement scores, most common instructions"""
+    with get_conn() as (conn, cur):
+        cur.execute("SELECT improvement_json, instructions_json FROM prompt_enhancements ORDER BY created_at DESC")
+        rows = cur.fetchall()
+
+    total = len(rows)
+    if total == 0:
+        return {'total': 0, 'avgGptDelta': 0, 'avgConsultDelta': 0, 'topInstructions': []}
+
+    gpt_deltas = []
+    consult_deltas = []
+    instruction_counts = {}
+
+    for row in rows:
+        d = _row_to_dict(row)
+        imp = _pg_json_loads_or(d.get('improvement_json'), {})
+        if isinstance(imp, dict):
+            gd = imp.get('gptDelta')
+            if gd is not None:
+                gpt_deltas.append(gd)
+            cd = imp.get('consultDelta')
+            if cd is not None:
+                consult_deltas.append(cd)
+
+        insts = _pg_json_loads_or(d.get('instructions_json'), [])
+        if isinstance(insts, list):
+            for inst in insts:
+                instruction_counts[inst] = instruction_counts.get(inst, 0) + 1
+
+    avg_gpt = sum(gpt_deltas) / len(gpt_deltas) if gpt_deltas else 0
+    avg_consult = sum(consult_deltas) / len(consult_deltas) if consult_deltas else 0
+
+    top_instructions = sorted(instruction_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+    top_instructions = [{'instruction': inst, 'count': cnt} for inst, cnt in top_instructions]
+
+    return {
+        'total': total,
+        'avgGptDelta': round(avg_gpt, 2),
+        'avgConsultDelta': round(avg_consult, 2),
+        'topInstructions': top_instructions,
+    }
 
 
 # ════════════════════════════════════════
