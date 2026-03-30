@@ -291,6 +291,19 @@ CREATE TABLE IF NOT EXISTS settings (
     updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS sessions (
+    token TEXT PRIMARY KEY,
+    session_type TEXT NOT NULL,
+    user_id TEXT DEFAULT '',
+    user_name TEXT DEFAULT '',
+    user_uid TEXT DEFAULT '',
+    data_json TEXT,
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_type ON sessions(session_type);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
 CREATE INDEX IF NOT EXISTS idx_conversations_user ON conversations(user_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_env ON conversations(env);
 CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id);
@@ -425,6 +438,19 @@ CREATE TABLE IF NOT EXISTS settings (
     updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS sessions (
+    token TEXT PRIMARY KEY,
+    session_type TEXT NOT NULL,
+    user_id TEXT DEFAULT '',
+    user_name TEXT DEFAULT '',
+    user_uid TEXT DEFAULT '',
+    data_json TEXT,
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_type ON sessions(session_type);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
 CREATE INDEX IF NOT EXISTS idx_conversations_user ON conversations(user_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_env ON conversations(env);
 CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id);
@@ -1527,6 +1553,77 @@ def save_settings(data):
                                   ['key', 'value', 'updated_at'],
                                   (k, val_str, now))
             cur.execute(sql, params)
+
+
+# ════════════════════════════════════════
+#  세션 관리 (DB 기반 — 멀티 인스턴스 공유)
+# ════════════════════════════════════════
+
+def save_session(token, session_type, user_id='', user_name='', user_uid='', data=None, max_age=86400):
+    """세션 저장 (생성 또는 갱신)"""
+    now = _now()
+    from datetime import datetime, timezone, timedelta
+    expires = (datetime.now(timezone.utc) + timedelta(seconds=max_age)).isoformat()
+    data_json = json.dumps(data, ensure_ascii=False) if data else None
+    sql, params = _upsert('sessions',
+                          ['token', 'session_type', 'user_id', 'user_name', 'user_uid', 'data_json', 'created_at', 'expires_at'],
+                          (token, session_type, user_id, user_name, user_uid, data_json, now, expires))
+    with get_conn() as (conn, cur):
+        cur.execute(sql, params)
+
+
+def get_session(token):
+    """세션 조회 (만료 확인 포함)"""
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(f"SELECT * FROM sessions WHERE token = {ph}", (token,))
+        row = cur.fetchone()
+        if not row:
+            return None
+        d = _row_to_dict(row)
+        # 만료 확인
+        from datetime import datetime, timezone
+        try:
+            expires = datetime.fromisoformat(d['expires_at'].replace('Z', '+00:00'))
+            if datetime.now(timezone.utc) > expires:
+                delete_session(token)
+                return None
+        except:
+            pass
+        # data_json 파싱
+        if d.get('data_json'):
+            try:
+                d['data'] = json.loads(d['data_json']) if isinstance(d['data_json'], str) else d['data_json']
+            except:
+                d['data'] = {}
+        else:
+            d['data'] = {}
+        return d
+
+
+def delete_session(token):
+    """세션 삭제"""
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(f"DELETE FROM sessions WHERE token = {ph}", (token,))
+
+
+def delete_sessions_by_user(user_id, session_type=None):
+    """특정 사용자의 세션 삭제"""
+    ph = _p()
+    with get_conn() as (conn, cur):
+        if session_type:
+            cur.execute(f"DELETE FROM sessions WHERE user_id = {ph} AND session_type = {ph}", (user_id, session_type))
+        else:
+            cur.execute(f"DELETE FROM sessions WHERE user_id = {ph}", (user_id,))
+
+
+def cleanup_expired_sessions():
+    """만료된 세션 정리"""
+    now = _now()
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(f"DELETE FROM sessions WHERE expires_at < {ph}", (now,))
 
 
 def get_setting(key, default=None):

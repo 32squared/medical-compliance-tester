@@ -570,11 +570,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
 
     protocol_version = 'HTTP/1.1'
 
-    # ── 인증: Admin + 테스터 세션 (인메모리, 스레드 안전) ──
-    _admin_sessions = {}    # token → {"created_at": datetime}
-    _tester_sessions = {}   # token → {"created_at": datetime, "id": str, "alias": str, "uid": str}
-    import threading as _threading
-    _session_lock = _threading.Lock()
+    # ── 인증: Admin + 테스터 세션 (DB 기반 — 멀티 인스턴스 공유) ──
     SESSION_MAX_AGE = 86400  # 24시간
 
     # ── 인증 헬퍼 ──
@@ -600,19 +596,16 @@ class ProxyHandler(BaseHTTPRequestHandler):
         return cookies
 
     def _is_admin(self) -> bool:
-        """현재 요청이 Admin 인증된 세션인지 확인"""
+        """현재 요청이 Admin 인증된 세션인지 확인 (DB 조회)"""
         cookies = self._parse_cookies()
         token = cookies.get('admin_token', '')
         if not token:
             return False
-        with ProxyHandler._session_lock:
-            if token not in ProxyHandler._admin_sessions:
-                return False
-            session = ProxyHandler._admin_sessions[token]
-            elapsed = (datetime.now(timezone.utc) - session['created_at']).total_seconds()
-            if elapsed > self.SESSION_MAX_AGE:
-                del ProxyHandler._admin_sessions[token]
-                return False
+        session = db.get_session(token)
+        if not session:
+            return False
+        if session.get('session_type') != 'admin':
+            return False
         return True
 
     def _require_admin(self) -> bool:
@@ -623,20 +616,23 @@ class ProxyHandler(BaseHTTPRequestHandler):
         return False
 
     def _get_tester_info(self) -> dict:
-        """세션 토큰에서 테스터 정보 추출 → {id, alias, uid} or None"""
+        """세션 토큰에서 테스터 정보 추출 → {id, alias, uid} or None (DB 조회)"""
         cookies = self._parse_cookies()
         token = cookies.get('tester_token', '')
         if not token:
             return None
-        with ProxyHandler._session_lock:
-            if token not in ProxyHandler._tester_sessions:
-                return None
-            session = ProxyHandler._tester_sessions[token]
-            elapsed = (datetime.now(timezone.utc) - session['created_at']).total_seconds()
-            if elapsed > self.SESSION_MAX_AGE:
-                del ProxyHandler._tester_sessions[token]
-                return None
-        return {'id': session['id'], 'alias': session['alias'], 'name': session.get('name',''), 'org': session.get('org',''), 'uid': session.get('uid','')}
+        session = db.get_session(token)
+        if not session:
+            return None
+        if session.get('session_type') != 'tester':
+            return None
+        return {
+            'id': session.get('user_id', ''),
+            'alias': session.get('user_name', ''),
+            'name': session.get('user_name', ''),
+            'org': session.get('data', {}).get('org', ''),
+            'uid': session.get('user_uid', ''),
+        }
 
     def _get_alias(self) -> str:
         """현재 사용자 ID 반환 (Admin이면 '관리자', 테스터면 ID, 없으면 '익명')"""
@@ -2417,10 +2413,7 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
 
         # 세션 토큰 발급
         token = secrets.token_hex(32)
-        with ProxyHandler._session_lock:
-            ProxyHandler._admin_sessions[token] = {
-                'created_at': datetime.now(timezone.utc)
-            }
+        db.save_session(token, 'admin', user_id='admin', user_name='관리자', max_age=self.SESSION_MAX_AGE)
         ProxyHandler._add_log("[인증] Admin 로그인 성공")
 
         # 쿠키 설정
@@ -2438,8 +2431,7 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
         cookies = self._parse_cookies()
         token = cookies.get('admin_token', '')
         if token:
-            with ProxyHandler._session_lock:
-                ProxyHandler._admin_sessions.pop(token, None)
+            db.delete_session(token)
         ProxyHandler._add_log("[인증] Admin 로그아웃")
 
         body_data = json.dumps({"success": True}).encode('utf-8')
@@ -2552,15 +2544,12 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
 
         # 세션 토큰 발급
         token = secrets.token_hex(32)
-        with ProxyHandler._session_lock:
-            ProxyHandler._tester_sessions[token] = {
-                'created_at': datetime.now(timezone.utc),
-                'id': tester_id,
-                'alias': user.get('name', tester_id),
-                'name': user.get('name', ''),
-                'org': user.get('org', ''),
-                'uid': user.get('uid', ''),
-            }
+        db.save_session(token, 'tester',
+                        user_id=tester_id,
+                        user_name=user.get('name', tester_id),
+                        user_uid=user.get('uid', ''),
+                        data={'org': user.get('org', '')},
+                        max_age=self.SESSION_MAX_AGE)
 
         body_data = json.dumps({
             "success": True,
@@ -2585,8 +2574,7 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
         cookies = self._parse_cookies()
         token = cookies.get('tester_token', '')
         if token:
-            with ProxyHandler._session_lock:
-                ProxyHandler._tester_sessions.pop(token, None)
+            db.delete_session(token)
 
         body_data = json.dumps({"success": True}).encode('utf-8')
         self.send_response(200)
@@ -2661,10 +2649,7 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
         db.delete_user(tester_id)
 
         # 해당 테스터의 세션도 삭제
-        with ProxyHandler._session_lock:
-            to_remove = [t for t, s in ProxyHandler._tester_sessions.items() if s.get('id') == tester_id]
-            for t in to_remove:
-                del ProxyHandler._tester_sessions[t]
+        db.delete_sessions_by_user(tester_id, 'tester')
 
         self._send_json(200, {"success": True, "message": f"테스터 '{tester_id}' 삭제 완료"})
 
