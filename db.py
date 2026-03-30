@@ -233,6 +233,7 @@ CREATE TABLE IF NOT EXISTS messages (
     gpt_eval_json TEXT,
     gpt_model TEXT,
     consultation_eval_json TEXT,
+    token_usage_json TEXT,
     FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
 );
 
@@ -366,6 +367,7 @@ CREATE TABLE IF NOT EXISTS messages (
     gpt_eval_json JSONB,
     gpt_model TEXT,
     consultation_eval_json JSONB,
+    token_usage_json JSONB,
     FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
 );
 
@@ -549,6 +551,7 @@ def init_db(db_path=None):
                 "ALTER TABLE comments ADD COLUMN IF NOT EXISTS user_query TEXT DEFAULT ''",
                 "ALTER TABLE comments ADD COLUMN IF NOT EXISTS full_response TEXT DEFAULT ''",
                 "ALTER TABLE messages ADD COLUMN IF NOT EXISTS consultation_eval_json JSONB",
+                "ALTER TABLE messages ADD COLUMN IF NOT EXISTS token_usage_json JSONB",
             ]
             for sql in migrations_pg:
                 try:
@@ -598,6 +601,7 @@ def init_db(db_path=None):
             "ALTER TABLE comments ADD COLUMN user_query TEXT DEFAULT ''",
             "ALTER TABLE comments ADD COLUMN full_response TEXT DEFAULT ''",
             "ALTER TABLE messages ADD COLUMN consultation_eval_json TEXT",
+            "ALTER TABLE messages ADD COLUMN token_usage_json TEXT",
         ]
         for sql in migrations:
             try:
@@ -796,6 +800,7 @@ def get_conversation(conv_id):
                 'follow_ups_json': 'followUps',
                 'gpt_eval_json': 'gptEval',
                 'consultation_eval_json': 'consultationEval',
+                'token_usage_json': 'tokenUsage',
             }
             for jf, key in json_field_map.items():
                 raw = msg.pop(jf, None)
@@ -848,15 +853,16 @@ def add_message(conv_id, msg_data):
     with get_conn() as (conn, cur):
         cur.execute(
             f"""INSERT INTO messages (id, conversation_id, role, content, timestamp, response_time,
-               compliance_json, search_results_json, follow_ups_json, gpt_eval_json, gpt_model)
-               VALUES ({_ph(11)})""",
+               compliance_json, search_results_json, follow_ups_json, gpt_eval_json, gpt_model, token_usage_json)
+               VALUES ({_ph(12)})""",
             (msg_id, conv_id, msg_data.get('role', 'user'), msg_data.get('content', ''),
              msg_data.get('timestamp', now), msg_data.get('responseTime'),
              json.dumps(msg_data.get('compliance'), ensure_ascii=False) if msg_data.get('compliance') else None,
              json.dumps(msg_data.get('searchResults'), ensure_ascii=False) if msg_data.get('searchResults') else None,
              json.dumps(msg_data.get('followUps'), ensure_ascii=False) if msg_data.get('followUps') else None,
              json.dumps(msg_data.get('gptEval'), ensure_ascii=False) if msg_data.get('gptEval') else None,
-             msg_data.get('gptModel'))
+             msg_data.get('gptModel'),
+             json.dumps(msg_data.get('tokenUsage'), ensure_ascii=False) if msg_data.get('tokenUsage') else None)
         )
         cur.execute(f"UPDATE conversations SET updated_at = {ph} WHERE id = {ph}", (now, conv_id))
     return msg_id
@@ -866,7 +872,8 @@ def update_message(conv_id, msg_id, updates):
     """메시지 필드 업데이트 (gptEval, compliance 등)"""
     allowed_json = {'compliance': 'compliance_json', 'searchResults': 'search_results_json',
                     'followUps': 'follow_ups_json', 'gptEval': 'gpt_eval_json',
-                    'consultationEval': 'consultation_eval_json'}
+                    'consultationEval': 'consultation_eval_json',
+                    'tokenUsage': 'token_usage_json'}
     allowed_plain = {'gptModel': 'gpt_model', 'responseTime': 'response_time'}
     ph = _p()
     sets = []

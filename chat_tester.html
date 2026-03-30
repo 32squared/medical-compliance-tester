@@ -2017,6 +2017,7 @@ async function sendMessage() {
             searchResults: searchResults?.slice(0, 5),
             followUps: followUps,
             conversationStrid: conversationStrid,
+            tokenUsage: window._lastTokenUsage || null,
           })
         });
         const saveData = await saveRes.json();
@@ -2208,7 +2209,7 @@ function addRestoredAssistantMessage(text, meta = {}) {
     consultationEval: meta.consultationEval || null,
     searchResults: meta.searchResults,
     followUps: meta.followUps,
-    tokenUsage: null,
+    tokenUsage: meta.tokenUsage || null,
     elapsed: meta.responseTime,
     comments: comments,
     enhancement: meta.enhancement || null,
