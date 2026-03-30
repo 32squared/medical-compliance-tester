@@ -1762,9 +1762,8 @@ function renderAssistantEvaluation(msgDiv, evalData) {
       _compRetry++;
       var gptOk = !!window._lastGptEval;
       var consultOk = !!window._lastConsultEval;
-      var idOk = !!window._serverMsgIdReady;
-      if ((!gptOk || !consultOk || !idOk) && _compRetry < 30) {
-        if (_compRetry % 5 === 0) console.log('[보강비교] 대기중... GPT:' + gptOk + ' 문진:' + consultOk + ' ID:' + idOk + ' retry:' + _compRetry);
+      if ((!gptOk || !consultOk) && _compRetry < 30) {
+        if (_compRetry % 5 === 0) console.log('[보강비교] 대기중... GPT:' + gptOk + ' 문진:' + consultOk + ' retry:' + _compRetry);
         setTimeout(checkAndShowComparison, 2000);
         return;
       }
