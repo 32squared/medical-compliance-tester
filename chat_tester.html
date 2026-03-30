@@ -1994,7 +1994,7 @@ async function sendMessage() {
     finalizeAssistantMessage(finalText, { elapsed, compliance, searchResults, followUps, userPrompt: text, tokenUsage: window._lastTokenUsage || null });
     chatHistory.push({ role:'assistant', content: finalText, compliance, searchResults });
 
-    // 로컬 대화 자동 저장 (5초 딜레이 — SSE 연결 종료 대기)
+    // 로컬 대화 자동 저장 (10초 딜레이 — SSE 연결 완전 종료 후)
     const _saveText = text, _saveFinalText = finalText, _saveElapsed = elapsed;
     const _saveCompliance = compliance, _saveSearchResults = searchResults;
     const _saveFollowUps = followUps, _saveTokenUsage = window._lastTokenUsage || null;
@@ -2042,7 +2042,7 @@ async function sendMessage() {
         // 사이드바 갱신
         if (typeof loadConversations === 'function') setTimeout(loadConversations, 1000);
       } catch(e) { console.warn('대화 저장 실패', e); }
-    }, 5000);
+    }, 10000);
 
     // 사이드바 갱신
     setTimeout(() => loadConversations(), 500);
