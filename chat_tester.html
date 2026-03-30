@@ -2012,7 +2012,7 @@ async function sendMessage() {
       if (typeof loadConversations === 'function') loadConversations();
     }
 
-    // ── 메시지 저장 (10초 딜레이 — SSE 연결 완전 종료 후) ──
+    // ── 메시지 저장 (15초 딜레이 — SSE 연결 완전 종료 + Cold Start 대기) ──
     const _saveText = text, _saveFinalText = finalText, _saveElapsed = elapsed;
     const _saveCompliance = compliance, _saveSearchResults = searchResults;
     const _saveFollowUps = followUps, _saveTokenUsage = window._lastTokenUsage || null;
@@ -2034,7 +2034,7 @@ async function sendMessage() {
               });
               if (saveRes.status === 503 && _retry < 2) {
                 console.warn('[서버저장] 503 재시도 ' + (_retry + 1));
-                await new Promise(r => setTimeout(r, 3000 * (_retry + 1)));
+                await new Promise(r => setTimeout(r, 5000 * (_retry + 1)));
                 continue;
               }
               const saveData = await saveRes.json();
@@ -2045,14 +2045,14 @@ async function sendMessage() {
               }
               break;
             } catch(retryErr) {
-              if (_retry < 2) await new Promise(r => setTimeout(r, 3000 * (_retry + 1)));
+              if (_retry < 2) await new Promise(r => setTimeout(r, 5000 * (_retry + 1)));
             }
           }
         }
         // 사이드바 갱신 (메시지 수 반영)
         if (typeof loadConversations === 'function') setTimeout(loadConversations, 1000);
       } catch(e) { console.warn('메시지 저장 실패', e); }
-    }, 10000);
+    }, 15000);
 
     // 사이드바 갱신
     setTimeout(() => loadConversations(), 500);
