@@ -2007,26 +2007,42 @@ async function sendMessage() {
         if (createData.success) currentConvId = createData.id;
       }
       if (currentConvId) {
-        const saveRes = await fetch(`/api/conversations/${currentConvId}/message`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            query: text,
-            response: finalText,
-            responseTime: elapsed,
-            compliance: compliance,
-            searchResults: searchResults?.slice(0, 5),
-            followUps: followUps,
-            conversationStrid: conversationStrid,
-            tokenUsage: window._lastTokenUsage || null,
-          })
+        const saveBody = JSON.stringify({
+          query: text,
+          response: finalText,
+          responseTime: elapsed,
+          compliance: compliance,
+          searchResults: searchResults?.slice(0, 5),
+          followUps: followUps,
+          conversationStrid: conversationStrid,
+          tokenUsage: window._lastTokenUsage || null,
         });
-        const saveData = await saveRes.json();
-        // 서버에서 반환된 실제 msgId를 저장 (커멘트/보강용)
-        if (saveData.assistantMsgId) {
-          window._lastAssistantMsgId = saveData.assistantMsgId;
-          window._serverMsgIdReady = true;
-          console.log('[서버저장] assistantMsgId:', saveData.assistantMsgId);
+        // 재시도 로직 (503 대응, 최대 3회)
+        for (let _retry = 0; _retry < 3; _retry++) {
+          try {
+            const saveRes = await fetch(`/api/conversations/${currentConvId}/message`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: saveBody
+            });
+            if (saveRes.status === 503 && _retry < 2) {
+              console.warn('[서버저장] 503 재시도 ' + (_retry + 1));
+              await new Promise(r => setTimeout(r, 2000 * (_retry + 1)));
+              continue;
+            }
+            const saveData = await saveRes.json();
+            if (saveData.assistantMsgId) {
+              window._lastAssistantMsgId = saveData.assistantMsgId;
+              window._serverMsgIdReady = true;
+              console.log('[서버저장] assistantMsgId:', saveData.assistantMsgId);
+            }
+            break;
+          } catch(retryErr) {
+            if (_retry < 2) {
+              console.warn('[서버저장] 재시도 ' + (_retry + 1), retryErr.message);
+              await new Promise(r => setTimeout(r, 2000 * (_retry + 1)));
+            }
+          }
         }
       }
     } catch(e) { console.warn('대화 저장 실패', e); }
