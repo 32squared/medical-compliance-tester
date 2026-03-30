@@ -1742,7 +1742,9 @@ function renderAssistantEvaluation(msgDiv, evalData) {
   evalBox.appendChild(enhanceWrapper);
 
   // 4g. Live enhancement comparison polling (isLive only)
+  console.log('[보강체크] isLive:', isLive, '_isEnhanced:', !!window._isEnhancedMessage, '_enhCtx:', !!window._enhancementContext);
   if (isLive && window._isEnhancedMessage && window._enhancementContext) {
+    console.log('[보강체크] 비교 폴링 시작!');
     window._isEnhancedMessage = false;
     var liveCtx = window._enhancementContext;
 
