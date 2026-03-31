@@ -62,7 +62,9 @@ gcloud run deploy $ServiceName `
     --add-cloudsql-instances $SqlConnection `
     --vpc-connector=medical-connector `
     --vpc-egress=all-traffic `
-    --cpu-boost
+    --cpu-boost `
+    --clear-volumes `
+    --clear-volume-mounts
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Deploy failed!" -ForegroundColor Red
     exit 1
