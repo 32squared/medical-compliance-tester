@@ -1565,7 +1565,7 @@ def save_session(token, session_type, user_id='', user_name='', user_uid='', dat
     from datetime import datetime, timezone, timedelta
     expires = (datetime.now(timezone.utc) + timedelta(seconds=max_age)).isoformat()
     data_json = json.dumps(data, ensure_ascii=False) if data else None
-    sql, params = _upsert('sessions',
+    sql, params = _upsert('sessions', 'token', token,
                           ['token', 'session_type', 'user_id', 'user_name', 'user_uid', 'data_json', 'created_at', 'expires_at'],
                           (token, session_type, user_id, user_name, user_uid, data_json, now, expires))
     with get_conn() as (conn, cur):
