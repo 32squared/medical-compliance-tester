@@ -63,6 +63,7 @@ gcloud run deploy $ServiceName `
     --vpc-connector=medical-connector `
     --vpc-egress=all-traffic `
     --cpu-boost `
+    --no-cpu-throttling `
     --clear-volumes `
     --clear-volume-mounts
 if ($LASTEXITCODE -ne 0) {
