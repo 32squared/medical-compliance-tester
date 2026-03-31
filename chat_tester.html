@@ -1169,24 +1169,35 @@ async function evaluateWithLLM(prompt, responseText, msgId) {
       header.innerHTML = `<span class="compliance-badge ${gCls}" style="font-size:18px;padding:4px 12px">${ev.grade || '?'} ${ev.score}점 ${gLabel}</span> <span style="font-size:14px;color:var(--text-dim)">GPT 기준</span>`;
     }
 
-    // GPT 평가 결과를 DB에 저장 (msgId를 직접 사용 — 복원된 대화에서도 동작)
-    const saveMsgId = msgId || window._lastAssistantMsgId;
-    console.log('[GPT저장] convId=', currentConvId, 'msgId=', msgId, 'saveMsgId=', saveMsgId);
-    if (currentConvId && saveMsgId) {
+    // GPT 평가 결과를 DB에 저장 (메시지 저장 완료 대기 후 재시도)
+    const _gptEv = ev, _gptModel = data.model, _gptMsgId = msgId;
+    const saveGptEval = async function(retry) {
+      const saveMsgId = window._lastAssistantMsgId || _gptMsgId;
+      const convId = currentConvId;
+      if (!convId) {
+        if (retry < 10) { setTimeout(function() { saveGptEval(retry + 1); }, 3000); return; }
+        console.warn('[GPT저장] convId 없음 — 포기');
+        return;
+      }
       try {
-        const saveRes = await fetch(`/api/conversations/${currentConvId}/message`, {
+        const saveRes = await fetch('/api/conversations/' + convId + '/message', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ updateGptEval: true, msgId: saveMsgId, gptEval: ev, gptModel: data.model })
+          body: JSON.stringify({ updateGptEval: true, msgId: saveMsgId, gptEval: _gptEv, gptModel: _gptModel })
         });
         const saveData = await saveRes.json();
-        console.log('[GPT저장] 결과:', saveData);
-        if (!saveData.success) showToast('GPT 평가 저장 실패', 'error');
-      } catch(e2) { console.warn('GPT 평가 저장 실패', e2); showToast('GPT 평가 저장 실패: ' + e2.message, 'error'); }
-    } else {
-      console.warn('[GPT저장] 저장 불가 — currentConvId:', currentConvId, 'saveMsgId:', saveMsgId);
-      showToast('GPT 평가 저장 불가: 대화 ID 또는 메시지 ID 없음', 'error');
-    }
+        if (saveData.success) {
+          console.log('[GPT저장] 성공 (retry=' + retry + ')');
+        } else if (retry < 5) {
+          console.log('[GPT저장] 실패, 재시도 ' + (retry + 1));
+          setTimeout(function() { saveGptEval(retry + 1); }, 5000);
+        }
+      } catch(e2) {
+        if (retry < 5) setTimeout(function() { saveGptEval(retry + 1); }, 5000);
+      }
+    };
+    // 20초 후 시도 (메시지 저장 15초 + 여유 5초)
+    setTimeout(function() { saveGptEval(0); }, 20000);
   } catch(e) {
     evalContainer.innerHTML = `<span style="color:var(--red);font-size:12px">&#10007; ${escapeHtml(e.message)}</span>`;
   }
@@ -1258,17 +1269,32 @@ async function evaluateConsultation(prompt, responseText, msgId) {
       ${ev.recommendation ? `<div style="font-size:13px;color:var(--accent);margin-top:4px">💊 ${escapeHtml(ev.recommendation)}</div>` : ''}
     `;
 
-    // DB에 저장
-    const saveMsgId = msgId || window._lastAssistantMsgId;
-    if (currentConvId && saveMsgId) {
+    // DB에 저장 (메시지 저장 완료 대기 후)
+    const _consultEv = ev, _consultMsgId = msgId;
+    const saveConsultEval = async function(retry) {
+      const saveMsgId = window._lastAssistantMsgId || _consultMsgId;
+      const convId = currentConvId;
+      if (!convId) {
+        if (retry < 10) { setTimeout(function() { saveConsultEval(retry + 1); }, 3000); return; }
+        return;
+      }
       try {
-        await fetch(`/api/conversations/${currentConvId}/message`, {
+        const res = await fetch('/api/conversations/' + convId + '/message', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ updateConsultationEval: true, msgId: saveMsgId, consultationEval: ev })
+          body: JSON.stringify({ updateConsultationEval: true, msgId: saveMsgId, consultationEval: _consultEv })
         });
-      } catch(e2) { console.warn('문진 평가 저장 실패', e2); }
-    }
+        const d = await res.json();
+        if (d.success) {
+          console.log('[문진저장] 성공 (retry=' + retry + ')');
+        } else if (retry < 5) {
+          setTimeout(function() { saveConsultEval(retry + 1); }, 5000);
+        }
+      } catch(e2) {
+        if (retry < 5) setTimeout(function() { saveConsultEval(retry + 1); }, 5000);
+      }
+    };
+    setTimeout(function() { saveConsultEval(0); }, 22000);
   } catch(e) {
     evalContainer.innerHTML = `<span style="color:var(--red);font-size:13px">문진 평가 실패: ${escapeHtml(e.message)}</span>`;
   }
