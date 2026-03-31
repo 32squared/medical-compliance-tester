@@ -740,7 +740,7 @@ function getProxyUrl() {
 // ──────────────────────────────────────
 // SSE Streaming API Call
 // ──────────────────────────────────────
-async function callSSE(query, { onGeneration, onProgress, onInfo, onDone, onError }) {
+async function callSSE(query, { onGeneration, onProgress, onInfo, onDone, onError, conversationId }) {
   const cfg = getConfig();
   const targetUrl = `${cfg.url}/api/service/conversations/${cfg.graphType}`;
   const body = buildBody(query);
@@ -753,6 +753,7 @@ async function callSSE(query, { onGeneration, onProgress, onInfo, onDone, onErro
   const fetchUrl = proxyBase ? proxyBase : targetUrl;
   const fetchHeaders = { ...cfg.headers };
   if (proxyBase) fetchHeaders['X-Target-URL'] = targetUrl;
+  if (conversationId) fetchHeaders['X-Conversation-Id'] = conversationId;
 
   const resp = await fetch(fetchUrl, {
     method: 'POST',
@@ -1169,35 +1170,8 @@ async function evaluateWithLLM(prompt, responseText, msgId) {
       header.innerHTML = `<span class="compliance-badge ${gCls}" style="font-size:18px;padding:4px 12px">${ev.grade || '?'} ${ev.score}점 ${gLabel}</span> <span style="font-size:14px;color:var(--text-dim)">GPT 기준</span>`;
     }
 
-    // GPT 평가 결과를 DB에 저장 (메시지 저장 완료 대기 후 재시도)
-    const _gptEv = ev, _gptModel = data.model, _gptMsgId = msgId;
-    const saveGptEval = async function(retry) {
-      const saveMsgId = window._lastAssistantMsgId || _gptMsgId;
-      const convId = currentConvId;
-      if (!convId) {
-        if (retry < 10) { setTimeout(function() { saveGptEval(retry + 1); }, 3000); return; }
-        console.warn('[GPT저장] convId 없음 — 포기');
-        return;
-      }
-      try {
-        const saveRes = await fetch('/api/conversations/' + convId + '/message', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ updateGptEval: true, msgId: saveMsgId, gptEval: _gptEv, gptModel: _gptModel })
-        });
-        const saveData = await saveRes.json();
-        if (saveData.success) {
-          console.log('[GPT저장] 성공 (retry=' + retry + ')');
-        } else if (retry < 5) {
-          console.log('[GPT저장] 실패, 재시도 ' + (retry + 1));
-          setTimeout(function() { saveGptEval(retry + 1); }, 5000);
-        }
-      } catch(e2) {
-        if (retry < 5) setTimeout(function() { saveGptEval(retry + 1); }, 5000);
-      }
-    };
-    // 20초 후 시도 (메시지 저장 15초 + 여유 5초)
-    setTimeout(function() { saveGptEval(0); }, 20000);
+    // 서버가 백그라운드에서 GPT 평가를 자동 저장하므로 프론트 저장 불필요
+    console.log('[GPT평가] UI 표시 완료 (서버 자동저장)');
   } catch(e) {
     evalContainer.innerHTML = `<span style="color:var(--red);font-size:12px">&#10007; ${escapeHtml(e.message)}</span>`;
   }
@@ -1269,32 +1243,8 @@ async function evaluateConsultation(prompt, responseText, msgId) {
       ${ev.recommendation ? `<div style="font-size:13px;color:var(--accent);margin-top:4px">💊 ${escapeHtml(ev.recommendation)}</div>` : ''}
     `;
 
-    // DB에 저장 (메시지 저장 완료 대기 후)
-    const _consultEv = ev, _consultMsgId = msgId;
-    const saveConsultEval = async function(retry) {
-      const saveMsgId = window._lastAssistantMsgId || _consultMsgId;
-      const convId = currentConvId;
-      if (!convId) {
-        if (retry < 10) { setTimeout(function() { saveConsultEval(retry + 1); }, 3000); return; }
-        return;
-      }
-      try {
-        const res = await fetch('/api/conversations/' + convId + '/message', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ updateConsultationEval: true, msgId: saveMsgId, consultationEval: _consultEv })
-        });
-        const d = await res.json();
-        if (d.success) {
-          console.log('[문진저장] 성공 (retry=' + retry + ')');
-        } else if (retry < 5) {
-          setTimeout(function() { saveConsultEval(retry + 1); }, 5000);
-        }
-      } catch(e2) {
-        if (retry < 5) setTimeout(function() { saveConsultEval(retry + 1); }, 5000);
-      }
-    };
-    setTimeout(function() { saveConsultEval(0); }, 22000);
+    // 서버가 백그라운드에서 문진 평가를 자동 저장하므로 프론트 저장 불필요
+    console.log('[문진평가] UI 표시 완료 (서버 자동저장)');
   } catch(e) {
     evalContainer.innerHTML = `<span style="color:var(--red);font-size:13px">문진 평가 실패: ${escapeHtml(e.message)}</span>`;
   }
@@ -1983,14 +1933,32 @@ async function sendMessage() {
   chatHistory.push({ role:'user', content: text });
   createAssistantMessage();
 
+  // ── 대화 생성 (SSE 전에 — 서버가 convId로 자동저장) ──
+  if (!currentConvId) {
+    try {
+      const createRes = await fetch('/api/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: text.substring(0, 40), env: currentEnv })
+      });
+      const createData = await createRes.json();
+      if (createData.success) {
+        currentConvId = createData.id;
+        console.log('[대화생성] 즉시 생성:', currentConvId);
+      }
+    } catch(e) { console.warn('대화 생성 실패', e); }
+    if (typeof loadConversations === 'function') loadConversations();
+  }
+
   const start = performance.now();
   let finalText = '';
   let searchResults = [];
   let followUps = [];
 
   try {
-    // ── LIVE 모드: 실제 API 호출 ──
+    // ── LIVE 모드: 실제 API 호출 (서버가 자동저장) ──
     await callSSE(text, {
+      conversationId: currentConvId || '',
       onGeneration(full, chunk) {
         updateStreamBubble(full);
         finalText = full;
@@ -2012,7 +1980,7 @@ async function sendMessage() {
       },
     });
 
-    if (!connectionOk) setStatus(true);  // 첫 성공 시에만 초록불 (이미 초록이면 변경 없음)
+    if (!connectionOk) setStatus(true);
     const elapsed = Math.round(performance.now() - start);
     const compliance = (savedSettings.enableCompliance !== false)
       ? analyzeCompliance(finalText) : null;
@@ -2020,67 +1988,7 @@ async function sendMessage() {
     finalizeAssistantMessage(finalText, { elapsed, compliance, searchResults, followUps, userPrompt: text, tokenUsage: window._lastTokenUsage || null });
     chatHistory.push({ role:'assistant', content: finalText, compliance, searchResults });
 
-    // ── 대화 즉시 생성 (사이드바에 바로 표시) ──
-    if (!currentConvId) {
-      try {
-        const createRes = await fetch('/api/conversations', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title: text.substring(0, 40), env: currentEnv })
-        });
-        const createData = await createRes.json();
-        if (createData.success) {
-          currentConvId = createData.id;
-          console.log('[대화생성] 즉시 생성:', currentConvId);
-        }
-      } catch(e) { console.warn('대화 생성 실패', e); }
-      // 사이드바 즉시 갱신
-      if (typeof loadConversations === 'function') loadConversations();
-    }
-
-    // ── 메시지 저장 (15초 딜레이 — SSE 연결 완전 종료 + Cold Start 대기) ──
-    const _saveText = text, _saveFinalText = finalText, _saveElapsed = elapsed;
-    const _saveCompliance = compliance, _saveSearchResults = searchResults;
-    const _saveFollowUps = followUps, _saveTokenUsage = window._lastTokenUsage || null;
-    const _saveConvId = currentConvId;
-    setTimeout(async function() {
-      try {
-        if (_saveConvId) {
-          const saveBody = JSON.stringify({
-            query: _saveText, response: _saveFinalText,
-            responseTime: _saveElapsed, compliance: _saveCompliance,
-            searchResults: _saveSearchResults?.slice(0, 5),
-            followUps: _saveFollowUps, conversationStrid: conversationStrid,
-            tokenUsage: _saveTokenUsage,
-          });
-          for (let _retry = 0; _retry < 3; _retry++) {
-            try {
-              const saveRes = await fetch('/api/conversations/' + _saveConvId + '/message', {
-                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: saveBody
-              });
-              if (saveRes.status === 503 && _retry < 2) {
-                console.warn('[서버저장] 503 재시도 ' + (_retry + 1));
-                await new Promise(r => setTimeout(r, 5000 * (_retry + 1)));
-                continue;
-              }
-              const saveData = await saveRes.json();
-              if (saveData.assistantMsgId) {
-                window._lastAssistantMsgId = saveData.assistantMsgId;
-                window._serverMsgIdReady = true;
-                console.log('[서버저장] assistantMsgId:', saveData.assistantMsgId);
-              }
-              break;
-            } catch(retryErr) {
-              if (_retry < 2) await new Promise(r => setTimeout(r, 5000 * (_retry + 1)));
-            }
-          }
-        }
-        // 사이드바 갱신 (메시지 수 반영)
-        if (typeof loadConversations === 'function') setTimeout(loadConversations, 1000);
-      } catch(e) { console.warn('메시지 저장 실패', e); }
-    }, 15000);
-
-    // 사이드바 갱신
+    // 사이드바 갱신 (서버에서 메시지가 이미 저장됨)
     setTimeout(() => loadConversations(), 500);
 
   } catch(e) {
