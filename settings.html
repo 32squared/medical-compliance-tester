@@ -137,7 +137,8 @@
   <a href="/" class="nav-btn">채팅 테스터</a>
   <a href="/manager" class="nav-btn">시나리오 관리</a>
   <a href="/history" class="nav-btn">테스트 이력</a>
-  <a href="/guidelines" class="nav-btn">가이드라인</a>
+  <a href="/guidelines" class="nav-btn">법률 평가 기준</a>
+  <a href="/criteria" class="nav-btn">문진 평가 기준</a>
   <a href="/settings" class="nav-btn active">&#9881; 설정</a>
   <span id="testerBadge" style="margin-left:auto;display:none;font-size:11px;color:var(--accent);background:var(--accent-dim);padding:3px 10px;border-radius:6px;cursor:pointer;white-space:nowrap"></span>
 </div>
@@ -176,7 +177,6 @@
     <button class="settings-tab active" data-tab="tab-api" onclick="switchSettingsTab('tab-api')">🔌 API 연결 설정</button>
     <button class="settings-tab" data-tab="tab-gpt" onclick="switchSettingsTab('tab-gpt')">🤖 GPT 연결 설정</button>
     <button class="settings-tab" data-tab="tab-users" onclick="switchSettingsTab('tab-users')" style="display:none">👥 사용자 관리</button>
-    <button class="settings-tab" data-tab="tab-criteria" onclick="switchSettingsTab('tab-criteria')" style="display:none">🩺 문진 평가 기준</button>
     <button class="settings-tab" data-tab="tab-logs" onclick="switchSettingsTab('tab-logs')" style="display:none">📋 서버 실시간 로그</button>
   </div>
 
@@ -375,64 +375,7 @@
   </div>
 
   <!-- ══════════════════════════════════════════ -->
-  <!-- Tab 4: 문진 평가 기준 (Admin only) -->
-  <!-- ══════════════════════════════════════════ -->
-  <div class="settings-tab-content" id="tab-criteria">
-    <div class="card" id="criteriaSection">
-      <h2>🩺 문진 평가 기준 관리</h2>
-      <div id="criteriaBody">
-        <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px">문진 평가 축(Axis), 등급 기준, 의료법 경계 규칙을 관리합니다</p>
-
-        <!-- 축 및 항목 -->
-        <div id="criteriaAxes"></div>
-
-        <hr class="divider">
-
-        <!-- 등급 임계값 -->
-        <div style="margin-bottom:18px">
-          <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:10px">등급 임계값 (Grade Thresholds)</div>
-          <div class="field-row" style="flex-wrap:wrap;gap:12px">
-            <div class="field" style="flex:1;min-width:120px">
-              <label>A 등급 이상</label>
-              <input type="number" id="thresholdA" min="0" max="100" step="1" placeholder="90">
-            </div>
-            <div class="field" style="flex:1;min-width:120px">
-              <label>B 등급 이상</label>
-              <input type="number" id="thresholdB" min="0" max="100" step="1" placeholder="75">
-            </div>
-            <div class="field" style="flex:1;min-width:120px">
-              <label>C 등급 이상</label>
-              <input type="number" id="thresholdC" min="0" max="100" step="1" placeholder="60">
-            </div>
-            <div class="field" style="flex:1;min-width:120px">
-              <label>D 등급 미만</label>
-              <input type="number" id="thresholdD" min="0" max="100" step="1" placeholder="60">
-            </div>
-          </div>
-        </div>
-
-        <hr class="divider">
-
-        <!-- 의료법 경계 규칙 -->
-        <div style="margin-bottom:18px">
-          <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:10px">의료법 경계 규칙 (Medical Law Boundary Rules)</div>
-          <div id="boundaryRulesList"></div>
-          <button class="btn-outline" onclick="addBoundaryRule()" style="font-size:12px;padding:6px 14px;margin-top:8px">+ 규칙 추가</button>
-        </div>
-
-        <hr class="divider">
-
-        <!-- 저장 / 초기화 -->
-        <div style="display:flex;gap:10px;justify-content:flex-end">
-          <button class="btn-outline" onclick="resetCriteriaToDefaults()" style="color:var(--orange);border-color:var(--orange)">기본값 초기화</button>
-          <button class="btn-primary" onclick="saveCriteria()">평가 기준 저장</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══════════════════════════════════════════ -->
-  <!-- Tab 5: 서버 실시간 로그 (Admin only) -->
+  <!-- Tab 4: 서버 실시간 로그 (Admin only) -->
   <!-- ══════════════════════════════════════════ -->
   <div class="settings-tab-content" id="tab-logs">
     <div class="card">
@@ -837,16 +780,12 @@ function showAdminTabs() {
     if (s.isAdmin) {
       // Show admin-only tabs
       document.querySelector('.settings-tab[data-tab="tab-users"]').style.display = '';
-      document.querySelector('.settings-tab[data-tab="tab-criteria"]').style.display = '';
       document.querySelector('.settings-tab[data-tab="tab-logs"]').style.display = '';
-      // Load criteria data
-      loadCriteria();
       // Restore last tab (now that admin tabs are visible)
       restoreLastTab();
     } else {
       // Hide admin-only tabs
       document.querySelector('.settings-tab[data-tab="tab-users"]').style.display = 'none';
-      document.querySelector('.settings-tab[data-tab="tab-criteria"]').style.display = 'none';
       document.querySelector('.settings-tab[data-tab="tab-logs"]').style.display = 'none';
       restoreLastTab();
     }
@@ -1133,179 +1072,6 @@ function filterLogs() {
     count++;
   }
   document.getElementById('logCount').textContent = count + '/' + logLines.length + '\uC904';
-}
-
-// ══════════════════════════════════════════
-// 문진 평가 기준 관리
-// ══════════════════════════════════════════
-var criteriaData = null;
-
-async function loadCriteria() {
-  try {
-    var res = await fetch('/api/consultation-criteria');
-    if (!res.ok) return;
-    criteriaData = await res.json();
-    renderCriteria();
-  } catch(e) {
-    console.warn('loadCriteria failed', e);
-  }
-}
-
-function renderCriteria() {
-  if (!criteriaData) return;
-  var axes = criteriaData.axes || [];
-  var container = document.getElementById('criteriaAxes');
-  container.innerHTML = '';
-
-  for (var ai = 0; ai < axes.length; ai++) {
-    var axis = axes[ai];
-    var axisDiv = document.createElement('div');
-    axisDiv.style.cssText = 'margin-bottom:16px;padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:10px';
-    axisDiv.setAttribute('data-axis-idx', ai);
-
-    var headerHtml = '<div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">'
-      + '<span style="font-size:13px;font-weight:700;color:var(--accent);min-width:60px">' + escHtml(axis.name) + '</span>'
-      + '<label style="font-size:11px;color:var(--text-dim)">\uCD5C\uB300 \uC810\uC218</label>'
-      + '<input type="number" class="axis-max" data-ai="' + ai + '" value="' + (axis.maxScore || 0) + '" min="0" max="100" step="1" style="width:70px;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-size:12px">'
-      + '</div>';
-
-    var itemsHtml = '<div class="axis-items" data-ai="' + ai + '">';
-    var items = axis.items || [];
-    for (var ii = 0; ii < items.length; ii++) {
-      itemsHtml += renderCriteriaItem(ai, ii, items[ii]);
-    }
-    itemsHtml += '</div>';
-    itemsHtml += '<button class="btn-outline" onclick="addCriteriaItem(' + ai + ')" style="font-size:11px;padding:4px 12px;margin-top:6px">+ \uD56D\uBAA9 \uCD94\uAC00</button>';
-
-    axisDiv.innerHTML = headerHtml + itemsHtml;
-    container.appendChild(axisDiv);
-  }
-
-  // thresholds
-  var th = criteriaData.gradeThresholds || {};
-  document.getElementById('thresholdA').value = th.A != null ? th.A : '';
-  document.getElementById('thresholdB').value = th.B != null ? th.B : '';
-  document.getElementById('thresholdC').value = th.C != null ? th.C : '';
-  document.getElementById('thresholdD').value = th.D != null ? th.D : '';
-
-  // boundary rules
-  renderBoundaryRules();
-}
-
-function renderCriteriaItem(ai, ii, item) {
-  return '<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;padding:6px 8px;background:var(--surface);border-radius:6px" data-ai="' + ai + '" data-ii="' + ii + '">'
-    + '<span style="font-size:12px;color:var(--text);min-width:80px;font-weight:600">' + escHtml(item.name || '') + '</span>'
-    + '<label style="font-size:10px;color:var(--text-dim)">\uC810\uC218</label>'
-    + '<input type="number" class="item-score" data-ai="' + ai + '" data-ii="' + ii + '" value="' + (item.score || 0) + '" min="0" max="100" step="1" style="width:60px;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 6px;border-radius:4px;font-size:11px">'
-    + '<input type="text" class="item-desc" data-ai="' + ai + '" data-ii="' + ii + '" value="' + escHtml(item.desc || '') + '" placeholder="\uC124\uBA85" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:4px;font-size:11px">'
-    + '<button onclick="removeCriteriaItem(' + ai + ',' + ii + ')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 4px" title="\uC0AD\uC81C">\u2715</button>'
-    + '</div>';
-}
-
-function addCriteriaItem(ai) {
-  if (!criteriaData || !criteriaData.axes[ai]) return;
-  var name = prompt('\uD56D\uBAA9 \uC774\uB984\uC744 \uC785\uB825\uD558\uC138\uC694:');
-  if (!name) return;
-  criteriaData.axes[ai].items.push({ name: name, score: 0, desc: '' });
-  renderCriteria();
-}
-
-function removeCriteriaItem(ai, ii) {
-  if (!criteriaData || !criteriaData.axes[ai]) return;
-  criteriaData.axes[ai].items.splice(ii, 1);
-  renderCriteria();
-}
-
-function renderBoundaryRules() {
-  var rules = criteriaData.boundaryRules || [];
-  var container = document.getElementById('boundaryRulesList');
-  container.innerHTML = '';
-  for (var i = 0; i < rules.length; i++) {
-    var div = document.createElement('div');
-    div.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:6px';
-    div.innerHTML = '<input type="text" class="boundary-rule" data-ri="' + i + '" value="' + escHtml(rules[i]) + '" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:6px;font-size:12px">'
-      + '<button onclick="removeBoundaryRule(' + i + ')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 6px" title="\uC0AD\uC81C">\u2715</button>';
-    container.appendChild(div);
-  }
-}
-
-function addBoundaryRule() {
-  if (!criteriaData) criteriaData = { axes: [], gradeThresholds: {}, boundaryRules: [] };
-  if (!criteriaData.boundaryRules) criteriaData.boundaryRules = [];
-  criteriaData.boundaryRules.push('');
-  renderBoundaryRules();
-  var inputs = document.querySelectorAll('.boundary-rule');
-  if (inputs.length) inputs[inputs.length - 1].focus();
-}
-
-function removeBoundaryRule(idx) {
-  if (!criteriaData || !criteriaData.boundaryRules) return;
-  criteriaData.boundaryRules.splice(idx, 1);
-  renderBoundaryRules();
-}
-
-function collectCriteriaFromForm() {
-  if (!criteriaData) return null;
-  document.querySelectorAll('.axis-max').forEach(function(el) {
-    var ai = parseInt(el.getAttribute('data-ai'));
-    if (criteriaData.axes[ai]) criteriaData.axes[ai].maxScore = parseInt(el.value) || 0;
-  });
-  document.querySelectorAll('.item-score').forEach(function(el) {
-    var ai = parseInt(el.getAttribute('data-ai'));
-    var ii = parseInt(el.getAttribute('data-ii'));
-    if (criteriaData.axes[ai] && criteriaData.axes[ai].items[ii]) {
-      criteriaData.axes[ai].items[ii].score = parseInt(el.value) || 0;
-    }
-  });
-  document.querySelectorAll('.item-desc').forEach(function(el) {
-    var ai = parseInt(el.getAttribute('data-ai'));
-    var ii = parseInt(el.getAttribute('data-ii'));
-    if (criteriaData.axes[ai] && criteriaData.axes[ai].items[ii]) {
-      criteriaData.axes[ai].items[ii].desc = el.value;
-    }
-  });
-  criteriaData.gradeThresholds = {
-    A: parseInt(document.getElementById('thresholdA').value) || 0,
-    B: parseInt(document.getElementById('thresholdB').value) || 0,
-    C: parseInt(document.getElementById('thresholdC').value) || 0,
-    D: parseInt(document.getElementById('thresholdD').value) || 0
-  };
-  var ruleInputs = document.querySelectorAll('.boundary-rule');
-  criteriaData.boundaryRules = [];
-  ruleInputs.forEach(function(el) { criteriaData.boundaryRules.push(el.value); });
-  return criteriaData;
-}
-
-async function saveCriteria() {
-  var data = collectCriteriaFromForm();
-  if (!data) { showToast('\uC800\uC7A5\uD560 \uB370\uC774\uD130\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4', 'error'); return; }
-  try {
-    var res = await fetch('/api/consultation-criteria', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    if (res.status === 403) { showToast('Admin \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4', 'error'); return; }
-    if (!res.ok) { showToast('\uC800\uC7A5 \uC2E4\uD328 (' + res.status + ')', 'error'); return; }
-    showToast('\uD3C9\uAC00 \uAE30\uC900\uC774 \uC800\uC7A5\uB418\uC5C8\uC2B5\uB2C8\uB2E4', 'success');
-  } catch(e) {
-    showToast('\uC800\uC7A5 \uC2E4\uD328: ' + e.message, 'error');
-  }
-}
-
-async function resetCriteriaToDefaults() {
-  if (!confirm('\uD3C9\uAC00 \uAE30\uC900\uC744 \uAE30\uBCF8\uAC12\uC73C\uB85C \uCD08\uAE30\uD654\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?')) return;
-  try {
-    var res = await fetch('/api/consultation-criteria/reset', {
-      method: 'POST'
-    });
-    if (!res.ok) { showToast('\uCD08\uAE30\uD654 \uC2E4\uD328', 'error'); return; }
-    criteriaData = await res.json();
-    renderCriteria();
-    showToast('\uAE30\uBCF8\uAC12\uC73C\uB85C \uCD08\uAE30\uD654\uB418\uC5C8\uC2B5\uB2C8\uB2E4', 'success');
-  } catch(e) {
-    showToast('\uCD08\uAE30\uD654 \uC2E4\uD328: ' + e.message, 'error');
-  }
 }
 </script>
 </body>

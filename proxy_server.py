@@ -978,6 +978,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
             '/history.html': 'history.html',
             '/guidelines': 'guideline_manager.html',
             '/guideline_manager.html': 'guideline_manager.html',
+            '/criteria': 'criteria_manager.html',
+            '/criteria_manager.html': 'criteria_manager.html',
             '/demo_report.html': os.path.join('reports', 'demo_report.html'),
         }
         rel_path = file_map.get(path)
