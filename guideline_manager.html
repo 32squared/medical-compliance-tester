@@ -28,9 +28,15 @@
             background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; flex-wrap:nowrap; overflow-x:auto; }
   .topbar h1 { font-size:16px; font-weight:700; white-space:nowrap; }
   .nav-btn { background:none; border:1px solid var(--border); color:var(--text-dim); border-radius:8px;
-             padding:6px 14px; cursor:pointer; font-size:13px; text-decoration:none; transition:all .15s; }
+             padding:6px 14px; cursor:pointer; font-size:13px; text-decoration:none; transition:all .15s; white-space:nowrap; }
   .nav-btn:hover { background:var(--surface2); color:var(--text); }
   .nav-btn.active { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
+
+  /* ── Env Selector (topbar) ── */
+  .env-selector { display:flex; gap:2px; background:var(--bg); border-radius:8px; padding:2px; border:1px solid var(--border); }
+  .env-chip-sm { padding:4px 12px; border-radius:6px; font-size:11px; font-weight:700;
+                 color:var(--text-dim); transition:all .15s; user-select:none; }
+  .env-chip-sm.active { background:var(--accent); color:#0f172a; }
 
   .content { flex:1; padding:24px; max-width:1000px; margin:0 auto; width:100%; }
 
@@ -157,12 +163,17 @@
 
 <!-- Top Bar -->
 <div class="topbar">
-  <h1>&#127973; 나만의 주치의</h1>
-  <a class="nav-btn" href="/chat_tester.html">채팅 테스터</a>
-  <a class="nav-btn" href="/scenario_manager.html">시나리오</a>
-  <a class="nav-btn active" href="/guideline_manager.html">가이드라인</a>
-  <a class="nav-btn" href="/settings.html" id="settingsNavLink">설정</a>
-  <a class="nav-btn" href="/history.html">이력</a>
+  <h1 style="font-size:16px;font-weight:700">&#127973; 나만의 주치의</h1>
+  <div class="env-selector" id="envSelector">
+    <span class="env-chip-sm" data-env="dev" style="cursor:default">DEV</span>
+    <span class="env-chip-sm" data-env="stg" style="cursor:default">STG</span>
+    <span class="env-chip-sm" data-env="prod" style="cursor:default">PROD</span>
+  </div>
+  <a href="/" class="nav-btn">채팅 테스터</a>
+  <a href="/manager" class="nav-btn">시나리오 관리</a>
+  <a href="/history" class="nav-btn">테스트 이력</a>
+  <a href="/guidelines" class="nav-btn active">가이드라인</a>
+  <a href="/settings" class="nav-btn" id="settingsNavLink">&#9881; 설정</a>
   <span id="testerBadge" style="margin-left:auto;display:none;font-size:11px;color:var(--accent);background:var(--accent-dim);padding:3px 10px;border-radius:6px;cursor:pointer;white-space:nowrap" onclick="if(confirm('로그아웃 하시겠습니까?'))testerLogout()"></span>
 </div>
 
@@ -860,9 +871,10 @@ async function submitRegister() {
   const bar = document.getElementById('loaderBar');
   if (bar) bar.style.width = '10%';
   try {
-    const [guidelinesRes, authRes] = await Promise.allSettled([
+    const [guidelinesRes, authRes, settingsRes] = await Promise.allSettled([
       fetch(`${API}/api/guidelines`),
-      fetch('/api/auth/status')
+      fetch('/api/auth/status'),
+      fetch('/api/settings')
     ]);
     if (bar) bar.style.width = '60%';
 
@@ -896,6 +908,18 @@ async function submitRegister() {
         showTesterModal();
       }
     }
+    // Apply env indicator
+    if (settingsRes.status === 'fulfilled' && settingsRes.value.ok) {
+      try {
+        const sData = await settingsRes.value.json();
+        var curEnv = sData.currentEnv || 'dev';
+        document.querySelectorAll('#envSelector .env-chip-sm').forEach(function(c) {
+          var isActive = c.dataset.env === curEnv;
+          c.classList.toggle('active', isActive);
+        });
+      } catch(e2) {}
+    }
+
     if (bar) bar.style.width = '100%';
   } catch(e) {
     console.error('Init error:', e);

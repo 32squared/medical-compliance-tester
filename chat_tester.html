@@ -1642,7 +1642,7 @@ function renderAssistantEvaluation(msgDiv, evalData) {
       cMissingStr += escapeHtml(cMissingAll[cm]);
     }
 
-    var consultHtml = '<details style="cursor:pointer">' +
+    var consultHtml = '<details open style="cursor:pointer">' +
       '<summary style="font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px">' +
         '\uD83E\uDE7A \uBB38\uC9C4 \uD488\uC9C8' +
         '<span style="font-size:20px;font-weight:800;color:' + cGradeColor + '">' + escapeHtml(consultationEval.grade || '?') + '</span>' +

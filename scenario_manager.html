@@ -32,6 +32,8 @@
              padding:6px 14px; cursor:pointer; font-size:13px; text-decoration:none; transition:all .15s; white-space:nowrap; }
   .nav-btn:hover { background:var(--surface2); color:var(--text); }
   .nav-btn.active { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
+  .action-bar { display:flex; align-items:center; gap:8px; padding:8px 20px;
+                background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; }
   .btn { padding:8px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;
          border:1px solid var(--border); transition:all .15s; font-family:inherit; }
   .btn-primary { background:var(--accent); color:#0f172a; border-color:var(--accent); }
@@ -269,13 +271,13 @@
   <a href="/history" class="nav-btn">테스트 이력</a>
   <a href="/guidelines" class="nav-btn">가이드라인</a>
   <a href="/settings" class="nav-btn" id="settingsNavLink">&#9881; 설정</a>
-  <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-shrink:0">
-    <button class="btn btn-outline" onclick="exportScenarios()">내보내기</button>
-    <button class="btn btn-outline" onclick="document.getElementById('importFile').click()">가져오기</button>
-    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importScenarios(event)">
-    <button class="btn btn-primary" onclick="openCreateModal()">+ 새 시나리오</button>
-    <span id="testerBadge" style="display:none;font-size:11px;color:var(--accent);background:var(--accent-dim);padding:3px 10px;border-radius:6px;cursor:pointer;white-space:nowrap" onclick="if(confirm('로그아웃 하시겠습니까?'))testerLogout()"></span>
-  </div>
+  <span id="testerBadge" style="margin-left:auto;display:none;font-size:11px;color:var(--accent);background:var(--accent-dim);padding:3px 10px;border-radius:6px;cursor:pointer;white-space:nowrap" onclick="if(confirm('로그아웃 하시겠습니까?'))testerLogout()"></span>
+</div>
+<div class="action-bar">
+  <button class="btn btn-outline" onclick="exportScenarios()">내보내기</button>
+  <button class="btn btn-outline" onclick="document.getElementById('importFile').click()">가져오기</button>
+  <input type="file" id="importFile" accept=".json" style="display:none" onchange="importScenarios(event)">
+  <button class="btn btn-primary" onclick="openCreateModal()">+ 새 시나리오</button>
 </div>
 
 <!-- 테스터 로그인 모달 -->

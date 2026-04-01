@@ -29,12 +29,15 @@
             background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; flex-wrap:nowrap; overflow-x:auto; }
   .topbar h1 { font-size:16px; font-weight:700; display:flex; align-items:center; gap:8px; white-space:nowrap; }
   .nav-btn { background:none; border:1px solid var(--border); color:var(--text-dim); border-radius:8px;
-             padding:6px 14px; cursor:pointer; font-size:13px; text-decoration:none; transition:all .15s; }
+             padding:6px 14px; cursor:pointer; font-size:13px; text-decoration:none; transition:all .15s; white-space:nowrap; }
   .nav-btn:hover { background:var(--surface2); color:var(--text); }
   .nav-btn.active { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
 
-  /* Env indicator in topbar */
-  #envSelectorTop { display:flex; gap:2px; background:var(--bg); border-radius:8px; padding:2px; border:1px solid var(--border); }
+  /* ── Env Selector (topbar) ── */
+  .env-selector { display:flex; gap:2px; background:var(--bg); border-radius:8px; padding:2px; border:1px solid var(--border); }
+  .env-chip-sm { padding:4px 12px; border-radius:6px; font-size:11px; font-weight:700;
+                 color:var(--text-dim); transition:all .15s; user-select:none; }
+  .env-chip-sm.active { background:var(--accent); color:#0f172a; }
 
   /* ── Content ── */
   .content { flex:1; padding:24px; max-width:800px; margin:0 auto; width:100%; }
@@ -127,9 +130,9 @@
 <div class="topbar">
   <h1 style="font-size:16px;font-weight:700">&#127973; 나만의 주치의</h1>
   <div class="env-selector" id="envSelectorTop">
-    <span class="env-chip-sm-top" data-env="dev" style="padding:4px 12px;border-radius:6px;font-size:11px;font-weight:700;cursor:default;color:var(--text-dim)">DEV</span>
-    <span class="env-chip-sm-top" data-env="stg" style="padding:4px 12px;border-radius:6px;font-size:11px;font-weight:700;cursor:default;color:var(--text-dim)">STG</span>
-    <span class="env-chip-sm-top" data-env="prod" style="padding:4px 12px;border-radius:6px;font-size:11px;font-weight:700;cursor:default;color:var(--text-dim)">PROD</span>
+    <span class="env-chip-sm" data-env="dev" style="cursor:default">DEV</span>
+    <span class="env-chip-sm" data-env="stg" style="cursor:default">STG</span>
+    <span class="env-chip-sm" data-env="prod" style="cursor:default">PROD</span>
   </div>
   <a href="/" class="nav-btn">채팅 테스터</a>
   <a href="/manager" class="nav-btn">시나리오 관리</a>
@@ -629,10 +632,8 @@ async function loadSettings() {
     }
 
     loadEnvToForm(currentEnv);
-    document.querySelectorAll('.env-chip-sm-top').forEach(function(c) {
-      var isActive = c.dataset.env === currentEnv;
-      c.style.background = isActive ? 'var(--accent)' : '';
-      c.style.color = isActive ? '#0f172a' : 'var(--text-dim)';
+    document.querySelectorAll('#envSelectorTop .env-chip-sm').forEach(function(c) {
+      c.classList.toggle('active', c.dataset.env === currentEnv);
     });
 
     // 사용자 관리 로드
