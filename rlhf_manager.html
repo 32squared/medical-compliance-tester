@@ -171,7 +171,7 @@
         <thead>
           <tr>
             <th>시간</th>
-            <th>평가</th>
+            <th>평가자</th>
             <th>별점</th>
             <th>태그</th>
             <th>메모</th>
@@ -204,6 +204,7 @@
             <th>Chosen</th>
             <th>Rejected</th>
             <th>생성일</th>
+            <th>Composite</th>
           </tr>
         </thead>
         <tbody id="pairsBody">
@@ -314,11 +315,12 @@
 
     try {
       var res = await fetch('/api/feedback');
-      var data = [];
-      if (res.ok) {
-        var json = await res.json();
-        data = Array.isArray(json) ? json : (json.feedbacks || json.items || []);
+      if (!res.ok) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--red);padding:30px">\uB85C\uB4DC \uC2E4\uD328: ' + res.status + ' ' + escapeHtml(res.statusText) + '</td></tr>';
+        return;
       }
+      var json = await res.json();
+      var data = Array.isArray(json) ? json : (json.feedbacks || json.items || []);
 
       if (data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:30px">\uD53C\uB4DC\uBC31 \uB370\uC774\uD130\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.</td></tr>';
@@ -328,23 +330,29 @@
       var html = '';
       for (var i = 0; i < data.length; i++) {
         var fb = data[i];
-        var thumbClass = fb.thumbs === 'good' ? 'badge-good' : fb.thumbs === 'bad' ? 'badge-bad' : '';
-        var thumbText = fb.thumbs === 'good' ? '\uD83D\uDC4D \uC88B\uC74C' : fb.thumbs === 'bad' ? '\uD83D\uDC4E \uB098\uC068' : '-';
+        var evaluator = escapeHtml(fb.evaluator_name || fb.evaluator_id || '-');
         var stars = '';
         if (fb.rating) {
           for (var s = 0; s < 5; s++) stars += s < fb.rating ? '\u2605' : '\u2606';
         }
-        var tags = (fb.tags || []).map(function(t) { return '<span class="tag-chip">' + escapeHtml(t) + '</span>'; }).join('');
-        var dateStr = fb.createdAt || fb.created_at || '';
+        var tagsList = [];
+        if (fb.labels_json) {
+          try { tagsList = JSON.parse(fb.labels_json); } catch(ex) { /* ignore parse error */ }
+        }
+        var tags = Array.isArray(tagsList) ? tagsList.map(function(t) { return '<span class="tag-chip">' + escapeHtml(t) + '</span>'; }).join('') : '';
+        var dateStr = fb.created_at || '';
         if (dateStr) {
-          try { dateStr = new Date(dateStr).toLocaleString('ko-KR'); } catch(ex) { /* keep raw */ }
+          try {
+            var d = new Date(dateStr);
+            dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+          } catch(ex) { /* keep raw */ }
         }
         html += '<tr>' +
           '<td>' + escapeHtml(dateStr) + '</td>' +
-          '<td><span class="badge ' + thumbClass + '">' + thumbText + '</span></td>' +
+          '<td>' + evaluator + '</td>' +
           '<td style="color:#eab308">' + (stars || '-') + '</td>' +
           '<td>' + (tags || '-') + '</td>' +
-          '<td style="font-size:12px;color:var(--text-dim);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(fb.memo || '') + '</td>' +
+          '<td style="font-size:12px;color:var(--text-dim);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(fb.feedback_note || '') + '</td>' +
         '</tr>';
       }
       tbody.innerHTML = html;
@@ -367,40 +375,43 @@
 
     try {
       var res = await fetch('/api/rlhf/pairs');
-      var data = [];
-      if (res.ok) {
-        var json = await res.json();
-        data = Array.isArray(json) ? json : (json.pairs || json.items || []);
+      if (!res.ok) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--red);padding:30px">\uB85C\uB4DC \uC2E4\uD328: ' + res.status + ' ' + escapeHtml(res.statusText) + '</td></tr>';
+        return;
       }
+      var json = await res.json();
+      var data = Array.isArray(json) ? json : (json.pairs || json.items || []);
       pairsData = data;
 
       if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:30px">\uC120\uD638\uB3C4 \uC30D \uB370\uC774\uD130\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:30px">\uC120\uD638\uB3C4 \uC30D \uB370\uC774\uD130\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.</td></tr>';
         return;
       }
 
       var html = '';
       for (var i = 0; i < data.length; i++) {
         var p = data[i];
-        var pid = p.id || p._id || i;
-        var prompt = escapeHtml((p.userPrompt || p.prompt || '').substring(0, 60));
-        var chosen = escapeHtml((p.chosenResponse || p.chosen || '').substring(0, 80));
-        var rejected = escapeHtml((p.rejectedResponse || p.rejected || '').substring(0, 80));
-        var dateStr = p.createdAt || p.created_at || '';
+        var pid = p.id || i;
+        var prompt = escapeHtml((p.prompt || '').substring(0, 60));
+        var chosen = escapeHtml((p.response_chosen || '').substring(0, 80));
+        var rejected = escapeHtml((p.response_rejected || '').substring(0, 80));
+        var dateStr = p.created_at || '';
         if (dateStr) {
           try { dateStr = new Date(dateStr).toLocaleDateString('ko-KR'); } catch(ex) { /* keep raw */ }
         }
+        var compositeStr = p.chosen_composite != null ? Number(p.chosen_composite).toFixed(2) : '-';
         html += '<tr>' +
           '<td><input type="checkbox" class="pair-cb" data-pid="' + escapeHtml(String(pid)) + '" onchange="togglePairSelect(this)"></td>' +
           '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + prompt + '">' + prompt + '</td>' +
           '<td style="font-size:12px;color:var(--green);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + chosen + '</td>' +
           '<td style="font-size:12px;color:var(--red);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + rejected + '</td>' +
           '<td>' + escapeHtml(dateStr) + '</td>' +
+          '<td style="font-size:12px;color:var(--yellow)">' + compositeStr + '</td>' +
         '</tr>';
       }
       tbody.innerHTML = html;
     } catch(e) {
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--red);padding:30px">\uB85C\uB4DC \uC2E4\uD328: ' + escapeHtml(e.message) + '</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--red);padding:30px">\uB85C\uB4DC \uC2E4\uD328: ' + escapeHtml(e.message) + '</td></tr>';
     }
   }
 
