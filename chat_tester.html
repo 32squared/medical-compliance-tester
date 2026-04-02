@@ -448,7 +448,8 @@ async function requestRegenerate(msgId, userPrompt, originalResponse) {
         message_id: msgId,
         conversation_id: currentConvId || '',
         prompt: userPrompt,
-        original_response: originalResponse
+        original_response: originalResponse,
+        api_uid: getTesterUidFromCookie() || ''
       })
     });
     var result = await res.json();
@@ -1957,20 +1958,27 @@ function renderAssistantEvaluation(msgDiv, evalData) {
     fbState.originalQuery = _fbUserPrompt;
     fbState.fullResponse  = _fbFullText;
     if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '저장 중...'; }
+    console.log('[RLHF] 저장 데이터:', JSON.stringify({
+      msgId: _fbMsgId,
+      thumbs: fbState.thumbs,
+      rating: fbState.rating,
+      tags: fbState.tags,
+      correctedResponse: fbState.correctedResponse,
+      memo: fbState.memo
+    }));
     submitRlhfFeedback(_fbMsgId, fbState).then(function(r) {
       if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '💾 저장'; }
       var st = document.getElementById(fbId + '-status');
-      if (st) {
-        st.textContent = r && r.success ? '✓ 피드백 저장됨' : '⚠ 저장 실패';
-        st.style.cssText = (r && r.success)
-          ? 'font-size:12px;color:var(--green);font-weight:700'
-          : 'font-size:12px;color:var(--red);font-weight:700';
-      }
       if (r && r.success) {
+        var tagInfo = fbState.tags && fbState.tags.length > 0 ? ' (태그: ' + fbState.tags.join(', ') + ')' : '';
+        if (st) { st.textContent = '✓ 피드백 저장됨' + tagInfo; st.style.cssText = 'font-size:12px;color:var(--green);font-weight:700'; }
         fbState.sent = true;
-        showToast('피드백이 저장되었습니다', 'success');
+        showToast('피드백 저장됨' + tagInfo, 'success');
       } else {
-        showToast('저장 실패: ' + (r && r.error || ''), 'error');
+        var errMsg = (r && r.error) || '알 수 없는 오류';
+        if (st) { st.textContent = '⚠ 저장 실패: ' + errMsg; st.style.cssText = 'font-size:12px;color:var(--red);font-weight:700'; }
+        showToast('저장 실패: ' + errMsg, 'error');
+        console.error('[RLHF] 저장 실패:', r);
       }
     });
   }
@@ -1984,12 +1992,12 @@ function renderAssistantEvaluation(msgDiv, evalData) {
       thumbGood.className = 'rlhf-thumb-btn active-good';
       thumbBad.className = 'rlhf-thumb-btn';
       badSection.style.display = 'none';
-      saveGoodBtn.style.display = '';
+      saveGoodBtn.style.display = 'block';
     } else if (rating > 0) {
       fbState.thumbs = 'bad'; fbState.rating = rating;
       thumbBad.className = 'rlhf-thumb-btn active-bad';
       thumbGood.className = 'rlhf-thumb-btn';
-      badSection.style.display = '';
+      badSection.style.display = 'block';
       saveGoodBtn.style.display = 'none';
     }
     if (rating) {
@@ -2125,13 +2133,13 @@ function renderAssistantEvaluation(msgDiv, evalData) {
     thumbGood.className = 'rlhf-thumb-btn active-good';
     thumbBad.className = 'rlhf-thumb-btn';
     badSection.style.display = 'none';
-    saveGoodBtn.style.display = '';
+    saveGoodBtn.style.display = 'block';
   });
   thumbBad.addEventListener('click', function() {
     fbState.thumbs = 'bad';
     thumbBad.className = 'rlhf-thumb-btn active-bad';
     thumbGood.className = 'rlhf-thumb-btn';
-    badSection.style.display = '';
+    badSection.style.display = 'block';
     saveGoodBtn.style.display = 'none';
   });
 

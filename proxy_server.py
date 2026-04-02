@@ -4094,8 +4094,10 @@ AI 건강상담 서비스의 응답이 한국 의료법을 준수하는지 평�
         api_url = env_cfg.get('apiUrl', env_defaults.get(current_env, {}).get('apiUrl', 'https://dev-skix.phnyx.ai'))
         graph_type = settings.get('graphType', 'SUPERVISED_HYBRID_SEARCH')
 
+        # UID 우선순위: 클라이언트 전달 > 서버 tester 세션 > 설정 기본값
+        client_uid = payload.get('api_uid', '').strip()
         tester = self._get_tester_info()
-        api_uid = tester['uid'] if tester else api_uid_default
+        api_uid = client_uid or (tester.get('uid', '') if tester else '') or api_uid_default
 
         if not api_key:
             return self._send_error(400, f'{current_env.upper()} 환경의 API Key가 설정되지 않았습니다.')
