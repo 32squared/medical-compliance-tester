@@ -282,17 +282,25 @@
   async function loadOverviewStats() {
     try {
       var res = await fetch('/api/rlhf/stats');
-      if (!res.ok) return;
+      if (!res.ok) {
+        // admin 권한 없으면 통계 대신 '-' 표시 유지
+        ['statTotalFeedback','statTotalPairs','statExportReady','statAvgReward'].forEach(function(id) {
+          var el = document.getElementById(id);
+          if (el) el.textContent = res.status === 403 ? '(권한 없음)' : '-';
+        });
+        return;
+      }
       var data = await res.json();
       var el;
+      // API 반환 키: total_feedback, total_pairs, exported_pairs, avg_composite_reward
       el = document.getElementById('statTotalFeedback');
-      if (el) el.textContent = data.totalFeedback != null ? data.totalFeedback : 0;
+      if (el) el.textContent = data.total_feedback != null ? data.total_feedback : 0;
       el = document.getElementById('statTotalPairs');
-      if (el) el.textContent = data.totalPairs != null ? data.totalPairs : 0;
+      if (el) el.textContent = data.total_pairs != null ? data.total_pairs : 0;
       el = document.getElementById('statExportReady');
-      if (el) el.textContent = data.exportReady != null ? data.exportReady : 0;
+      if (el) el.textContent = data.exported_pairs != null ? data.exported_pairs : 0;
       el = document.getElementById('statAvgReward');
-      if (el) el.textContent = data.avgReward != null ? Number(data.avgReward).toFixed(2) : '0.00';
+      if (el) el.textContent = data.avg_composite_reward != null ? Number(data.avg_composite_reward).toFixed(2) : '0.00';
     } catch(e) {
       console.error('Stats load error:', e);
     }
@@ -421,10 +429,10 @@
     var ids = Array.from(selectedPairIds);
     if (ids.length === 0) { showToast('\uC120\uD0DD\uB41C \uC30D\uC774 \uC5C6\uC2B5\uB2C8\uB2E4', 'error'); return; }
     try {
-      var res = await fetch('/api/feedback/export', {
+      var res = await fetch('/api/rlhf/pairs/export', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pairIds: ids, format: 'openai' })
+        body: JSON.stringify({ ids: ids })
       });
       if (res.ok) {
         var blob = await res.blob();
@@ -478,15 +486,18 @@
   // ── Tester Auth ──
   function testerLogout() {
     document.cookie = 'tester_token=;path=/;max-age=0';
+    document.cookie = 'admin_token=;path=/;max-age=0';
     location.reload();
   }
 
   function checkTester() {
-    fetch('/api/auth/me').then(function(r) { return r.ok ? r.json() : null; }).then(function(data) {
-      if (data && data.name) {
+    fetch('/api/auth/status').then(function(r) { return r.ok ? r.json() : null; }).then(function(data) {
+      if (!data) return;
+      var name = (data.tester && data.tester.name) || (data.admin && 'Admin') || '';
+      if (name) {
         var badge = document.getElementById('testerBadge');
         if (badge) {
-          badge.textContent = '\uD83D\uDC64 ' + data.name;
+          badge.textContent = '\uD83D\uDC64 ' + name;
           badge.style.display = '';
         }
       }

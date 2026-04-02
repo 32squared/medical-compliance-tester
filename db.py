@@ -2149,8 +2149,8 @@ def get_rlhf_stats():
         cur.execute("SELECT COUNT(*) FROM preference_pairs")
         total_pairs = cur.fetchone()[0] or 0
 
-        # exported pairs
-        cur.execute("SELECT COUNT(*) FROM preference_pairs WHERE exported = 1")
+        # exported pairs (SQLite: 1, PostgreSQL: TRUE 모두 호환)
+        cur.execute("SELECT COUNT(*) FROM preference_pairs WHERE exported IS NOT NULL AND exported != 0")
         exported_pairs = cur.fetchone()[0] or 0
 
         # avg composite reward (chosen_composite 평균)
