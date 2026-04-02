@@ -9,6 +9,7 @@ import os
 import json
 import secrets
 import sqlite3
+import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
 
@@ -338,6 +339,54 @@ CREATE TABLE IF NOT EXISTS prompt_enhancements (
     created_at TEXT NOT NULL,
     created_by TEXT DEFAULT ''
 );
+
+CREATE TABLE IF NOT EXISTS response_feedback (
+    id TEXT PRIMARY KEY,
+    message_id TEXT NOT NULL,
+    conversation_id TEXT NOT NULL,
+    evaluator_id TEXT NOT NULL,
+    evaluator_name TEXT DEFAULT '',
+    rating INTEGER,
+    legal_rating INTEGER,
+    quality_rating INTEGER,
+    labels_json TEXT DEFAULT '[]',
+    corrected_response TEXT DEFAULT '',
+    feedback_note TEXT DEFAULT '',
+    original_query TEXT DEFAULT '',
+    full_response TEXT DEFAULT '',
+    response_time_ms INTEGER,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (message_id) REFERENCES messages(id),
+    FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS preference_pairs (
+    id TEXT PRIMARY KEY,
+    prompt TEXT NOT NULL,
+    response_chosen TEXT NOT NULL,
+    response_rejected TEXT NOT NULL,
+    chosen_legal_score REAL,
+    rejected_legal_score REAL,
+    chosen_consult_score REAL,
+    rejected_consult_score REAL,
+    chosen_composite REAL,
+    rejected_composite REAL,
+    label_source TEXT DEFAULT 'human',
+    labeled_by TEXT DEFAULT '',
+    label_confidence REAL DEFAULT 1.0,
+    chosen_msg_id TEXT,
+    rejected_msg_id TEXT,
+    conversation_id TEXT,
+    exported INTEGER DEFAULT 0,
+    exported_at TEXT,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_feedback_msg ON response_feedback(message_id);
+CREATE INDEX IF NOT EXISTS idx_feedback_conv ON response_feedback(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_feedback_evaluator ON response_feedback(evaluator_id);
+CREATE INDEX IF NOT EXISTS idx_pref_pairs_source ON preference_pairs(label_source);
+CREATE INDEX IF NOT EXISTS idx_pref_pairs_exported ON preference_pairs(exported);
 """
 
 # ── 스키마 (PostgreSQL) ──
@@ -485,6 +534,54 @@ CREATE TABLE IF NOT EXISTS prompt_enhancements (
     created_at TEXT NOT NULL,
     created_by TEXT DEFAULT ''
 );
+
+CREATE TABLE IF NOT EXISTS response_feedback (
+    id TEXT PRIMARY KEY,
+    message_id TEXT NOT NULL,
+    conversation_id TEXT NOT NULL,
+    evaluator_id TEXT NOT NULL,
+    evaluator_name TEXT DEFAULT '',
+    rating INTEGER,
+    legal_rating INTEGER,
+    quality_rating INTEGER,
+    labels_json JSONB DEFAULT '[]',
+    corrected_response TEXT DEFAULT '',
+    feedback_note TEXT DEFAULT '',
+    original_query TEXT DEFAULT '',
+    full_response TEXT DEFAULT '',
+    response_time_ms INTEGER,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (message_id) REFERENCES messages(id),
+    FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS preference_pairs (
+    id TEXT PRIMARY KEY,
+    prompt TEXT NOT NULL,
+    response_chosen TEXT NOT NULL,
+    response_rejected TEXT NOT NULL,
+    chosen_legal_score REAL,
+    rejected_legal_score REAL,
+    chosen_consult_score REAL,
+    rejected_consult_score REAL,
+    chosen_composite REAL,
+    rejected_composite REAL,
+    label_source TEXT DEFAULT 'human',
+    labeled_by TEXT DEFAULT '',
+    label_confidence REAL DEFAULT 1.0,
+    chosen_msg_id TEXT,
+    rejected_msg_id TEXT,
+    conversation_id TEXT,
+    exported INTEGER DEFAULT 0,
+    exported_at TEXT,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_feedback_msg ON response_feedback(message_id);
+CREATE INDEX IF NOT EXISTS idx_feedback_conv ON response_feedback(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_feedback_evaluator ON response_feedback(evaluator_id);
+CREATE INDEX IF NOT EXISTS idx_pref_pairs_source ON preference_pairs(label_source);
+CREATE INDEX IF NOT EXISTS idx_pref_pairs_exported ON preference_pairs(exported);
 """
 
 # Keep backward compat alias
@@ -599,6 +696,51 @@ def init_db(db_path=None):
                     improvement_json JSONB,
                     created_at TEXT NOT NULL,
                     created_by TEXT DEFAULT ''
+                )""")
+            except Exception:
+                pass
+            # RLHF 테이블 마이그레이션
+            try:
+                cur.execute("""CREATE TABLE IF NOT EXISTS response_feedback (
+                    id TEXT PRIMARY KEY,
+                    message_id TEXT NOT NULL,
+                    conversation_id TEXT NOT NULL,
+                    evaluator_id TEXT NOT NULL,
+                    evaluator_name TEXT DEFAULT '',
+                    rating INTEGER,
+                    legal_rating INTEGER,
+                    quality_rating INTEGER,
+                    labels_json JSONB DEFAULT '[]',
+                    corrected_response TEXT DEFAULT '',
+                    feedback_note TEXT DEFAULT '',
+                    original_query TEXT DEFAULT '',
+                    full_response TEXT DEFAULT '',
+                    response_time_ms INTEGER,
+                    created_at TEXT NOT NULL
+                )""")
+            except Exception:
+                pass
+            try:
+                cur.execute("""CREATE TABLE IF NOT EXISTS preference_pairs (
+                    id TEXT PRIMARY KEY,
+                    prompt TEXT NOT NULL,
+                    response_chosen TEXT NOT NULL,
+                    response_rejected TEXT NOT NULL,
+                    chosen_legal_score REAL,
+                    rejected_legal_score REAL,
+                    chosen_consult_score REAL,
+                    rejected_consult_score REAL,
+                    chosen_composite REAL,
+                    rejected_composite REAL,
+                    label_source TEXT DEFAULT 'human',
+                    labeled_by TEXT DEFAULT '',
+                    label_confidence REAL DEFAULT 1.0,
+                    chosen_msg_id TEXT,
+                    rejected_msg_id TEXT,
+                    conversation_id TEXT,
+                    exported INTEGER DEFAULT 0,
+                    exported_at TEXT,
+                    created_at TEXT NOT NULL
                 )""")
             except Exception:
                 pass
@@ -1763,6 +1905,305 @@ def get_enhancement_report():
         'avgGptDelta': round(avg_gpt, 2),
         'avgConsultDelta': round(avg_consult, 2),
         'topInstructions': top_instructions,
+    }
+
+
+# ─── response_feedback CRUD ───────────────────────────────────────
+
+def add_response_feedback(message_id, conversation_id, evaluator_id,
+                           evaluator_name='', rating=None,
+                           legal_rating=None, quality_rating=None,
+                           labels_json='[]', corrected_response='',
+                           feedback_note='', original_query='',
+                           full_response='', response_time_ms=None):
+    """응답 피드백 저장"""
+    fb_id = str(uuid.uuid4())
+    now = _now()
+    with get_conn() as (conn, cur):
+        cur.execute(
+            f"""INSERT INTO response_feedback
+                (id, message_id, conversation_id, evaluator_id, evaluator_name,
+                 rating, legal_rating, quality_rating, labels_json,
+                 corrected_response, feedback_note, original_query,
+                 full_response, response_time_ms, created_at)
+                VALUES ({_ph(15)})""",
+            (fb_id, message_id, conversation_id, evaluator_id, evaluator_name,
+             rating, legal_rating, quality_rating, labels_json,
+             corrected_response, feedback_note, original_query,
+             full_response, response_time_ms, now)
+        )
+    return fb_id
+
+
+def get_response_feedback(message_id=None, conversation_id=None,
+                          evaluator_id=None, limit=100):
+    """피드백 조회 (message_id, conversation_id, evaluator_id 중 하나로 필터)"""
+    ph = _p()
+    with get_conn() as (conn, cur):
+        if message_id:
+            cur.execute(
+                f"SELECT * FROM response_feedback WHERE message_id = {ph} ORDER BY created_at DESC LIMIT {ph}",
+                (message_id, limit)
+            )
+        elif conversation_id:
+            cur.execute(
+                f"SELECT * FROM response_feedback WHERE conversation_id = {ph} ORDER BY created_at DESC LIMIT {ph}",
+                (conversation_id, limit)
+            )
+        elif evaluator_id:
+            cur.execute(
+                f"SELECT * FROM response_feedback WHERE evaluator_id = {ph} ORDER BY created_at DESC LIMIT {ph}",
+                (evaluator_id, limit)
+            )
+        else:
+            cur.execute(
+                f"SELECT * FROM response_feedback ORDER BY created_at DESC LIMIT {ph}",
+                (limit,)
+            )
+        rows = cur.fetchall()
+        return [_row_to_dict(r) for r in rows]
+
+
+def get_feedback_stats(days=30):
+    """피드백 집계 통계 반환 (총 건수, 평균 rating, label 분포 등)"""
+    ph = _p()
+    cutoff = datetime.now(timezone.utc).isoformat()[:10]  # today
+    # 간단히 days 전 날짜 계산
+    from datetime import timedelta
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    with get_conn() as (conn, cur):
+        cur.execute(
+            f"SELECT * FROM response_feedback WHERE created_at >= {ph} ORDER BY created_at DESC",
+            (cutoff,)
+        )
+        rows = cur.fetchall()
+
+    feedbacks = [_row_to_dict(r) for r in rows]
+    total = len(feedbacks)
+    if total == 0:
+        return {'total': 0, 'avgRating': None, 'avgLegalRating': None,
+                'avgQualityRating': None, 'labelDistribution': {}}
+
+    ratings = [f['rating'] for f in feedbacks if f.get('rating') is not None]
+    legal_ratings = [f['legal_rating'] for f in feedbacks if f.get('legal_rating') is not None]
+    quality_ratings = [f['quality_rating'] for f in feedbacks if f.get('quality_rating') is not None]
+
+    # label 분포 집계
+    label_dist = {}
+    for f in feedbacks:
+        labels = _pg_json_loads_or(f.get('labels_json'), [])
+        if isinstance(labels, list):
+            for lbl in labels:
+                label_dist[lbl] = label_dist.get(lbl, 0) + 1
+
+    return {
+        'total': total,
+        'avgRating': round(sum(ratings) / len(ratings), 2) if ratings else None,
+        'avgLegalRating': round(sum(legal_ratings) / len(legal_ratings), 2) if legal_ratings else None,
+        'avgQualityRating': round(sum(quality_ratings) / len(quality_ratings), 2) if quality_ratings else None,
+        'labelDistribution': label_dist,
+    }
+
+
+# ─── preference_pairs CRUD ────────────────────────────────────────
+
+def add_preference_pair(prompt, response_chosen, response_rejected,
+                        chosen_legal_score=None, rejected_legal_score=None,
+                        chosen_consult_score=None, rejected_consult_score=None,
+                        chosen_composite=None, rejected_composite=None,
+                        label_source='human', labeled_by='',
+                        label_confidence=1.0,
+                        chosen_msg_id=None, rejected_msg_id=None,
+                        conversation_id=None):
+    """선호도 쌍 저장"""
+    pair_id = str(uuid.uuid4())
+    now = _now()
+    with get_conn() as (conn, cur):
+        cur.execute(
+            f"""INSERT INTO preference_pairs
+                (id, prompt, response_chosen, response_rejected,
+                 chosen_legal_score, rejected_legal_score,
+                 chosen_consult_score, rejected_consult_score,
+                 chosen_composite, rejected_composite,
+                 label_source, labeled_by, label_confidence,
+                 chosen_msg_id, rejected_msg_id, conversation_id,
+                 exported, exported_at, created_at)
+                VALUES ({_ph(19)})""",
+            (pair_id, prompt, response_chosen, response_rejected,
+             chosen_legal_score, rejected_legal_score,
+             chosen_consult_score, rejected_consult_score,
+             chosen_composite, rejected_composite,
+             label_source, labeled_by, label_confidence,
+             chosen_msg_id, rejected_msg_id, conversation_id,
+             0, None, now)
+        )
+    return pair_id
+
+
+def list_preference_pairs(exported=None, label_source=None,
+                          limit=100, offset=0):
+    """선호도 쌍 목록 (exported=True/False/None 필터)"""
+    ph = _p()
+    conditions = []
+    params = []
+    if exported is not None:
+        conditions.append(f"exported = {ph}")
+        params.append(1 if exported else 0)
+    if label_source is not None:
+        conditions.append(f"label_source = {ph}")
+        params.append(label_source)
+
+    where = ""
+    if conditions:
+        where = "WHERE " + " AND ".join(conditions)
+
+    params.extend([limit, offset])
+    with get_conn() as (conn, cur):
+        cur.execute(
+            f"SELECT * FROM preference_pairs {where} ORDER BY created_at DESC LIMIT {ph} OFFSET {ph}",
+            params
+        )
+        rows = cur.fetchall()
+        return [_row_to_dict(r) for r in rows]
+
+
+def mark_preference_pairs_exported(pair_ids: list = None, all_unexported=False):
+    """exported=1, exported_at=now() 로 일괄 업데이트.
+    all_unexported=True이면 ids 무관하게 exported=0인 모든 레코드를 업데이트."""
+    ph = _p()
+    now = _now()
+    with get_conn() as (conn, cur):
+        if all_unexported:
+            cur.execute(
+                f"UPDATE preference_pairs SET exported = 1, exported_at = {ph} WHERE exported = 0",
+                (now,)
+            )
+            return cur.rowcount
+        if not pair_ids:
+            return 0
+        updated = 0
+        for pid in pair_ids:
+            cur.execute(
+                f"UPDATE preference_pairs SET exported = 1, exported_at = {ph} WHERE id = {ph}",
+                (now, pid)
+            )
+            updated += cur.rowcount
+    return updated
+
+
+def export_preference_pairs_dpo(format='openai', limit=500):
+    """
+    DPO 학습용 데이터 export
+    format='openai' → [{"messages":[...], "chosen":..., "rejected":...}, ...]
+    format='hf'     → [{"prompt":..., "chosen":..., "rejected":...}, ...]
+    """
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(
+            f"SELECT * FROM preference_pairs WHERE exported = 0 ORDER BY created_at ASC LIMIT {ph}",
+            (limit,)
+        )
+        rows = cur.fetchall()
+
+    pairs = [_row_to_dict(r) for r in rows]
+    result = []
+
+    for p in pairs:
+        if format == 'openai':
+            result.append({
+                'messages': [{'role': 'user', 'content': p['prompt']}],
+                'chosen': {'role': 'assistant', 'content': p['response_chosen']},
+                'rejected': {'role': 'assistant', 'content': p['response_rejected']},
+                'pair_id': p['id'],
+            })
+        else:  # hf format
+            result.append({
+                'prompt': p['prompt'],
+                'chosen': p['response_chosen'],
+                'rejected': p['response_rejected'],
+                'pair_id': p['id'],
+            })
+
+    return result
+
+
+# ─── RLHF 통계 ────────────────────────────────────────────────────
+
+def get_rlhf_stats():
+    """
+    RLHF 관리 페이지용 통계 집계
+    반환: total_feedback, total_pairs, exported_pairs,
+          avg_composite_reward, label_distribution, daily_feedback
+    """
+    from datetime import timedelta
+    ph = _p()
+    now_dt = datetime.now(timezone.utc)
+    seven_days_ago = (now_dt - timedelta(days=7)).isoformat()
+
+    with get_conn() as (conn, cur):
+        # total feedback
+        cur.execute("SELECT COUNT(*) FROM response_feedback")
+        total_feedback = cur.fetchone()[0] or 0
+
+        # total pairs
+        cur.execute("SELECT COUNT(*) FROM preference_pairs")
+        total_pairs = cur.fetchone()[0] or 0
+
+        # exported pairs
+        cur.execute("SELECT COUNT(*) FROM preference_pairs WHERE exported = 1")
+        exported_pairs = cur.fetchone()[0] or 0
+
+        # avg composite reward (chosen_composite 평균)
+        cur.execute("SELECT AVG(chosen_composite) FROM preference_pairs WHERE chosen_composite IS NOT NULL")
+        row = cur.fetchone()
+        avg_composite_reward = round(row[0], 4) if row and row[0] is not None else 0.0
+
+        # label_source 별 건수
+        cur.execute("SELECT label_source, COUNT(*) FROM preference_pairs GROUP BY label_source")
+        label_rows = cur.fetchall()
+        label_distribution = {}
+        for r in label_rows:
+            d = _row_to_dict(r) if hasattr(r, 'keys') else None
+            if d:
+                label_distribution[d.get('label_source', 'unknown')] = d.get('count', 0)
+            else:
+                label_distribution[r[0] or 'unknown'] = r[1]
+
+        # 최근 7일 일별 피드백 건수
+        if _use_postgres:
+            cur.execute(
+                f"""SELECT DATE(created_at) as date, COUNT(*) as count
+                    FROM response_feedback
+                    WHERE created_at >= {ph}
+                    GROUP BY DATE(created_at)
+                    ORDER BY date""",
+                (seven_days_ago,)
+            )
+        else:
+            cur.execute(
+                f"""SELECT SUBSTR(created_at, 1, 10) as date, COUNT(*) as count
+                    FROM response_feedback
+                    WHERE created_at >= {ph}
+                    GROUP BY SUBSTR(created_at, 1, 10)
+                    ORDER BY date""",
+                (seven_days_ago,)
+            )
+        daily_rows = cur.fetchall()
+        daily_feedback = []
+        for r in daily_rows:
+            d = _row_to_dict(r) if hasattr(r, 'keys') else None
+            if d:
+                daily_feedback.append({'date': str(d.get('date', '')), 'count': d.get('count', 0)})
+            else:
+                daily_feedback.append({'date': str(r[0]), 'count': r[1]})
+
+    return {
+        'total_feedback': total_feedback,
+        'total_pairs': total_pairs,
+        'exported_pairs': exported_pairs,
+        'avg_composite_reward': avg_composite_reward,
+        'label_distribution': label_distribution,
+        'daily_feedback': daily_feedback,
     }
 
 

@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RLHF 관리 — 나만의 주치의</title>
+<style>
+  :root {
+    --bg: #0f172a; --surface: #1e293b; --surface2: #334155; --surface3: #3b4a63;
+    --text: #e2e8f0; --text-dim: #94a3b8; --accent: #38bdf8; --accent-dim: #0c4a6e;
+    --green: #22c55e; --red: #ef4444; --yellow: #eab308; --orange: #f97316;
+    --border: #475569; --radius: 12px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Pretendard','Apple SD Gothic Neo',system-ui,sans-serif;
+         background:var(--bg); color:var(--text); min-height:100vh; display:flex; flex-direction:column; }
+
+  /* 로딩 스피너 */
+  #appLoader{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .3s}
+  #appLoader.fade-out{opacity:0;pointer-events:none}
+  .loader-spinner{width:40px;height:40px;border:3px solid #334155;border-top-color:#38bdf8;border-radius:50%;animation:spin .8s linear infinite}
+  .loader-text{margin-top:16px;color:#94a3b8;font-size:13px;font-family:system-ui}
+  .loader-progress{width:200px;height:3px;background:#334155;border-radius:2px;margin-top:12px;overflow:hidden}
+  .loader-bar{height:100%;background:#38bdf8;border-radius:2px;transition:width .2s;width:0%}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .topbar { display:flex; align-items:center; gap:8px; padding:12px 20px;
+            background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; flex-wrap:nowrap; overflow-x:auto; }
+  .topbar h1 { font-size:16px; font-weight:700; white-space:nowrap; }
+  .nav-btn { background:none; border:1px solid var(--border); color:var(--text-dim); border-radius:8px;
+             padding:6px 14px; cursor:pointer; font-size:13px; text-decoration:none; transition:all .15s; white-space:nowrap; }
+  .nav-btn:hover { background:var(--surface2); color:var(--text); }
+  .nav-btn.active { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
+
+  .content { flex:1; padding:24px; max-width:1100px; margin:0 auto; width:100%; }
+
+  /* Tabs */
+  .tabs { display:flex; gap:4px; margin-bottom:20px; background:var(--surface); padding:4px;
+          border-radius:10px; border:1px solid var(--border); flex-wrap:wrap; }
+  .tab { flex:1; text-align:center; padding:10px 8px; border-radius:8px; font-size:13px; font-weight:600;
+         cursor:pointer; color:var(--text-dim); transition:all .15s; border:none; background:none; min-width:100px; }
+  .tab.active { background:var(--accent-dim); color:var(--accent); }
+  .tab:hover { color:var(--text); }
+
+  /* Cards */
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:16px;
+          padding:24px; margin-bottom:20px; display:none; }
+  .card.active { display:block; }
+  .card h2 { font-size:15px; font-weight:700; color:var(--accent); margin-bottom:16px; }
+
+  /* Stats cards */
+  .stats-grid { display:flex; gap:12px; flex-wrap:wrap; }
+  .stat-card { flex:1; min-width:140px; padding:20px 16px; background:var(--bg); border:1px solid var(--border);
+               border-radius:12px; text-align:center; }
+  .stat-value { font-size:28px; font-weight:800; margin-bottom:4px; }
+  .stat-label { font-size:12px; color:var(--text-dim); font-weight:600; }
+
+  /* Table */
+  .data-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .data-table th { text-align:left; padding:10px 12px; background:var(--surface2); color:var(--text-dim);
+                   font-size:11px; font-weight:600; text-transform:uppercase; position:sticky; top:0; }
+  .data-table td { padding:10px 12px; border-bottom:1px solid var(--border); }
+  .data-table tr:hover td { background:rgba(56,189,248,.04); }
+  .data-table .badge { padding:2px 8px; border-radius:4px; font-size:11px; font-weight:700; }
+  .badge-good { background:#22c55e22; color:var(--green); }
+  .badge-bad { background:#ef444422; color:var(--red); }
+  .table-scroll { max-height:500px; overflow-y:auto; border:1px solid var(--border); border-radius:10px; }
+
+  /* Buttons */
+  .btn-primary { padding:8px 20px; background:var(--accent); color:#0f172a; border:none;
+                 border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; }
+  .btn-primary:hover { opacity:.9; }
+  .btn-primary:disabled { opacity:.4; cursor:not-allowed; }
+  .btn-outline { padding:8px 16px; background:none; border:1px solid var(--border); color:var(--text-dim);
+                 border-radius:8px; font-size:13px; cursor:pointer; }
+  .btn-outline:hover { background:var(--surface2); color:var(--text); }
+
+  /* Export section */
+  .export-options { display:flex; gap:12px; margin-bottom:16px; align-items:center; flex-wrap:wrap; }
+  .export-options select { padding:8px 12px; background:var(--bg); border:1px solid var(--border); color:var(--text);
+                           border-radius:8px; font-size:13px; }
+
+  /* Checkbox */
+  .cb-row { display:flex; align-items:center; gap:6px; }
+  .cb-row input[type="checkbox"] { accent-color:var(--accent); width:16px; height:16px; }
+
+  /* Tag chips */
+  .tag-chip { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; margin:1px 2px;
+              background:var(--surface2); color:var(--text-dim); }
+
+  /* Placeholder */
+  .placeholder-box { padding:40px 20px; text-align:center; color:var(--text-dim); }
+  .placeholder-box .icon { font-size:48px; margin-bottom:12px; opacity:.4; }
+  .placeholder-box p { font-size:14px; }
+
+  /* Toast */
+  .toast-container { position:fixed; bottom:20px; right:20px; z-index:200; display:flex; flex-direction:column; gap:8px; }
+  .toast { padding:12px 20px; border-radius:10px; font-size:13px; font-weight:500;
+           animation:slideIn .3s ease; box-shadow:0 4px 12px rgba(0,0,0,.3); }
+  .toast-success { background:var(--green); color:white; }
+  .toast-error { background:var(--red); color:white; }
+  .toast-info { background:var(--accent); color:#0f172a; }
+  @keyframes slideIn { from { transform:translateX(100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
+
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--surface2); border-radius:3px; }
+</style>
+</head>
+<body>
+<div id="appLoader">
+  <div class="loader-spinner"></div>
+  <div class="loader-text">로딩 중...</div>
+  <div class="loader-progress"><div class="loader-bar" id="loaderBar"></div></div>
+</div>
+
+<!-- Top Bar -->
+<div class="topbar">
+  <h1 style="font-size:16px;font-weight:700">&#127973; 나만의 주치의</h1>
+  <a href="/" class="nav-btn">채팅 테스터</a>
+  <a href="/manager" class="nav-btn">시나리오 관리</a>
+  <a href="/history" class="nav-btn">테스트 이력</a>
+  <a href="/guidelines" class="nav-btn">법률 평가 기준</a>
+  <a href="/criteria" class="nav-btn">문진 평가 기준</a>
+  <a href="/rlhf" class="nav-btn active">RLHF 관리</a>
+  <a href="/settings" class="nav-btn" id="settingsNavLink">&#9881; 설정</a>
+  <span id="testerBadge" style="margin-left:auto;display:none;font-size:11px;color:var(--accent);background:var(--accent-dim);padding:3px 10px;border-radius:6px;cursor:pointer;white-space:nowrap" onclick="if(confirm('로그아웃 하시겠습니까?'))testerLogout()"></span>
+</div>
+
+<div class="content">
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" data-tab="overview" onclick="switchTab('overview')">&#128202; 개요</button>
+    <button class="tab" data-tab="feedback" onclick="switchTab('feedback')">&#128203; 피드백</button>
+    <button class="tab" data-tab="pairs" onclick="switchTab('pairs')">&#9878;&#65039; 선호도 쌍</button>
+    <button class="tab" data-tab="export" onclick="switchTab('export')">&#128228; Export</button>
+    <button class="tab" data-tab="training" onclick="switchTab('training')">&#127947;&#65039; 학습 현황</button>
+  </div>
+
+  <!-- Tab 1: Overview -->
+  <div class="card active" id="tab-overview">
+    <h2>&#128202; RLHF 개요</h2>
+    <div class="stats-grid" id="overviewStats">
+      <div class="stat-card">
+        <div class="stat-value" id="statTotalFeedback" style="color:var(--accent)">-</div>
+        <div class="stat-label">총 피드백</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statTotalPairs" style="color:var(--green)">-</div>
+        <div class="stat-label">총 선호도 쌍</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statExportReady" style="color:var(--yellow)">-</div>
+        <div class="stat-label">Export 대기</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statAvgReward" style="color:var(--orange)">-</div>
+        <div class="stat-label">평균 Reward</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 2: Feedback -->
+  <div class="card" id="tab-feedback">
+    <h2>&#128203; 최근 피드백</h2>
+    <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center">
+      <button class="btn-outline" onclick="loadFeedbackList()">&#128260; 새로고침</button>
+    </div>
+    <div class="table-scroll">
+      <table class="data-table" id="feedbackTable">
+        <thead>
+          <tr>
+            <th>시간</th>
+            <th>평가</th>
+            <th>별점</th>
+            <th>태그</th>
+            <th>메모</th>
+          </tr>
+        </thead>
+        <tbody id="feedbackBody">
+          <tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:30px">로딩 중...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Tab 3: Preference Pairs -->
+  <div class="card" id="tab-pairs">
+    <h2>&#9878;&#65039; 선호도 쌍 (Preference Pairs)</h2>
+    <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="btn-outline" onclick="loadPairsList()">&#128260; 새로고침</button>
+      <button class="btn-primary" id="exportSelectedBtn" onclick="exportSelectedPairs()" disabled>&#128228; 선택 Export</button>
+      <label class="cb-row" style="margin-left:auto">
+        <input type="checkbox" id="selectAllPairs" onchange="toggleAllPairs(this.checked)">
+        <span style="font-size:12px;color:var(--text-dim)">전체 선택</span>
+      </label>
+    </div>
+    <div class="table-scroll">
+      <table class="data-table" id="pairsTable">
+        <thead>
+          <tr>
+            <th style="width:40px"></th>
+            <th>프롬프트</th>
+            <th>Chosen</th>
+            <th>Rejected</th>
+            <th>생성일</th>
+          </tr>
+        </thead>
+        <tbody id="pairsBody">
+          <tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:30px">로딩 중...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Tab 4: Export -->
+  <div class="card" id="tab-export">
+    <h2>&#128228; DPO 데이터 Export</h2>
+    <div class="export-options">
+      <label style="font-size:13px;color:var(--text-dim);font-weight:600">포맷:</label>
+      <select id="exportFormat">
+        <option value="openai">OpenAI (JSONL)</option>
+        <option value="hf">HuggingFace (JSON)</option>
+      </select>
+      <button class="btn-primary" onclick="downloadExport()">&#128229; 다운로드</button>
+    </div>
+    <div style="padding:16px;background:var(--bg);border-radius:10px;border:1px solid var(--border)">
+      <div style="font-size:13px;color:var(--text-dim);margin-bottom:8px">Export 미리보기:</div>
+      <pre id="exportPreview" style="font-size:12px;color:var(--text);max-height:300px;overflow-y:auto;white-space:pre-wrap;word-break:break-word">포맷을 선택하고 다운로드 버튼을 클릭하세요.</pre>
+    </div>
+  </div>
+
+  <!-- Tab 5: Training Status -->
+  <div class="card" id="tab-training">
+    <h2>&#127947;&#65039; 학습 현황</h2>
+    <div class="placeholder-box">
+      <div class="icon">&#128640;</div>
+      <p>학습 연동 기능은 추후 업데이트 예정입니다.</p>
+      <p style="font-size:12px;margin-top:8px;color:var(--text-dim)">DPO/RLHF 학습 파이프라인이 연결되면 학습 진행 상태, 모델 성능 지표 등을 확인할 수 있습니다.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+  // ── Toast ──
+  function showToast(msg, type) {
+    type = type || 'info';
+    var c = document.getElementById('toastContainer');
+    if (!c) return;
+    var t = document.createElement('div');
+    t.className = 'toast toast-' + type;
+    t.textContent = msg;
+    c.appendChild(t);
+    setTimeout(function() { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; }, 2500);
+    setTimeout(function() { t.remove(); }, 2800);
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Tab switching ──
+  var currentTab = 'overview';
+  function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.tab').forEach(function(t) {
+      t.classList.toggle('active', t.dataset.tab === tab);
+    });
+    document.querySelectorAll('.card').forEach(function(c) {
+      c.classList.toggle('active', c.id === 'tab-' + tab);
+    });
+
+    if (tab === 'feedback') loadFeedbackList();
+    if (tab === 'pairs') loadPairsList();
+  }
+
+  // ── Load Overview Stats ──
+  async function loadOverviewStats() {
+    try {
+      var res = await fetch('/api/rlhf/stats');
+      if (!res.ok) return;
+      var data = await res.json();
+      var el;
+      el = document.getElementById('statTotalFeedback');
+      if (el) el.textContent = data.totalFeedback != null ? data.totalFeedback : 0;
+      el = document.getElementById('statTotalPairs');
+      if (el) el.textContent = data.totalPairs != null ? data.totalPairs : 0;
+      el = document.getElementById('statExportReady');
+      if (el) el.textContent = data.exportReady != null ? data.exportReady : 0;
+      el = document.getElementById('statAvgReward');
+      if (el) el.textContent = data.avgReward != null ? Number(data.avgReward).toFixed(2) : '0.00';
+    } catch(e) {
+      console.error('Stats load error:', e);
+    }
+  }
+
+  // ── Load Feedback List ──
+  async function loadFeedbackList() {
+    var tbody = document.getElementById('feedbackBody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:30px">\uB85C\uB529 \uC911...</td></tr>';
+
+    try {
+      var res = await fetch('/api/feedback');
+      var data = [];
+      if (res.ok) {
+        var json = await res.json();
+        data = Array.isArray(json) ? json : (json.feedbacks || json.items || []);
+      }
+
+      if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:30px">\uD53C\uB4DC\uBC31 \uB370\uC774\uD130\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.</td></tr>';
+        return;
+      }
+
+      var html = '';
+      for (var i = 0; i < data.length; i++) {
+        var fb = data[i];
+        var thumbClass = fb.thumbs === 'good' ? 'badge-good' : fb.thumbs === 'bad' ? 'badge-bad' : '';
+        var thumbText = fb.thumbs === 'good' ? '\uD83D\uDC4D \uC88B\uC74C' : fb.thumbs === 'bad' ? '\uD83D\uDC4E \uB098\uC068' : '-';
+        var stars = '';
+        if (fb.rating) {
+          for (var s = 0; s < 5; s++) stars += s < fb.rating ? '\u2605' : '\u2606';
+        }
+        var tags = (fb.tags || []).map(function(t) { return '<span class="tag-chip">' + escapeHtml(t) + '</span>'; }).join('');
+        var dateStr = fb.createdAt || fb.created_at || '';
+        if (dateStr) {
+          try { dateStr = new Date(dateStr).toLocaleString('ko-KR'); } catch(ex) { /* keep raw */ }
+        }
+        html += '<tr>' +
+          '<td>' + escapeHtml(dateStr) + '</td>' +
+          '<td><span class="badge ' + thumbClass + '">' + thumbText + '</span></td>' +
+          '<td style="color:#eab308">' + (stars || '-') + '</td>' +
+          '<td>' + (tags || '-') + '</td>' +
+          '<td style="font-size:12px;color:var(--text-dim);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(fb.memo || '') + '</td>' +
+        '</tr>';
+      }
+      tbody.innerHTML = html;
+    } catch(e) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--red);padding:30px">\uB85C\uB4DC \uC2E4\uD328: ' + escapeHtml(e.message) + '</td></tr>';
+    }
+  }
+
+  // ── Load Preference Pairs ──
+  var pairsData = [];
+  var selectedPairIds = new Set();
+
+  async function loadPairsList() {
+    var tbody = document.getElementById('pairsBody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:30px">\uB85C\uB529 \uC911...</td></tr>';
+    pairsData = [];
+    selectedPairIds.clear();
+    updateExportBtn();
+
+    try {
+      var res = await fetch('/api/rlhf/pairs');
+      var data = [];
+      if (res.ok) {
+        var json = await res.json();
+        data = Array.isArray(json) ? json : (json.pairs || json.items || []);
+      }
+      pairsData = data;
+
+      if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:30px">\uC120\uD638\uB3C4 \uC30D \uB370\uC774\uD130\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.</td></tr>';
+        return;
+      }
+
+      var html = '';
+      for (var i = 0; i < data.length; i++) {
+        var p = data[i];
+        var pid = p.id || p._id || i;
+        var prompt = escapeHtml((p.userPrompt || p.prompt || '').substring(0, 60));
+        var chosen = escapeHtml((p.chosenResponse || p.chosen || '').substring(0, 80));
+        var rejected = escapeHtml((p.rejectedResponse || p.rejected || '').substring(0, 80));
+        var dateStr = p.createdAt || p.created_at || '';
+        if (dateStr) {
+          try { dateStr = new Date(dateStr).toLocaleDateString('ko-KR'); } catch(ex) { /* keep raw */ }
+        }
+        html += '<tr>' +
+          '<td><input type="checkbox" class="pair-cb" data-pid="' + escapeHtml(String(pid)) + '" onchange="togglePairSelect(this)"></td>' +
+          '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + prompt + '">' + prompt + '</td>' +
+          '<td style="font-size:12px;color:var(--green);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + chosen + '</td>' +
+          '<td style="font-size:12px;color:var(--red);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + rejected + '</td>' +
+          '<td>' + escapeHtml(dateStr) + '</td>' +
+        '</tr>';
+      }
+      tbody.innerHTML = html;
+    } catch(e) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--red);padding:30px">\uB85C\uB4DC \uC2E4\uD328: ' + escapeHtml(e.message) + '</td></tr>';
+    }
+  }
+
+  function togglePairSelect(cb) {
+    var pid = cb.dataset.pid;
+    if (cb.checked) selectedPairIds.add(pid);
+    else selectedPairIds.delete(pid);
+    updateExportBtn();
+  }
+
+  function toggleAllPairs(checked) {
+    selectedPairIds.clear();
+    document.querySelectorAll('.pair-cb').forEach(function(cb) {
+      cb.checked = checked;
+      if (checked) selectedPairIds.add(cb.dataset.pid);
+    });
+    updateExportBtn();
+  }
+
+  function updateExportBtn() {
+    var btn = document.getElementById('exportSelectedBtn');
+    if (btn) btn.disabled = selectedPairIds.size === 0;
+  }
+
+  async function exportSelectedPairs() {
+    var ids = Array.from(selectedPairIds);
+    if (ids.length === 0) { showToast('\uC120\uD0DD\uB41C \uC30D\uC774 \uC5C6\uC2B5\uB2C8\uB2E4', 'error'); return; }
+    try {
+      var res = await fetch('/api/feedback/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pairIds: ids, format: 'openai' })
+      });
+      if (res.ok) {
+        var blob = await res.blob();
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'rlhf_pairs_selected.jsonl';
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast(ids.length + '\uAC1C \uC30D Export \uC644\uB8CC', 'success');
+      } else {
+        showToast('Export \uC2E4\uD328', 'error');
+      }
+    } catch(e) {
+      showToast('Export \uC2E4\uD328: ' + e.message, 'error');
+    }
+  }
+
+  // ── Export Download ──
+  async function downloadExport() {
+    var format = document.getElementById('exportFormat');
+    var fmt = format ? format.value : 'openai';
+    try {
+      var res = await fetch('/api/feedback/export?format=' + fmt);
+      if (!res.ok) {
+        showToast('Export \uC2E4\uD328: ' + res.status, 'error');
+        return;
+      }
+      var blob = await res.blob();
+      var ext = fmt === 'hf' ? '.json' : '.jsonl';
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'rlhf_export_' + fmt + ext;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Export \uB2E4\uC6B4\uB85C\uB4DC \uC644\uB8CC', 'success');
+
+      // Show preview
+      var previewRes = await fetch('/api/feedback/export?format=' + fmt);
+      if (previewRes.ok) {
+        var text = await previewRes.text();
+        var preview = document.getElementById('exportPreview');
+        if (preview) preview.textContent = text.substring(0, 2000) + (text.length > 2000 ? '\n...' : '');
+      }
+    } catch(e) {
+      showToast('Export \uC2E4\uD328: ' + e.message, 'error');
+    }
+  }
+
+  // ── Tester Auth ──
+  function testerLogout() {
+    document.cookie = 'tester_token=;path=/;max-age=0';
+    location.reload();
+  }
+
+  function checkTester() {
+    fetch('/api/auth/me').then(function(r) { return r.ok ? r.json() : null; }).then(function(data) {
+      if (data && data.name) {
+        var badge = document.getElementById('testerBadge');
+        if (badge) {
+          badge.textContent = '\uD83D\uDC64 ' + data.name;
+          badge.style.display = '';
+        }
+      }
+    }).catch(function() {});
+  }
+
+  // ── Init ──
+  window.addEventListener('DOMContentLoaded', function() {
+    var loader = document.getElementById('appLoader');
+    if (loader) {
+      var bar = document.getElementById('loaderBar');
+      if (bar) bar.style.width = '100%';
+      setTimeout(function() { loader.classList.add('fade-out'); }, 300);
+      setTimeout(function() { loader.remove(); }, 600);
+    }
+    checkTester();
+    loadOverviewStats();
+  });
+</script>
+</body>
+</html>

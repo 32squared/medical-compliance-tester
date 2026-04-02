@@ -242,6 +242,49 @@
     .panel { position:fixed; left:0; top:0; bottom:0; z-index:100; width:320px; }
     .panel.collapsed { margin-left:-320px; }
   }
+
+  /* ── RLHF Feedback UI ── */
+  .rlhf-feedback { margin-top:10px; padding:12px 14px; background:var(--bg); border:1px solid var(--border); border-radius:10px; }
+  .rlhf-feedback-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .rlhf-thumb-btn { padding:5px 12px; border-radius:8px; font-size:13px; cursor:pointer; border:1px solid var(--border);
+                    background:var(--surface2); color:var(--text-dim); transition:all .15s; }
+  .rlhf-thumb-btn:hover { border-color:var(--accent); color:var(--text); }
+  .rlhf-thumb-btn.active-good { background:#22c55e33; border-color:var(--green); color:var(--green); }
+  .rlhf-thumb-btn.active-bad { background:#ef444433; border-color:var(--red); color:var(--red); }
+  .rlhf-stars { display:inline-flex; gap:2px; margin-left:8px; }
+  .rlhf-star { font-size:18px; cursor:pointer; color:var(--surface2); transition:color .1s; user-select:none; }
+  .rlhf-star.filled { color:#eab308; }
+  .rlhf-tag-btn { padding:3px 10px; border-radius:14px; font-size:11px; cursor:pointer; border:1px solid var(--border);
+                  background:var(--surface); color:var(--text-dim); transition:all .15s; }
+  .rlhf-tag-btn:hover { border-color:var(--accent); }
+  .rlhf-tag-btn.active { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
+  .rlhf-correction { display:none; margin-top:10px; }
+  .rlhf-correction.open { display:block; }
+  .rlhf-correction textarea { width:100%; padding:8px 12px; background:var(--surface); color:var(--text); border:1px solid var(--border);
+                               border-radius:8px; font-size:13px; resize:vertical; min-height:60px; box-sizing:border-box; font-family:inherit; }
+  .rlhf-correction input { width:100%; padding:8px 12px; background:var(--surface); color:var(--text); border:1px solid var(--border);
+                            border-radius:8px; font-size:13px; margin-top:6px; box-sizing:border-box; }
+  .rlhf-save-btn { margin-top:8px; padding:6px 16px; background:var(--accent); color:#0f172a; border:none; border-radius:8px;
+                   font-size:12px; font-weight:600; cursor:pointer; }
+  .rlhf-save-btn:hover { opacity:.85; }
+  .rlhf-status { font-size:11px; color:var(--green); margin-left:8px; }
+
+  /* ── A/B Comparison Modal ── */
+  .ab-compare-panel { margin-top:10px; padding:14px; background:linear-gradient(135deg,#1e293b,#0f172a); border:1px solid var(--border);
+                      border-radius:12px; }
+  .ab-compare-cols { display:flex; gap:12px; margin-top:10px; }
+  .ab-compare-col { flex:1; padding:12px; background:var(--surface); border:1px solid var(--border); border-radius:10px; min-width:0; }
+  .ab-compare-col.chosen { border-color:var(--green); background:rgba(34,197,94,.06); }
+  .ab-compare-col h4 { font-size:13px; font-weight:700; margin-bottom:8px; color:var(--text); }
+  .ab-compare-text { font-size:12px; line-height:1.6; color:var(--text-dim); max-height:200px; overflow-y:auto; word-break:break-word; }
+  .ab-compare-scores { display:flex; gap:8px; margin-top:8px; font-size:11px; color:var(--text-dim); }
+  .ab-choose-btn { margin-top:8px; width:100%; padding:8px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer;
+                   border:1px solid var(--border); background:var(--surface2); color:var(--text-dim); transition:all .15s; }
+  .ab-choose-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .ab-choose-btn.selected { background:var(--green); color:#fff; border-color:var(--green); }
+  .rlhf-regen-btn { padding:5px 12px; border-radius:8px; font-size:12px; cursor:pointer; border:1px solid #7c3aed44;
+                    background:rgba(124,58,237,.15); color:#c4b5fd; transition:all .15s; }
+  .rlhf-regen-btn:hover { background:rgba(124,58,237,.3); color:#e9d5ff; }
 </style>
 </head>
 <body>
@@ -267,6 +310,7 @@
   <a href="/history" class="nav-btn">테스트 이력</a>
   <a href="/guidelines" class="nav-btn">법률 평가 기준</a>
   <a href="/criteria" class="nav-btn">문진 평가 기준</a>
+  <a href="/rlhf" class="nav-btn">RLHF 관리</a>
   <a href="/settings" class="nav-btn" id="settingsNavLink">&#9881; 설정</a>
   <button class="btn-icon sidebar-toggle-btn" onclick="toggleSidebar()" title="대화 목록" style="font-size:14px">&#9776;</button>
   <button class="btn-icon" onclick="newConversation()" title="새 대화" style="font-size:12px">&#128465;</button>
@@ -357,6 +401,72 @@ let chatHistory = [];
 let isLoading = false;
 let cancelRequested = false;
 let runMode = 'live'; // always live
+
+// ──────────────────────────────────────
+// RLHF Feedback Constants & Functions
+// ──────────────────────────────────────
+const FEEDBACK_TAGS = ['진단언급','처방시도','치료지시','적절한거절','응급안내누락','과잉친절','정보부족','우수답변'];
+
+async function submitRlhfFeedback(msgId, data) {
+  try {
+    var res = await fetch('/api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messageId: msgId,
+        conversationId: currentConvId || '',
+        thumbs: data.thumbs || null,
+        rating: data.rating || 0,
+        tags: data.tags || [],
+        correctedResponse: data.correctedResponse || '',
+        memo: data.memo || ''
+      })
+    });
+    var result = await res.json();
+    return result;
+  } catch(e) {
+    console.error('RLHF feedback error:', e);
+    return { success: false, error: e.message };
+  }
+}
+
+async function requestRegenerate(msgId, userPrompt, originalResponse) {
+  try {
+    var res = await fetch('/api/regenerate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messageId: msgId,
+        conversationId: currentConvId || '',
+        userPrompt: userPrompt,
+        originalResponse: originalResponse
+      })
+    });
+    return await res.json();
+  } catch(e) {
+    console.error('Regenerate error:', e);
+    return { success: false, error: e.message };
+  }
+}
+
+async function submitRlhfPair(chosenMsgId, rejectedMsgId, userPrompt) {
+  try {
+    var res = await fetch('/api/rlhf/pairs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chosenMessageId: chosenMsgId,
+        rejectedMessageId: rejectedMsgId,
+        conversationId: currentConvId || '',
+        userPrompt: userPrompt
+      })
+    });
+    return await res.json();
+  } catch(e) {
+    console.error('RLHF pair error:', e);
+    return { success: false, error: e.message };
+  }
+}
 
 // ──────────────────────────────────────
 // Settings Persistence (서버 저장)
@@ -1808,6 +1918,167 @@ function renderAssistantEvaluation(msgDiv, evalData) {
 
   msgDiv.appendChild(evalBox);
 
+  // ── 4h. RLHF Feedback UI ──
+  var fbDiv = document.createElement('div');
+  fbDiv.className = 'rlhf-feedback';
+  var fbId = 'rlhf-' + msgId;
+  var fbState = { thumbs: null, rating: 0, tags: [], sent: false };
+
+  // Row 1: thumbs + stars + tags
+  var fbRow = document.createElement('div');
+  fbRow.className = 'rlhf-feedback-row';
+
+  var thumbGood = document.createElement('button');
+  thumbGood.className = 'rlhf-thumb-btn';
+  thumbGood.textContent = '\uD83D\uDC4D \uC88B\uC74C';
+  var thumbBad = document.createElement('button');
+  thumbBad.className = 'rlhf-thumb-btn';
+  thumbBad.textContent = '\uD83D\uDC4E \uB098\uC068';
+
+  var _fbMsgId = msgId, _fbFullText = fullText, _fbUserPrompt = userPrompt;
+
+  thumbGood.addEventListener('click', function() {
+    fbState.thumbs = 'good';
+    thumbGood.className = 'rlhf-thumb-btn active-good';
+    thumbBad.className = 'rlhf-thumb-btn';
+    var corr = document.getElementById(fbId + '-correction');
+    if (corr) corr.classList.remove('open');
+    submitRlhfFeedback(_fbMsgId, fbState).then(function(r) {
+      if (r && r.success) {
+        var st = document.getElementById(fbId + '-status');
+        if (st) st.textContent = '\u2713 \uD53C\uB4DC\uBC31 \uC800\uC7A5\uB428';
+      }
+    });
+  });
+  thumbBad.addEventListener('click', function() {
+    fbState.thumbs = 'bad';
+    thumbBad.className = 'rlhf-thumb-btn active-bad';
+    thumbGood.className = 'rlhf-thumb-btn';
+    var corr = document.getElementById(fbId + '-correction');
+    if (corr) corr.classList.add('open');
+    submitRlhfFeedback(_fbMsgId, fbState).then(function(r) {
+      if (r && r.success) {
+        var st = document.getElementById(fbId + '-status');
+        if (st) st.textContent = '\u2713 \uD53C\uB4DC\uBC31 \uC800\uC7A5\uB428';
+      }
+    });
+  });
+  fbRow.appendChild(thumbGood);
+  fbRow.appendChild(thumbBad);
+
+  // Stars
+  var starsDiv = document.createElement('div');
+  starsDiv.className = 'rlhf-stars';
+  for (var si2 = 1; si2 <= 5; si2++) {
+    var star = document.createElement('span');
+    star.className = 'rlhf-star';
+    star.textContent = '\u2605';
+    star.dataset.val = si2;
+    (function(val) {
+      star.addEventListener('click', function() {
+        fbState.rating = val;
+        var allStars = starsDiv.querySelectorAll('.rlhf-star');
+        for (var ss = 0; ss < allStars.length; ss++) {
+          allStars[ss].classList.toggle('filled', parseInt(allStars[ss].dataset.val) <= val);
+        }
+      });
+    })(si2);
+    starsDiv.appendChild(star);
+  }
+  fbRow.appendChild(starsDiv);
+
+  var fbStatusSpan = document.createElement('span');
+  fbStatusSpan.className = 'rlhf-status';
+  fbStatusSpan.id = fbId + '-status';
+  fbRow.appendChild(fbStatusSpan);
+
+  fbDiv.appendChild(fbRow);
+
+  // Row 2: Tags
+  var tagRow = document.createElement('div');
+  tagRow.className = 'rlhf-feedback-row';
+  tagRow.style.marginTop = '8px';
+  for (var ti = 0; ti < FEEDBACK_TAGS.length; ti++) {
+    var tagBtn = document.createElement('button');
+    tagBtn.className = 'rlhf-tag-btn';
+    tagBtn.textContent = FEEDBACK_TAGS[ti];
+    (function(tag, btn) {
+      btn.addEventListener('click', function() {
+        var idx = fbState.tags.indexOf(tag);
+        if (idx >= 0) {
+          fbState.tags.splice(idx, 1);
+          btn.classList.remove('active');
+        } else {
+          fbState.tags.push(tag);
+          btn.classList.add('active');
+        }
+      });
+    })(FEEDBACK_TAGS[ti], tagBtn);
+    tagRow.appendChild(tagBtn);
+  }
+  fbDiv.appendChild(tagRow);
+
+  // Row 3: Correction textarea (hidden by default, opens on thumbs-down)
+  var corrDiv = document.createElement('div');
+  corrDiv.className = 'rlhf-correction';
+  corrDiv.id = fbId + '-correction';
+  var corrLabel = document.createElement('div');
+  corrLabel.style.cssText = 'font-size:12px;color:var(--text-dim);margin-bottom:4px;font-weight:600';
+  corrLabel.textContent = '\uC218\uC815\uB41C \uC751\uB2F5:';
+  corrDiv.appendChild(corrLabel);
+  var corrTextarea = document.createElement('textarea');
+  corrTextarea.placeholder = '\uB354 \uC801\uC808\uD55C \uC751\uB2F5\uC744 \uC791\uC131\uD574\uC8FC\uC138\uC694...';
+  corrDiv.appendChild(corrTextarea);
+  var corrMemoInput = document.createElement('input');
+  corrMemoInput.type = 'text';
+  corrMemoInput.placeholder = '\uBA54\uBAA8 (\uC120\uD0DD\uC0AC\uD56D)';
+  corrDiv.appendChild(corrMemoInput);
+  var corrSaveBtn = document.createElement('button');
+  corrSaveBtn.className = 'rlhf-save-btn';
+  corrSaveBtn.textContent = '\uC800\uC7A5';
+  corrSaveBtn.addEventListener('click', function() {
+    fbState.correctedResponse = corrTextarea.value.trim();
+    fbState.memo = corrMemoInput.value.trim();
+    submitRlhfFeedback(_fbMsgId, fbState).then(function(r) {
+      if (r && r.success) {
+        var st = document.getElementById(fbId + '-status');
+        if (st) st.textContent = '\u2713 \uC218\uC815\uB428';
+      }
+    });
+  });
+  corrDiv.appendChild(corrSaveBtn);
+  fbDiv.appendChild(corrDiv);
+
+  // Row 4: Regenerate button for A/B comparison
+  var regenRow = document.createElement('div');
+  regenRow.style.cssText = 'margin-top:8px;display:flex;align-items:center;gap:8px';
+  var regenBtn = document.createElement('button');
+  regenBtn.className = 'rlhf-regen-btn';
+  regenBtn.textContent = '\uD83D\uDD04 \uC7AC\uC0DD\uC131 \uBE44\uAD50';
+  var _regenMsgId = msgId, _regenFullText = fullText, _regenUserPrompt = userPrompt;
+  regenBtn.addEventListener('click', function() {
+    regenBtn.disabled = true;
+    regenBtn.textContent = '\uC7AC\uC0DD\uC131 \uC911...';
+    requestRegenerate(_regenMsgId, _regenUserPrompt, _regenFullText).then(function(result) {
+      regenBtn.disabled = false;
+      regenBtn.textContent = '\uD83D\uDD04 \uC7AC\uC0DD\uC131 \uBE44\uAD50';
+      if (result && result.success && result.regeneratedResponse) {
+        showAbCompare(fbDiv, _regenMsgId, _regenUserPrompt, _regenFullText, result.regeneratedResponse, result.scores || {});
+      } else {
+        showToast('\uC7AC\uC0DD\uC131 \uC2E4\uD328: ' + (result.error || '\uC54C \uC218 \uC5C6\uB294 \uC624\uB958'), 'error');
+      }
+    });
+  });
+  regenRow.appendChild(regenBtn);
+  fbDiv.appendChild(regenRow);
+
+  // A/B comparison container
+  var abContainer = document.createElement('div');
+  abContainer.id = fbId + '-ab';
+  fbDiv.appendChild(abContainer);
+
+  msgDiv.appendChild(fbDiv);
+
   // ── 5. Comment section ──
   var commentWrapper = document.createElement('div');
   commentWrapper.style.marginTop = '8px';
@@ -1876,6 +2147,90 @@ function renderAssistantEvaluation(msgDiv, evalData) {
   cmtBtnDiv.appendChild(commentFormDiv);
   commentWrapper.appendChild(cmtBtnDiv);
   msgDiv.appendChild(commentWrapper);
+}
+
+function showAbCompare(parentDiv, msgId, userPrompt, originalText, regenText, regenScores) {
+  var abId = 'rlhf-' + msgId + '-ab';
+  var container = document.getElementById(abId);
+  if (!container) return;
+
+  var origCompliance = analyzeCompliance ? analyzeCompliance(originalText) : {};
+  var origLegal = (origCompliance && origCompliance.regexScore != null) ? Math.round(origCompliance.regexScore) : '-';
+
+  var regenLegal = regenScores.legalScore != null ? regenScores.legalScore : '-';
+  var regenConsult = regenScores.consultScore != null ? regenScores.consultScore : '-';
+  var origComposite = regenScores.originalComposite != null ? regenScores.originalComposite.toFixed(2) : '-';
+  var regenComposite = regenScores.regenComposite != null ? regenScores.regenComposite.toFixed(2) : '-';
+
+  var abState = { chosen: null };
+
+  var panel = document.createElement('div');
+  panel.className = 'ab-compare-panel';
+  panel.innerHTML = '<div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:4px">\u2696\uFE0F A/B \uC751\uB2F5 \uBE44\uAD50</div>';
+
+  var cols = document.createElement('div');
+  cols.className = 'ab-compare-cols';
+
+  // Original column
+  var colA = document.createElement('div');
+  colA.className = 'ab-compare-col';
+  colA.id = abId + '-colA';
+  var origParsed = typeof marked !== 'undefined' ? marked.parse(originalText.substring(0, 500)) : escapeHtml(originalText.substring(0, 500));
+  colA.innerHTML = '<h4>\uC6D0\uBCF8 \uC751\uB2F5</h4>' +
+    '<div class="ab-compare-text">' + origParsed + (originalText.length > 500 ? '...' : '') + '</div>' +
+    '<div class="ab-compare-scores">\uBC95\uB960\uC810\uC218: ' + origLegal + ' | composite: ' + origComposite + '</div>';
+  var btnA = document.createElement('button');
+  btnA.className = 'ab-choose-btn';
+  btnA.textContent = '\uC774\uAC83\uC774 \uB354 \uC88B\uC74C';
+  colA.appendChild(btnA);
+  cols.appendChild(colA);
+
+  // Regenerated column
+  var colB = document.createElement('div');
+  colB.className = 'ab-compare-col';
+  colB.id = abId + '-colB';
+  var regenParsed = typeof marked !== 'undefined' ? marked.parse(regenText.substring(0, 500)) : escapeHtml(regenText.substring(0, 500));
+  colB.innerHTML = '<h4>\uC7AC\uC0DD\uC131 \uC751\uB2F5</h4>' +
+    '<div class="ab-compare-text">' + regenParsed + (regenText.length > 500 ? '...' : '') + '</div>' +
+    '<div class="ab-compare-scores">\uBC95\uB960\uC810\uC218: ' + regenLegal + ' | composite: ' + regenComposite + '</div>';
+  var btnB = document.createElement('button');
+  btnB.className = 'ab-choose-btn';
+  btnB.textContent = '\uC774\uAC83\uC774 \uB354 \uC88B\uC74C';
+  colB.appendChild(btnB);
+  cols.appendChild(colB);
+
+  panel.appendChild(cols);
+
+  var _abMsgId = msgId, _abUserPrompt = userPrompt;
+  btnA.addEventListener('click', function() {
+    if (abState.chosen === 'A') return;
+    abState.chosen = 'A';
+    btnA.className = 'ab-choose-btn selected';
+    btnA.textContent = '\uC774\uAC83\uC774 \uB354 \uC88B\uC74C \u2713';
+    btnB.className = 'ab-choose-btn';
+    btnB.textContent = '\uC774\uAC83\uC774 \uB354 \uC88B\uC74C';
+    colA.classList.add('chosen');
+    colB.classList.remove('chosen');
+    submitRlhfPair(_abMsgId, _abMsgId + '-regen', _abUserPrompt).then(function(r) {
+      if (r && r.success) showToast('\uC120\uD638\uB3C4 \uC30D \uC800\uC7A5\uB428', 'success');
+    });
+  });
+  btnB.addEventListener('click', function() {
+    if (abState.chosen === 'B') return;
+    abState.chosen = 'B';
+    btnB.className = 'ab-choose-btn selected';
+    btnB.textContent = '\uC774\uAC83\uC774 \uB354 \uC88B\uC74C \u2713';
+    btnA.className = 'ab-choose-btn';
+    btnA.textContent = '\uC774\uAC83\uC774 \uB354 \uC88B\uC74C';
+    colB.classList.add('chosen');
+    colA.classList.remove('chosen');
+    submitRlhfPair(_abMsgId + '-regen', _abMsgId, _abUserPrompt).then(function(r) {
+      if (r && r.success) showToast('\uC120\uD638\uB3C4 \uC30D \uC800\uC7A5\uB428', 'success');
+    });
+  });
+
+  container.innerHTML = '';
+  container.appendChild(panel);
 }
 
 function finalizeAssistantMessage(fullText, meta = {}) {

@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>테스트 이력 — 나만의 주치의</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <style>
   :root {
     --bg: #0f172a; --surface: #1e293b; --surface2: #334155; --surface3: #3b4a63;
@@ -270,6 +271,7 @@
   <a href="/history" class="nav-btn active">테스트 이력</a>
   <a href="/guidelines" class="nav-btn">법률 평가 기준</a>
   <a href="/criteria" class="nav-btn">문진 평가 기준</a>
+  <a href="/rlhf" class="nav-btn">RLHF 관리</a>
   <a href="/settings" class="nav-btn" id="settingsNavLink">&#9881; 설정</a>
   <span id="testerBadge" style="margin-left:auto;display:none;font-size:11px;color:var(--accent);background:var(--accent-dim);padding:3px 10px;border-radius:6px;cursor:pointer;white-space:nowrap" onclick="if(confirm('로그아웃 하시겠습니까?'))testerLogout()"></span>
 </div>
@@ -321,6 +323,7 @@
       <button class="report-tab active" onclick="switchMainTab('history')" id="tabHistory">📋 테스트 이력</button>
       <button class="report-tab" onclick="switchMainTab('report')" id="tabReport">📊 리포트</button>
       <button class="report-tab" onclick="switchMainTab('enhancement')" id="tabEnhancement">📊 보강 리포트</button>
+      <button class="report-tab" onclick="switchMainTab('reward')" id="tabReward">📈 리워드 트렌드</button>
     </div>
 
     <!-- History Tab Content -->
@@ -424,6 +427,28 @@
         <div>보강 리포트 로딩 중...</div>
       </div>
       <div id="enhancementBody" style="display:none"></div>
+    </div>
+
+    <!-- Reward Trend Tab Content -->
+    <div id="rewardTabContent" class="report-dashboard">
+      <div class="report-loading" id="rewardLoading" style="display:none">
+        <div class="loader-spinner"></div>
+        <div>리워드 트렌드 로딩 중...</div>
+      </div>
+      <div id="rewardBody" style="display:none">
+        <div class="report-section">
+          <div class="report-section-title">📈 일별 Composite Reward 평균 (최근 30일)</div>
+          <div style="position:relative;height:300px">
+            <canvas id="rewardLineChart"></canvas>
+          </div>
+        </div>
+        <div class="report-section">
+          <div class="report-section-title">📊 법률점수 vs 문진점수 분포</div>
+          <div style="position:relative;height:300px">
+            <canvas id="rewardScatterChart"></canvas>
+          </div>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -1374,15 +1399,21 @@
   // ── Report Tab ──
   let currentMainTab = 'history';
   let reportLoaded = false;
+  let rewardTrendLoaded = false;
+  let rewardLineChartInstance = null;
+  let rewardScatterChartInstance = null;
 
   function switchMainTab(tab) {
     currentMainTab = tab;
     document.getElementById('tabHistory').classList.toggle('active', tab === 'history');
     document.getElementById('tabReport').classList.toggle('active', tab === 'report');
     document.getElementById('tabEnhancement').classList.toggle('active', tab === 'enhancement');
+    var tabReward = document.getElementById('tabReward');
+    if (tabReward) tabReward.classList.toggle('active', tab === 'reward');
     document.getElementById('historyTabContent').style.display = tab === 'history' ? 'flex' : 'none';
     var reportEl = document.getElementById('reportTabContent');
     var enhEl = document.getElementById('enhancementTabContent');
+    var rewardEl = document.getElementById('rewardTabContent');
     if (tab === 'report') {
       reportEl.classList.add('visible');
       if (!reportLoaded) loadReport();
@@ -1394,6 +1425,14 @@
       if (!enhancementReportLoaded) loadEnhancementReport();
     } else {
       enhEl.classList.remove('visible');
+    }
+    if (rewardEl) {
+      if (tab === 'reward') {
+        rewardEl.classList.add('visible');
+        if (!rewardTrendLoaded) loadRewardTrend();
+      } else {
+        rewardEl.classList.remove('visible');
+      }
     }
   }
 
@@ -1684,6 +1723,156 @@
     html += '</div>';
 
     body.innerHTML = html;
+  }
+
+  // ── Reward Trend Charts ──
+  async function loadRewardTrend() {
+    var loading = document.getElementById('rewardLoading');
+    var body = document.getElementById('rewardBody');
+    if (loading) loading.style.display = '';
+    if (body) body.style.display = 'none';
+
+    try {
+      var statsData = {};
+      var histData = [];
+      var results = await Promise.all([
+        fetch('/api/rlhf/stats').then(function(r) { return r.ok ? r.json() : {}; }).catch(function() { return {}; }),
+        fetch('/api/history').then(function(r) { return r.ok ? r.json() : []; }).catch(function() { return []; })
+      ]);
+      statsData = results[0] || {};
+      histData = Array.isArray(results[1]) ? results[1] : (results[1].runs || []);
+
+      renderRewardCharts(statsData, histData);
+      rewardTrendLoaded = true;
+    } catch(e) {
+      showToast('\uB9AC\uC6CC\uB4DC \uD2B8\uB80C\uB4DC \uB85C\uB529 \uC2E4\uD328: ' + e.message, 'error');
+    } finally {
+      if (loading) loading.style.display = 'none';
+      if (body) body.style.display = '';
+    }
+  }
+
+  function renderRewardCharts(stats, histRuns) {
+    // Build daily composite data from history runs (last 30 days)
+    var dailyMap = {};
+    var now = Date.now();
+    var thirtyDays = 30 * 24 * 60 * 60 * 1000;
+    var scatterPoints = [];
+
+    for (var i = 0; i < histRuns.length; i++) {
+      var run = histRuns[i];
+      var ts = run.startedAt || run.timestamp || '';
+      if (!ts) continue;
+      var d = new Date(ts);
+      if (now - d.getTime() > thirtyDays) continue;
+      var dateKey = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+
+      var s = run.summary || {};
+      var legalScore = s.complianceAvg || s.avgComplianceScore || 0;
+      var consultScore = s.consultationAvg || s.avgConsultationScore || 0;
+      var composite = 0;
+      if (legalScore || consultScore) {
+        composite = (legalScore * 0.5 + consultScore * 0.5) / 100;
+      }
+      var passRate = s.passRate != null ? s.passRate : 0;
+      if (!composite && passRate) composite = passRate / 100;
+
+      if (!dailyMap[dateKey]) dailyMap[dateKey] = { sum: 0, count: 0 };
+      dailyMap[dateKey].sum += composite;
+      dailyMap[dateKey].count += 1;
+
+      if (legalScore || consultScore) {
+        scatterPoints.push({ x: legalScore, y: consultScore });
+      }
+    }
+
+    // Also use stats.dailyRewards if available
+    if (stats.dailyRewards && Array.isArray(stats.dailyRewards)) {
+      for (var di = 0; di < stats.dailyRewards.length; di++) {
+        var dr = stats.dailyRewards[di];
+        var dk = dr.date || dr.day || '';
+        if (!dk) continue;
+        if (!dailyMap[dk]) dailyMap[dk] = { sum: 0, count: 0 };
+        dailyMap[dk].sum += (dr.avgReward || dr.composite || 0);
+        dailyMap[dk].count += 1;
+      }
+    }
+
+    // Sort dates
+    var dates = Object.keys(dailyMap).sort();
+    var labels = dates.map(function(d) { return d.substring(5); }); // MM-DD
+    var values = dates.map(function(d) { return dailyMap[d].count > 0 ? +(dailyMap[d].sum / dailyMap[d].count).toFixed(3) : 0; });
+
+    // Line chart: daily composite reward
+    var lineCtx = document.getElementById('rewardLineChart');
+    if (lineCtx && typeof Chart !== 'undefined') {
+      if (rewardLineChartInstance) rewardLineChartInstance.destroy();
+      rewardLineChartInstance = new Chart(lineCtx, {
+        type: 'line',
+        data: {
+          labels: labels.length > 0 ? labels : ['(데이터 없음)'],
+          datasets: [{
+            label: 'Composite Reward',
+            data: values.length > 0 ? values : [0],
+            borderColor: '#38bdf8',
+            backgroundColor: 'rgba(56,189,248,0.1)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 4,
+            pointBackgroundColor: '#38bdf8'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: '#94a3b8' } }
+          },
+          scales: {
+            x: { ticks: { color: '#94a3b8' }, grid: { color: '#33415533' } },
+            y: { min: 0, max: 1, ticks: { color: '#94a3b8' }, grid: { color: '#33415533' } }
+          }
+        }
+      });
+    }
+
+    // Scatter chart: legal vs consultation scores
+    var scatterCtx = document.getElementById('rewardScatterChart');
+    if (scatterCtx && typeof Chart !== 'undefined') {
+      if (rewardScatterChartInstance) rewardScatterChartInstance.destroy();
+      // If no scatter data, create dummy placeholder
+      var scatterData = scatterPoints.length > 0 ? scatterPoints : [{ x: 0, y: 0 }];
+      rewardScatterChartInstance = new Chart(scatterCtx, {
+        type: 'scatter',
+        data: {
+          datasets: [{
+            label: '\uBC95\uB960 vs \uBB38\uC9C4',
+            data: scatterData,
+            backgroundColor: 'rgba(56,189,248,0.6)',
+            pointRadius: 6,
+            pointHoverRadius: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: '#94a3b8' } },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                  return '\uBC95\uB960: ' + ctx.parsed.x + ' / \uBB38\uC9C4: ' + ctx.parsed.y;
+                }
+              }
+            }
+          },
+          scales: {
+            x: { title: { display: true, text: '\uBC95\uB960\uC810\uC218', color: '#94a3b8' }, min: 0, max: 100, ticks: { color: '#94a3b8' }, grid: { color: '#33415533' } },
+            y: { title: { display: true, text: '\uBB38\uC9C4\uC810\uC218', color: '#94a3b8' }, min: 0, max: 100, ticks: { color: '#94a3b8' }, grid: { color: '#33415533' } }
+          }
+        }
+      });
+    }
   }
 </script>
 </body>
