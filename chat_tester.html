@@ -409,20 +409,29 @@ const FEEDBACK_TAGS = ['진단언급','처방시도','치료지시','적절한�
 
 async function submitRlhfFeedback(msgId, data) {
   try {
+    // thumbs → rating 변환: good=5, bad=1 (0이면 별점 직접 선택값 사용)
+    var rating = data.rating || 0;
+    if (!rating) {
+      if (data.thumbs === 'good') rating = 5;
+      else if (data.thumbs === 'bad') rating = 1;
+    }
     var res = await fetch('/api/feedback', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        messageId: msgId,
-        conversationId: currentConvId || '',
-        thumbs: data.thumbs || null,
-        rating: data.rating || 0,
-        tags: data.tags || [],
-        correctedResponse: data.correctedResponse || '',
-        memo: data.memo || ''
+        message_id: msgId,
+        conversation_id: currentConvId || '',
+        rating: rating,
+        labels: data.tags || [],
+        corrected_response: data.correctedResponse || '',
+        feedback_note: data.memo || '',
+        original_query: data.originalQuery || '',
+        full_response: data.fullResponse || ''
       })
     });
     var result = await res.json();
+    // 서버 응답: {id, status} — id가 있으면 성공
+    result.success = !!(result.id || result.status === 'ok');
     return result;
   } catch(e) {
     console.error('RLHF feedback error:', e);
@@ -436,32 +445,49 @@ async function requestRegenerate(msgId, userPrompt, originalResponse) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        messageId: msgId,
-        conversationId: currentConvId || '',
-        userPrompt: userPrompt,
-        originalResponse: originalResponse
+        message_id: msgId,
+        conversation_id: currentConvId || '',
+        prompt: userPrompt,
+        original_response: originalResponse
       })
     });
-    return await res.json();
+    var result = await res.json();
+    // 서버 응답: {response_text, legal_score, consult_score, composite_reward, ...}
+    // 프론트가 기대하는 형태로 정규화
+    if (result.response_text) {
+      result.success = true;
+      result.regeneratedResponse = result.response_text;
+      result.scores = {
+        legalScore: result.legal_score,
+        consultScore: result.consult_score,
+        regenComposite: result.composite_reward
+      };
+    }
+    return result;
   } catch(e) {
     console.error('Regenerate error:', e);
     return { success: false, error: e.message };
   }
 }
 
-async function submitRlhfPair(chosenMsgId, rejectedMsgId, userPrompt) {
+// chosenText, rejectedText: 실제 응답 텍스트 (백엔드가 텍스트 필요)
+async function submitRlhfPair(userPrompt, chosenText, rejectedText, chosenScore, rejectedScore) {
   try {
     var res = await fetch('/api/rlhf/pairs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        chosenMessageId: chosenMsgId,
-        rejectedMessageId: rejectedMsgId,
-        conversationId: currentConvId || '',
-        userPrompt: userPrompt
+        prompt: userPrompt,
+        response_chosen: chosenText,
+        response_rejected: rejectedText,
+        label_source: 'human',
+        chosen_score: chosenScore || null,
+        rejected_score: rejectedScore || null
       })
     });
-    return await res.json();
+    var result = await res.json();
+    result.success = !!(result.id || result.status === 'ok');
+    return result;
   } catch(e) {
     console.error('RLHF pair error:', e);
     return { success: false, error: e.message };
@@ -1943,11 +1969,11 @@ function renderAssistantEvaluation(msgDiv, evalData) {
     thumbBad.className = 'rlhf-thumb-btn';
     var corr = document.getElementById(fbId + '-correction');
     if (corr) corr.classList.remove('open');
+    fbState.originalQuery = _fbUserPrompt;
+    fbState.fullResponse = _fbFullText;
     submitRlhfFeedback(_fbMsgId, fbState).then(function(r) {
-      if (r && r.success) {
-        var st = document.getElementById(fbId + '-status');
-        if (st) st.textContent = '\u2713 \uD53C\uB4DC\uBC31 \uC800\uC7A5\uB428';
-      }
+      var st = document.getElementById(fbId + '-status');
+      if (st) st.textContent = r && r.success ? '\u2713 \uD53C\uB4DC\uBC31 \uC800\uC7A5\uB428' : '\u26A0 \uC800\uC7A5 \uC2E4\uD328';
     });
   });
   thumbBad.addEventListener('click', function() {
@@ -1956,11 +1982,11 @@ function renderAssistantEvaluation(msgDiv, evalData) {
     thumbGood.className = 'rlhf-thumb-btn';
     var corr = document.getElementById(fbId + '-correction');
     if (corr) corr.classList.add('open');
+    fbState.originalQuery = _fbUserPrompt;
+    fbState.fullResponse = _fbFullText;
     submitRlhfFeedback(_fbMsgId, fbState).then(function(r) {
-      if (r && r.success) {
-        var st = document.getElementById(fbId + '-status');
-        if (st) st.textContent = '\u2713 \uD53C\uB4DC\uBC31 \uC800\uC7A5\uB428';
-      }
+      var st = document.getElementById(fbId + '-status');
+      if (st) st.textContent = r && r.success ? '\u2713 \uD53C\uB4DC\uBC31 \uC800\uC7A5\uB428' : '\u26A0 \uC800\uC7A5 \uC2E4\uD328';
     });
   });
   fbRow.appendChild(thumbGood);
@@ -2039,10 +2065,20 @@ function renderAssistantEvaluation(msgDiv, evalData) {
   corrSaveBtn.addEventListener('click', function() {
     fbState.correctedResponse = corrTextarea.value.trim();
     fbState.memo = corrMemoInput.value.trim();
+    fbState.originalQuery = _fbUserPrompt;
+    fbState.fullResponse = _fbFullText;
+    corrSaveBtn.disabled = true;
+    corrSaveBtn.textContent = '저장 중...';
     submitRlhfFeedback(_fbMsgId, fbState).then(function(r) {
+      corrSaveBtn.disabled = false;
+      corrSaveBtn.textContent = '저장';
+      var st = document.getElementById(fbId + '-status');
       if (r && r.success) {
-        var st = document.getElementById(fbId + '-status');
         if (st) st.textContent = '\u2713 \uC218\uC815\uB428';
+        showToast('\uD53C\uB4DC\uBC31\uC774 \uC800\uC7A5\uB418\uC5C8\uC2B5\uB2C8\uB2E4', 'success');
+      } else {
+        if (st) st.textContent = '\u26A0 \uC800\uC7A5 \uC2E4\uD328';
+        showToast('\uD53C\uB4DC\uBC31 \uC800\uC7A5 \uC2E4\uD328: ' + (r && r.error || ''), 'error');
       }
     });
   });
@@ -2201,7 +2237,12 @@ function showAbCompare(parentDiv, msgId, userPrompt, originalText, regenText, re
 
   panel.appendChild(cols);
 
-  var _abMsgId = msgId, _abUserPrompt = userPrompt;
+  // 텍스트 클로저로 캡처 (API 호출 시 실제 텍스트 전달)
+  var _abUserPrompt = userPrompt;
+  var _origText = originalText;
+  var _regenText = regenText;
+  var _regenComposite = regenScores.regenComposite || null;
+
   btnA.addEventListener('click', function() {
     if (abState.chosen === 'A') return;
     abState.chosen = 'A';
@@ -2211,8 +2252,10 @@ function showAbCompare(parentDiv, msgId, userPrompt, originalText, regenText, re
     btnB.textContent = '\uC774\uAC83\uC774 \uB354 \uC88B\uC74C';
     colA.classList.add('chosen');
     colB.classList.remove('chosen');
-    submitRlhfPair(_abMsgId, _abMsgId + '-regen', _abUserPrompt).then(function(r) {
-      if (r && r.success) showToast('\uC120\uD638\uB3C4 \uC30D \uC800\uC7A5\uB428', 'success');
+    // 원본 선택: chosen=원본, rejected=재생성
+    submitRlhfPair(_abUserPrompt, _origText, _regenText, null, _regenComposite).then(function(r) {
+      if (r && r.success) showToast('\uC120\uD638\uB3C4 \uC30D \uC800\uC7A5\uB428 (\uC6D0\uBCF8 \uC120\uD0DD)', 'success');
+      else showToast('\uC800\uC7A5 \uC2E4\uD328: ' + (r && r.error || ''), 'error');
     });
   });
   btnB.addEventListener('click', function() {
@@ -2224,8 +2267,10 @@ function showAbCompare(parentDiv, msgId, userPrompt, originalText, regenText, re
     btnA.textContent = '\uC774\uAC83\uC774 \uB354 \uC88B\uC74C';
     colB.classList.add('chosen');
     colA.classList.remove('chosen');
-    submitRlhfPair(_abMsgId + '-regen', _abMsgId, _abUserPrompt).then(function(r) {
-      if (r && r.success) showToast('\uC120\uD638\uB3C4 \uC30D \uC800\uC7A5\uB428', 'success');
+    // 재생성 선택: chosen=재생성, rejected=원본
+    submitRlhfPair(_abUserPrompt, _regenText, _origText, _regenComposite, null).then(function(r) {
+      if (r && r.success) showToast('\uC120\uD638\uB3C4 \uC30D \uC800\uC7A5\uB428 (\uC7AC\uC0DD\uC131 \uC120\uD0DD)', 'success');
+      else showToast('\uC800\uC7A5 \uC2E4\uD328: ' + (r && r.error || ''), 'error');
     });
   });
 
