@@ -409,11 +409,14 @@ const FEEDBACK_TAGS = ['진단언급','처방시도','치료지시','적절한�
 
 async function submitRlhfFeedback(msgId, data) {
   try {
-    // thumbs → rating 변환: good=5, bad=1 (0이면 별점 직접 선택값 사용)
+    // 별점-thumbs 일관성 보장:
+    //   좋음(good) → 별점 4~5 (미선택시 5, 1~3 선택시 4로 올림)
+    //   나쁨(bad)  → 별점 1~3 (미선택시 1, 4~5 선택시 3으로 내림)
     var rating = data.rating || 0;
-    if (!rating) {
-      if (data.thumbs === 'good') rating = 5;
-      else if (data.thumbs === 'bad') rating = 1;
+    if (data.thumbs === 'good') {
+      rating = (rating >= 4) ? rating : 5;
+    } else if (data.thumbs === 'bad') {
+      rating = (rating > 0 && rating <= 3) ? rating : 1;
     }
     var res = await fetch('/api/feedback', {
       method: 'POST',
@@ -2034,7 +2037,7 @@ function renderAssistantEvaluation(msgDiv, evalData) {
   thumbBad.className = 'rlhf-thumb-btn';
   thumbBad.textContent = '👎 나쁨';
 
-  // 별점
+  // 별점 (좋음: 4~5점, 나쁨: 1~3점 — submitRlhfFeedback에서 보정됨)
   var starsDiv = document.createElement('div');
   starsDiv.className = 'rlhf-stars';
   for (var si2 = 1; si2 <= 5; si2++) {
@@ -2044,10 +2047,14 @@ function renderAssistantEvaluation(msgDiv, evalData) {
     star.dataset.val = si2;
     (function(val) {
       star.addEventListener('click', function() {
-        fbState.rating = val;
+        // 나쁨 모드에서 4~5성 클릭 시 3으로 cap, 좋음 모드에서 1~3성 클릭 시 4로 올림
+        var v = val;
+        if (fbState.thumbs === 'bad' && v > 3) v = 3;
+        if (fbState.thumbs === 'good' && v < 4) v = 4;
+        fbState.rating = v;
         var allStars = starsDiv.querySelectorAll('.rlhf-star');
         for (var ss = 0; ss < allStars.length; ss++)
-          allStars[ss].classList.toggle('filled', parseInt(allStars[ss].dataset.val) <= val);
+          allStars[ss].classList.toggle('filled', parseInt(allStars[ss].dataset.val) <= v);
       });
     })(si2);
     starsDiv.appendChild(star);
