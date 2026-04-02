@@ -1963,6 +1963,47 @@ function renderAssistantEvaluation(msgDiv, evalData) {
 
   var _fbMsgId = msgId, _fbFullText = fullText, _fbUserPrompt = userPrompt;
 
+  // 피드백 저장 후 UI 상태 반영 헬퍼
+  function _applyFeedbackState(fb) {
+    if (!fb) return;
+    var st = document.getElementById(fbId + '-status');
+    var corr = document.getElementById(fbId + '-correction');
+    var rating = fb.rating || 0;
+    if (rating >= 4) {
+      fbState.thumbs = 'good';
+      thumbGood.className = 'rlhf-thumb-btn active-good';
+      thumbBad.className = 'rlhf-thumb-btn';
+      if (corr) corr.classList.remove('open');
+    } else if (rating > 0) {
+      fbState.thumbs = 'bad';
+      thumbBad.className = 'rlhf-thumb-btn active-bad';
+      thumbGood.className = 'rlhf-thumb-btn';
+      if (corr) corr.classList.add('open');
+    }
+    if (rating) {
+      fbState.rating = rating;
+      var allStars = fbDiv.querySelectorAll('.rlhf-star');
+      for (var ss = 0; ss < allStars.length; ss++) {
+        allStars[ss].classList.toggle('filled', parseInt(allStars[ss].dataset.val) <= rating);
+      }
+    }
+    // 저장된 태그 표시
+    var savedTags = [];
+    if (fb.labels_json) { try { savedTags = JSON.parse(fb.labels_json); } catch(e){} }
+    if (Array.isArray(savedTags) && savedTags.length > 0) {
+      fbState.tags = savedTags;
+      var allTagBtns = fbDiv.querySelectorAll('.rlhf-tag-btn');
+      for (var ti2 = 0; ti2 < allTagBtns.length; ti2++) {
+        if (savedTags.indexOf(allTagBtns[ti2].textContent) >= 0) allTagBtns[ti2].classList.add('active');
+      }
+    }
+    if (st) {
+      st.textContent = '\u2713 \uD53C\uB4DC\uBC31 \uC800\uC7A5\uB428';
+      st.style.cssText = 'font-size:11px;color:var(--green);margin-left:8px;font-weight:600';
+    }
+    fbState.sent = true;
+  }
+
   thumbGood.addEventListener('click', function() {
     fbState.thumbs = 'good';
     thumbGood.className = 'rlhf-thumb-btn active-good';
@@ -1973,7 +2014,13 @@ function renderAssistantEvaluation(msgDiv, evalData) {
     fbState.fullResponse = _fbFullText;
     submitRlhfFeedback(_fbMsgId, fbState).then(function(r) {
       var st = document.getElementById(fbId + '-status');
-      if (st) st.textContent = r && r.success ? '\u2713 \uD53C\uB4DC\uBC31 \uC800\uC7A5\uB428' : '\u26A0 \uC800\uC7A5 \uC2E4\uD328';
+      if (st) {
+        st.textContent = r && r.success ? '\u2713 \uD53C\uB4DC\uBC31 \uC800\uC7A5\uB428' : '\u26A0 \uC800\uC7A5 \uC2E4\uD328';
+        st.style.cssText = r && r.success
+          ? 'font-size:11px;color:var(--green);margin-left:8px;font-weight:600'
+          : 'font-size:11px;color:var(--red);margin-left:8px';
+      }
+      if (r && r.success) fbState.sent = true;
     });
   });
   thumbBad.addEventListener('click', function() {
@@ -1986,7 +2033,13 @@ function renderAssistantEvaluation(msgDiv, evalData) {
     fbState.fullResponse = _fbFullText;
     submitRlhfFeedback(_fbMsgId, fbState).then(function(r) {
       var st = document.getElementById(fbId + '-status');
-      if (st) st.textContent = r && r.success ? '\u2713 \uD53C\uB4DC\uBC31 \uC800\uC7A5\uB428' : '\u26A0 \uC800\uC7A5 \uC2E4\uD328';
+      if (st) {
+        st.textContent = r && r.success ? '\u2713 \uD53C\uB4DC\uBC31 \uC800\uC7A5\uB428' : '\u26A0 \uC800\uC7A5 \uC2E4\uD328';
+        st.style.cssText = r && r.success
+          ? 'font-size:11px;color:var(--green);margin-left:8px;font-weight:600'
+          : 'font-size:11px;color:var(--red);margin-left:8px';
+      }
+      if (r && r.success) fbState.sent = true;
     });
   });
   fbRow.appendChild(thumbGood);
@@ -2093,13 +2146,32 @@ function renderAssistantEvaluation(msgDiv, evalData) {
   regenBtn.textContent = '\uD83D\uDD04 \uC7AC\uC0DD\uC131 \uBE44\uAD50';
   var _regenMsgId = msgId, _regenFullText = fullText, _regenUserPrompt = userPrompt;
   regenBtn.addEventListener('click', function() {
+    // userPrompt가 없으면 DOM에서 이전 사용자 메시지를 찾음
+    var prompt = _regenUserPrompt;
+    if (!prompt) {
+      var curMsg = fbDiv.closest('.msg');
+      if (curMsg) {
+        var prev = curMsg.previousElementSibling;
+        while (prev) {
+          if (prev.classList.contains('user')) {
+            var bbl = prev.querySelector('.bubble');
+            if (bbl) { prompt = bbl.textContent.trim(); break; }
+          }
+          prev = prev.previousElementSibling;
+        }
+      }
+    }
+    if (!prompt) {
+      showToast('질문 텍스트를 찾을 수 없습니다. 대화를 새로 시작해보세요.', 'error');
+      return;
+    }
     regenBtn.disabled = true;
     regenBtn.textContent = '\uC7AC\uC0DD\uC131 \uC911...';
-    requestRegenerate(_regenMsgId, _regenUserPrompt, _regenFullText).then(function(result) {
+    requestRegenerate(_regenMsgId, prompt, _regenFullText).then(function(result) {
       regenBtn.disabled = false;
       regenBtn.textContent = '\uD83D\uDD04 \uC7AC\uC0DD\uC131 \uBE44\uAD50';
       if (result && result.success && result.regeneratedResponse) {
-        showAbCompare(fbDiv, _regenMsgId, _regenUserPrompt, _regenFullText, result.regeneratedResponse, result.scores || {});
+        showAbCompare(fbDiv, _regenMsgId, prompt, _regenFullText, result.regeneratedResponse, result.scores || {});
       } else {
         showToast('\uC7AC\uC0DD\uC131 \uC2E4\uD328: ' + (result.error || '\uC54C \uC218 \uC5C6\uB294 \uC624\uB958'), 'error');
       }
@@ -2114,6 +2186,16 @@ function renderAssistantEvaluation(msgDiv, evalData) {
   fbDiv.appendChild(abContainer);
 
   msgDiv.appendChild(fbDiv);
+
+  // 기존 피드백 로드 (temp ID가 아닌 경우만)
+  if (msgId && msgId.indexOf('restored-') !== 0 && msgId.indexOf('msg-') === 0) {
+    (function(_mid, _applyFn) {
+      fetch('/api/feedback?message_id=' + encodeURIComponent(_mid) + '&limit=1')
+        .then(function(r) { return r.ok ? r.json() : []; })
+        .then(function(arr) { if (arr && arr.length > 0) _applyFn(arr[0]); })
+        .catch(function() {});
+    })(msgId, _applyFeedbackState);
+  }
 
   // ── 5. Comment section ──
   var commentWrapper = document.createElement('div');
