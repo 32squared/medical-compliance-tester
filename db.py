@@ -342,8 +342,8 @@ CREATE TABLE IF NOT EXISTS prompt_enhancements (
 
 CREATE TABLE IF NOT EXISTS response_feedback (
     id TEXT PRIMARY KEY,
-    message_id TEXT NOT NULL,
-    conversation_id TEXT NOT NULL,
+    message_id TEXT DEFAULT '',
+    conversation_id TEXT DEFAULT '',
     evaluator_id TEXT NOT NULL,
     evaluator_name TEXT DEFAULT '',
     rating INTEGER,
@@ -355,9 +355,7 @@ CREATE TABLE IF NOT EXISTS response_feedback (
     original_query TEXT DEFAULT '',
     full_response TEXT DEFAULT '',
     response_time_ms INTEGER,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY (message_id) REFERENCES messages(id),
-    FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+    created_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS preference_pairs (
@@ -537,8 +535,8 @@ CREATE TABLE IF NOT EXISTS prompt_enhancements (
 
 CREATE TABLE IF NOT EXISTS response_feedback (
     id TEXT PRIMARY KEY,
-    message_id TEXT NOT NULL,
-    conversation_id TEXT NOT NULL,
+    message_id TEXT DEFAULT '',
+    conversation_id TEXT DEFAULT '',
     evaluator_id TEXT NOT NULL,
     evaluator_name TEXT DEFAULT '',
     rating INTEGER,
@@ -550,9 +548,7 @@ CREATE TABLE IF NOT EXISTS response_feedback (
     original_query TEXT DEFAULT '',
     full_response TEXT DEFAULT '',
     response_time_ms INTEGER,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY (message_id) REFERENCES messages(id),
-    FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+    created_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS preference_pairs (
@@ -744,6 +740,19 @@ def init_db(db_path=None):
                 )""")
             except Exception:
                 pass
+            # response_feedback: FK 제거 + nullable 마이그레이션 (독립 테이블로 변경)
+            for sql in [
+                "ALTER TABLE response_feedback ALTER COLUMN message_id DROP NOT NULL",
+                "ALTER TABLE response_feedback ALTER COLUMN message_id SET DEFAULT ''",
+                "ALTER TABLE response_feedback ALTER COLUMN conversation_id DROP NOT NULL",
+                "ALTER TABLE response_feedback ALTER COLUMN conversation_id SET DEFAULT ''",
+                "ALTER TABLE response_feedback DROP CONSTRAINT IF EXISTS response_feedback_message_id_fkey",
+                "ALTER TABLE response_feedback DROP CONSTRAINT IF EXISTS response_feedback_conversation_id_fkey",
+            ]:
+                try:
+                    cur.execute(sql)
+                except Exception:
+                    pass
             # 고아 running 배치 정리
             try:
                 cur.execute("UPDATE test_runs SET status = 'cancelled' WHERE status = 'running'")

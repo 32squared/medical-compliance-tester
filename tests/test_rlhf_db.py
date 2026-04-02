@@ -1,49 +1,34 @@
 """
-RLHF DB 단위 테스트 (SQLite 인메모리)
+RLHF DB 단위 테스트 (SQLite 임시 파일 DB)
 실행: python -m pytest tests/test_rlhf_db.py -v
 """
 import sys
 import os
 import json
 import unittest
+import tempfile
+import atexit
 
 # 프로젝트 루트를 path에 추가
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# SQLite 인메모리 모드로 강제
+# SQLite 모드 강제 (PostgreSQL 비활성화)
 os.environ['DATABASE_URL'] = ''
 
 import db as _db_module
 
-# 테스트용 인메모리 DB 초기화
+# 테스트 전용 임시 파일 DB — 매 실행마다 새로운 파일
+_TEST_DB = tempfile.mktemp(suffix='_test_rlhf.db')
+atexit.register(lambda: os.unlink(_TEST_DB) if os.path.exists(_TEST_DB) else None)
+
 _db_module._use_postgres = False
-_db_module.init_db(':memory:')
+_db_module.DB_PATH = _TEST_DB
+_db_module.init_db(_TEST_DB)
 
 
 class TestAddResponseFeedback(unittest.TestCase):
     """add_response_feedback / get_response_feedback 테스트"""
-
-    @classmethod
-    def setUpClass(cls):
-        """FK 참조용 부모 레코드 사전 삽입 (conversations, messages)"""
-        import uuid
-        from datetime import datetime, timezone
-        now = datetime.now(timezone.utc).isoformat()
-        with _db_module.get_conn() as (conn, cur):
-            # conversations (user_id, user_name NOT NULL)
-            for conv_id in ['conv-test-001', 'conv-test-002', 'conv-shared']:
-                cur.execute(
-                    "INSERT OR IGNORE INTO conversations"
-                    " (id, user_id, user_name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
-                    (conv_id, 'test-user', '테스터', now, now)
-                )
-            # messages (timestamp 컬럼 사용)
-            for msg_id in ['msg-test-001', 'msg-test-002', 'msg-conv-001', 'msg-conv-002']:
-                cur.execute(
-                    "INSERT OR IGNORE INTO messages (id, conversation_id, role, content, timestamp)"
-                    " VALUES (?, 'conv-shared', 'assistant', 'test', ?)",
-                    (msg_id, now)
-                )
+    # response_feedback는 FK 없는 독립 테이블 → 부모 레코드 불필요
 
     def test_add_and_get_by_message_id(self):
         fb_id = _db_module.add_response_feedback(
