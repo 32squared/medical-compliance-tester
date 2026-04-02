@@ -2078,9 +2078,9 @@ def mark_preference_pairs_exported(pair_ids: list = None, all_unexported=False):
                 f"UPDATE preference_pairs SET exported = 1, exported_at = {ph} WHERE exported = 0",
                 (now,)
             )
-            return cur.rowcount
+            return {'exported_count': cur.rowcount}
         if not pair_ids:
-            return 0
+            return {'exported_count': 0}
         updated = 0
         for pid in pair_ids:
             cur.execute(
@@ -2088,7 +2088,7 @@ def mark_preference_pairs_exported(pair_ids: list = None, all_unexported=False):
                 (now, pid)
             )
             updated += cur.rowcount
-    return updated
+    return {'exported_count': updated}
 
 
 def export_preference_pairs_dpo(format='openai', limit=500):
