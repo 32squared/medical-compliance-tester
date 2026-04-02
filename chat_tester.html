@@ -1950,133 +1950,131 @@ function renderAssistantEvaluation(msgDiv, evalData) {
   var fbId = 'rlhf-' + msgId;
   var fbState = { thumbs: null, rating: 0, tags: [], sent: false };
 
-  // Row 1: thumbs + stars + tags
-  var fbRow = document.createElement('div');
-  fbRow.className = 'rlhf-feedback-row';
-
-  var thumbGood = document.createElement('button');
-  thumbGood.className = 'rlhf-thumb-btn';
-  thumbGood.textContent = '\uD83D\uDC4D \uC88B\uC74C';
-  var thumbBad = document.createElement('button');
-  thumbBad.className = 'rlhf-thumb-btn';
-  thumbBad.textContent = '\uD83D\uDC4E \uB098\uC068';
-
   var _fbMsgId = msgId, _fbFullText = fullText, _fbUserPrompt = userPrompt;
 
-  // 피드백 저장 후 UI 상태 반영 헬퍼
+  // ── 공통 저장 실행 함수 ──
+  function _doSaveFeedback(saveBtn) {
+    fbState.originalQuery = _fbUserPrompt;
+    fbState.fullResponse  = _fbFullText;
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '저장 중...'; }
+    submitRlhfFeedback(_fbMsgId, fbState).then(function(r) {
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '💾 저장'; }
+      var st = document.getElementById(fbId + '-status');
+      if (st) {
+        st.textContent = r && r.success ? '✓ 피드백 저장됨' : '⚠ 저장 실패';
+        st.style.cssText = (r && r.success)
+          ? 'font-size:12px;color:var(--green);font-weight:700'
+          : 'font-size:12px;color:var(--red);font-weight:700';
+      }
+      if (r && r.success) {
+        fbState.sent = true;
+        showToast('피드백이 저장되었습니다', 'success');
+      } else {
+        showToast('저장 실패: ' + (r && r.error || ''), 'error');
+      }
+    });
+  }
+
+  // 기존 피드백 로드 후 UI 복원 헬퍼
   function _applyFeedbackState(fb) {
     if (!fb) return;
-    var st = document.getElementById(fbId + '-status');
-    var corr = document.getElementById(fbId + '-correction');
     var rating = fb.rating || 0;
     if (rating >= 4) {
-      fbState.thumbs = 'good';
+      fbState.thumbs = 'good'; fbState.rating = rating;
       thumbGood.className = 'rlhf-thumb-btn active-good';
       thumbBad.className = 'rlhf-thumb-btn';
-      if (corr) corr.classList.remove('open');
+      badSection.style.display = 'none';
+      saveGoodBtn.style.display = '';
     } else if (rating > 0) {
-      fbState.thumbs = 'bad';
+      fbState.thumbs = 'bad'; fbState.rating = rating;
       thumbBad.className = 'rlhf-thumb-btn active-bad';
       thumbGood.className = 'rlhf-thumb-btn';
-      if (corr) corr.classList.add('open');
+      badSection.style.display = '';
+      saveGoodBtn.style.display = 'none';
     }
     if (rating) {
-      fbState.rating = rating;
       var allStars = fbDiv.querySelectorAll('.rlhf-star');
-      for (var ss = 0; ss < allStars.length; ss++) {
+      for (var ss = 0; ss < allStars.length; ss++)
         allStars[ss].classList.toggle('filled', parseInt(allStars[ss].dataset.val) <= rating);
-      }
     }
-    // 저장된 태그 표시
     var savedTags = [];
     if (fb.labels_json) { try { savedTags = JSON.parse(fb.labels_json); } catch(e){} }
     if (Array.isArray(savedTags) && savedTags.length > 0) {
       fbState.tags = savedTags;
       var allTagBtns = fbDiv.querySelectorAll('.rlhf-tag-btn');
-      for (var ti2 = 0; ti2 < allTagBtns.length; ti2++) {
+      for (var ti2 = 0; ti2 < allTagBtns.length; ti2++)
         if (savedTags.indexOf(allTagBtns[ti2].textContent) >= 0) allTagBtns[ti2].classList.add('active');
-      }
     }
+    if (fb.corrected_response) corrTextarea.value = fb.corrected_response;
+    if (fb.feedback_note) corrMemoInput.value = fb.feedback_note;
+    var st = document.getElementById(fbId + '-status');
     if (st) {
-      st.textContent = '\u2713 \uD53C\uB4DC\uBC31 \uC800\uC7A5\uB428';
-      st.style.cssText = 'font-size:11px;color:var(--green);margin-left:8px;font-weight:600';
+      st.textContent = '✓ 피드백 저장됨';
+      st.style.cssText = 'font-size:12px;color:var(--green);font-weight:700';
     }
     fbState.sent = true;
   }
 
-  thumbGood.addEventListener('click', function() {
-    fbState.thumbs = 'good';
-    thumbGood.className = 'rlhf-thumb-btn active-good';
-    thumbBad.className = 'rlhf-thumb-btn';
-    var corr = document.getElementById(fbId + '-correction');
-    if (corr) corr.classList.remove('open');
-    fbState.originalQuery = _fbUserPrompt;
-    fbState.fullResponse = _fbFullText;
-    submitRlhfFeedback(_fbMsgId, fbState).then(function(r) {
-      var st = document.getElementById(fbId + '-status');
-      if (st) {
-        st.textContent = r && r.success ? '\u2713 \uD53C\uB4DC\uBC31 \uC800\uC7A5\uB428' : '\u26A0 \uC800\uC7A5 \uC2E4\uD328';
-        st.style.cssText = r && r.success
-          ? 'font-size:11px;color:var(--green);margin-left:8px;font-weight:600'
-          : 'font-size:11px;color:var(--red);margin-left:8px';
-      }
-      if (r && r.success) fbState.sent = true;
-    });
-  });
-  thumbBad.addEventListener('click', function() {
-    fbState.thumbs = 'bad';
-    thumbBad.className = 'rlhf-thumb-btn active-bad';
-    thumbGood.className = 'rlhf-thumb-btn';
-    var corr = document.getElementById(fbId + '-correction');
-    if (corr) corr.classList.add('open');
-    fbState.originalQuery = _fbUserPrompt;
-    fbState.fullResponse = _fbFullText;
-    submitRlhfFeedback(_fbMsgId, fbState).then(function(r) {
-      var st = document.getElementById(fbId + '-status');
-      if (st) {
-        st.textContent = r && r.success ? '\u2713 \uD53C\uB4DC\uBC31 \uC800\uC7A5\uB428' : '\u26A0 \uC800\uC7A5 \uC2E4\uD328';
-        st.style.cssText = r && r.success
-          ? 'font-size:11px;color:var(--green);margin-left:8px;font-weight:600'
-          : 'font-size:11px;color:var(--red);margin-left:8px';
-      }
-      if (r && r.success) fbState.sent = true;
-    });
-  });
-  fbRow.appendChild(thumbGood);
-  fbRow.appendChild(thumbBad);
+  // ── Row 1: 좋음/나쁨 버튼 + 별점 + 상태 ──
+  var fbRow = document.createElement('div');
+  fbRow.className = 'rlhf-feedback-row';
 
-  // Stars
+  var thumbGood = document.createElement('button');
+  thumbGood.className = 'rlhf-thumb-btn';
+  thumbGood.textContent = '👍 좋음';
+  var thumbBad = document.createElement('button');
+  thumbBad.className = 'rlhf-thumb-btn';
+  thumbBad.textContent = '👎 나쁨';
+
+  // 별점
   var starsDiv = document.createElement('div');
   starsDiv.className = 'rlhf-stars';
   for (var si2 = 1; si2 <= 5; si2++) {
     var star = document.createElement('span');
     star.className = 'rlhf-star';
-    star.textContent = '\u2605';
+    star.textContent = '★';
     star.dataset.val = si2;
     (function(val) {
       star.addEventListener('click', function() {
         fbState.rating = val;
         var allStars = starsDiv.querySelectorAll('.rlhf-star');
-        for (var ss = 0; ss < allStars.length; ss++) {
+        for (var ss = 0; ss < allStars.length; ss++)
           allStars[ss].classList.toggle('filled', parseInt(allStars[ss].dataset.val) <= val);
-        }
       });
     })(si2);
     starsDiv.appendChild(star);
   }
-  fbRow.appendChild(starsDiv);
 
   var fbStatusSpan = document.createElement('span');
-  fbStatusSpan.className = 'rlhf-status';
   fbStatusSpan.id = fbId + '-status';
+  fbRow.appendChild(thumbGood);
+  fbRow.appendChild(thumbBad);
+  fbRow.appendChild(starsDiv);
   fbRow.appendChild(fbStatusSpan);
-
   fbDiv.appendChild(fbRow);
 
-  // Row 2: Tags
+  // ── 좋음 저장 버튼 (기본 숨김, 좋음 클릭 시 표시) ──
+  var saveGoodBtn = document.createElement('button');
+  saveGoodBtn.className = 'rlhf-save-btn';
+  saveGoodBtn.style.cssText = 'display:none;margin-top:8px';
+  saveGoodBtn.textContent = '💾 저장';
+  saveGoodBtn.addEventListener('click', function() { _doSaveFeedback(saveGoodBtn); });
+  fbDiv.appendChild(saveGoodBtn);
+
+  // ── 나쁨 섹션: 태그 + 수정 응답 + 저장 (기본 숨김) ──
+  var badSection = document.createElement('div');
+  badSection.style.cssText = 'display:none;margin-top:10px;padding:10px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)';
+
+  // 태그 레이블
+  var tagLabel = document.createElement('div');
+  tagLabel.style.cssText = 'font-size:11px;color:var(--text-dim);font-weight:600;margin-bottom:6px';
+  tagLabel.textContent = '📌 문제 태그 선택:';
+  badSection.appendChild(tagLabel);
+
+  // 태그 버튼
   var tagRow = document.createElement('div');
   tagRow.className = 'rlhf-feedback-row';
-  tagRow.style.marginTop = '8px';
+  tagRow.style.cssText = 'flex-wrap:wrap;gap:6px;margin-bottom:10px';
   for (var ti = 0; ti < FEEDBACK_TAGS.length; ti++) {
     var tagBtn = document.createElement('button');
     tagBtn.className = 'rlhf-tag-btn';
@@ -2084,59 +2082,58 @@ function renderAssistantEvaluation(msgDiv, evalData) {
     (function(tag, btn) {
       btn.addEventListener('click', function() {
         var idx = fbState.tags.indexOf(tag);
-        if (idx >= 0) {
-          fbState.tags.splice(idx, 1);
-          btn.classList.remove('active');
-        } else {
-          fbState.tags.push(tag);
-          btn.classList.add('active');
-        }
+        if (idx >= 0) { fbState.tags.splice(idx, 1); btn.classList.remove('active'); }
+        else { fbState.tags.push(tag); btn.classList.add('active'); }
       });
     })(FEEDBACK_TAGS[ti], tagBtn);
     tagRow.appendChild(tagBtn);
   }
-  fbDiv.appendChild(tagRow);
+  badSection.appendChild(tagRow);
 
-  // Row 3: Correction textarea (hidden by default, opens on thumbs-down)
-  var corrDiv = document.createElement('div');
-  corrDiv.className = 'rlhf-correction';
-  corrDiv.id = fbId + '-correction';
+  // 수정 응답 레이블 + textarea
   var corrLabel = document.createElement('div');
-  corrLabel.style.cssText = 'font-size:12px;color:var(--text-dim);margin-bottom:4px;font-weight:600';
-  corrLabel.textContent = '\uC218\uC815\uB41C \uC751\uB2F5:';
-  corrDiv.appendChild(corrLabel);
+  corrLabel.style.cssText = 'font-size:11px;color:var(--text-dim);font-weight:600;margin-bottom:4px';
+  corrLabel.textContent = '✏️ 수정된 응답 (선택):';
+  badSection.appendChild(corrLabel);
   var corrTextarea = document.createElement('textarea');
-  corrTextarea.placeholder = '\uB354 \uC801\uC808\uD55C \uC751\uB2F5\uC744 \uC791\uC131\uD574\uC8FC\uC138\uC694...';
-  corrDiv.appendChild(corrTextarea);
+  corrTextarea.placeholder = '더 적절한 응답을 작성해주세요...';
+  corrTextarea.style.cssText = 'width:100%;min-height:70px;margin-bottom:6px;padding:8px 12px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:13px;resize:vertical;box-sizing:border-box';
+  badSection.appendChild(corrTextarea);
+
+  // 메모 입력
   var corrMemoInput = document.createElement('input');
   corrMemoInput.type = 'text';
-  corrMemoInput.placeholder = '\uBA54\uBAA8 (\uC120\uD0DD\uC0AC\uD56D)';
-  corrDiv.appendChild(corrMemoInput);
-  var corrSaveBtn = document.createElement('button');
-  corrSaveBtn.className = 'rlhf-save-btn';
-  corrSaveBtn.textContent = '\uC800\uC7A5';
-  corrSaveBtn.addEventListener('click', function() {
+  corrMemoInput.placeholder = '메모 (선택사항)';
+  corrMemoInput.style.cssText = 'width:100%;margin-bottom:8px;padding:8px 12px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box';
+  badSection.appendChild(corrMemoInput);
+
+  // 나쁨 저장 버튼
+  var saveBadBtn = document.createElement('button');
+  saveBadBtn.className = 'rlhf-save-btn';
+  saveBadBtn.textContent = '💾 저장';
+  saveBadBtn.addEventListener('click', function() {
     fbState.correctedResponse = corrTextarea.value.trim();
     fbState.memo = corrMemoInput.value.trim();
-    fbState.originalQuery = _fbUserPrompt;
-    fbState.fullResponse = _fbFullText;
-    corrSaveBtn.disabled = true;
-    corrSaveBtn.textContent = '저장 중...';
-    submitRlhfFeedback(_fbMsgId, fbState).then(function(r) {
-      corrSaveBtn.disabled = false;
-      corrSaveBtn.textContent = '저장';
-      var st = document.getElementById(fbId + '-status');
-      if (r && r.success) {
-        if (st) st.textContent = '\u2713 \uC218\uC815\uB428';
-        showToast('\uD53C\uB4DC\uBC31\uC774 \uC800\uC7A5\uB418\uC5C8\uC2B5\uB2C8\uB2E4', 'success');
-      } else {
-        if (st) st.textContent = '\u26A0 \uC800\uC7A5 \uC2E4\uD328';
-        showToast('\uD53C\uB4DC\uBC31 \uC800\uC7A5 \uC2E4\uD328: ' + (r && r.error || ''), 'error');
-      }
-    });
+    _doSaveFeedback(saveBadBtn);
   });
-  corrDiv.appendChild(corrSaveBtn);
-  fbDiv.appendChild(corrDiv);
+  badSection.appendChild(saveBadBtn);
+  fbDiv.appendChild(badSection);
+
+  // ── thumbs 이벤트 연결 ──
+  thumbGood.addEventListener('click', function() {
+    fbState.thumbs = 'good';
+    thumbGood.className = 'rlhf-thumb-btn active-good';
+    thumbBad.className = 'rlhf-thumb-btn';
+    badSection.style.display = 'none';
+    saveGoodBtn.style.display = '';
+  });
+  thumbBad.addEventListener('click', function() {
+    fbState.thumbs = 'bad';
+    thumbBad.className = 'rlhf-thumb-btn active-bad';
+    thumbGood.className = 'rlhf-thumb-btn';
+    badSection.style.display = '';
+    saveGoodBtn.style.display = 'none';
+  });
 
   // Row 4: Regenerate button for A/B comparison
   var regenRow = document.createElement('div');
