@@ -2069,7 +2069,6 @@ function renderAssistantEvaluation(msgDiv, evalData) {
     var st = document.getElementById(fbId + '-status');
     if (st) st.textContent = '저장 버튼을 눌러 피드백을 확정하세요';
   });
-  });
   thumbBad.addEventListener('click', function() {
     fbState.thumbs = 'bad';
     thumbBad.className = 'rlhf-thumb-btn active-bad';
@@ -2082,7 +2081,6 @@ function renderAssistantEvaluation(msgDiv, evalData) {
     }
     var st = document.getElementById(fbId + '-status');
     if (st) st.textContent = '수정 응답/메모를 입력 후 저장 버튼을 눌러주세요';
-  });
   });
   fbRow.appendChild(thumbGood);
   fbRow.appendChild(thumbBad);
