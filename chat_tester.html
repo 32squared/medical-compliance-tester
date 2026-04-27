@@ -623,7 +623,7 @@ function applyRoleBasedUI(auth) {
     if (sl) sl.style.display = 'none';
   }
 
-  // advisor: 채팅 테스터 외 모든 메뉴 숨김
+  // advisor: 채팅 테스터 외 모든 메뉴 숨김 + 평가 결과 숨김
   if (userRole === 'advisor') {
     document.querySelectorAll('.topbar .nav-btn').forEach(function(el) {
       var href = el.getAttribute('href') || '';
@@ -632,6 +632,24 @@ function applyRoleBasedUI(auth) {
         el.style.display = 'none';
       }
     });
+    // advisor에게는 GPT/문진/정규식 평가 결과를 모두 숨김 (중립적 자문 의견 수집 위함)
+    // 동적 CSS 주입으로 향후 생성될 메시지에도 자동 적용
+    var advisorStyle = document.getElementById('advisorHideEvalStyle');
+    if (!advisorStyle) {
+      advisorStyle = document.createElement('style');
+      advisorStyle.id = 'advisorHideEvalStyle';
+      advisorStyle.textContent = `
+        .eval-result-box, .eval-section,
+        [id^="consultation-eval-"], .llm-eval,
+        .compliance-badge, .eval-btn,
+        .eval-loading {
+          display: none !important;
+        }
+      `;
+      document.head.appendChild(advisorStyle);
+    }
+    // body에 advisor 클래스 추가 (다른 곳에서 추가 처리 가능)
+    document.body.classList.add('role-advisor');
   }
 }
 
