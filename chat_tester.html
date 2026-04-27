@@ -928,24 +928,19 @@ function getProxyUrl() {
 }
 
 // 최신 settings 동기화 (다른 탭에서 환경 변경 시 즉시 반영)
+// chat_tester.html은 envSettings 별도 변수 없이 savedSettings.environments[currentEnv]로 직접 접근하므로
+// savedSettings + currentEnv만 갱신하면 getEnvConfig()가 자동으로 최신 값 반환.
 async function refreshSettingsBeforeCall() {
   try {
     const res = await fetch('/api/settings');
     if (!res.ok) return;
     const settings = await res.json();
     if (!settings || Object.keys(settings).length === 0) return;
-    // 모듈 전역 변수 업데이트
+    // savedSettings 갱신 — getEnvConfig()가 이를 참조함
     savedSettings = settings;
-    if (settings.environments) {
-      for (const env of ['dev', 'stg', 'prod']) {
-        if (settings.environments[env]) {
-          envSettings[env] = { ...envSettings[env], ...settings.environments[env] };
-        }
-      }
-    }
+    // currentEnv도 동기화 (다른 탭에서 환경 변경 시)
     if (settings.currentEnv && settings.currentEnv !== currentEnv) {
       currentEnv = settings.currentEnv;
-      // 환경 chip UI 갱신 (있으면)
       try { if (typeof updateEnvChips === 'function') updateEnvChips(); } catch(e) {}
     }
   } catch(e) {
