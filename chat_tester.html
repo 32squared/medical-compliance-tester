@@ -418,7 +418,7 @@ async function switchEnv(env) {
 async function testConnectionOnce() {
   const envCfg = getEnvConfig();
   const proxyUrl = getProxyUrl();
-  const targetUrl = `${envCfg.apiUrl}/api/service/conversations/${savedSettings.graphType || 'SUPERVISED_HYBRID_SEARCH'}`;
+  const targetUrl = `${envCfg.apiUrl}/api/service/conversations/${savedSettings.graphType || 'ORCHESTRATED_HYBRID_SEARCH'}`;
 
   try {
     const res = await fetch(proxyUrl, {
@@ -717,7 +717,7 @@ function getConfig() {
   const testerUid = getTesterUidFromCookie();
   return {
     url: envCfg.apiUrl || ENVS[currentEnv].url,
-    graphType: savedSettings.graphType || 'SUPERVISED_HYBRID_SEARCH',
+    graphType: savedSettings.graphType || 'ORCHESTRATED_HYBRID_SEARCH',
     headers: {
       'Content-Type': 'application/json',
       'Accept': 'text/event-stream',
@@ -785,6 +785,7 @@ async function callSSE(query, { onGeneration, onProgress, onInfo, onDone, onErro
   let fullText = '';
   let searchResults = [];
   let followUps = [];
+  let graphUsageStrid = null;
 
   while (true) {
     if (cancelRequested) { reader.cancel(); break; }
@@ -817,15 +818,30 @@ async function callSSE(query, { onGeneration, onProgress, onInfo, onDone, onErro
         if (data.conversation_strid) conversationStrid = data.conversation_strid;
         if (data.search_results) searchResults = data.search_results;
         if (data.follow_ups) followUps = data.follow_ups;
+        if (data.follow_ups_started) {
+          // 추천 질문 생성 시작 신호 — UI 인디케이터 가능 (현재는 무시)
+        }
+        if (data.graph_usage_strid) {
+          graphUsageStrid = data.graph_usage_strid;
+        }
         onInfo({ data, searchResults, followUps });
 
       } else if (type === 'PROGRESS') {
+        // PROGRESS의 result_items도 검색결과로 누적 (INFO.search_results 보완)
+        if (Array.isArray(event.result_items) && event.result_items.length) {
+          searchResults = searchResults.concat(event.result_items);
+        }
         onProgress({
           status: event.status,
           level: event.level,
           message: event.display_message || '',
           metadata: event.metadata,
+          resultItems: event.result_items || null,
         });
+
+      } else if (type === 'KEEP_ALIVE') {
+        // 연결 유지용 빈 이벤트, 무시
+        continue;
 
       } else if (type === 'STOP') {
         break;
@@ -837,7 +853,7 @@ async function callSSE(query, { onGeneration, onProgress, onInfo, onDone, onErro
     }
   }
 
-  onDone({ fullText, searchResults, followUps });
+  onDone({ fullText, searchResults, followUps, graphUsageStrid });
 }
 
 // ──────────────────────────────────────

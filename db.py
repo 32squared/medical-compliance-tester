@@ -396,7 +396,7 @@ CREATE TABLE IF NOT EXISTS arena_model_configs (
     api_key TEXT DEFAULT '',
     api_uid TEXT DEFAULT '',
     tenant_domain TEXT DEFAULT '',
-    graph_type TEXT DEFAULT 'SUPERVISED_HYBRID_SEARCH',
+    graph_type TEXT DEFAULT 'ORCHESTRATED_HYBRID_SEARCH',
     system_prompt_override TEXT DEFAULT '',
     is_active INTEGER DEFAULT 1,
     created_at TEXT NOT NULL,
@@ -650,7 +650,7 @@ CREATE TABLE IF NOT EXISTS arena_model_configs (
     api_key TEXT DEFAULT '',
     api_uid TEXT DEFAULT '',
     tenant_domain TEXT DEFAULT '',
-    graph_type TEXT DEFAULT 'SUPERVISED_HYBRID_SEARCH',
+    graph_type TEXT DEFAULT 'ORCHESTRATED_HYBRID_SEARCH',
     system_prompt_override TEXT DEFAULT '',
     is_active INTEGER DEFAULT 1,
     created_at TEXT NOT NULL,
@@ -887,7 +887,7 @@ def init_db(db_path=None):
                     api_key TEXT DEFAULT '',
                     api_uid TEXT DEFAULT '',
                     tenant_domain TEXT DEFAULT '',
-                    graph_type TEXT DEFAULT 'SUPERVISED_HYBRID_SEARCH',
+                    graph_type TEXT DEFAULT 'ORCHESTRATED_HYBRID_SEARCH',
                     system_prompt_override TEXT DEFAULT '',
                     is_active INTEGER DEFAULT 1,
                     created_at TEXT NOT NULL,
@@ -1010,7 +1010,7 @@ def init_db(db_path=None):
                 api_key TEXT DEFAULT '',
                 api_uid TEXT DEFAULT '',
                 tenant_domain TEXT DEFAULT '',
-                graph_type TEXT DEFAULT 'SUPERVISED_HYBRID_SEARCH',
+                graph_type TEXT DEFAULT 'ORCHESTRATED_HYBRID_SEARCH',
                 system_prompt_override TEXT DEFAULT '',
                 is_active INTEGER DEFAULT 1,
                 created_at TEXT NOT NULL,
@@ -2534,7 +2534,7 @@ def save_arena_config(slot: str, config: dict) -> int:
     api_key = config.get('api_key', '')
     api_uid = config.get('api_uid', '')
     tenant_domain = config.get('tenant_domain', '')
-    graph_type = config.get('graph_type', 'SUPERVISED_HYBRID_SEARCH')
+    graph_type = config.get('graph_type', 'ORCHESTRATED_HYBRID_SEARCH')
     system_prompt_override = config.get('system_prompt_override', '')
     is_active = int(config.get('is_active', 1))
 
