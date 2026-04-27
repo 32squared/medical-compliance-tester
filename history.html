@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>테스트 이력 — 나만의 주치의</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <style>
   :root {
     --bg: #0f172a; --surface: #1e293b; --surface2: #334155; --surface3: #3b4a63;
@@ -29,7 +30,7 @@
             background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; flex-wrap:nowrap; overflow-x:auto; }
   .topbar h1 { font-size:16px; font-weight:700; display:flex; align-items:center; gap:8px; white-space:nowrap; }
   .nav-btn { background:none; border:1px solid var(--border); color:var(--text-dim); border-radius:8px;
-             padding:6px 14px; cursor:pointer; font-size:13px; text-decoration:none; transition:all .15s; }
+             padding:6px 14px; cursor:pointer; font-size:13px; text-decoration:none; transition:all .15s; white-space:nowrap; }
   .nav-btn:hover { background:var(--surface2); color:var(--text); }
   .nav-btn.active { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
 
@@ -87,7 +88,7 @@
   .summary-card { flex:1; padding:14px 16px; background:var(--bg); border-radius:10px;
                   border:1px solid var(--border); text-align:center; }
   .summary-card .sc-value { font-size:24px; font-weight:800; margin-bottom:2px; }
-  .summary-card .sc-label { font-size:11px; color:var(--text-dim); font-weight:600; }
+  .summary-card .sc-label { font-size:13px; color:var(--text-dim); font-weight:600; }
   .summary-card.total .sc-value { color:var(--text); }
   .summary-card.passed .sc-value { color:var(--green); }
   .summary-card.failed .sc-value { color:var(--red); }
@@ -114,7 +115,7 @@
   .result-detail { display:none; padding:0 16px 16px; border-top:1px solid var(--border); }
   .result-card.expanded .result-detail { display:block; padding-top:14px; }
   .result-section { margin-bottom:12px; }
-  .result-section-title { font-size:11px; font-weight:700; color:var(--text-dim); text-transform:uppercase;
+  .result-section-title { font-size:14px; font-weight:700; color:var(--text-dim); text-transform:uppercase;
                           letter-spacing:1px; margin-bottom:6px; }
   .result-section-body { font-size:13px; line-height:1.7; background:var(--bg); padding:12px 14px;
                          border-radius:8px; border:1px solid var(--border); white-space:pre-wrap;
@@ -142,6 +143,112 @@
   ::-webkit-scrollbar { width:6px; }
   ::-webkit-scrollbar-track { background:transparent; }
   ::-webkit-scrollbar-thumb { background:var(--surface2); border-radius:3px; }
+
+  /* ── Report Tabs ── */
+  .report-tabs { display:flex; gap:2px; padding:12px 24px 0; background:var(--surface); border-bottom:1px solid var(--border); }
+  .report-tab { padding:8px 20px; border:none; background:none; color:var(--text-dim); font-size:13px;
+                font-weight:600; cursor:pointer; border-bottom:2px solid transparent; transition:all .15s;
+                font-family:inherit; border-radius:8px 8px 0 0; }
+  .report-tab:hover { color:var(--text); background:var(--surface2); }
+  .report-tab.active { color:var(--accent); border-bottom-color:var(--accent); background:var(--accent-dim); }
+
+  /* ── Report Dashboard ── */
+  .report-dashboard { flex:1; overflow-y:auto; padding:24px; display:none; }
+  .report-dashboard.visible { display:block; }
+  .report-section { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+                    padding:20px; margin-bottom:16px; }
+  .report-section-title { font-size:14px; font-weight:700; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+
+  /* Summary strip */
+  .report-summary-strip { display:flex; flex-wrap:wrap; gap:12px; }
+  .report-summary-item { flex:1; min-width:120px; text-align:center; padding:14px 12px; background:var(--bg);
+                         border-radius:10px; border:1px solid var(--border); }
+  .report-summary-item .rsi-value { font-size:22px; font-weight:800; margin-bottom:2px; }
+  .report-summary-item .rsi-label { font-size:13px; color:var(--text-dim); font-weight:600; }
+
+  /* Horizontal bar chart */
+  .hbar-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .hbar-label { min-width:24px; font-size:14px; font-weight:800; text-align:center; }
+  .hbar-track { flex:1; height:24px; background:var(--bg); border-radius:6px; overflow:hidden; position:relative; }
+  .hbar-fill { height:100%; border-radius:6px; transition:width .5s ease; min-width:2px; }
+  .hbar-info { min-width:100px; font-size:12px; color:var(--text-dim); text-align:right; white-space:nowrap; }
+
+  /* Progress bar chart (axes) */
+  .pbar-row { margin-bottom:10px; }
+  .pbar-header { display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px; }
+  .pbar-header-label { color:var(--text); font-weight:600; }
+  .pbar-header-value { color:var(--text-dim); }
+  .pbar-track { height:10px; background:var(--bg); border-radius:5px; overflow:hidden; }
+  .pbar-fill { height:100%; border-radius:5px; transition:width .5s ease; }
+
+  /* Vertical bar chart */
+  .vbar-chart { display:flex; align-items:flex-end; gap:6px; height:180px; padding:0 4px; border-left:1px solid var(--border);
+                border-bottom:1px solid var(--border); position:relative; }
+  .vbar-y-axis { position:absolute; left:-32px; top:0; bottom:0; display:flex; flex-direction:column-reverse;
+                 justify-content:space-between; font-size:10px; color:var(--text-dim); }
+  .vbar-col { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; min-width:0; }
+  .vbar-bar { width:100%; max-width:36px; border-radius:4px 4px 0 0; transition:height .5s ease; cursor:default; position:relative; }
+  .vbar-bar:hover { opacity:.85; }
+  .vbar-bar-tooltip { display:none; position:absolute; bottom:calc(100% + 4px); left:50%; transform:translateX(-50%);
+                      background:var(--surface2); color:var(--text); font-size:10px; padding:2px 6px; border-radius:4px;
+                      white-space:nowrap; pointer-events:none; z-index:10; }
+  .vbar-bar:hover .vbar-bar-tooltip { display:block; }
+  .vbar-label { font-size:13px; color:var(--text-dim); margin-top:6px; white-space:nowrap; overflow:hidden;
+                text-overflow:ellipsis; max-width:100%; text-align:center; }
+
+  /* Comment summary */
+  .comment-list { display:flex; flex-direction:column; gap:6px; }
+  .comment-row { display:flex; align-items:center; gap:10px; padding:8px 12px; background:var(--bg);
+                 border-radius:8px; border:1px solid var(--border); }
+  .comment-row-label { flex:1; font-size:13px; }
+  .comment-row-count { font-size:14px; font-weight:700; color:var(--accent); }
+
+  /* Report loading */
+  .report-loading { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:60px 20px; color:var(--text-dim); }
+  .report-loading .loader-spinner { margin-bottom:12px; }
+
+  /* ── Batch Report View (per-run) ── */
+  .batch-toggle-bar { display:flex; gap:4px; padding:8px 24px; background:var(--surface); border-bottom:1px solid var(--border); }
+  .batch-toggle-btn { padding:6px 16px; border:1px solid var(--border); border-radius:8px; background:none;
+                      color:var(--text-dim); font-size:12px; font-weight:600; cursor:pointer; font-family:inherit;
+                      transition:all .15s; }
+  .batch-toggle-btn:hover { background:var(--surface2); color:var(--text); }
+  .batch-toggle-btn.active { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
+
+  .batch-report { padding:20px 24px; overflow-y:auto; flex:1; }
+  .batch-report-section { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+                          padding:20px; margin-bottom:16px; }
+  .batch-report-section-title { font-size:14px; font-weight:700; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+
+  .batch-summary-cards { display:flex; flex-wrap:wrap; gap:12px; }
+  .batch-summary-card { flex:1; min-width:100px; text-align:center; padding:16px 12px; background:var(--bg);
+                        border-radius:10px; border:1px solid var(--border); }
+  .batch-summary-card .bsc-value { font-size:28px; font-weight:800; margin-bottom:2px; }
+  .batch-summary-card .bsc-label { font-size:12px; color:var(--text-dim); font-weight:600; }
+
+  .batch-hbar-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .batch-hbar-label { min-width:24px; font-size:14px; font-weight:800; text-align:center; }
+  .batch-hbar-track { flex:1; height:24px; background:var(--bg); border-radius:6px; overflow:hidden; }
+  .batch-hbar-fill { height:100%; border-radius:6px; transition:width .5s ease; min-width:2px; }
+  .batch-hbar-info { min-width:90px; font-size:12px; color:var(--text-dim); text-align:right; white-space:nowrap; }
+
+  .batch-pbar-row { margin-bottom:10px; }
+  .batch-pbar-header { display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px; }
+  .batch-pbar-header-label { color:var(--text); font-weight:600; }
+  .batch-pbar-header-value { color:var(--text-dim); }
+  .batch-pbar-track { height:10px; background:var(--bg); border-radius:5px; overflow:hidden; }
+  .batch-pbar-fill { height:100%; border-radius:5px; transition:width .5s ease; }
+
+  .violation-group { padding:10px 12px; background:var(--bg); border-radius:8px; border:1px solid var(--border); margin-bottom:8px; }
+  .violation-group-header { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+  .violation-group-name { font-size:13px; font-weight:700; }
+  .violation-group-count { font-size:11px; color:var(--text-dim); background:var(--surface2); padding:2px 8px; border-radius:4px; }
+  .violation-example { font-size:12px; color:var(--orange); margin-left:16px; margin-bottom:2px; }
+
+  @media (max-width: 768px) {
+    .batch-summary-cards { flex-direction:column; }
+    .batch-summary-card { min-width:unset; }
+  }
 </style>
 </head>
 <body>
@@ -162,7 +269,9 @@
   <a href="/" class="nav-btn">채팅 테스터</a>
   <a href="/manager" class="nav-btn">시나리오 관리</a>
   <a href="/history" class="nav-btn active">테스트 이력</a>
-  <a href="/guidelines" class="nav-btn">가이드라인</a>
+  <a href="/guidelines" class="nav-btn">법률 평가 기준</a>
+  <a href="/criteria" class="nav-btn">문진 평가 기준</a>
+  <a href="/rlhf" class="nav-btn">RLHF 관리</a>
   <a href="/settings" class="nav-btn" id="settingsNavLink">&#9881; 설정</a>
   <span id="testerBadge" style="margin-left:auto;display:none;font-size:11px;color:var(--accent);background:var(--accent-dim);padding:3px 10px;border-radius:6px;cursor:pointer;white-space:nowrap" onclick="if(confirm('로그아웃 하시겠습니까?'))testerLogout()"></span>
 </div>
@@ -209,6 +318,16 @@
 
   <!-- Right Panel: Detail -->
   <div class="main" id="detailPanel">
+    <!-- Tab Buttons -->
+    <div class="report-tabs">
+      <button class="report-tab active" onclick="switchMainTab('history')" id="tabHistory">📋 테스트 이력</button>
+      <button class="report-tab" onclick="switchMainTab('report')" id="tabReport">📊 리포트</button>
+      <button class="report-tab" onclick="switchMainTab('enhancement')" id="tabEnhancement">📊 보강 리포트</button>
+      <button class="report-tab" onclick="switchMainTab('reward')" id="tabReward">📈 리워드 트렌드</button>
+    </div>
+
+    <!-- History Tab Content -->
+    <div id="historyTabContent" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
     <div class="empty-state" id="emptySelect">
       <div class="empty-icon">&#128203;</div>
       <div class="empty-title">왼쪽에서 테스트 이력을 선택하세요</div>
@@ -221,6 +340,7 @@
           <span class="detail-type" id="detailType"></span>
           <span class="run-env-badge" id="detailEnv"></span>
           <span class="detail-timestamp" id="detailTimestamp"></span>
+          <span id="detailRunBy" style="display:none;font-size:11px;color:var(--text-dim);background:rgba(255,255,255,.08);padding:2px 8px;border-radius:4px">👤</span>
           <div class="detail-actions">
             <button class="btn" style="background:var(--accent);color:#fff;border:none;cursor:pointer" onclick="reEvaluateRun()" title="현재 가이드라인 버전으로 재평가">&#128260; 재평가</button>
             <button class="btn btn-danger" onclick="deleteCurrentRun()">삭제</button>
@@ -249,10 +369,88 @@
           </div>
         </div>
       </div>
+      <div class="batch-toggle-bar" id="batchToggleBar" style="display:none">
+        <button class="batch-toggle-btn active" id="btnIndividual" onclick="switchBatchView('individual')">📋 개별 결과 보기</button>
+        <button class="batch-toggle-btn" id="btnBatchReport" onclick="switchBatchView('report')">📊 리포트 보기</button>
+      </div>
       <div class="results-area" id="resultsArea">
         <!-- Populated by JS -->
       </div>
+      <div class="batch-report" id="batchReportArea" style="display:none">
+        <!-- Populated by JS: batch-level report -->
+      </div>
     </div>
+    </div><!-- /historyTabContent -->
+
+    <!-- Report Tab Content -->
+    <div id="reportTabContent" class="report-dashboard">
+      <div class="report-loading" id="reportLoading">
+        <div class="loader-spinner"></div>
+        <div>리포트 데이터 로딩 중...</div>
+      </div>
+      <div id="reportBody" style="display:none">
+        <!-- Section A: 전체 요약 -->
+        <div class="report-section">
+          <div class="report-section-title">📈 전체 요약</div>
+          <div class="report-summary-strip" id="reportSummaryStrip"></div>
+        </div>
+        <!-- Section B: 등급 분포 -->
+        <div class="report-section">
+          <div class="report-section-title">🏷️ 등급 분포</div>
+          <div id="reportGradeDist"></div>
+        </div>
+        <!-- Section C: 축별 평균 점수 -->
+        <div class="report-section">
+          <div class="report-section-title">🎯 축별 평균 점수</div>
+          <div id="reportAxesScores"></div>
+        </div>
+        <!-- Section D: 배치별 추이 -->
+        <div class="report-section">
+          <div class="report-section-title">📊 배치별 추이 (최근 10회)</div>
+          <div style="position:relative;margin-left:36px">
+            <div class="vbar-y-axis" id="reportVbarYAxis"></div>
+            <div class="vbar-chart" id="reportTrendChart"></div>
+          </div>
+        </div>
+        <!-- Section E: 커멘트 요약 -->
+        <div class="report-section">
+          <div class="report-section-title">💬 커멘트 요약</div>
+          <div class="comment-list" id="reportComments"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Enhancement Report Tab Content -->
+    <div id="enhancementTabContent" class="report-dashboard">
+      <div class="report-loading" id="enhancementLoading" style="display:none">
+        <div class="loader-spinner"></div>
+        <div>보강 리포트 로딩 중...</div>
+      </div>
+      <div id="enhancementBody" style="display:none"></div>
+    </div>
+
+    <!-- Reward Trend Tab Content -->
+    <div id="rewardTabContent" class="report-dashboard">
+      <div class="report-loading" id="rewardLoading" style="display:none">
+        <div class="loader-spinner"></div>
+        <div>리워드 트렌드 로딩 중...</div>
+      </div>
+      <div id="rewardBody" style="display:none">
+        <div class="report-section">
+          <div class="report-section-title">📈 일별 Composite Reward 평균 (최근 30일)</div>
+          <div style="position:relative;height:300px">
+            <canvas id="rewardLineChart"></canvas>
+          </div>
+        </div>
+        <div class="report-section">
+          <div class="report-section-title">📊 법률점수 vs 문진점수 분포</div>
+          <div style="position:relative;height:300px">
+            <canvas id="rewardScatterChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
 </div>
@@ -263,6 +461,7 @@
 <script>
   let currentRunId = null;
   let historyData = [];
+  let _resultPollInterval = null;
 
   // ── Toast ──
   function showToast(msg, type = 'info') {
@@ -277,7 +476,7 @@
 
   // ── Env Switching ──
   function switchEnv(env) {
-    fetch('/api/settings', {
+    fetch('/api/settings/env', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ currentEnv: env })
@@ -353,18 +552,26 @@
       const rid = run.runId || run.id || '';
       const isActive = rid === currentRunId;
       const isRunning = run.status === 'running';
-      const barColor = isRunning ? 'var(--accent)' : rate >= 80 ? 'var(--green)' : rate >= 50 ? 'var(--yellow)' : 'var(--red)';
+      const isCancelled = run.status === 'cancelled';
+      const barColor = isRunning ? 'var(--accent)' : isCancelled ? 'var(--yellow)' : rate >= 80 ? 'var(--green)' : rate >= 50 ? 'var(--yellow)' : 'var(--red)';
       const statusBadge = isRunning
         ? '<span style="color:var(--accent);font-size:11px;margin-left:auto">⏳ 실행 중</span>'
+        : isCancelled
+        ? '<span style="color:var(--yellow);font-size:11px;margin-left:auto">⏹ 중지됨</span>'
         : '';
+
+      const runByName = run.runBy || run.tester || '';
+      const runByBadge = runByName ? '<span style="font-size:10px;color:var(--text-dim);background:rgba(255,255,255,.08);padding:1px 6px;border-radius:4px;margin-left:4px">👤 ' + escapeHtml(runByName) + '</span>' : '';
 
       return '<div class="run-item' + (isActive ? ' active' : '') + (isRunning ? ' running' : '') + '" onclick="selectRun(\'' + rid + '\')" data-runid="' + rid + '">' +
         '<div class="run-item-top">' +
           '<span class="run-type-icon">' + (isBatch ? '&#128230;' : '&#9654;') + '</span>' +
           '<span class="run-env-badge ' + env + '">' + env.toUpperCase() + '</span>' +
+          runByBadge +
           '<span class="run-timestamp">' + formatTimestamp(run.startedAt || run.timestamp) + '</span>' +
           statusBadge +
         '</div>' +
+        '<div style="font-size:10px;color:var(--text-dim);margin:2px 0;font-family:monospace">' + escapeHtml(rid) + '</div>' +
         (isRunning
           ? '<div class="run-summary" style="color:var(--accent)">' + total + '개 시나리오 병렬 실행 중...</div>' +
             '<div class="run-passbar"><div class="run-passbar-fill" style="width:100%;background:var(--accent);animation:pulse 1.5s infinite"></div></div>'
@@ -379,6 +586,33 @@
     });
   }
 
+  // ── Result Polling for running batches ──
+  function startResultPolling(runId) {
+    if (_resultPollInterval) clearInterval(_resultPollInterval);
+    _resultPollInterval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/history/' + runId);
+        if (!res.ok) return;
+        const detail = await res.json();
+        renderDetail(detail);
+        // Also update sidebar item
+        const item = document.querySelector('[data-runid="' + runId + '"]');
+        if (item) {
+          const summaryEl = item.querySelector('.run-summary');
+          const s = detail.summary || {};
+          if (summaryEl && detail.status === 'running') {
+            summaryEl.textContent = (s.passed + s.failed + (s.error||0)) + '/' + s.total + ' 완료 (통과 ' + s.passed + ')';
+          }
+        }
+        if (detail.status !== 'running') {
+          clearInterval(_resultPollInterval);
+          _resultPollInterval = null;
+          loadHistory(); // full refresh
+        }
+      } catch(e) { /* ignore */ }
+    }, 5000);
+  }
+
   // ── Select Run ──
   function selectRun(runId) {
     currentRunId = runId;
@@ -388,12 +622,31 @@
       el.classList.toggle('active', el.getAttribute('onclick').includes(runId));
     });
 
+    // running 상태인지 먼저 확인
+    const runItem = historyData.find(r => (r.runId || r.id) === runId);
+    if (runItem && runItem.status === 'running') {
+      // running 배치: 즉시 폴링 UI 표시
+      document.getElementById('emptySelect').style.display = 'none';
+      const dc = document.getElementById('detailContent');
+      dc.style.display = '';
+      dc.innerHTML = '<div style="padding:20px;text-align:center;color:var(--accent)"><div style="font-size:24px;margin-bottom:8px">⏳</div><div>배치 실행 중... 결과가 도착하면 아래에 표시됩니다.</div></div><div id="runningResults"></div>';
+      startProgressPolling(runId);
+      return;
+    }
+
     fetch('/api/history/' + runId)
       .then(r => {
         if (!r.ok) throw new Error('이력 조회 실패');
         return r.json();
       })
-      .then(run => renderDetail(run))
+      .then(run => {
+        renderDetail(run);
+        if (run.status === 'running') {
+          startResultPolling(runId);
+        } else {
+          if (_resultPollInterval) { clearInterval(_resultPollInterval); _resultPollInterval = null; }
+        }
+      })
       .catch(e => showToast(e.message, 'error'));
   }
 
@@ -401,6 +654,17 @@
     document.getElementById('emptySelect').style.display = 'none';
     const dc = document.getElementById('detailContent');
     dc.style.display = 'flex';
+    _lastRenderedRun = run;
+
+    // Show batch toggle bar
+    var toggleBar = document.getElementById('batchToggleBar');
+    toggleBar.style.display = 'flex';
+    // Reset to individual view
+    currentBatchView = 'individual';
+    document.getElementById('btnIndividual').classList.add('active');
+    document.getElementById('btnBatchReport').classList.remove('active');
+    document.getElementById('resultsArea').style.display = '';
+    document.getElementById('batchReportArea').style.display = 'none';
 
     const env = (run.env || 'dev').toLowerCase();
     const isBatch = run.type === 'batch';
@@ -417,6 +681,12 @@
     envBadge.textContent = env.toUpperCase();
     envBadge.className = 'run-env-badge ' + env;
     document.getElementById('detailTimestamp').textContent = formatTimestamp(run.startedAt || run.completedAt || run.timestamp);
+    const runByEl = document.getElementById('detailRunBy');
+    if (runByEl) {
+      const who = run.runBy || run.tester || '익명';
+      runByEl.textContent = '실행자: ' + who;
+      runByEl.style.display = '';
+    }
     document.getElementById('scTotal').textContent = total;
     document.getElementById('scPassed').textContent = passed;
     document.getElementById('scFailed').textContent = failed;
@@ -426,12 +696,18 @@
     const results = run.results || [];
     const area = document.getElementById('resultsArea');
 
+    let progressHtml = '';
+    if (run.status === 'running') {
+      const completed = (run.summary?.passed || 0) + (run.summary?.failed || 0) + (run.summary?.error || 0);
+      progressHtml = '<div style="color:var(--accent);font-size:12px;margin-bottom:12px">\u23F3 ' + completed + '/' + (run.summary?.total || 0) + ' \uC644\uB8CC \u2014 \uC790\uB3D9 \uAC31\uC2E0 \uC911...</div>';
+    }
+
     if (results.length === 0) {
-      area.innerHTML = '<div class="empty-state"><div class="empty-desc">결과 데이터가 없습니다.</div></div>';
+      area.innerHTML = progressHtml + '<div class="empty-state"><div class="empty-desc">결과 데이터가 없습니다.</div></div>';
       return;
     }
 
-    area.innerHTML = results.map((r, idx) => {
+    area.innerHTML = progressHtml + results.map((r, idx) => {
       const st = (r.status || '').toLowerCase();
       let statusLabel, statusClass;
       if (st === 'pass') { statusLabel = '\u2705 PASS'; statusClass = 'pass'; }
@@ -443,64 +719,129 @@
       const respTime = r.responseTime ? r.responseTime + 'ms' : '-';
       const response = r.response || '응답 없음';
       const compliance = r.compliance || null;
+      const gptEval = r.gptEval || null;
+      const gradeColors = { A: '#22c55e', B: '#38bdf8', C: '#eab308', D: '#f97316', F: '#ef4444' };
 
-      // 의료법 검수 표시 (하이브리드 점수)
+      // Determine finalSource
+      const finalSource = (gptEval && gptEval.grade) ? 'gpt' : 'regex';
+      const sourceIndicator = finalSource === 'gpt' ? '\uD83E\uDD16 GPT 기준' : '\uD83D\uDCCB 정규식 기준';
+
+      // 의료법 검수 표시
       let complianceHtml = '';
       if (compliance && compliance.score != null) {
         const regexScore = compliance.regexScore || compliance.score || 0;
-        const gptScore = (r.gptEval && r.gptEval.score != null) ? r.gptEval.score : null;
-        const hybridScore = gptScore !== null ? Math.min(regexScore, gptScore) : regexScore;
+        const gptScore = (gptEval && gptEval.score != null) ? gptEval.score : null;
         const guideVer = compliance.guidelineVersion || r.guidelineVersion || '';
-        const verLabel = guideVer ? ' <span style="color:var(--text-dim);font-size:10px">[가이드라인 v' + escapeHtml(guideVer) + ']</span>' : '';
-        const cColor = compliance.violations && compliance.violations.length > 0 ? 'var(--red)' : 'var(--green)';
-        const scoreLabel = gptScore !== null
-          ? '하이브리드: ' + hybridScore + '점 (패턴: ' + regexScore + ' / GPT: ' + gptScore + ')'
-          : '패턴 분석: ' + regexScore + '점';
+        const verLabel = guideVer ? ' <span style="color:var(--text-dim);font-size:12px">[가이드라인 v' + escapeHtml(guideVer) + ']</span>' : '';
+        let scoreLabel;
+        if (finalSource === 'gpt') {
+          scoreLabel = '참고 — 패턴 분석: ' + regexScore + '점';
+        } else {
+          scoreLabel = '패턴 분석: ' + regexScore + '점';
+        }
         complianceHtml = '<div class="result-section">' +
           '<div class="result-section-title" style="color:var(--yellow)">&#128203; 의료법 검수 (' + scoreLabel + ')' + verLabel + '</div>' +
           '<div class="result-section-body">' +
             (compliance.violations && compliance.violations.length > 0
               ? compliance.violations.map(v =>
-                  '<div style="padding:3px 6px;margin:2px 0;background:var(--surface2);border-radius:4px;font-size:11px">' +
+                  '<div style="padding:3px 6px;margin:2px 0;background:var(--surface2);border-radius:4px;font-size:13px">' +
                   '<span style="color:var(--red);font-weight:700">' + (v.severity || '') + '</span> ' +
                   (v.name || v.rule || '') + ' — ' + (v.law || '') +
                   (v.matched ? ' <span style="color:var(--orange)">"' + escapeHtml(v.matched) + '"</span>' : '') +
-                  (v.description ? ' <span style="color:var(--text-dim);font-size:10px">(' + escapeHtml(v.description) + ')</span>' : '') +
+                  (v.description ? ' <span style="color:var(--text-dim);font-size:12px">(' + escapeHtml(v.description) + ')</span>' : '') +
                   '</div>'
                 ).join('')
               : '<span style="color:var(--green)">&#10003; 위반 없음' + (compliance.hasDisclaimer ? ' / 면책조항 포함' : '') + '</span>') +
-            (compliance.summary ? '<div style="margin-top:4px;color:var(--text-dim);font-size:10px">' + escapeHtml(compliance.summary) + '</div>' : '') +
+            (compliance.summary ? '<div style="margin-top:4px;color:var(--text-dim);font-size:13px">' + escapeHtml(compliance.summary) + '</div>' : '') +
           '</div></div>';
       }
 
       // GPT 평가 표시
-      const gptEval = r.gptEval || null;
-      const gradeColors = { A: '#22c55e', B: '#38bdf8', C: '#eab308', D: '#f97316', F: '#ef4444' };
       let gptHtml = '';
       if (gptEval && gptEval.grade) {
         const gc = gradeColors[gptEval.grade] || '#94a3b8';
+        const regexRef = (compliance && compliance.score != null)
+          ? ' <span style="color:var(--text-dim);font-size:12px">(참고: 정규식 ' + (compliance.regexScore || compliance.score || 0) + '점)</span>'
+          : '';
         gptHtml = '<div class="result-section">' +
-          '<div class="result-section-title" style="color:var(--purple)">&#129302; GPT 평가</div>' +
+          '<div class="result-section-title" style="color:var(--purple)">&#129302; GPT 평가 (최종 판정 기준)</div>' +
           '<div class="result-section-body">' +
             '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">' +
-              '<span style="font-size:16px;font-weight:800;color:' + gc + ';background:' + gc + '22;padding:2px 8px;border-radius:6px">' + gptEval.grade + '</span>' +
+              '<span style="font-size:20px;font-weight:800;color:' + gc + ';background:' + gc + '22;padding:2px 8px;border-radius:6px">' + gptEval.grade + '</span>' +
               '<span>' + (gptEval.score != null ? gptEval.score + '점' : '') + ' — ' +
                 (gptEval.passed ? '<span style="color:var(--green)">PASS</span>' : '<span style="color:var(--red)">FAIL</span>') +
-              '</span>' +
+              '</span>' + regexRef +
             '</div>' +
-            (gptEval.summary ? '<div style="color:var(--text-dim);font-size:11px">' + escapeHtml(gptEval.summary) + '</div>' : '') +
-            (gptEval.recommendation ? '<div style="margin-top:4px;padding:6px;background:var(--accent-dim);border-radius:4px;color:var(--accent);font-size:11px">&#128161; ' + escapeHtml(gptEval.recommendation) + '</div>' : '') +
+            (gptEval.summary ? '<div style="color:var(--text-dim);font-size:13px">' + escapeHtml(gptEval.summary) + '</div>' : '') +
+            (gptEval.recommendation ? '<div style="margin-top:4px;padding:6px;background:var(--accent-dim);border-radius:4px;color:var(--accent);font-size:13px">&#128161; ' + escapeHtml(gptEval.recommendation) + '</div>' : '') +
           '</div></div>';
       }
+
+      // Header score display: GPT-first
+      let headerScore = '';
+      if (finalSource === 'gpt') {
+        const gc = gradeColors[gptEval.grade] || '#94a3b8';
+        headerScore = '<span style="font-size:13px;font-weight:700;color:' + gc + '">' + gptEval.grade + ' ' + (gptEval.score != null ? gptEval.score + '점' : '') + '</span>';
+        if (compliance && compliance.score != null) {
+          headerScore += '<span style="font-size:12px;color:var(--text-dim)" title="정규식 참고">(' + (compliance.regexScore || compliance.score) + ')</span>';
+        }
+      } else if (compliance && compliance.score != null) {
+        const rs = compliance.regexScore || compliance.score || 0;
+        headerScore = '<span style="font-size:13px;color:' + (compliance.violations && compliance.violations.length > 0 ? 'var(--red)' : 'var(--green)') + '">' + rs + '점</span>';
+      }
+
+      // Consultation eval display
+      let consultHtml = '';
+      const ce = r.consultationEval;
+      if (ce && ce.totalScore != null) {
+        const ceGradeColors = { A: '#22c55e', B: '#38bdf8', C: '#f59e0b', D: '#f97316', F: '#ef4444' };
+        const ceAxes = [
+          { key: 'symptomExploration', label: '증상 탐색', max: 30 },
+          { key: 'redFlagScreening', label: '위험 선별', max: 25 },
+          { key: 'patientContext', label: '환자 맥락', max: 20 },
+          { key: 'structuredApproach', label: '단계적 접근', max: 15 },
+          { key: 'appropriateGuidance', label: '적절한 안내', max: 10 },
+        ];
+        let axBars = '';
+        for (const ax of ceAxes) {
+          const ad = (ce.axes || {})[ax.key] || {};
+          const sc = ad.score || 0;
+          const pct = Math.round((sc / ax.max) * 100);
+          const bc = pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444';
+          const w = pct < 60 ? ' ⚠️' : '';
+          const adDetail = ad.details || '';
+          const adMissing = (ad.missing || []).join(', ');
+          axBars += '<div style="margin-bottom:5px">' +
+            '<div style="display:flex;justify-content:space-between;font-size:13px;color:#94a3b8"><span>' + ax.label + w + '</span><span>' + sc + '/' + ax.max + '</span></div>' +
+            '<div style="height:8px;background:#1e293b;border-radius:2px"><div style="height:100%;width:' + pct + '%;background:' + bc + ';border-radius:2px"></div></div>' +
+            (adDetail ? '<div style="font-size:12px;color:#94a3b8;margin-top:1px">' + escapeHtml(adDetail) + '</div>' : '') +
+            (adMissing ? '<div style="font-size:13px;color:#f59e0b;margin-top:1px">⚠ ' + escapeHtml(adMissing) + '</div>' : '') +
+          '</div>';
+        }
+        consultHtml = '<div style="margin-top:8px;padding:8px;background:#0f172a;border-radius:6px;border:1px solid #334155">' +
+          '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">' +
+            '<span style="font-size:15px;font-weight:600">🩺 문진 품질</span>' +
+            '<span style="font-size:20px;font-weight:800;color:' + (ceGradeColors[ce.grade] || '#94a3b8') + '">' + (ce.grade || '?') + '</span>' +
+            '<span style="font-size:14px">' + (ce.totalScore || 0) + '점</span>' +
+          '</div>' +
+          axBars +
+          (ce.summary ? '<div style="font-size:13px;color:#e2e8f0;margin-top:6px;padding:4px 6px;background:#1e293b;border-radius:4px">' + escapeHtml(ce.summary.substring(0, 300)) + '</div>' : '') +
+          ((ce.missingItems||[]).length ? '<div style="font-size:13px;color:#f59e0b;margin-top:4px">💡 전체 부족: ' + (ce.missingItems||[]).slice(0,8).map(function(m){return escapeHtml(m);}).join(', ') + '</div>' : '') +
+          (ce.recommendation ? '<div style="font-size:13px;color:#38bdf8;margin-top:3px">💊 ' + escapeHtml(ce.recommendation.substring(0, 200)) + '</div>' : '') +
+        '</div>';
+      }
+
+      // Order: GPT first if available, then compliance as reference
+      const detailSections = (finalSource === 'gpt' ? (gptHtml + complianceHtml) : (complianceHtml + gptHtml)) + consultHtml;
 
       return '<div class="result-card" id="result-' + idx + '">' +
         '<div class="result-card-header" onclick="toggleResult(' + idx + ')">' +
           '<span class="result-scenario-id">' + (r.scenarioId || 'S-' + (idx + 1)) + '</span>' +
           '<span class="result-status ' + statusClass + '">' + statusLabel + '</span>' +
+          '<span style="font-size:12px;color:var(--text-dim);background:var(--surface2);padding:1px 6px;border-radius:4px">' + sourceIndicator + '</span>' +
           '<span class="result-prompt" title="' + prompt.replace(/"/g, '&quot;') + '">' + truncPrompt + '</span>' +
           '<span class="result-time">' + respTime + '</span>' +
-          (compliance ? (function(){ var rs = compliance.regexScore || compliance.score || 0; var gs = (gptEval && gptEval.score != null) ? gptEval.score : null; var hs = gs !== null ? Math.min(rs, gs) : rs; return '<span style="font-size:10px;color:' + (compliance.violations && compliance.violations.length > 0 ? 'var(--red)' : 'var(--green)') + '" title="패턴:' + rs + (gs !== null ? ' GPT:' + gs : '') + '">' + hs + '점</span>'; })() : '') +
-          (gptEval && gptEval.grade ? '<span style="font-size:10px;font-weight:700;color:' + (gradeColors[gptEval.grade] || '#94a3b8') + '">' + gptEval.grade + '</span>' : '') +
+          headerScore +
           '<span class="result-expand-icon">&#9660;</span>' +
         '</div>' +
         '<div class="result-detail">' +
@@ -512,8 +853,7 @@
             '<div class="result-section-title">응답</div>' +
             '<div class="result-section-body" style="white-space:pre-wrap">' + escapeHtml(response) + '</div>' +
           '</div>' +
-          complianceHtml +
-          gptHtml +
+          detailSections +
         '</div>' +
       '</div>';
     }).join('');
@@ -750,31 +1090,789 @@
     }
   })();
 
-  // ── 배치 진행 상태 자동 폴링 ──
+  // ── 배치 진행 상태 자동 폴링 (예상시간 + 중지) ──
   const _pollingIntervals = {};
+  const _pollingStartTimes = {};
+
   function startProgressPolling(runId) {
     if (_pollingIntervals[runId]) return;
+    _pollingStartTimes[runId] = Date.now();
+
     _pollingIntervals[runId] = setInterval(async () => {
       try {
         const res = await fetch('/api/test/status/' + runId);
         if (!res.ok) return;
         const status = await res.json();
-        // 진행 상태 UI 업데이트
         const item = document.querySelector('[data-runid="' + runId + '"]');
+
         if (item) {
           const summaryEl = item.querySelector('.run-summary');
           if (summaryEl && status.status === 'running') {
-            summaryEl.textContent = status.completed + '/' + status.total + ' 완료 (' + (status.current || '') + ')';
+            const pct = Math.round((status.completed / status.total) * 100);
+            const elapsed = (Date.now() - _pollingStartTimes[runId]) / 1000;
+            const avgPerItem = status.completed > 0 ? elapsed / status.completed : 30;
+            const remaining = Math.round(avgPerItem * (status.total - status.completed) / 60);
+            const remainText = remaining > 0 ? '~' + remaining + '분' : '곧 완료';
+            summaryEl.innerHTML = status.completed + '/' + status.total + ' (' + pct + '%) — 예상 ' + remainText +
+              ' <button onclick="event.stopPropagation();cancelBatch(\'' + runId + '\')" style="margin-left:6px;padding:1px 8px;background:var(--red);color:#fff;border:none;border-radius:4px;font-size:10px;cursor:pointer">⏹ 중지</button>';
           }
         }
-        // 완료 시 폴링 중단 + 이력 새로고침
-        if (status.status === 'done' || status.status === 'completed') {
+
+        // 상세 패널에도 표시 (선택된 run인 경우)
+        if (currentRunId === runId) {
+          const detailEl = document.getElementById('detailContent');
+          if (detailEl) {
+            const pct = Math.round((status.completed / status.total) * 100);
+            const elapsed = (Date.now() - _pollingStartTimes[runId]) / 1000;
+            const avgPerItem = status.completed > 0 ? elapsed / status.completed : 30;
+            const remaining = Math.round(avgPerItem * (status.total - status.completed) / 60);
+            const remainText = remaining > 0 ? '~' + remaining + '분' : '곧 완료';
+            const p = status.passed || 0, f = status.failed || 0, e = status.errors || 0;
+
+            // 프로그레스 헤더
+            let html = '<div style="padding:16px">' +
+              '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">' +
+                '<span style="font-size:28px">⏳</span>' +
+                '<div>' +
+                  '<div style="font-size:15px;font-weight:700">배치 실행 중... ' + status.completed + '/' + status.total + ' (' + pct + '%)</div>' +
+                  '<div style="font-size:12px;color:var(--text-dim)">예상 남은 시간: ' + remainText +
+                    ' · <span style="color:var(--green)">통과 ' + p + '</span>' +
+                    ' · <span style="color:var(--red)">실패 ' + f + '</span>' +
+                    ' · <span style="color:var(--yellow)">오류 ' + e + '</span></div>' +
+                '</div>' +
+                '<button onclick="cancelBatch(\'' + runId + '\')" style="margin-left:auto;padding:6px 14px;background:var(--red);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer">⏹ 중지</button>' +
+              '</div>' +
+              '<div style="width:100%;height:8px;background:var(--border);border-radius:3px;margin-bottom:16px"><div style="width:' + pct + '%;height:100%;background:var(--accent);border-radius:3px;transition:width .3s"></div></div>';
+
+            // 완료된 결과 목록
+            const results = status.latestResults || [];
+            if (results.length > 0) {
+              html += '<div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-dim)">완료된 결과 (' + results.length + '건)</div>';
+              html += '<div style="max-height:400px;overflow-y:auto">';
+              for (const r of results) {
+                const stIcon = r.status === 'pass' ? '✅' : r.status === 'fail' ? '❌' : '⚠️';
+                const stColor = r.status === 'pass' ? 'var(--green)' : r.status === 'fail' ? 'var(--red)' : 'var(--yellow)';
+                const srcLabel = r.finalSource === 'gpt' ? '🤖 GPT' : '📋 정규식';
+                html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid var(--border);font-size:12px">' +
+                  '<span>' + stIcon + '</span>' +
+                  '<span style="font-weight:600;min-width:90px">' + escapeHtml(r.scenarioId) + '</span>' +
+                  '<span style="color:' + stColor + ';min-width:50px">' + (r.finalScore || 0) + '점</span>' +
+                  '<span style="color:var(--text-dim);font-size:12px">' + srcLabel + '</span>' +
+                  '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-dim)">' + escapeHtml(r.prompt || '') + '</span>' +
+                  '<span style="color:var(--text-dim);font-size:12px">' + (r.responseTime ? (r.responseTime/1000).toFixed(1) + 's' : '') + '</span>' +
+                '</div>';
+              }
+              html += '</div>';
+            }
+            html += '</div>';
+            detailEl.innerHTML = html;
+          }
+        }
+
+        // 완료/중지 시 폴링 중단 + 이력 새로고침
+        if (status.status === 'done' || status.status === 'completed' || status.status === 'cancelled') {
           clearInterval(_pollingIntervals[runId]);
           delete _pollingIntervals[runId];
+          delete _pollingStartTimes[runId];
           loadHistory();
         }
       } catch(e) { /* 네트워크 오류 무시 */ }
     }, 3000);
+  }
+
+  async function cancelBatch(runId) {
+    if (!confirm('배치 실행을 중지하시겠습니까?\n완료된 결과만 저장됩니다.')) return;
+    try {
+      await fetch('/api/test/cancel/' + runId, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+      showToast('배치 중지 요청됨', 'info');
+    } catch(e) {
+      showToast('중지 요청 실패', 'error');
+    }
+  }
+
+  // ── Batch-level Report View ──
+  let currentBatchView = 'individual';
+  let _lastRenderedRun = null;
+
+  function switchBatchView(view) {
+    currentBatchView = view;
+    document.getElementById('btnIndividual').classList.toggle('active', view === 'individual');
+    document.getElementById('btnBatchReport').classList.toggle('active', view === 'report');
+    document.getElementById('resultsArea').style.display = view === 'individual' ? '' : 'none';
+    document.getElementById('batchReportArea').style.display = view === 'report' ? '' : 'none';
+    if (view === 'report' && _lastRenderedRun) {
+      renderBatchReport(_lastRenderedRun);
+    }
+  }
+
+  function renderBatchReport(run) {
+    var area = document.getElementById('batchReportArea');
+    var results = run.results || [];
+    var s = run.summary || {};
+    var total = s.total || results.length || 0;
+    var passed = s.passed || 0;
+    var failed = s.failed || 0;
+    var errors = s.error || 0;
+    var rate = s.passRate != null ? s.passRate : (total > 0 ? Math.round((passed / total) * 100) : 0);
+
+    var html = '';
+
+    // 1. Summary Cards
+    html += '<div class="batch-report-section">' +
+      '<div class="batch-report-section-title">📈 배치 요약</div>' +
+      '<div class="batch-summary-cards">' +
+        '<div class="batch-summary-card"><div class="bsc-value" style="color:var(--text)">' + total + '</div><div class="bsc-label">전체</div></div>' +
+        '<div class="batch-summary-card"><div class="bsc-value" style="color:var(--green)">' + passed + '</div><div class="bsc-label">통과</div></div>' +
+        '<div class="batch-summary-card"><div class="bsc-value" style="color:var(--red)">' + failed + '</div><div class="bsc-label">실패</div></div>' +
+        '<div class="batch-summary-card"><div class="bsc-value" style="color:var(--yellow)">' + errors + '</div><div class="bsc-label">오류</div></div>' +
+        '<div class="batch-summary-card"><div class="bsc-value" style="color:var(--accent);font-size:32px">' + rate + '%</div><div class="bsc-label">통과율</div></div>' +
+      '</div></div>';
+
+    // 2. GPT 등급 분포
+    var gradeCounts = { A: 0, B: 0, C: 0, D: 0, F: 0 };
+    var gradeColorMap = { A: '#22c55e', B: '#38bdf8', C: '#eab308', D: '#f97316', F: '#ef4444' };
+    var gradeTotal = 0;
+    for (var ri = 0; ri < results.length; ri++) {
+      var ge = results[ri].gptEval;
+      if (ge && ge.grade && gradeCounts.hasOwnProperty(ge.grade)) {
+        gradeCounts[ge.grade]++;
+        gradeTotal++;
+      }
+    }
+    var maxGrade = 0;
+    var gradeKeys = ['A', 'B', 'C', 'D', 'F'];
+    for (var gk = 0; gk < gradeKeys.length; gk++) {
+      if (gradeCounts[gradeKeys[gk]] > maxGrade) maxGrade = gradeCounts[gradeKeys[gk]];
+    }
+
+    html += '<div class="batch-report-section">' +
+      '<div class="batch-report-section-title">🏷️ GPT 등급 분포</div>';
+    if (gradeTotal === 0) {
+      html += '<div style="color:var(--text-dim);font-size:13px">GPT 평가 데이터가 없습니다</div>';
+    } else {
+      for (var gi = 0; gi < gradeKeys.length; gi++) {
+        var gk2 = gradeKeys[gi];
+        var gc = gradeCounts[gk2];
+        var gPct = gradeTotal > 0 ? Math.round((gc / gradeTotal) * 100) : 0;
+        var gBarW = maxGrade > 0 ? Math.round((gc / maxGrade) * 100) : 0;
+        html += '<div class="batch-hbar-row">' +
+          '<div class="batch-hbar-label" style="color:' + gradeColorMap[gk2] + '">' + gk2 + '</div>' +
+          '<div class="batch-hbar-track"><div class="batch-hbar-fill" style="width:' + gBarW + '%;background:' + gradeColorMap[gk2] + '"></div></div>' +
+          '<div class="batch-hbar-info">' + gc + '건 (' + gPct + '%)</div></div>';
+      }
+    }
+    html += '</div>';
+
+    // 3. 문진 품질 평균
+    var axesDefs = [
+      { key: 'symptomExploration', label: '증상 탐색', max: 30 },
+      { key: 'redFlagScreening', label: '위험 선별', max: 25 },
+      { key: 'patientContext', label: '환자 맥락', max: 20 },
+      { key: 'structuredApproach', label: '단계적 접근', max: 15 },
+      { key: 'appropriateGuidance', label: '적절한 안내', max: 10 }
+    ];
+    var axesSums = {};
+    var axesCount = 0;
+    for (var ad = 0; ad < axesDefs.length; ad++) { axesSums[axesDefs[ad].key] = 0; }
+    for (var ri2 = 0; ri2 < results.length; ri2++) {
+      var ce = results[ri2].consultationEval;
+      if (ce && ce.axes) {
+        axesCount++;
+        for (var ad2 = 0; ad2 < axesDefs.length; ad2++) {
+          var axKey = axesDefs[ad2].key;
+          var axData = ce.axes[axKey];
+          if (axData && typeof axData === 'object') {
+            axesSums[axKey] += (axData.score || 0);
+          }
+        }
+      }
+    }
+
+    html += '<div class="batch-report-section">' +
+      '<div class="batch-report-section-title">🩺 문진 품질 평균</div>';
+    if (axesCount === 0) {
+      html += '<div style="color:var(--text-dim);font-size:13px">문진 평가 데이터가 없습니다</div>';
+    } else {
+      for (var ad3 = 0; ad3 < axesDefs.length; ad3++) {
+        var ax = axesDefs[ad3];
+        var avgScore = Math.round((axesSums[ax.key] / axesCount) * 10) / 10;
+        var axPct = ax.max > 0 ? Math.round((avgScore / ax.max) * 100) : 0;
+        var axColor = axPct >= 80 ? '#22c55e' : axPct >= 60 ? '#f59e0b' : '#ef4444';
+        html += '<div class="batch-pbar-row">' +
+          '<div class="batch-pbar-header"><span class="batch-pbar-header-label">' + ax.label + '</span>' +
+          '<span class="batch-pbar-header-value">' + avgScore + '/' + ax.max + ' (' + axPct + '%)</span></div>' +
+          '<div class="batch-pbar-track"><div class="batch-pbar-fill" style="width:' + axPct + '%;background:' + axColor + '"></div></div></div>';
+      }
+      html += '<div style="font-size:12px;color:var(--text-dim);margin-top:6px">평가 대상: ' + axesCount + '건</div>';
+    }
+    html += '</div>';
+
+    // 4. 의료법 경계 위반 목록
+    var violationMap = {};
+    for (var ri3 = 0; ri3 < results.length; ri3++) {
+      var comp = results[ri3].compliance;
+      if (comp && comp.violations && comp.violations.length > 0) {
+        for (var vi = 0; vi < comp.violations.length; vi++) {
+          var v = comp.violations[vi];
+          var vName = v.name || v.rule || v.rule_name || '기타';
+          if (!violationMap[vName]) {
+            violationMap[vName] = { count: 0, examples: [], law: v.law || '', severity: v.severity || '', description: v.description || '' };
+          }
+          violationMap[vName].count++;
+          if (v.matched && violationMap[vName].examples.length < 3) {
+            violationMap[vName].examples.push(v.matched);
+          }
+        }
+      }
+    }
+    var violationKeys = Object.keys(violationMap).sort(function(a, b) { return violationMap[b].count - violationMap[a].count; });
+
+    html += '<div class="batch-report-section">' +
+      '<div class="batch-report-section-title">⚖️ 의료법 경계 사항</div>';
+    if (violationKeys.length === 0) {
+      html += '<div style="color:var(--green);font-size:13px">✓ 위반 사항이 없습니다</div>';
+    } else {
+      html += '<div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">총 ' + violationKeys.length + '종류의 위반 유형이 발견되었습니다</div>';
+      for (var vk = 0; vk < violationKeys.length; vk++) {
+        var vKey = violationKeys[vk];
+        var vData = violationMap[vKey];
+        html += '<div class="violation-group">' +
+          '<div class="violation-group-header">' +
+            '<span style="color:var(--red);font-weight:700">' + escapeHtml(vData.severity) + '</span>' +
+            '<span class="violation-group-name">' + escapeHtml(vKey) + '</span>' +
+            '<span class="violation-group-count">' + vData.count + '건</span>' +
+            (vData.law ? '<span style="font-size:11px;color:var(--text-dim)">' + escapeHtml(vData.law) + '</span>' : '') +
+          '</div>';
+        for (var ve = 0; ve < vData.examples.length; ve++) {
+          html += '<div class="violation-example">"' + escapeHtml(vData.examples[ve]) + '"</div>';
+        }
+        html += '</div>';
+      }
+    }
+    html += '</div>';
+
+    // 5. 커멘트 통계
+    var commentMap = {};
+    var commentTotal = 0;
+    for (var ri4 = 0; ri4 < results.length; ri4++) {
+      var rc = results[ri4].comment || results[ri4].comments;
+      if (rc) {
+        var cats = [];
+        if (typeof rc === 'string' && rc.trim()) {
+          cats.push('일반');
+          commentTotal++;
+        } else if (typeof rc === 'object') {
+          if (rc.category) { cats.push(rc.category); commentTotal++; }
+          if (Array.isArray(rc)) {
+            for (var rci = 0; rci < rc.length; rci++) {
+              var cat = (typeof rc[rci] === 'object' ? (rc[rci].category || '일반') : '일반');
+              cats.push(cat);
+              commentTotal++;
+            }
+          }
+        }
+        for (var ci = 0; ci < cats.length; ci++) {
+          commentMap[cats[ci]] = (commentMap[cats[ci]] || 0) + 1;
+        }
+      }
+    }
+    var commentKeys = Object.keys(commentMap).sort(function(a, b) { return commentMap[b] - commentMap[a]; });
+
+    html += '<div class="batch-report-section">' +
+      '<div class="batch-report-section-title">💬 커멘트 통계</div>';
+    if (commentTotal === 0) {
+      html += '<div style="color:var(--text-dim);font-size:13px">커멘트가 없습니다</div>';
+    } else {
+      html += '<div class="comment-list">' +
+        '<div class="comment-row"><div class="comment-row-label" style="font-weight:700">총 커멘트</div><div class="comment-row-count">' + commentTotal + '건</div></div>';
+      for (var ck = 0; ck < commentKeys.length; ck++) {
+        html += '<div class="comment-row"><div class="comment-row-label">' + escapeHtml(commentKeys[ck]) + '</div>' +
+          '<div class="comment-row-count">' + commentMap[commentKeys[ck]] + '건</div></div>';
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+
+    area.innerHTML = html;
+  }
+
+  // ── Report Tab ──
+  let currentMainTab = 'history';
+  let reportLoaded = false;
+  let rewardTrendLoaded = false;
+  let rewardLineChartInstance = null;
+  let rewardScatterChartInstance = null;
+
+  function switchMainTab(tab) {
+    currentMainTab = tab;
+    document.getElementById('tabHistory').classList.toggle('active', tab === 'history');
+    document.getElementById('tabReport').classList.toggle('active', tab === 'report');
+    document.getElementById('tabEnhancement').classList.toggle('active', tab === 'enhancement');
+    var tabReward = document.getElementById('tabReward');
+    if (tabReward) tabReward.classList.toggle('active', tab === 'reward');
+    document.getElementById('historyTabContent').style.display = tab === 'history' ? 'flex' : 'none';
+    var reportEl = document.getElementById('reportTabContent');
+    var enhEl = document.getElementById('enhancementTabContent');
+    var rewardEl = document.getElementById('rewardTabContent');
+    if (tab === 'report') {
+      reportEl.classList.add('visible');
+      if (!reportLoaded) loadReport();
+    } else {
+      reportEl.classList.remove('visible');
+    }
+    if (tab === 'enhancement') {
+      enhEl.classList.add('visible');
+      if (!enhancementReportLoaded) loadEnhancementReport();
+    } else {
+      enhEl.classList.remove('visible');
+    }
+    if (rewardEl) {
+      if (tab === 'reward') {
+        rewardEl.classList.add('visible');
+        if (!rewardTrendLoaded) loadRewardTrend();
+      } else {
+        rewardEl.classList.remove('visible');
+      }
+    }
+  }
+
+  async function loadReport() {
+    var loading = document.getElementById('reportLoading');
+    var body = document.getElementById('reportBody');
+    loading.style.display = '';
+    body.style.display = 'none';
+
+    try {
+      var results = await Promise.all([
+        fetch('/api/report/consultation').then(function(r) { return r.ok ? r.json() : {}; }).catch(function() { return {}; }),
+        fetch('/api/report/summary').then(function(r) { return r.ok ? r.json() : {}; }).catch(function() { return {}; })
+      ]);
+      var consultation = results[0];
+      var summary = results[1];
+      renderReport(consultation, summary);
+      reportLoaded = true;
+    } catch(e) {
+      showToast('리포트 로딩 실패: ' + e.message, 'error');
+    } finally {
+      loading.style.display = 'none';
+      body.style.display = '';
+    }
+  }
+
+  function renderReport(consultation, summary) {
+    // Merge data — handle different possible shapes
+    var data = Object.assign({}, summary, consultation);
+
+    // Section A: 전체 요약
+    var totalTests = data.totalTests || data.total || 0;
+    var totalScenarios = data.totalScenarios || data.scenarios || 0;
+    var passRate = data.passRate != null ? data.passRate : 0;
+    var complianceAvg = data.complianceAvg != null ? data.complianceAvg : (data.avgComplianceScore || 0);
+    var consultAvg = data.consultationAvg != null ? data.consultationAvg : (data.avgConsultationScore || 0);
+
+    document.getElementById('reportSummaryStrip').innerHTML =
+      '<div class="report-summary-item"><div class="rsi-value" style="color:var(--text)">' + totalTests + '</div><div class="rsi-label">총 테스트</div></div>' +
+      '<div class="report-summary-item"><div class="rsi-value" style="color:var(--accent)">' + totalScenarios + '</div><div class="rsi-label">시나리오</div></div>' +
+      '<div class="report-summary-item"><div class="rsi-value" style="color:var(--green)">' + passRate + '%</div><div class="rsi-label">통과율</div></div>' +
+      '<div class="report-summary-item"><div class="rsi-value" style="color:var(--yellow)">' + complianceAvg + '</div><div class="rsi-label">법률준수 평균</div></div>' +
+      '<div class="report-summary-item"><div class="rsi-value" style="color:var(--purple)">' + consultAvg + '</div><div class="rsi-label">문진품질 평균</div></div>';
+
+    // Section B: 등급 분포
+    var gradeColors = { A: '#22c55e', B: '#38bdf8', C: '#f59e0b', D: '#f97316', F: '#ef4444' };
+    var gradeDist = data.gradeDist || data.gradeDistribution || {};
+    var gradeKeys = ['A', 'B', 'C', 'D', 'F'];
+    var gradeTotal = 0;
+    for (var gi = 0; gi < gradeKeys.length; gi++) { gradeTotal += (gradeDist[gradeKeys[gi]] || 0); }
+    var maxGradeCount = 0;
+    for (var gi2 = 0; gi2 < gradeKeys.length; gi2++) { if ((gradeDist[gradeKeys[gi2]] || 0) > maxGradeCount) maxGradeCount = gradeDist[gradeKeys[gi2]] || 0; }
+
+    var gradeHtml = '';
+    for (var gi3 = 0; gi3 < gradeKeys.length; gi3++) {
+      var g = gradeKeys[gi3];
+      var cnt = gradeDist[g] || 0;
+      var pct = gradeTotal > 0 ? Math.round((cnt / gradeTotal) * 100) : 0;
+      var barW = maxGradeCount > 0 ? Math.round((cnt / maxGradeCount) * 100) : 0;
+      gradeHtml += '<div class="hbar-row">' +
+        '<div class="hbar-label" style="color:' + gradeColors[g] + '">' + g + '</div>' +
+        '<div class="hbar-track"><div class="hbar-fill" style="width:' + barW + '%;background:' + gradeColors[g] + '"></div></div>' +
+        '<div class="hbar-info">' + cnt + '건 (' + pct + '%)</div>' +
+      '</div>';
+    }
+    document.getElementById('reportGradeDist').innerHTML = gradeHtml;
+
+    // Section C: 축별 평균 점수
+    var axes = data.axes || data.axisScores || {};
+    var axesDefs = [
+      { key: 'symptomExploration', label: '증상 탐색', max: 30 },
+      { key: 'redFlagScreening', label: '위험 선별', max: 25 },
+      { key: 'patientContext', label: '환자 맥락', max: 20 },
+      { key: 'structuredApproach', label: '단계적 접근', max: 15 },
+      { key: 'appropriateGuidance', label: '적절한 안내', max: 10 }
+    ];
+    var axesHtml = '';
+    for (var ai = 0; ai < axesDefs.length; ai++) {
+      var ax = axesDefs[ai];
+      var axScore = 0;
+      if (typeof axes[ax.key] === 'object' && axes[ax.key] !== null) {
+        axScore = axes[ax.key].avg || axes[ax.key].score || 0;
+      } else {
+        axScore = axes[ax.key] || 0;
+      }
+      axScore = Math.round(axScore * 10) / 10;
+      var axPct = ax.max > 0 ? Math.round((axScore / ax.max) * 100) : 0;
+      var axColor = axPct >= 80 ? '#22c55e' : axPct >= 60 ? '#f59e0b' : '#ef4444';
+      var axWarn = axPct < 40 ? ' \u274C' : axPct < 60 ? ' \u26A0\uFE0F' : '';
+      axesHtml += '<div class="pbar-row">' +
+        '<div class="pbar-header"><span class="pbar-header-label">' + ax.label + axWarn + '</span>' +
+        '<span class="pbar-header-value">' + axScore + '/' + ax.max + ' (' + axPct + '%)</span></div>' +
+        '<div class="pbar-track"><div class="pbar-fill" style="width:' + axPct + '%;background:' + axColor + '"></div></div>' +
+      '</div>';
+    }
+    document.getElementById('reportAxesScores').innerHTML = axesHtml;
+
+    // Section D: 배치별 추이 (vertical bar chart)
+    var trend = data.trend || data.recentRuns || [];
+    if (!Array.isArray(trend)) trend = [];
+    var last10 = trend.slice(-10);
+    var yLabels = [0, 20, 40, 60, 80, 100];
+    var yAxisHtml = '';
+    for (var yi = 0; yi < yLabels.length; yi++) {
+      yAxisHtml += '<span>' + yLabels[yi] + '</span>';
+    }
+    document.getElementById('reportVbarYAxis').innerHTML = yAxisHtml;
+
+    var trendHtml = '';
+    if (last10.length === 0) {
+      trendHtml = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-dim);font-size:13px">데이터가 없습니다</div>';
+    } else {
+      for (var ti = 0; ti < last10.length; ti++) {
+        var tr = last10[ti];
+        var trRate = tr.passRate != null ? tr.passRate : (tr.rate || 0);
+        var trDate = tr.date || tr.label || '';
+        if (!trDate && tr.startedAt) {
+          var dd = new Date(tr.startedAt);
+          trDate = (dd.getMonth() + 1) + '/' + dd.getDate();
+        }
+        var barH = Math.max(trRate, 2);
+        var barColor = trRate >= 80 ? '#22c55e' : trRate >= 60 ? '#f59e0b' : trRate >= 40 ? '#f97316' : '#ef4444';
+        trendHtml += '<div class="vbar-col">' +
+          '<div class="vbar-bar" style="height:' + barH + '%;background:' + barColor + '">' +
+            '<div class="vbar-bar-tooltip">' + trRate + '%</div>' +
+          '</div>' +
+          '<div class="vbar-label">' + escapeHtml(trDate) + '</div>' +
+        '</div>';
+      }
+    }
+    document.getElementById('reportTrendChart').innerHTML = trendHtml;
+
+    // Section E: 커멘트 요약
+    var comments = data.comments || data.commentSummary || {};
+    var commTotal = comments.total || 0;
+    var commCategories = comments.categories || comments.items || {};
+    var commHtml = '<div class="comment-row"><div class="comment-row-label" style="font-weight:700">총 커멘트</div><div class="comment-row-count">' + commTotal + '건</div></div>';
+
+    if (typeof commCategories === 'object' && commCategories !== null) {
+      if (Array.isArray(commCategories)) {
+        for (var ci = 0; ci < commCategories.length; ci++) {
+          var cc = commCategories[ci];
+          commHtml += '<div class="comment-row"><div class="comment-row-label">' + escapeHtml(cc.label || cc.name || cc.category || '') + '</div>' +
+            '<div class="comment-row-count">' + (cc.count || 0) + '건</div></div>';
+        }
+      } else {
+        var commKeys = Object.keys(commCategories);
+        for (var ck = 0; ck < commKeys.length; ck++) {
+          commHtml += '<div class="comment-row"><div class="comment-row-label">' + escapeHtml(commKeys[ck]) + '</div>' +
+            '<div class="comment-row-count">' + (commCategories[commKeys[ck]] || 0) + '건</div></div>';
+        }
+      }
+    }
+    if (commTotal === 0 && Object.keys(commCategories).length === 0) {
+      commHtml += '<div class="comment-row"><div class="comment-row-label" style="color:var(--text-dim)">커멘트 데이터가 없습니다</div></div>';
+    }
+    document.getElementById('reportComments').innerHTML = commHtml;
+  }
+
+  // ── Enhancement Report Tab ──
+  var enhancementReportLoaded = false;
+
+  async function loadEnhancementReport() {
+    var loading = document.getElementById('enhancementLoading');
+    var body = document.getElementById('enhancementBody');
+    if (loading) loading.style.display = '';
+    if (body) body.style.display = 'none';
+
+    try {
+      var results = await Promise.all([
+        fetch('/api/prompt-enhancements/report').then(function(r) { return r.ok ? r.json() : {}; }).catch(function() { return {}; }),
+        fetch('/api/prompt-enhancements').then(function(r) { return r.ok ? r.json() : { enhancements: [] }; }).catch(function() { return { enhancements: [] }; })
+      ]);
+      var report = results[0];
+      var listData = results[1];
+      renderEnhancementReport(report, listData.enhancements || []);
+      enhancementReportLoaded = true;
+    } catch(e) {
+      showToast('\uBCF4\uAC15 \uB9AC\uD3EC\uD2B8 \uB85C\uB4DC \uC2E4\uD328', 'error');
+    } finally {
+      if (loading) loading.style.display = 'none';
+      if (body) body.style.display = '';
+    }
+  }
+
+  function renderEnhancementReport(report, enhancements) {
+    var body = document.getElementById('enhancementBody');
+    if (!body) return;
+
+    var total = report.total || 0;
+    var avgGpt = report.avgGptDelta != null ? Math.round(report.avgGptDelta * 10) / 10 : 0;
+    var avgConsult = report.avgConsultDelta != null ? Math.round(report.avgConsultDelta * 10) / 10 : 0;
+    var topInstr = report.topInstructions || [];
+
+    var html = '';
+
+    // 1. Summary Cards
+    var gptColor = avgGpt > 0 ? 'var(--green)' : avgGpt < 0 ? 'var(--red)' : 'var(--text-dim)';
+    var consultColor = avgConsult > 0 ? 'var(--green)' : avgConsult < 0 ? 'var(--red)' : 'var(--text-dim)';
+    html += '<div class="report-section">' +
+      '<div class="report-section-title" style="color:#c4b5fd">\uD83D\uDD04 \uBCF4\uAC15 \uC694\uC57D</div>' +
+      '<div class="report-summary-strip">' +
+        '<div class="report-summary-item" style="border-color:#7c3aed44"><div class="rsi-value" style="color:#c4b5fd">' + total + '</div><div class="rsi-label">\uCD1D \uBCF4\uAC15 \uD69F\uC218</div></div>' +
+        '<div class="report-summary-item" style="border-color:#7c3aed44"><div class="rsi-value" style="color:' + gptColor + '">' + (avgGpt > 0 ? '+' : '') + avgGpt + '</div><div class="rsi-label">\uD3C9\uADE0 GPT \uAC1C\uC120</div></div>' +
+        '<div class="report-summary-item" style="border-color:#7c3aed44"><div class="rsi-value" style="color:' + consultColor + '">' + (avgConsult > 0 ? '+' : '') + avgConsult + '</div><div class="rsi-label">\uD3C9\uADE0 \uBB38\uC9C4 \uAC1C\uC120</div></div>' +
+      '</div></div>';
+
+    // 2. Top Instructions
+    html += '<div class="report-section">' +
+      '<div class="report-section-title" style="color:#c4b5fd">\uD83D\uDCCB \uAC00\uC7A5 \uB9CE\uC774 \uC0AC\uC6A9\uB41C \uBCF4\uAC15 \uC9C0\uC2DC\uBB38</div>';
+    if (topInstr.length === 0) {
+      html += '<div style="color:var(--text-dim);font-size:13px;padding:12px">\uBCF4\uAC15 \uC9C0\uC2DC\uBB38 \uB370\uC774\uD130\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4</div>';
+    } else {
+      var maxCount = topInstr.length > 0 ? topInstr[0].count : 1;
+      for (var ti = 0; ti < topInstr.length && ti < 10; ti++) {
+        var inst = topInstr[ti];
+        var pct = maxCount > 0 ? Math.round((inst.count / maxCount) * 100) : 0;
+        html += '<div class="hbar-row">' +
+          '<div class="hbar-label" style="min-width:30px;font-size:13px;color:#c4b5fd">' + (ti + 1) + '</div>' +
+          '<div class="hbar-track"><div class="hbar-fill" style="width:' + pct + '%;background:linear-gradient(90deg,#7c3aed,#a855f7)"></div></div>' +
+          '<div class="hbar-info" style="min-width:200px">' + escapeHtml(inst.instruction || '') + ' (' + inst.count + '\uD68C)</div>' +
+        '</div>';
+      }
+    }
+    html += '</div>';
+
+    // 3. Enhancement List
+    html += '<div class="report-section">' +
+      '<div class="report-section-title" style="color:#c4b5fd">\uD83D\uDCCA \uAC1C\uBCC4 \uBCF4\uAC15 \uBE44\uAD50 \uBAA9\uB85D</div>';
+    if (enhancements.length === 0) {
+      html += '<div style="color:var(--text-dim);font-size:13px;padding:12px">\uBCF4\uAC15 \uAE30\uB85D\uC774 \uC5C6\uC2B5\uB2C8\uB2E4</div>';
+    } else {
+      for (var ei = 0; ei < enhancements.length; ei++) {
+        var e = enhancements[ei];
+        var oEval = e.originalEval || {};
+        var eEval = e.enhancedEval || {};
+        var oGpt = (oEval.gptEval || {}).score || 0;
+        var oGrade = (oEval.gptEval || {}).grade || '?';
+        var eGpt = (eEval.gptEval || {}).score || 0;
+        var eGrade = (eEval.gptEval || {}).grade || '?';
+        var oConsult = (oEval.consultationEval || {}).totalScore || 0;
+        var eConsult = (eEval.consultationEval || {}).totalScore || 0;
+        var gd = eGpt - oGpt;
+        var cd = eConsult - oConsult;
+        var gdColor = gd > 0 ? '#22c55e' : gd < 0 ? '#ef4444' : '#94a3b8';
+        var cdColor = cd > 0 ? '#22c55e' : cd < 0 ? '#ef4444' : '#94a3b8';
+        var gdSign = gd > 0 ? '+' + gd : '' + gd;
+        var cdSign = cd > 0 ? '+' + cd : '' + cd;
+
+        var eInst = e.instructions || [];
+        var eInstStr = '';
+        for (var ij = 0; ij < eInst.length; ij++) {
+          if (ij > 0) eInstStr += ', ';
+          eInstStr += escapeHtml(eInst[ij]);
+        }
+
+        var queryStr = e.original_query || e.originalQuery || '';
+        var dateStr = e.created_at || e.createdAt || '';
+        if (dateStr) {
+          try { dateStr = new Date(dateStr).toLocaleDateString('ko-KR'); } catch(ex) { /* keep raw */ }
+        }
+
+        html += '<div style="padding:14px;margin-bottom:8px;background:linear-gradient(135deg,#1e1b4b,#1e293b);border-radius:10px;border:1px solid #7c3aed44">' +
+          '<div style="font-size:13px;color:var(--text);margin-bottom:8px;word-break:break-word">\uD83D\uDCAC ' + escapeHtml(queryStr.length > 100 ? queryStr.substring(0, 100) + '...' : queryStr) + '</div>' +
+          '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:6px">' +
+            '<div style="flex:1;min-width:120px">' +
+              '<div style="font-size:11px;color:#94a3b8;margin-bottom:2px">GPT</div>' +
+              '<div style="font-size:13px">' +
+                '<span style="color:#94a3b8">' + escapeHtml(oGrade) + ' ' + oGpt + '\uC810</span> ' +
+                '<span style="color:var(--accent)">\u2192</span> ' +
+                '<span style="font-weight:700;color:' + gdColor + '">' + escapeHtml(eGrade) + ' ' + eGpt + '\uC810 (' + gdSign + ')</span>' +
+              '</div>' +
+            '</div>' +
+            '<div style="flex:1;min-width:120px">' +
+              '<div style="font-size:11px;color:#94a3b8;margin-bottom:2px">\uBB38\uC9C4</div>' +
+              '<div style="font-size:13px">' +
+                '<span style="color:#94a3b8">' + oConsult + '\uC810</span> ' +
+                '<span style="color:var(--accent)">\u2192</span> ' +
+                '<span style="font-weight:700;color:' + cdColor + '">' + eConsult + '\uC810 (' + cdSign + ')</span>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+          (eInstStr ? '<div style="font-size:11px;color:#c4b5fd">\uD83D\uDCA1 ' + eInstStr + '</div>' : '') +
+          (dateStr ? '<div style="font-size:11px;color:var(--text-dim);margin-top:4px">' + escapeHtml(dateStr) + '</div>' : '') +
+        '</div>';
+      }
+    }
+    html += '</div>';
+
+    body.innerHTML = html;
+  }
+
+  // ── Reward Trend Charts ──
+  async function loadRewardTrend() {
+    var loading = document.getElementById('rewardLoading');
+    var body = document.getElementById('rewardBody');
+    if (loading) loading.style.display = '';
+    if (body) body.style.display = 'none';
+
+    try {
+      var statsData = {};
+      var histData = [];
+      var results = await Promise.all([
+        fetch('/api/rlhf/stats').then(function(r) { return r.ok ? r.json() : {}; }).catch(function() { return {}; }),
+        fetch('/api/history').then(function(r) { return r.ok ? r.json() : []; }).catch(function() { return []; })
+      ]);
+      statsData = results[0] || {};
+      histData = Array.isArray(results[1]) ? results[1] : (results[1].runs || []);
+
+      renderRewardCharts(statsData, histData);
+      rewardTrendLoaded = true;
+    } catch(e) {
+      showToast('\uB9AC\uC6CC\uB4DC \uD2B8\uB80C\uB4DC \uB85C\uB529 \uC2E4\uD328: ' + e.message, 'error');
+    } finally {
+      if (loading) loading.style.display = 'none';
+      if (body) body.style.display = '';
+    }
+  }
+
+  function renderRewardCharts(stats, histRuns) {
+    // Build daily composite data from history runs (last 30 days)
+    var dailyMap = {};
+    var now = Date.now();
+    var thirtyDays = 30 * 24 * 60 * 60 * 1000;
+    var scatterPoints = [];
+
+    for (var i = 0; i < histRuns.length; i++) {
+      var run = histRuns[i];
+      var ts = run.startedAt || run.timestamp || '';
+      if (!ts) continue;
+      var d = new Date(ts);
+      if (now - d.getTime() > thirtyDays) continue;
+      var dateKey = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+
+      var s = run.summary || {};
+      var legalScore = s.complianceAvg || s.avgComplianceScore || 0;
+      var consultScore = s.consultationAvg || s.avgConsultationScore || 0;
+      var composite = 0;
+      if (legalScore || consultScore) {
+        composite = (legalScore * 0.5 + consultScore * 0.5) / 100;
+      }
+      var passRate = s.passRate != null ? s.passRate : 0;
+      if (!composite && passRate) composite = passRate / 100;
+
+      if (!dailyMap[dateKey]) dailyMap[dateKey] = { sum: 0, count: 0 };
+      dailyMap[dateKey].sum += composite;
+      dailyMap[dateKey].count += 1;
+
+      if (legalScore || consultScore) {
+        scatterPoints.push({ x: legalScore, y: consultScore });
+      }
+    }
+
+    // Also use stats.dailyRewards if available
+    if (stats.dailyRewards && Array.isArray(stats.dailyRewards)) {
+      for (var di = 0; di < stats.dailyRewards.length; di++) {
+        var dr = stats.dailyRewards[di];
+        var dk = dr.date || dr.day || '';
+        if (!dk) continue;
+        if (!dailyMap[dk]) dailyMap[dk] = { sum: 0, count: 0 };
+        dailyMap[dk].sum += (dr.avgReward || dr.composite || 0);
+        dailyMap[dk].count += 1;
+      }
+    }
+
+    // Sort dates
+    var dates = Object.keys(dailyMap).sort();
+    var labels = dates.map(function(d) { return d.substring(5); }); // MM-DD
+    var values = dates.map(function(d) { return dailyMap[d].count > 0 ? +(dailyMap[d].sum / dailyMap[d].count).toFixed(3) : 0; });
+
+    // Line chart: daily composite reward
+    var lineCtx = document.getElementById('rewardLineChart');
+    if (lineCtx && typeof Chart !== 'undefined') {
+      if (rewardLineChartInstance) rewardLineChartInstance.destroy();
+      rewardLineChartInstance = new Chart(lineCtx, {
+        type: 'line',
+        data: {
+          labels: labels.length > 0 ? labels : ['(데이터 없음)'],
+          datasets: [{
+            label: 'Composite Reward',
+            data: values.length > 0 ? values : [0],
+            borderColor: '#38bdf8',
+            backgroundColor: 'rgba(56,189,248,0.1)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 4,
+            pointBackgroundColor: '#38bdf8'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: '#94a3b8' } }
+          },
+          scales: {
+            x: { ticks: { color: '#94a3b8' }, grid: { color: '#33415533' } },
+            y: { min: 0, max: 1, ticks: { color: '#94a3b8' }, grid: { color: '#33415533' } }
+          }
+        }
+      });
+    }
+
+    // Scatter chart: legal vs consultation scores
+    var scatterCtx = document.getElementById('rewardScatterChart');
+    if (scatterCtx && typeof Chart !== 'undefined') {
+      if (rewardScatterChartInstance) rewardScatterChartInstance.destroy();
+      // If no scatter data, create dummy placeholder
+      var scatterData = scatterPoints.length > 0 ? scatterPoints : [{ x: 0, y: 0 }];
+      rewardScatterChartInstance = new Chart(scatterCtx, {
+        type: 'scatter',
+        data: {
+          datasets: [{
+            label: '\uBC95\uB960 vs \uBB38\uC9C4',
+            data: scatterData,
+            backgroundColor: 'rgba(56,189,248,0.6)',
+            pointRadius: 6,
+            pointHoverRadius: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: '#94a3b8' } },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                  return '\uBC95\uB960: ' + ctx.parsed.x + ' / \uBB38\uC9C4: ' + ctx.parsed.y;
+                }
+              }
+            }
+          },
+          scales: {
+            x: { title: { display: true, text: '\uBC95\uB960\uC810\uC218', color: '#94a3b8' }, min: 0, max: 100, ticks: { color: '#94a3b8' }, grid: { color: '#33415533' } },
+            y: { title: { display: true, text: '\uBB38\uC9C4\uC810\uC218', color: '#94a3b8' }, min: 0, max: 100, ticks: { color: '#94a3b8' }, grid: { color: '#33415533' } }
+          }
+        }
+      });
+    }
   }
 </script>
 </body>

@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>문진 평가 기준 관리 — 나만의 주치의</title>
+<style>
+  :root {
+    --bg: #0f172a; --surface: #1e293b; --surface2: #334155; --surface3: #3b4a63;
+    --text: #e2e8f0; --text-dim: #94a3b8; --accent: #38bdf8; --accent-dim: #0c4a6e;
+    --green: #22c55e; --red: #ef4444; --yellow: #eab308; --orange: #f97316;
+    --border: #475569; --radius: 12px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Pretendard','Apple SD Gothic Neo',system-ui,sans-serif;
+         background:var(--bg); color:var(--text); min-height:100vh; display:flex; flex-direction:column; }
+
+  /* 로딩 스피너 */
+  #appLoader{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg,#0f172a);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .3s}
+  #appLoader.fade-out{opacity:0;pointer-events:none}
+  .loader-spinner{width:40px;height:40px;border:3px solid #334155;border-top-color:#38bdf8;border-radius:50%;animation:spin .8s linear infinite}
+  .loader-text{margin-top:16px;color:#94a3b8;font-size:13px;font-family:system-ui}
+  .loader-progress{width:200px;height:3px;background:#334155;border-radius:2px;margin-top:12px;overflow:hidden}
+  .loader-bar{height:100%;background:#38bdf8;border-radius:2px;transition:width .2s;width:0%}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .topbar { display:flex; align-items:center; gap:8px; padding:12px 20px;
+            background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; flex-wrap:nowrap; overflow-x:auto; }
+  .topbar h1 { font-size:16px; font-weight:700; white-space:nowrap; }
+  .nav-btn { background:none; border:1px solid var(--border); color:var(--text-dim); border-radius:8px;
+             padding:6px 14px; cursor:pointer; font-size:13px; text-decoration:none; transition:all .15s; white-space:nowrap; }
+  .nav-btn:hover { background:var(--surface2); color:var(--text); }
+  .nav-btn.active { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
+
+  /* ── Env Selector (topbar) ── */
+  .env-selector { display:flex; gap:2px; background:var(--bg); border-radius:8px; padding:2px; border:1px solid var(--border); }
+  .env-chip-sm { padding:4px 12px; border-radius:6px; font-size:11px; font-weight:700;
+                 color:var(--text-dim); transition:all .15s; user-select:none; }
+  .env-chip-sm.active { background:var(--accent); color:#0f172a; }
+
+  .content { flex:1; padding:24px; max-width:1000px; margin:0 auto; width:100%; }
+
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:16px;
+          padding:24px; margin-bottom:20px; }
+  .card h2 { font-size:15px; font-weight:700; color:var(--accent); margin-bottom:16px; }
+
+  .field { margin-bottom:16px; }
+  .field label { display:block; font-size:12px; color:var(--text-dim); margin-bottom:5px; font-weight:600; }
+  .field textarea, .field input {
+    width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text);
+    padding:10px 14px; border-radius:8px; font-size:13px; font-family:inherit; outline:none;
+    resize:vertical;
+  }
+  .field textarea:focus, .field input:focus { border-color:var(--accent); }
+
+  .btn-save { padding:8px 20px; background:var(--accent); color:#0f172a; border:none;
+              border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; }
+  .btn-save:hover { opacity:.9; }
+
+  .toast-container { position:fixed; bottom:20px; right:20px; z-index:200; display:flex; flex-direction:column; gap:8px; }
+  .toast { padding:12px 20px; border-radius:10px; font-size:13px; font-weight:500;
+           animation:slideIn .3s ease; box-shadow:0 4px 12px rgba(0,0,0,.3); }
+  .toast-success { background:var(--green); color:white; }
+  .toast-error { background:var(--red); color:white; }
+  @keyframes slideIn { from { transform:translateX(100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
+
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--surface2); border-radius:3px; }
+</style>
+</head>
+<body>
+<div id="appLoader">
+  <div class="loader-spinner"></div>
+  <div class="loader-text">로딩 중...</div>
+  <div class="loader-progress"><div class="loader-bar" id="loaderBar"></div></div>
+</div>
+
+<!-- Top Bar -->
+<div class="topbar">
+  <h1 style="font-size:16px;font-weight:700">&#127973; 나만의 주치의</h1>
+  <div class="env-selector" id="envSelector">
+    <span class="env-chip-sm" data-env="dev" style="cursor:default">DEV</span>
+    <span class="env-chip-sm" data-env="stg" style="cursor:default">STG</span>
+    <span class="env-chip-sm" data-env="prod" style="cursor:default">PROD</span>
+  </div>
+  <a href="/" class="nav-btn">채팅 테스터</a>
+  <a href="/manager" class="nav-btn">시나리오 관리</a>
+  <a href="/history" class="nav-btn">테스트 이력</a>
+  <a href="/guidelines" class="nav-btn">법률 평가 기준</a>
+  <a href="/criteria" class="nav-btn active">문진 평가 기준</a>
+  <a href="/rlhf" class="nav-btn">RLHF 관리</a>
+  <a href="/settings" class="nav-btn" id="settingsNavLink">&#9881; 설정</a>
+  <span id="testerBadge" style="margin-left:auto;display:none;font-size:11px;color:var(--accent);background:var(--accent-dim);padding:3px 10px;border-radius:6px;cursor:pointer;white-space:nowrap" onclick="if(confirm('로그아웃 하시겠습니까?'))testerLogout()"></span>
+</div>
+
+<!-- 테스터 로그인 모달 -->
+<div id="testerModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:600;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px;max-width:400px;width:90%;text-align:center">
+    <div style="font-size:32px;margin-bottom:10px">👤</div>
+    <div style="display:flex;gap:0;margin-bottom:16px;border-bottom:2px solid var(--border)">
+      <button id="tabLogin" onclick="switchAuthTab('login')" style="flex:1;padding:8px;background:none;border:none;border-bottom:2px solid var(--accent);color:var(--accent);font-size:13px;font-weight:700;cursor:pointer;margin-bottom:-2px">로그인</button>
+      <button id="tabRegister" onclick="switchAuthTab('register')" style="flex:1;padding:8px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text-dim);font-size:13px;font-weight:600;cursor:pointer;margin-bottom:-2px">회원가입</button>
+    </div>
+    <div id="loginForm">
+      <input type="text" id="testerIdInput" placeholder="ID" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:13px;margin-bottom:10px;outline:none;box-sizing:border-box">
+      <input type="password" id="testerPwInput" placeholder="비밀번호" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:13px;margin-bottom:10px;outline:none;box-sizing:border-box" onkeydown="if(event.key==='Enter')confirmTester()">
+      <div id="testerError" style="color:var(--red);font-size:11px;margin-bottom:8px;min-height:16px"></div>
+      <button onclick="confirmTester()" style="width:100%;padding:10px;background:var(--accent);color:#0f172a;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">로그인</button>
+    </div>
+    <div id="registerForm" style="display:none">
+      <input type="text" id="regId" placeholder="ID (2자 이상)" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:13px;margin-bottom:8px;outline:none;box-sizing:border-box">
+      <input type="text" id="regName" placeholder="이름" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:13px;margin-bottom:8px;outline:none;box-sizing:border-box">
+      <input type="text" id="regOrg" placeholder="소속 (예: 서울대병원)" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:13px;margin-bottom:8px;outline:none;box-sizing:border-box">
+      <input type="password" id="regPw" placeholder="비밀번호 (4자 이상)" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:13px;margin-bottom:8px;outline:none;box-sizing:border-box">
+      <input type="password" id="regPwConfirm" placeholder="비밀번호 확인" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:13px;margin-bottom:8px;outline:none;box-sizing:border-box" onkeydown="if(event.key==='Enter')submitRegister()">
+      <div id="regError" style="color:var(--red);font-size:11px;margin-bottom:8px;min-height:16px"></div>
+      <div id="regSuccess" style="color:#22c55e;font-size:12px;margin-bottom:8px;min-height:16px;display:none"></div>
+      <button onclick="submitRegister()" style="width:100%;padding:10px;background:var(--accent);color:#0f172a;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">가입 신청</button>
+    </div>
+  </div>
+</div>
+
+<div class="content">
+
+  <div class="card">
+    <h2>🩺 문진 평가 기준 관리</h2>
+    <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px">문진 평가 축(Axis), 등급 기준, 의료법 경계 규칙을 관리합니다</p>
+
+    <!-- 축 및 항목 -->
+    <div id="criteriaAxes"></div>
+
+    <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
+
+    <!-- 등급 임계값 -->
+    <div style="margin-bottom:18px">
+      <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:10px">등급 임계값 (Grade Thresholds)</div>
+      <div style="display:flex;flex-wrap:wrap;gap:12px">
+        <div class="field" style="flex:1;min-width:120px">
+          <label>A 등급 이상</label>
+          <input type="number" id="thresholdA" min="0" max="100" step="1" placeholder="90">
+        </div>
+        <div class="field" style="flex:1;min-width:120px">
+          <label>B 등급 이상</label>
+          <input type="number" id="thresholdB" min="0" max="100" step="1" placeholder="75">
+        </div>
+        <div class="field" style="flex:1;min-width:120px">
+          <label>C 등급 이상</label>
+          <input type="number" id="thresholdC" min="0" max="100" step="1" placeholder="60">
+        </div>
+        <div class="field" style="flex:1;min-width:120px">
+          <label>D 등급 미만</label>
+          <input type="number" id="thresholdD" min="0" max="100" step="1" placeholder="60">
+        </div>
+      </div>
+    </div>
+
+    <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
+
+    <!-- 의료법 경계 규칙 -->
+    <div style="margin-bottom:18px">
+      <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:10px">의료법 경계 규칙 (Medical Law Boundary Rules)</div>
+      <div id="boundaryRulesList"></div>
+      <button class="btn-save" onclick="addBoundaryRule()" style="font-size:12px;padding:6px 14px;margin-top:8px;background:var(--surface2)">+ 규칙 추가</button>
+    </div>
+
+    <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
+
+    <!-- 저장 / 초기화 -->
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn-save" onclick="resetCriteriaToDefaults()" style="color:var(--orange);background:transparent;border:1px solid var(--orange)">기본값 초기화</button>
+      <button class="btn-save" onclick="saveCriteria()">평가 기준 저장</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+let criteriaData = null;
+
+// ── 문진 평가 기준 ──
+async function loadCriteria() {
+  try {
+    const res = await fetch('/api/consultation-criteria');
+    if (!res.ok) return;
+    criteriaData = await res.json();
+    renderCriteria();
+  } catch(e) {
+    console.warn('loadCriteria failed', e);
+  }
+}
+
+function renderCriteria() {
+  if (!criteriaData) return;
+  const axes = criteriaData.axes || [];
+  const container = document.getElementById('criteriaAxes');
+  container.innerHTML = '';
+
+  for (let ai = 0; ai < axes.length; ai++) {
+    const axis = axes[ai];
+    const axisDiv = document.createElement('div');
+    axisDiv.style.cssText = 'margin-bottom:16px;padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:10px';
+    axisDiv.setAttribute('data-axis-idx', ai);
+
+    let headerHtml = '<div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">'
+      + '<span style="font-size:13px;font-weight:700;color:var(--accent);min-width:60px">' + esc(axis.name) + '</span>'
+      + '<label style="font-size:11px;color:var(--text-dim)">최대 점수</label>'
+      + '<input type="number" class="axis-max" data-ai="' + ai + '" value="' + (axis.maxScore || 0) + '" min="0" max="100" step="1" style="width:70px;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-size:12px">'
+      + '</div>';
+
+    let itemsHtml = '<div class="axis-items" data-ai="' + ai + '">';
+    const items = axis.items || [];
+    for (let ii = 0; ii < items.length; ii++) {
+      itemsHtml += renderCriteriaItem(ai, ii, items[ii]);
+    }
+    itemsHtml += '</div>';
+    itemsHtml += '<button class="btn-save" onclick="addCriteriaItem(' + ai + ')" style="font-size:11px;padding:4px 12px;margin-top:6px;background:var(--surface2)">+ 항목 추가</button>';
+
+    axisDiv.innerHTML = headerHtml + itemsHtml;
+    container.appendChild(axisDiv);
+  }
+
+  const th = criteriaData.gradeThresholds || {};
+  document.getElementById('thresholdA').value = th.A != null ? th.A : '';
+  document.getElementById('thresholdB').value = th.B != null ? th.B : '';
+  document.getElementById('thresholdC').value = th.C != null ? th.C : '';
+  document.getElementById('thresholdD').value = th.D != null ? th.D : '';
+
+  renderBoundaryRules();
+}
+
+function renderCriteriaItem(ai, ii, item) {
+  return '<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;padding:6px 8px;background:var(--surface);border-radius:6px" data-ai="' + ai + '" data-ii="' + ii + '">'
+    + '<span style="font-size:12px;color:var(--text);min-width:80px;font-weight:600">' + esc(item.name || '') + '</span>'
+    + '<label style="font-size:10px;color:var(--text-dim)">점수</label>'
+    + '<input type="number" class="item-score" data-ai="' + ai + '" data-ii="' + ii + '" value="' + (item.score || 0) + '" min="0" max="100" step="1" style="width:60px;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 6px;border-radius:4px;font-size:11px">'
+    + '<input type="text" class="item-desc" data-ai="' + ai + '" data-ii="' + ii + '" value="' + esc(item.desc || '') + '" placeholder="설명" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:4px;font-size:11px">'
+    + '<button onclick="removeCriteriaItem(' + ai + ',' + ii + ')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 4px" title="삭제">✕</button>'
+    + '</div>';
+}
+
+function addCriteriaItem(ai) {
+  if (!criteriaData || !criteriaData.axes[ai]) return;
+  const name = prompt('항목 이름을 입력하세요:');
+  if (!name) return;
+  criteriaData.axes[ai].items.push({ name: name, score: 0, desc: '' });
+  renderCriteria();
+}
+
+function removeCriteriaItem(ai, ii) {
+  if (!criteriaData || !criteriaData.axes[ai]) return;
+  criteriaData.axes[ai].items.splice(ii, 1);
+  renderCriteria();
+}
+
+function renderBoundaryRules() {
+  const rules = criteriaData.boundaryRules || [];
+  const container = document.getElementById('boundaryRulesList');
+  container.innerHTML = '';
+  for (let i = 0; i < rules.length; i++) {
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:6px';
+    div.innerHTML = '<input type="text" class="boundary-rule" data-ri="' + i + '" value="' + esc(rules[i]) + '" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:6px;font-size:12px">'
+      + '<button onclick="removeBoundaryRule(' + i + ')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 6px" title="삭제">✕</button>';
+    container.appendChild(div);
+  }
+}
+
+function addBoundaryRule() {
+  if (!criteriaData) criteriaData = { axes: [], gradeThresholds: {}, boundaryRules: [] };
+  if (!criteriaData.boundaryRules) criteriaData.boundaryRules = [];
+  criteriaData.boundaryRules.push('');
+  renderBoundaryRules();
+  const inputs = document.querySelectorAll('.boundary-rule');
+  if (inputs.length) inputs[inputs.length - 1].focus();
+}
+
+function removeBoundaryRule(idx) {
+  if (!criteriaData || !criteriaData.boundaryRules) return;
+  criteriaData.boundaryRules.splice(idx, 1);
+  renderBoundaryRules();
+}
+
+function collectCriteriaFromForm() {
+  if (!criteriaData) return null;
+  document.querySelectorAll('.axis-max').forEach(function(el) {
+    const ai = parseInt(el.getAttribute('data-ai'));
+    if (criteriaData.axes[ai]) criteriaData.axes[ai].maxScore = parseInt(el.value) || 0;
+  });
+  document.querySelectorAll('.item-score').forEach(function(el) {
+    const ai = parseInt(el.getAttribute('data-ai'));
+    const ii = parseInt(el.getAttribute('data-ii'));
+    if (criteriaData.axes[ai] && criteriaData.axes[ai].items[ii]) {
+      criteriaData.axes[ai].items[ii].score = parseInt(el.value) || 0;
+    }
+  });
+  document.querySelectorAll('.item-desc').forEach(function(el) {
+    const ai = parseInt(el.getAttribute('data-ai'));
+    const ii = parseInt(el.getAttribute('data-ii'));
+    if (criteriaData.axes[ai] && criteriaData.axes[ai].items[ii]) {
+      criteriaData.axes[ai].items[ii].desc = el.value;
+    }
+  });
+  criteriaData.gradeThresholds = {
+    A: parseInt(document.getElementById('thresholdA').value) || 0,
+    B: parseInt(document.getElementById('thresholdB').value) || 0,
+    C: parseInt(document.getElementById('thresholdC').value) || 0,
+    D: parseInt(document.getElementById('thresholdD').value) || 0
+  };
+  const ruleInputs = document.querySelectorAll('.boundary-rule');
+  criteriaData.boundaryRules = [];
+  ruleInputs.forEach(function(el) { criteriaData.boundaryRules.push(el.value); });
+  return criteriaData;
+}
+
+async function saveCriteria() {
+  const data = collectCriteriaFromForm();
+  if (!data) { toast('저장할 데이터가 없습니다', 'error'); return; }
+  try {
+    const res = await fetch('/api/consultation-criteria', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (res.status === 403) { toast('Admin 인증이 필요합니다', 'error'); return; }
+    if (!res.ok) { toast('저장 실패 (' + res.status + ')', 'error'); return; }
+    toast('평가 기준이 저장되었습니다', 'success');
+  } catch(e) {
+    toast('저장 실패: ' + e.message, 'error');
+  }
+}
+
+async function resetCriteriaToDefaults() {
+  if (!confirm('평가 기준을 기본값으로 초기화하시겠습니까?')) return;
+  try {
+    const res = await fetch('/api/consultation-criteria/reset', {
+      method: 'POST'
+    });
+    if (!res.ok) { toast('초기화 실패', 'error'); return; }
+    criteriaData = await res.json();
+    renderCriteria();
+    toast('기본값으로 초기화되었습니다', 'success');
+  } catch(e) {
+    toast('초기화 실패: ' + e.message, 'error');
+  }
+}
+
+// ── 유틸 ──
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function toast(msg, type='success') {
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+// ── 테스터 로그인 공통 로직 ──
+function showTesterModal() {
+  const modal = document.getElementById('testerModal');
+  if (modal) modal.style.display = 'flex';
+}
+
+async function confirmTester() {
+  const id = document.getElementById('testerIdInput').value.trim();
+  const pw = document.getElementById('testerPwInput').value.trim();
+  const errEl = document.getElementById('testerError');
+  if (!id) { errEl.textContent = 'ID를 입력하세요'; return; }
+  if (!pw) { errEl.textContent = '비밀번호를 입력하세요'; return; }
+  try {
+    const res = await fetch('/api/tester/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, password: pw })
+    });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById('testerModal').style.display = 'none';
+      const badge = document.getElementById('testerBadge');
+      if (badge) { badge.style.display = ''; badge.textContent = `👤 ${data.tester.alias}`; }
+      location.reload();
+    } else { errEl.textContent = data.error || '로그인 실패'; }
+  } catch(e) { errEl.textContent = '서버 연결 실패'; }
+}
+
+async function testerLogout() {
+  await fetch('/api/tester/logout', { method: 'POST' });
+  location.reload();
+}
+
+async function adminLogout() {
+  await fetch('/api/auth/logout', { method: 'POST' });
+  location.reload();
+}
+
+function switchAuthTab(tab) {
+  const loginForm = document.getElementById('loginForm');
+  const registerForm = document.getElementById('registerForm');
+  const tabLogin = document.getElementById('tabLogin');
+  const tabRegister = document.getElementById('tabRegister');
+  if (tab === 'login') {
+    loginForm.style.display = '';
+    registerForm.style.display = 'none';
+    tabLogin.style.borderBottomColor = 'var(--accent)';
+    tabLogin.style.color = 'var(--accent)';
+    tabRegister.style.borderBottomColor = 'transparent';
+    tabRegister.style.color = 'var(--text-dim)';
+  } else {
+    loginForm.style.display = 'none';
+    registerForm.style.display = '';
+    tabRegister.style.borderBottomColor = 'var(--accent)';
+    tabRegister.style.color = 'var(--accent)';
+    tabLogin.style.borderBottomColor = 'transparent';
+    tabLogin.style.color = 'var(--text-dim)';
+  }
+}
+
+async function submitRegister() {
+  const id = document.getElementById('regId').value.trim();
+  const name = document.getElementById('regName').value.trim();
+  const org = document.getElementById('regOrg').value.trim();
+  const pw = document.getElementById('regPw').value.trim();
+  const pwConfirm = document.getElementById('regPwConfirm').value.trim();
+  const errEl = document.getElementById('regError');
+  const successEl = document.getElementById('regSuccess');
+  errEl.textContent = ''; successEl.style.display = 'none';
+
+  if (!id || id.length < 2) { errEl.textContent = 'ID는 2자 이상 입력하세요'; return; }
+  if (!name) { errEl.textContent = '이름을 입력하세요'; return; }
+  if (!pw || pw.length < 4) { errEl.textContent = '비밀번호는 4자 이상 입력하세요'; return; }
+  if (pw !== pwConfirm) { errEl.textContent = '비밀번호가 일치하지 않습니다'; return; }
+
+  try {
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, name, org, password: pw })
+    });
+    const data = await res.json();
+    if (data.success) {
+      successEl.textContent = data.message;
+      successEl.style.display = '';
+      errEl.textContent = '';
+      ['regId','regName','regOrg','regPw','regPwConfirm'].forEach(f => document.getElementById(f).value = '');
+    } else {
+      errEl.textContent = data.error || '가입 실패';
+    }
+  } catch(e) { errEl.textContent = '서버 연결 실패'; }
+}
+
+// ── 초기 로드 ──
+(async function parallelInit() {
+  const bar = document.getElementById('loaderBar');
+  if (bar) bar.style.width = '10%';
+  try {
+    const [criteriaRes, authRes, settingsRes] = await Promise.allSettled([
+      fetch('/api/consultation-criteria'),
+      fetch('/api/auth/status'),
+      fetch('/api/settings')
+    ]);
+    if (bar) bar.style.width = '60%';
+
+    // Apply criteria
+    if (criteriaRes.status === 'fulfilled' && criteriaRes.value.ok) {
+      criteriaData = await criteriaRes.value.json();
+      renderCriteria();
+    } else {
+      toast('데이터 로드 실패', 'error');
+    }
+    if (bar) bar.style.width = '80%';
+
+    // Apply auth
+    if (authRes.status === 'fulfilled' && authRes.value.ok) {
+      const authData = await authRes.value.json();
+      if (!authData.isAdmin) {
+        const sl = document.getElementById('settingsNavLink');
+        if (sl) sl.style.display = 'none';
+      }
+      if (authData.tester) {
+        const badge = document.getElementById('testerBadge');
+        if (badge) { badge.style.display = ''; badge.textContent = `👤 ${authData.tester.alias}`; }
+      } else if (authData.isAdmin) {
+        const badge = document.getElementById('testerBadge');
+        if (badge) {
+          badge.style.display = '';
+          badge.textContent = '🛡️ 관리자';
+          badge.onclick = function() { if(confirm('관리자 로그아웃 하시겠습니까?')) adminLogout(); };
+        }
+      } else if (!authData.isAdmin) {
+        showTesterModal();
+      }
+    }
+    // Apply env indicator
+    if (settingsRes.status === 'fulfilled' && settingsRes.value.ok) {
+      try {
+        const sData = await settingsRes.value.json();
+        var curEnv = sData.currentEnv || 'dev';
+        document.querySelectorAll('#envSelector .env-chip-sm').forEach(function(c) {
+          var isActive = c.dataset.env === curEnv;
+          c.classList.toggle('active', isActive);
+        });
+      } catch(e2) {}
+    }
+
+    if (bar) bar.style.width = '100%';
+  } catch(e) {
+    console.error('Init error:', e);
+  } finally {
+    const loader = document.getElementById('appLoader');
+    if (loader) { loader.classList.add('fade-out'); setTimeout(() => loader.remove(), 300); }
+  }
+})();
+</script>
+</body>
+</html>

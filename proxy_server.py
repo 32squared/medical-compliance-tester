@@ -809,6 +809,12 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 return
             return self._create_category(body)
 
+        # ── 카테고리 관리 API (Admin) ──
+        if self.path == '/api/categories':
+            if not self._require_admin():
+                return
+            return self._create_category(body)
+
         # ── 대화 저장 API ──
         if self.path == '/api/conversations':
             return self._create_local_conversation(body)
@@ -918,7 +924,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
 
         # ── RLHF 관리 API ──
         if self.path == '/api/rlhf/pairs/export':
-            if not self._require_auth():
+            if not self._require_admin():
                 return
             return self._rlhf_export_pairs(body)
         if self.path == '/api/rlhf/pairs':
@@ -1151,13 +1157,13 @@ class ProxyHandler(BaseHTTPRequestHandler):
         if path == '/api/feedback/stats':
             return self._get_feedback_stats(parsed.query)
         if path == '/api/feedback/export':
-            if not self._require_auth():
+            if not self._require_admin():
                 return
             return self._export_dpo(parsed.query)
 
         # ── RLHF 관리 API ──
         if path == '/api/rlhf/stats':
-            if not self._require_auth():
+            if not self._require_admin():
                 return
             return self._rlhf_stats()
         if path == '/api/rlhf/pairs':

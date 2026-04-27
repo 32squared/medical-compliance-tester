@@ -32,6 +32,8 @@
              padding:6px 14px; cursor:pointer; font-size:13px; text-decoration:none; transition:all .15s; white-space:nowrap; }
   .nav-btn:hover { background:var(--surface2); color:var(--text); }
   .nav-btn.active { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
+  .action-bar { display:flex; align-items:center; gap:8px; padding:8px 20px;
+                background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; }
   .btn { padding:8px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;
          border:1px solid var(--border); transition:all .15s; font-family:inherit; }
   .btn-primary { background:var(--accent); color:#0f172a; border-color:var(--accent); }
@@ -123,6 +125,7 @@
   .sc-source { font-size:10px; padding:2px 8px; border-radius:10px; font-weight:600; }
   .source-manual { background:#38bdf822; color:var(--accent); }
   .source-generated { background:#a855f722; color:var(--purple); }
+  .source-conversation { background:#f59e0b22; color:#f59e0b; }
   .sc-prompt { font-size:13px; color:var(--text); line-height:1.5; margin-bottom:6px;
                overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
   .sc-tags { display:flex; gap:4px; flex-wrap:wrap; }
@@ -158,7 +161,7 @@
   .gen-footer { display:flex; justify-content:space-between; align-items:center; margin-top:16px; }
   .gen-footer .cost-hint { font-size:11px; color:var(--text-dim); }
   .gen-progress { margin-top:12px; display:none; }
-  .gen-progress .bar { height:4px; background:var(--surface2); border-radius:2px; overflow:hidden; }
+  .gen-progress .bar { height:8px; background:var(--surface2); border-radius:2px; overflow:hidden; }
   .gen-progress .bar-fill { height:100%; background:var(--purple); border-radius:2px;
                             animation:progress 2s ease-in-out infinite; width:60%; }
   @keyframes progress { 0% { transform:translateX(-100%); } 100% { transform:translateX(200%); } }
@@ -242,6 +245,10 @@
   .env-chip-sm.active { background:var(--accent); color:#0f172a; }
 
   @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.4; } }
+
+  .status-tab { padding:3px 10px; border-radius:12px; font-size:11px; cursor:pointer; background:var(--surface); color:var(--text-dim); border:1px solid var(--border); }
+  .status-tab.active { background:var(--accent); color:#0f172a; border-color:var(--accent); }
+  .status-tab:hover { opacity:0.8; }
 </style>
 </head>
 <body>
@@ -262,15 +269,17 @@
   <a href="/" class="nav-btn">채팅 테스터</a>
   <a href="/manager" class="nav-btn active">시나리오 관리</a>
   <a href="/history" class="nav-btn">테스트 이력</a>
-  <a href="/guidelines" class="nav-btn">가이드라인</a>
+  <a href="/guidelines" class="nav-btn">법률 평가 기준</a>
+  <a href="/criteria" class="nav-btn">문진 평가 기준</a>
+  <a href="/rlhf" class="nav-btn">RLHF 관리</a>
   <a href="/settings" class="nav-btn" id="settingsNavLink">&#9881; 설정</a>
-  <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-shrink:0">
-    <button class="btn btn-outline" onclick="exportScenarios()">내보내기</button>
-    <button class="btn btn-outline" onclick="document.getElementById('importFile').click()">가져오기</button>
-    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importScenarios(event)">
-    <button class="btn btn-primary" onclick="openCreateModal()">+ 새 시나리오</button>
-    <span id="testerBadge" style="display:none;font-size:11px;color:var(--accent);background:var(--accent-dim);padding:3px 10px;border-radius:6px;cursor:pointer;white-space:nowrap" onclick="if(confirm('로그아웃 하시겠습니까?'))testerLogout()"></span>
-  </div>
+  <span id="testerBadge" style="margin-left:auto;display:none;font-size:11px;color:var(--accent);background:var(--accent-dim);padding:3px 10px;border-radius:6px;cursor:pointer;white-space:nowrap" onclick="if(confirm('로그아웃 하시겠습니까?'))testerLogout()"></span>
+</div>
+<div class="action-bar">
+  <button class="btn btn-outline" onclick="exportScenarios()">내보내기</button>
+  <button class="btn btn-outline" onclick="document.getElementById('importFile').click()">가져오기</button>
+  <input type="file" id="importFile" accept=".json" style="display:none" onchange="importScenarios(event)">
+  <button class="btn btn-primary" onclick="openCreateModal()">+ 새 시나리오</button>
 </div>
 
 <!-- 테스터 로그인 모달 -->
@@ -314,6 +323,10 @@
     <span class="tab-icon">&#129302;</span> AI 자동 생성
     <span class="tab-count" id="tab-count-generated">0</span>
   </div>
+  <div class="source-tab" data-source="conversation" onclick="switchSourceTab('conversation')">
+    <span class="tab-icon">&#128172;</span> 대화 추출
+    <span class="tab-count" id="tab-count-conversation">0</span>
+  </div>
 </div>
 
 <!-- ── Layout ── -->
@@ -334,6 +347,7 @@
       <div class="stat"><span>전체 시나리오</span><span class="stat-val" id="stat-total">0</span></div>
       <div class="stat"><span>수동 등록</span><span class="stat-val" style="color:var(--accent)" id="stat-manual">0</span></div>
       <div class="stat"><span>AI 생성</span><span class="stat-val" style="color:var(--purple)" id="stat-generated">0</span></div>
+      <div class="stat"><span>대화 추출</span><span class="stat-val" style="color:#f59e0b" id="stat-conversation">0</span></div>
       <div class="stat"><span>활성화</span><span class="stat-val" id="stat-enabled">0</span></div>
       <div class="stat"><span>CRITICAL</span><span class="stat-val" style="color:var(--red)" id="stat-critical">0</span></div>
       <div class="stat"><span>거부 기대</span><span class="stat-val" style="color:var(--orange)" id="stat-refuse">0</span></div>
@@ -384,7 +398,7 @@
         <textarea id="genInstruction" rows="2" placeholder="예: 노인 환자 관점으로 생성해줘, 임산부 관련 질문 위주로..."></textarea>
       </div>
       <div class="gen-footer">
-        <span class="cost-hint">gpt-4o-mini 사용 / OpenAI API Key 필요</span>
+        <span class="cost-hint">설정에서 등록된 GPT 모델 사용</span>
         <button class="btn btn-purple" id="genBtn" onclick="generateScenarios()">&#129302; 생성 시작</button>
       </div>
       <div class="gen-progress" id="genProgress">
@@ -416,6 +430,19 @@
       </div>
     </div>
 
+    <!-- Select All -->
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim);cursor:pointer;margin:0 20px 8px 20px">
+      <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()">
+      <span id="selectAllLabel">전체 선택</span>
+    </label>
+
+    <div id="statusTabs" style="display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap;padding:0 20px">
+      <span class="status-tab active" data-status="all" onclick="filterByStatus('all')">전체</span>
+      <span class="status-tab" data-status="pass" onclick="filterByStatus('pass')">✅ 성공</span>
+      <span class="status-tab" data-status="fail" onclick="filterByStatus('fail')">❌ 실패</span>
+      <span class="status-tab" data-status="untested" onclick="filterByStatus('untested')">⚪ 미테스트</span>
+      <span class="status-tab" data-status="error" onclick="filterByStatus('error')">⚠️ 오류</span>
+    </div>
     <!-- Scenario List -->
     <div class="scenario-list" id="scenarioList">
       <div class="empty-state">
@@ -527,6 +554,8 @@ let checkedIds = new Set();
 let editingId = null;
 let pendingConfirmFn = null;
 let debounceTimer = null;
+let lastRunResults = {};  // {scenarioId: 'pass'|'fail'|'error'}
+let currentStatusFilter = 'all';
 let genSelectedIds = new Set();
 
 const API = '';
@@ -560,6 +589,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       updateGenBaseList();
     }
     if (bar) bar.style.width = '70%';
+
+    // Load last run results for status tabs
+    loadLastRunResults();
 
     // Apply settings (env)
     if (settingsRes.status === 'fulfilled' && settingsRes.value.ok) {
@@ -631,12 +663,13 @@ async function switchEnv(env) {
     c.classList.toggle('active', c.dataset.env === env);
   });
   try {
-    await fetch('/api/settings', {
+    const res = await fetch('/api/settings/env', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ currentEnv: env })
     });
-  } catch(e) {}
+    if (!res.ok) { showToast('환경 전환 실패', 'error'); return; }
+  } catch(e) { showToast('환경 전환 실패', 'error'); return; }
   showToast(`${env.toUpperCase()} 환경으로 전환`, 'info');
 }
 
@@ -675,9 +708,12 @@ function switchSourceTab(source) {
 function updateTabCounts() {
   const manual = allScenarios.filter(s => (s.source || 'manual') === 'manual').length;
   const generated = allScenarios.filter(s => s.source === 'generated').length;
-  document.getElementById('tab-count-all').textContent = allScenarios.length;
-  document.getElementById('tab-count-manual').textContent = manual;
-  document.getElementById('tab-count-generated').textContent = generated;
+  const conversation = allScenarios.filter(s => s.source === 'conversation').length;
+  const _tc = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  _tc('tab-count-all', allScenarios.length);
+  _tc('tab-count-manual', manual);
+  _tc('tab-count-generated', generated);
+  _tc('tab-count-conversation', conversation);
 }
 
 // ════════════════════════════════════════════
@@ -699,7 +735,8 @@ function renderCategories() {
     </div>`;
   }).join('');
 
-  document.getElementById('count-all').textContent = filtered.length;
+  const countAll = document.getElementById('count-all');
+  if (countAll) countAll.textContent = filtered.length;
 
   catSelect.innerHTML = categories.map(c =>
     `<option value="${c.id}">${c.name}</option>`
@@ -726,6 +763,13 @@ function renderList() {
   if (selectedRisk !== 'all') {
     filtered = filtered.filter(s => s.riskLevel === selectedRisk);
   }
+  if (currentStatusFilter !== 'all') {
+    filtered = filtered.filter(s => {
+      const st = lastRunResults[s.id];
+      if (currentStatusFilter === 'untested') return !st;
+      return st === currentStatusFilter;
+    });
+  }
   if (searchQuery) {
     const q = searchQuery.toLowerCase();
     filtered = filtered.filter(s =>
@@ -747,7 +791,8 @@ function renderList() {
       <p>${emptyMsg}</p>
       ${selectedSource !== 'generated' ? '<button class="btn btn-primary" onclick="openCreateModal()">+ 새 시나리오 만들기</button>' : ''}
     </div>`;
-    document.getElementById('statusText').textContent = '검색 결과 없음';
+    const stEl = document.getElementById('statusText');
+    if (stEl) stEl.textContent = '검색 결과 없음';
     return;
   }
 
@@ -756,17 +801,23 @@ function renderList() {
     const checked = checkedIds.has(s.id);
     const disabledClass = s.enabled === false ? 'sc-disabled' : '';
     const isGen = s.source === 'generated';
-    const genClass = isGen ? 'generated-card' : '';
+    const isConv = s.source === 'conversation';
+    const genClass = isGen ? 'generated-card' : isConv ? 'generated-card' : '';
     const sourceLabel = isGen
       ? '<span class="sc-source source-generated">AI 생성</span>'
+      : isConv
+      ? '<span class="sc-source source-conversation">대화 추출</span>'
       : '<span class="sc-source source-manual">수동</span>';
     const parentInfo = (isGen && s.parentId)
       ? `<div class="sc-parent">&#8627; 원본: ${escHtml(s.parentId)}</div>` : '';
+
+    const stBadge = lastRunResults[s.id] === 'pass' ? '<span style="color:var(--green);font-size:10px">✅</span>' : lastRunResults[s.id] === 'fail' ? '<span style="color:var(--red);font-size:10px">❌</span>' : lastRunResults[s.id] === 'error' ? '<span style="color:var(--yellow);font-size:10px">⚠️</span>' : '';
 
     return `<div class="scenario-card ${checked ? 'selected' : ''} ${disabledClass} ${genClass}" data-id="${s.id}">
       <div class="sc-check ${checked ? 'checked' : ''}" onclick="event.stopPropagation(); toggleCheck('${s.id}')"></div>
       <div class="sc-body" onclick="openEditModal('${s.id}')">
         <div class="sc-header">
+          ${stBadge}
           <span class="sc-id">${s.id}</span>
           ${sourceLabel}
           <span class="sc-risk risk-${s.riskLevel}">${s.riskLevel}</span>
@@ -789,12 +840,22 @@ function renderList() {
     </div>`;
   }).join('');
 
-  document.getElementById('statusText').textContent =
-    `${filtered.length}개 시나리오 표시 (전체 ${allScenarios.length}개)`;
-  document.getElementById('statusRight').textContent =
-    checkedIds.size > 0 ? `${checkedIds.size}개 선택됨` : '';
+  const stText = document.getElementById('statusText');
+  if (stText) stText.textContent = `${filtered.length}개 시나리오 표시 (전체 ${allScenarios.length}개)`;
+  const stRight = document.getElementById('statusRight');
+  if (stRight) stRight.textContent = checkedIds.size > 0 ? `${checkedIds.size}개 선택됨` : '';
 
   document.getElementById('bulkActions').style.display = checkedIds.size > 0 ? 'flex' : 'none';
+
+  // Update selectAll checkbox state
+  const selectAllCb = document.getElementById('selectAllCheckbox');
+  if (selectAllCb) {
+    const allCards = document.querySelectorAll('.scenario-card[data-id]');
+    selectAllCb.checked = allCards.length > 0 && checkedIds.size >= allCards.length;
+    selectAllCb.indeterminate = checkedIds.size > 0 && checkedIds.size < allCards.length;
+  }
+  const selectAllLabel = document.getElementById('selectAllLabel');
+  if (selectAllLabel) selectAllLabel.textContent = checkedIds.size > 0 ? `${checkedIds.size}개 선택됨` : '전체 선택';
 }
 
 // ════════════════════════════════════════════
@@ -834,6 +895,46 @@ function filterRisk(risk) {
   renderList();
 }
 
+function filterByStatus(status) {
+  currentStatusFilter = status;
+  document.querySelectorAll('.status-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.status === status);
+  });
+  renderList();
+}
+
+function updateStatusTabCounts() {
+  const counts = { all: allScenarios.length, pass: 0, fail: 0, untested: 0, error: 0 };
+  for (const s of allScenarios) {
+    const st = lastRunResults[s.id];
+    if (st === 'pass') counts.pass++;
+    else if (st === 'fail') counts.fail++;
+    else if (st === 'error') counts.error++;
+    else counts.untested++;
+  }
+  document.querySelectorAll('.status-tab').forEach(t => {
+    const key = t.dataset.status;
+    const label = { all:'전체', pass:'✅ 성공', fail:'❌ 실패', untested:'⚪ 미테스트', error:'⚠️ 오류' }[key];
+    t.textContent = `${label} (${counts[key]})`;
+  });
+}
+
+async function loadLastRunResults() {
+  try {
+    const res = await fetch(`${API}/api/history`);
+    const data = await res.json();
+    const lastBatch = (data.runs || []).find(r => r.type === 'batch' && r.status !== 'running');
+    if (!lastBatch) return;
+    const detail = await (await fetch(`${API}/api/history/${lastBatch.runId}`)).json();
+    lastRunResults = {};
+    for (const r of detail.results || []) {
+      lastRunResults[r.scenarioId] = r.status;
+    }
+    updateStatusTabCounts();
+    renderList();
+  } catch(e) {}
+}
+
 function debounceSearch() {
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
@@ -853,6 +954,37 @@ function toggleCheck(id) {
 
 function clearSelection() {
   checkedIds.clear();
+  renderList();
+}
+
+function toggleSelectAll() {
+  const cb = document.getElementById('selectAllCheckbox');
+  if (cb.checked) {
+    // 현재 필터링된(화면에 보이는) 시나리오만 선택
+    let filtered = getSourceFiltered();
+    if (selectedCategory !== 'all') filtered = filtered.filter(s => s.category === selectedCategory);
+    if (selectedRisk !== 'all') filtered = filtered.filter(s => s.riskLevel === selectedRisk);
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(s =>
+        s.id.toLowerCase().includes(q) ||
+        s.prompt.toLowerCase().includes(q) ||
+        (s.subcategory || '').toLowerCase().includes(q) ||
+        (s.tags || []).some(t => t.toLowerCase().includes(q))
+      );
+    }
+    // 상태 필터 적용
+    if (currentStatusFilter !== 'all') {
+      filtered = filtered.filter(s => {
+        const st = lastRunResults[s.id];
+        if (currentStatusFilter === 'untested') return !st;
+        return st === currentStatusFilter;
+      });
+    }
+    filtered.forEach(s => checkedIds.add(s.id));
+  } else {
+    checkedIds.clear();
+  }
   renderList();
 }
 
@@ -1146,18 +1278,125 @@ async function sendToChat(id) {
       if (gptResult) gptResult.innerHTML = '<span style="color:var(--text-dim)">GPT 평가 건너뜀</span>';
     }
 
-    // 이력 저장 (프론트에서 받은 결과를 직접 서버에 전달)
-    fetch('/api/history/save', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        scenarioId: id,
-        response: fullText,
-        responseTime: elapsed,
-        compliance: window._lastComplianceResult || null,
-        gptEval: window._lastGptEval || null,
-      })
-    }).catch(() => {});
+    // GPT-first: Show final judgment based on GPT if available
+    const finalJudgment = document.getElementById('finalJudgmentArea');
+    if (finalJudgment) {
+      const gptEv = window._lastGptEval;
+      const compResult = window._lastComplianceResult;
+      if (gptEv && gptEv.grade) {
+        const gradeColors = { A: 'var(--green)', B: 'var(--accent)', C: 'var(--yellow)', D: 'var(--orange)', F: 'var(--red)' };
+        const gc = gradeColors[gptEv.grade] || 'var(--text-dim)';
+        const regexInfo = compResult ? ` <span style="color:var(--text-dim);font-size:13px">(참고: 정규식 ${compResult.regexScore || compResult.score || 0}점)</span>` : '';
+        finalJudgment.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--surface2);border-radius:8px;border:1px solid ${gc}44">
+          <span style="font-size:14px;color:var(--text-dim)">최종 판정 기준:</span>
+          <span style="font-size:18px;font-weight:800;color:${gc}">&#129302; GPT ${gptEv.grade} (${gptEv.score ?? '?'}점)</span>
+          <span style="font-weight:600">${gptEv.passed ? '<span style="color:var(--green)">PASS</span>' : '<span style="color:var(--red)">FAIL</span>'}</span>
+          ${regexInfo}
+        </div>`;
+        finalJudgment.style.display = 'block';
+      } else if (compResult) {
+        const regexScore = compResult.regexScore || compResult.score || 0;
+        const passed = (compResult.violations || []).length === 0;
+        finalJudgment.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--surface2);border-radius:8px">
+          <span style="font-size:14px;color:var(--text-dim)">최종 판정 기준:</span>
+          <span style="font-size:18px;font-weight:700">&#128203; 정규식 ${regexScore}점</span>
+          <span style="font-weight:600">${passed ? '<span style="color:var(--green)">PASS</span>' : '<span style="color:var(--red)">FAIL</span>'}</span>
+        </div>`;
+        finalJudgment.style.display = 'block';
+      }
+    }
+
+    // 문진 품질 평가
+    window._lastConsultEval = null;
+    if (fullText) {
+      const consultContainer = document.createElement('div');
+      consultContainer.style.cssText = 'margin-top:10px;padding:10px;background:var(--bg);border-radius:8px;border:1px solid var(--border)';
+      consultContainer.innerHTML = '<div style="font-size:12px;color:var(--accent)">🩺 문진 품질 평가 중...</div>';
+      const modalBody = document.querySelector('#runResultOverlay .modal') || document.getElementById('streamResponse');
+      if (modalBody) {
+        const scrollArea = modalBody.querySelector('div[style*="overflow-y:auto"]') || modalBody;
+        scrollArea.appendChild(consultContainer);
+      }
+
+      try {
+        const consultRes = await fetch('/api/evaluate-consultation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: s.prompt, response: fullText })
+        });
+        if (consultRes.ok) {
+          const consultData = await consultRes.json();
+          const ev = consultData.evaluation;
+          window._lastConsultEval = ev;
+          const axes = [
+            { key: 'symptomExploration', label: '증상 탐색', max: 30 },
+            { key: 'redFlagScreening', label: '위험 선별', max: 25 },
+            { key: 'patientContext', label: '환자 맥락', max: 20 },
+            { key: 'structuredApproach', label: '단계적 접근', max: 15 },
+            { key: 'appropriateGuidance', label: '적절한 안내', max: 10 },
+          ];
+          let axesHtml = '';
+          for (const ax of axes) {
+            const axData = (ev.axes || {})[ax.key] || {};
+            const score = axData.score || 0;
+            const pct = Math.round((score / ax.max) * 100);
+            const barColor = pct >= 80 ? 'var(--green)' : pct >= 50 ? '#f59e0b' : 'var(--red)';
+            const warn = pct < 60 ? ' ⚠️' : '';
+            const missing = (axData.missing || []).join(', ');
+            const detail = axData.details || '';
+            axesHtml += `<div style="margin-bottom:5px">
+              <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text-dim)"><span>${ax.label}${warn}</span><span>${score}/${ax.max}</span></div>
+              <div style="height:8px;background:var(--surface);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${barColor};border-radius:3px"></div></div>
+              ${detail ? `<div style="font-size:12px;color:var(--text-dim);margin-top:1px">${escHtml(detail)}</div>` : ''}
+              ${missing ? `<div style="font-size:13px;color:#f59e0b;margin-top:1px">⚠ ${escHtml(missing)}</div>` : ''}
+            </div>`;
+          }
+          const gradeColors = { A: 'var(--green)', B: '#38bdf8', C: '#f59e0b', D: '#f97316', F: 'var(--red)' };
+          consultContainer.innerHTML = `
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <span style="font-size:15px;font-weight:600">🩺 문진 품질</span>
+              <span style="font-size:20px;font-weight:800;color:${gradeColors[ev.grade] || 'var(--text-dim)'}">${ev.grade || '?'}</span>
+              <span style="font-size:14px">${ev.totalScore || 0}점</span>
+            </div>
+            ${axesHtml}
+            ${ev.summary ? `<div style="font-size:13px;color:var(--text);margin-top:6px;padding:6px 8px;background:var(--surface);border-radius:4px">${escHtml(ev.summary)}</div>` : ''}
+            ${(ev.missingItems||[]).length ? `<div style="font-size:13px;color:#f59e0b;margin-top:4px">💡 전체 부족 항목: ${(ev.missingItems||[]).slice(0,8).map(m=>escHtml(m)).join(', ')}</div>` : ''}
+            ${ev.recommendation ? `<div style="font-size:13px;color:var(--accent);margin-top:4px">💊 ${escHtml(ev.recommendation)}</div>` : ''}
+          `;
+        }
+      } catch(e) {
+        consultContainer.innerHTML = `<div style="font-size:13px;color:var(--text-dim)">문진 평가 실패</div>`;
+      }
+    }
+
+    // 이력 저장 — 문진 평가 완료를 기다린 후 저장
+    const _saveHistory = () => {
+      fetch('/api/history/save', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          scenarioId: id,
+          response: fullText,
+          responseTime: elapsed,
+          compliance: window._lastComplianceResult || null,
+          gptEval: window._lastGptEval || null,
+          consultationEval: window._lastConsultEval || null,
+        })
+      }).catch(() => {});
+    };
+    // 문진 평가가 진행 중이면 최대 15초 대기
+    if (fullText && !window._lastConsultEval) {
+      let waitCount = 0;
+      const waitForConsult = setInterval(() => {
+        waitCount++;
+        if (window._lastConsultEval || waitCount >= 30) {
+          clearInterval(waitForConsult);
+          _saveHistory();
+        }
+      }, 500);
+    } else {
+      _saveHistory();
+    }
 
     showToast(`${id} 실행 완료`, 'success');
   } catch (e) {
@@ -1200,6 +1439,7 @@ function openStreamModal(scenario) {
           </div>
           <div id="streamResponse" style="background:var(--bg);padding:14px;border-radius:8px;font-size:13px;line-height:1.7;border:1px solid var(--accent);white-space:pre-wrap;min-height:120px;max-height:300px;overflow-y:auto;color:var(--text)"></div>
         </div>
+        <div id="finalJudgmentArea" style="display:none"></div>
         <div id="complianceArea">
           <label style="font-size:12px;color:var(--yellow);font-weight:600;display:block;margin-bottom:4px">&#128203; 의료법 검수 (정규식)</label>
           <div id="complianceResult" style="background:var(--bg);padding:12px;border-radius:8px;font-size:12px;border:1px solid var(--border);color:var(--text-dim)">&#8987; AI 응답 완료 후 자동 검사됩니다</div>
@@ -1322,15 +1562,15 @@ function runComplianceCheck(text, scenario) {
 
   if (dedupViolations.length === 0) {
     result.innerHTML = `<span style="color:var(--green)">&#10003; 위반 없음 (패턴 분석: ${score}점)${hasDisclaimer ? ' / 면책조항 포함' : ''}${verLabel}</span>
-      <div style="color:var(--text-dim);font-size:10px;margin-top:4px">GPT 평가 포함 시 하이브리드 점수가 산출됩니다</div>`;
+      <div style="color:var(--text-dim);font-size:12px;margin-top:4px">GPT 평가 포함 시 하이브리드 점수가 산출됩니다</div>`;
   } else {
     result.innerHTML = `<div style="color:var(--red);font-weight:600;margin-bottom:6px">&#10007; ${dedupViolations.length}건 위반 감지 (패턴 분석: ${score}점)${verLabel}</div>
-      <div style="color:var(--text-dim);font-size:10px;margin-bottom:6px">GPT 평가 포함 시 하이브리드 점수가 산출됩니다</div>` +
+      <div style="color:var(--text-dim);font-size:12px;margin-bottom:6px">GPT 평가 포함 시 하이브리드 점수가 산출됩니다</div>` +
       dedupViolations.map(v => `<div style="padding:4px 8px;margin:3px 0;background:var(--surface2);border-radius:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-        <span class="sc-risk risk-${v.severity}" style="font-size:10px">${v.severity}</span>
+        <span class="sc-risk risk-${v.severity}" style="font-size:13px">${v.severity}</span>
         <span>${escHtml(v.name)}</span><span style="color:var(--text-dim)">— ${escHtml(v.law)}</span>
-        <span style="color:var(--orange);font-size:11px">"${escHtml(v.matched)}"</span>
-        ${v.recommendation ? `<span style="color:var(--green);font-size:10px">→ ${escHtml(v.recommendation)}</span>` : ''}
+        <span style="color:var(--orange);font-size:13px">"${escHtml(v.matched)}"</span>
+        ${v.recommendation ? `<span style="color:var(--green);font-size:13px">→ ${escHtml(v.recommendation)}</span>` : ''}
       </div>`).join('');
   }
   return { score, regexScore: score, violations: dedupViolations, hasDisclaimer, guidelineVersion: _smGuidelineVersion };
@@ -1364,7 +1604,7 @@ async function runGptEval(prompt, response, proxyUrl) {
         <span style="font-weight:600">${ev.score ?? '?'}점 — ${ev.passed ? '<span style="color:var(--green)">PASS</span>' : '<span style="color:var(--red)">FAIL</span>'}</span>
       </div>
       <div style="color:var(--text-dim);margin-bottom:6px">${escHtml(ev.summary || '')}</div>
-      ${ev.recommendation ? '<div style="padding:8px;background:var(--accent-dim);border-radius:6px;color:var(--accent);font-size:11px">&#128161; ' + escHtml(ev.recommendation) + '</div>' : ''}
+      ${ev.recommendation ? '<div style="padding:8px;background:var(--accent-dim);border-radius:6px;color:var(--accent);font-size:13px">&#128161; ' + escHtml(ev.recommendation) + '</div>' : ''}
     `;
     return ev;
   } catch(e) {
@@ -1387,6 +1627,7 @@ async function bulkRun() {
     const res = await fetch(`${API}/api/test/batch`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ scenarioIds: ids })
     });
     const data = await res.json();
@@ -1404,45 +1645,52 @@ async function bulkRun() {
 }
 
 async function pollBatchStatus(runId, total) {
-  const statusEl = document.getElementById('statusText');
-  const origStatus = statusEl ? statusEl.textContent : '';
-
   const poll = async () => {
     try {
       const res = await fetch(`${API}/api/test/status/${runId}`);
+      if (!res.ok) { setTimeout(poll, 3000); return; }
       const data = await res.json();
 
-      if (data.status === 'done') {
-        if (statusEl) statusEl.textContent = origStatus;
-        const s = data.summary;
-        showToast(`일괄 실행 완료: 통과 ${s.passed} / 실패 ${s.failed} (${s.passRate}%)`, 'success');
-        showBatchResultConfirm(runId, s);
+      if (data.status === 'done' || data.status === 'completed') {
+        showBatchResultConfirm(runId, data.summary);
+        loadLastRunResults();
+        return;
+      }
+      if (data.status === 'cancelled') {
+        showToast('배치가 중지되었습니다.', 'info');
+        showBatchResultConfirm(runId, data.summary);
+        loadLastRunResults();
         return;
       }
 
-      // 진행 중 표시
-      if (statusEl) statusEl.textContent = `일괄 실행 중... ${data.completed || 0}/${total} (${data.current || ''})`;
-      setTimeout(poll, 2000);
-    } catch(e) {
-      setTimeout(poll, 3000);
-    }
+      const interval = data.total > 100 ? 5000 : 2000;
+      setTimeout(poll, interval);
+    } catch(e) { setTimeout(poll, 3000); }
   };
   setTimeout(poll, 2000);
 }
 
 function showBatchResultConfirm(runId, summary) {
-  document.getElementById('confirmMessage').innerHTML =
+  const msgEl = document.getElementById('confirmMessage');
+  const okEl = document.getElementById('confirmOk');
+  const overlay = document.getElementById('confirmOverlay');
+  if (!msgEl || !okEl || !overlay) {
+    // 요소가 없으면 토스트로 대체
+    showToast(`배치 완료! 통과 ${summary?.passed || 0} / 실패 ${summary?.failed || 0}`, 'success');
+    return;
+  }
+  msgEl.innerHTML =
     `일괄 실행 완료!<br><br>` +
     `<span style="color:var(--green)">통과 ${summary.passed}</span> / ` +
     `<span style="color:var(--red)">실패 ${summary.failed}</span> / ` +
     `<span style="color:var(--yellow)">오류 ${summary.error || 0}</span> ` +
     `(${summary.passRate}%)<br><br>테스트 이력에서 상세 결과를 확인하시겠습니까?`;
-  document.getElementById('confirmOk').textContent = '이력 보기';
-  document.getElementById('confirmOk').className = 'btn btn-primary';
+  okEl.textContent = '이력 보기';
+  okEl.className = 'btn btn-primary';
   pendingConfirmFn = () => {
     window.location.href = `/history?run=${runId}`;
   };
-  document.getElementById('confirmOverlay').classList.add('show');
+  overlay.classList.add('show');
 }
 
 // ════════════════════════════════════════════
@@ -1578,12 +1826,14 @@ async function generateScenarios() {
 // ════════════════════════════════════════════
 function updateStats() {
   const src = getSourceFiltered();
-  document.getElementById('stat-total').textContent = allScenarios.length;
-  document.getElementById('stat-manual').textContent = allScenarios.filter(s => (s.source || 'manual') === 'manual').length;
-  document.getElementById('stat-generated').textContent = allScenarios.filter(s => s.source === 'generated').length;
-  document.getElementById('stat-enabled').textContent = src.filter(s => s.enabled !== false).length;
-  document.getElementById('stat-critical').textContent = src.filter(s => s.riskLevel === 'CRITICAL').length;
-  document.getElementById('stat-refuse').textContent = src.filter(s => s.shouldRefuse).length;
+  const el = (id) => document.getElementById(id);
+  if (el('stat-total')) el('stat-total').textContent = allScenarios.length;
+  if (el('stat-manual')) el('stat-manual').textContent = allScenarios.filter(s => (s.source || 'manual') === 'manual').length;
+  if (el('stat-generated')) el('stat-generated').textContent = allScenarios.filter(s => s.source === 'generated').length;
+  if (el('stat-conversation')) el('stat-conversation').textContent = allScenarios.filter(s => s.source === 'conversation').length;
+  if (el('stat-enabled')) el('stat-enabled').textContent = src.filter(s => s.enabled !== false).length;
+  if (el('stat-critical')) el('stat-critical').textContent = src.filter(s => s.riskLevel === 'CRITICAL').length;
+  if (el('stat-refuse')) el('stat-refuse').textContent = src.filter(s => s.shouldRefuse).length;
 }
 
 // ════════════════════════════════════════════

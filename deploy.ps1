@@ -2,45 +2,43 @@ param(
     [string]$ProjectId = "medical-compliance-tester",
     [string]$Region = "asia-northeast3",
     [string]$ServiceName = "medical-compliance-tester",
-    [string]$BucketName = ""
+    [string]$SqlInstance = "medical-db",
+    [string]$DbPassword = ""
 )
 
-Write-Host "=== Medical Compliance Tester - Cloud Run Deploy (SQLite + GCS) ===" -ForegroundColor Cyan
+Write-Host "=== Medical Compliance Tester - Cloud Run Deploy (Cloud SQL) ===" -ForegroundColor Cyan
 
-if (-not $BucketName) {
-    $BucketName = "$ProjectId-medical-data"
-}
+$SqlConnection = "${ProjectId}:${Region}:${SqlInstance}"
 
-Write-Host "Project:  $ProjectId"
-Write-Host "Region:   $Region"
-Write-Host "Service:  $ServiceName"
-Write-Host "Bucket:   gs://$BucketName"
+Write-Host "Project:      $ProjectId"
+Write-Host "Region:       $Region"
+Write-Host "Service:      $ServiceName"
+Write-Host "Cloud SQL:    $SqlConnection"
 Write-Host ""
 
-# [0/4] GCS 버킷 확인/생성
-Write-Host "[0/4] Checking GCS bucket..." -ForegroundColor Yellow
-$bucketCheck = gcloud storage ls "gs://$BucketName" 2>&1
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Creating bucket gs://$BucketName ..." -ForegroundColor Yellow
-    gcloud storage buckets create "gs://$BucketName" --location=$Region --uniform-bucket-level-access
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "Bucket creation failed!" -ForegroundColor Red
-        exit 1
-    }
-    Write-Host "Bucket created!" -ForegroundColor Green
-
-    if (Test-Path "guidelines.json") {
-        gcloud storage cp guidelines.json "gs://$BucketName/guidelines.json"
-    }
-    if (Test-Path "violation_rules.json") {
-        gcloud storage cp violation_rules.json "gs://$BucketName/violation_rules.json"
-    }
-} else {
-    Write-Host "Bucket already exists." -ForegroundColor Green
+# DB 비밀번호: 파라미터 → 환경변수 → Secret Manager → 에러
+if (-not $DbPassword) {
+    $DbPassword = $env:DB_PASSWORD
 }
+if (-not $DbPassword) {
+    Write-Host "Secret Manager에서 DB 비밀번호를 가져옵니다..." -ForegroundColor Yellow
+    try {
+        $DbPassword = gcloud secrets versions access latest --secret=db-password --project=$ProjectId 2>$null
+    } catch {}
+}
+if (-not $DbPassword) {
+    Write-Host "DB 비밀번호를 찾을 수 없습니다. 다음 중 하나로 설정하세요:" -ForegroundColor Red
+    Write-Host '  1. Secret Manager (권장): echo -n "password" | gcloud secrets create db-password --data-file=-'
+    Write-Host '  2. 파라미터: .\deploy.ps1 -DbPassword "password"'
+    Write-Host '  3. 환경변수: $env:DB_PASSWORD = "password"; .\deploy.ps1'
+    exit 1
+}
+Write-Host "DB Password:  ****" -ForegroundColor Green
 
-# [1/4] Docker 이미지 빌드
-Write-Host "[1/4] Building Docker image..." -ForegroundColor Yellow
+$DatabaseUrl = "postgresql://app_user:${DbPassword}@/medical_app?host=/cloudsql/${SqlConnection}"
+
+# [1/3] Docker 이미지 빌드
+Write-Host "[1/3] Building Docker image..." -ForegroundColor Yellow
 gcloud builds submit --tag "gcr.io/$ProjectId/$ServiceName" .
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Build failed!" -ForegroundColor Red
@@ -48,17 +46,34 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "Build done!" -ForegroundColor Green
 
-# [2/4] Cloud Run 배포
-Write-Host "[2/4] Deploying to Cloud Run with GCS volume mount..." -ForegroundColor Yellow
-gcloud run deploy $ServiceName --image "gcr.io/$ProjectId/$ServiceName" --region $Region --platform managed --allow-unauthenticated --memory 512Mi --timeout 300 --max-instances 3 --execution-environment gen2 --set-env-vars "DB_PATH=/data/app.db,DATA_DIR=/data" --add-volume "name=data-vol,type=cloud-storage,bucket=$BucketName" --add-volume-mount "volume=data-vol,mount-path=/data"
+# [2/3] Cloud Run 배포 (Cloud SQL 연결)
+Write-Host "[2/3] Deploying to Cloud Run with Cloud SQL..." -ForegroundColor Yellow
+gcloud run deploy $ServiceName `
+    --image "gcr.io/$ProjectId/$ServiceName" `
+    --region $Region `
+    --platform managed `
+    --allow-unauthenticated `
+    --memory 2Gi --cpu 2 `
+    --timeout 900 `
+    --min-instances 1 --max-instances 10 `
+    --concurrency 10 `
+    --execution-environment gen2 `
+    --set-env-vars "DATABASE_URL=$DatabaseUrl" `
+    --add-cloudsql-instances $SqlConnection `
+    --vpc-connector=medical-connector `
+    --vpc-egress=all-traffic `
+    --cpu-boost `
+    --no-cpu-throttling `
+    --clear-volumes `
+    --clear-volume-mounts
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Deploy failed!" -ForegroundColor Red
     exit 1
 }
 
-# [3/4] 결과 확인
+# [3/3] 결과 확인
 Write-Host ""
-Write-Host "[3/4] Deploy complete!" -ForegroundColor Green
+Write-Host "[3/3] Deploy complete!" -ForegroundColor Green
 $url = gcloud run services describe $ServiceName --region $Region --format "value(status.url)" 2>$null
 
 Write-Host ""
@@ -71,8 +86,5 @@ Write-Host "  Settings:   $url/settings"
 Write-Host "  Guidelines: $url/guidelines"
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "Storage: SQLite on GCS FUSE (gs://$BucketName)" -ForegroundColor Green
+Write-Host "Storage: Cloud SQL PostgreSQL ($SqlConnection)" -ForegroundColor Green
 Write-Host ""
-Write-Host "To migrate existing data:" -ForegroundColor Yellow
-Write-Host "  python migrate.py" -ForegroundColor Yellow
-Write-Host "  gcloud storage cp app.db gs://$BucketName/app.db" -ForegroundColor Yellow

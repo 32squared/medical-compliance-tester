@@ -29,12 +29,16 @@
             background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; flex-wrap:nowrap; overflow-x:auto; }
   .topbar h1 { font-size:16px; font-weight:700; display:flex; align-items:center; gap:8px; white-space:nowrap; }
   .nav-btn { background:none; border:1px solid var(--border); color:var(--text-dim); border-radius:8px;
-             padding:6px 14px; cursor:pointer; font-size:13px; text-decoration:none; transition:all .15s; }
+             padding:6px 14px; cursor:pointer; font-size:13px; text-decoration:none; transition:all .15s; white-space:nowrap; }
   .nav-btn:hover { background:var(--surface2); color:var(--text); }
   .nav-btn.active { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
 
-  /* Env indicator in topbar */
+  /* ── Env Selector (topbar) ── */
   #envSelectorTop { display:flex; gap:2px; background:var(--bg); border-radius:8px; padding:2px; border:1px solid var(--border); }
+  .env-selector { display:flex; gap:2px; background:var(--bg); border-radius:8px; padding:2px; border:1px solid var(--border); }
+  .env-chip-sm { padding:4px 12px; border-radius:6px; font-size:11px; font-weight:700;
+                 color:var(--text-dim); transition:all .15s; user-select:none; }
+  .env-chip-sm.active { background:var(--accent); color:#0f172a; }
 
   /* ── Settings Tab Bar ── */
   .settings-tabs { display:flex; gap:4px; padding:16px 24px 0; background:var(--surface);
@@ -51,6 +55,24 @@
 
   /* ── Content ── */
   .content { flex:1; padding:24px; max-width:800px; margin:0 auto; width:100%; }
+
+  /* ── Settings Tab Bar ── */
+  .settings-tab-bar {
+    display:flex; gap:0; background:var(--surface); border:1px solid var(--border);
+    border-radius:12px 12px 0 0; overflow-x:auto; -webkit-overflow-scrolling:touch;
+    scrollbar-width:none; margin-bottom:0;
+  }
+  .settings-tab-bar::-webkit-scrollbar { display:none; }
+  .settings-tab {
+    flex:0 0 auto; padding:12px 20px; font-size:13px; font-weight:600;
+    color:var(--text-dim); cursor:pointer; white-space:nowrap; transition:all .15s;
+    border-bottom:2px solid transparent; background:none; border-top:none; border-left:none; border-right:none;
+    display:flex; align-items:center; gap:6px;
+  }
+  .settings-tab:hover { color:var(--text); background:var(--surface2); }
+  .settings-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+  .settings-tab-content { display:none; }
+  .settings-tab-content.active { display:block; }
 
   .card { background:var(--surface); border:1px solid var(--border); border-radius:16px;
           padding:24px; margin-bottom:20px; }
@@ -132,14 +154,16 @@
 <div class="topbar">
   <h1 style="font-size:16px;font-weight:700">&#127973; 나만의 주치의</h1>
   <div class="env-selector" id="envSelectorTop">
-    <span class="env-chip-sm-top" data-env="dev" style="padding:4px 12px;border-radius:6px;font-size:11px;font-weight:700;cursor:default;color:var(--text-dim)">DEV</span>
-    <span class="env-chip-sm-top" data-env="stg" style="padding:4px 12px;border-radius:6px;font-size:11px;font-weight:700;cursor:default;color:var(--text-dim)">STG</span>
-    <span class="env-chip-sm-top" data-env="prod" style="padding:4px 12px;border-radius:6px;font-size:11px;font-weight:700;cursor:default;color:var(--text-dim)">PROD</span>
+    <span class="env-chip-sm" data-env="dev" style="cursor:default">DEV</span>
+    <span class="env-chip-sm" data-env="stg" style="cursor:default">STG</span>
+    <span class="env-chip-sm" data-env="prod" style="cursor:default">PROD</span>
   </div>
   <a href="/" class="nav-btn">채팅 테스터</a>
   <a href="/manager" class="nav-btn">시나리오 관리</a>
   <a href="/history" class="nav-btn">테스트 이력</a>
-  <a href="/guidelines" class="nav-btn">가이드라인</a>
+  <a href="/guidelines" class="nav-btn">법률 평가 기준</a>
+  <a href="/criteria" class="nav-btn">문진 평가 기준</a>
+  <a href="/rlhf" class="nav-btn">RLHF 관리</a>
   <a href="/settings" class="nav-btn active">&#9881; 설정</a>
   <span id="testerBadge" style="margin-left:auto;display:none;font-size:11px;color:var(--accent);background:var(--accent-dim);padding:3px 10px;border-radius:6px;cursor:pointer;white-space:nowrap"></span>
 </div>
@@ -182,12 +206,21 @@
 <!-- ── Content (Admin 인증 후 표시) ── -->
 <div class="content" id="mainContent" style="display:none">
 
-  <!-- ── tab-api ── -->
-  <div class="settings-tab-content active" id="tab-api">
+  <!-- ── Settings Tab Bar ── -->
+  <div class="settings-tab-bar" id="settingsTabBar">
+    <button class="settings-tab active" data-tab="tab-api" onclick="switchSettingsTab('tab-api')">🔌 API 연결 설정</button>
+    <button class="settings-tab" data-tab="tab-arena" onclick="switchSettingsTab('tab-arena')">🏟️ Arena 설정</button>
+    <button class="settings-tab" data-tab="tab-gpt" onclick="switchSettingsTab('tab-gpt')">🤖 GPT 연결 설정</button>
+    <button class="settings-tab" data-tab="tab-users" onclick="switchSettingsTab('tab-users')" style="display:none">👥 사용자 관리</button>
+    <button class="settings-tab" data-tab="tab-logs" onclick="switchSettingsTab('tab-logs')" style="display:none">📋 서버 실시간 로그</button>
+  </div>
 
-    <!-- API 연결 설정 -->
-    <div class="card">
-      <h2>&#9881; API 연결 설정</h2>
+  <!-- ══════════════════════════════════════════ -->
+  <!-- Tab 1: API 연결 설정 -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="settings-tab-content active" id="tab-api">
+    <div class="card" style="border-radius:0 0 16px 16px;border-top:none;margin-bottom:20px">
+      <h2>🔌 API 연결 설정</h2>
 
       <div class="field">
         <label>환경 선택</label>
@@ -195,18 +228,6 @@
           <div class="env-chip active" data-env="dev" onclick="selectEnv('dev',this)">DEV</div>
           <div class="env-chip" data-env="stg" onclick="selectEnv('stg',this)">STG</div>
           <div class="env-chip" data-env="prod" onclick="selectEnv('prod',this)">PROD</div>
-        </div>
-      </div>
-
-      <div class="field-row">
-        <div class="field">
-          <label>Base URL</label>
-          <input type="url" id="apiUrl" value="https://dev-skix.phnyx.ai" readonly style="opacity:.7">
-        </div>
-        <div class="field">
-          <label>X-tenant-Domain</label>
-          <input type="text" id="xTenantDomain" value="dev-skix" readonly style="opacity:.7">
-          <div class="hint">환경 선택시 자동 설정됩니다</div>
         </div>
       </div>
 
@@ -220,80 +241,14 @@
         <input type="text" id="xApiUid" placeholder="사용자 식별 키 입력">
       </div>
 
-      <div class="field">
-        <label>Graph Type</label>
-        <select id="graphType">
-          <option value="ORCHESTRATED_HYBRID_SEARCH">ORCHESTRATED_HYBRID_SEARCH (신규, 기본)</option>
-          <option value="SUPERVISED_HYBRID_SEARCH">SUPERVISED_HYBRID_SEARCH (구버전)</option>
-        </select>
-        <div class="hint">기본 그래프 타입. 운영 환경 호환성이 필요한 경우 SUPERVISED 선택 가능.</div>
-      </div>
-
-      <div class="field">
-        <label>CORS 프록시 URL (선택)</label>
-        <input type="url" id="proxyUrl" placeholder="비워두면 자동 감지">
-        <div class="hint">비워두면 현재 서버 주소를 자동 사용합니다. 별도 프록시 서버 사용 시에만 입력하세요.</div>
-      </div>
-
-      <div class="field">
-        <label>검색 소스</label>
-        <div class="source-checks">
-          <label><input type="checkbox" id="srcWeb" checked> WEB</label>
-          <label><input type="checkbox" id="srcPubmed" checked> PUBMED</label>
-        </div>
-      </div>
-
-      <div style="display:flex;gap:10px;align-items:center">
-        <button class="btn-primary" onclick="testConnection()">연결 테스트</button>
-        <span id="connResult" style="font-size:12px;"></span>
-      </div>
     </div>
-
-    <!-- 의료법 검수 설정 -->
-    <div class="card">
-      <h2>&#128203; 의료법 검수 설정</h2>
-      <div class="field">
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px">
-          <input type="checkbox" id="enableCompliance" checked style="width:auto">
-          실시간 의료법 준수 검사 (정규식)
-        </label>
-      </div>
-    </div>
-
-    <!-- 저장 버튼 -->
-    <div style="display:flex;gap:10px;justify-content:flex-end">
-      <button class="btn-outline" onclick="loadSettings()">되돌리기</button>
-      <button class="btn-primary" onclick="saveSettings(); showToast('설정이 저장되었습니다','success')">설정 저장</button>
-    </div>
-
-    <hr class="divider">
-
-    <!-- 비밀번호 변경 -->
-    <div class="card">
-      <h2>&#128273; Admin 비밀번호 변경</h2>
-      <div class="field">
-        <label>현재 비밀번호</label>
-        <input type="password" id="currentPw" placeholder="현재 비밀번호">
-      </div>
-      <div class="field">
-        <label>새 비밀번호</label>
-        <input type="password" id="newPw" placeholder="새 비밀번호 (4자 이상)">
-      </div>
-      <div class="field">
-        <label>새 비밀번호 확인</label>
-        <input type="password" id="newPwConfirm" placeholder="새 비밀번호 확인" onkeydown="if(event.key==='Enter')changePassword()">
-      </div>
-      <button class="btn-outline" onclick="changePassword()">비밀번호 변경</button>
-    </div>
-
-    <!-- Admin 로그아웃 -->
-    <div style="text-align:center;margin-top:10px;margin-bottom:20px">
-      <button class="btn-outline" onclick="doLogout()" style="color:var(--red);border-color:var(--red)">&#128682; Admin 로그아웃</button>
-    </div>
+  </div>
 
   </div><!-- /tab-api -->
 
-  <!-- ── tab-arena ── -->
+  <!-- ══════════════════════════════════════════ -->
+  <!-- Tab 2: Arena 설정 -->
+  <!-- ══════════════════════════════════════════ -->
   <div class="settings-tab-content" id="tab-arena">
 
     <!-- Arena 전역 옵션 카드 -->
@@ -447,12 +402,12 @@
 
   </div><!-- /tab-arena -->
 
-  <!-- ── tab-gpt ── -->
+  <!-- ══════════════════════════════════════════ -->
+  <!-- Tab 3: GPT 연결 설정 -->
+  <!-- ══════════════════════════════════════════ -->
   <div class="settings-tab-content" id="tab-gpt">
-
-    <!-- ChatGPT 평가 설정 -->
-    <div class="card">
-      <h2>&#129302; ChatGPT 평가 설정</h2>
+    <div class="card" style="border-radius:0 0 16px 16px;border-top:none;margin-bottom:20px">
+      <h2>🤖 ChatGPT 평가 설정</h2>
       <div class="field">
         <label>OpenAI API Key</label>
         <input type="password" id="openaiKey" placeholder="sk-... (평가 기능 사용 시 필수)">
@@ -480,29 +435,30 @@
           응답마다 자동 ChatGPT 평가
         </label>
       </div>
+
+      <hr class="divider">
+
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn-outline" onclick="loadSettings()">되돌리기</button>
+        <button class="btn-primary" onclick="saveSettings(); showToast('설정이 저장되었습니다','success')">설정 저장</button>
+      </div>
     </div>
+  </div>
 
-    <!-- 저장 버튼 -->
-    <div style="display:flex;gap:10px;justify-content:flex-end">
-      <button class="btn-outline" onclick="loadSettings()">되돌리기</button>
-      <button class="btn-primary" onclick="saveSettings(); showToast('설정이 저장되었습니다','success')">설정 저장</button>
-    </div>
-
-  </div><!-- /tab-gpt -->
-
-  <!-- ── tab-users ── -->
+  <!-- ══════════════════════════════════════════ -->
+  <!-- Tab 4: 사용자 관리 (Admin only) -->
+  <!-- ══════════════════════════════════════════ -->
   <div class="settings-tab-content" id="tab-users">
-
     <!-- 가입 승인 대기 -->
     <div class="card">
-      <h2>&#9203; 가입 승인 대기</h2>
+      <h2>⏳ 가입 승인 대기</h2>
       <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px">회원가입 신청자를 승인하거나 거부합니다</p>
       <div id="pendingUserList"></div>
     </div>
 
     <!-- 사용자 관리 -->
     <div class="card">
-      <h2>&#128101; 사용자 관리</h2>
+      <h2>👥 사용자 관리</h2>
       <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px">승인된 사용자 목록 및 관리 (직접 생성도 가능)</p>
       <div id="testerAccountList" style="margin-bottom:12px"></div>
       <hr class="divider" style="margin:12px 0">
@@ -523,7 +479,7 @@
 
     <!-- 테스터 허용 환경 -->
     <div class="card">
-      <h2>&#127760; 테스터 허용 환경</h2>
+      <h2>🌐 테스터 허용 환경</h2>
       <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px">테스터가 사용할 수 있는 환경을 선택합니다</p>
       <div style="display:flex;gap:20px">
         <label style="font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--text)">
@@ -538,26 +494,48 @@
       </div>
     </div>
 
-    <!-- 저장 버튼 -->
-    <div style="display:flex;gap:10px;justify-content:flex-end">
-      <button class="btn-outline" onclick="loadSettings()">되돌리기</button>
-      <button class="btn-primary" onclick="saveSettings(); showToast('설정이 저장되었습니다','success')">설정 저장</button>
+    <!-- 비밀번호 변경 -->
+    <div class="card">
+      <h2>🔑 Admin 비밀번호 변경</h2>
+      <div class="field">
+        <label>현재 비밀번호</label>
+        <input type="password" id="currentPw" placeholder="현재 비밀번호">
+      </div>
+      <div class="field">
+        <label>새 비밀번호</label>
+        <input type="password" id="newPw" placeholder="새 비밀번호 (4자 이상)">
+      </div>
+      <div class="field">
+        <label>새 비밀번호 확인</label>
+        <input type="password" id="newPwConfirm" placeholder="새 비밀번호 확인" onkeydown="if(event.key==='Enter')changePassword()">
+      </div>
+      <button class="btn-outline" onclick="changePassword()">비밀번호 변경</button>
     </div>
 
-  </div><!-- /tab-users -->
+    <!-- Admin 로그아웃 -->
+    <div style="text-align:center;margin-top:10px;margin-bottom:20px">
+      <button class="btn-outline" onclick="doLogout()" style="color:var(--red);border-color:var(--red)">🚪 Admin 로그아웃</button>
+    </div>
+  </div>
 
-  <!-- ── tab-logs ── -->
+  <!-- ══════════════════════════════════════════ -->
+  <!-- Tab 5: 서버 실시간 로그 (Admin only) -->
+  <!-- ══════════════════════════════════════════ -->
   <div class="settings-tab-content" id="tab-logs">
-
     <div class="card">
-      <h2>&#128203; 서버 실시간 로그</h2>
-      <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px">서버 로그를 실시간으로 확인합니다</p>
-      <div id="logContainer" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;height:400px;overflow-y:auto;font-family:monospace;font-size:11px;color:var(--text-dim)">
-        <span style="color:var(--text-dim)">로그 탭을 열면 자동으로 시작됩니다...</span>
+      <h2>🖥️ 서버 실시간 로그</h2>
+      <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+        <button class="btn-primary" onclick="toggleLogStream()" id="logToggleBtn" style="font-size:12px;padding:6px 14px">▶ 실시간 로그 시작</button>
+        <button class="btn-outline" onclick="clearLogView()" style="font-size:12px;padding:6px 14px">🗑 화면 지우기</button>
+        <input type="text" id="logFilter" placeholder="필터 (예: 프록시, ERROR)..." oninput="filterLogs()"
+               style="flex:1;min-width:120px;padding:6px 10px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px">
+        <span id="logCount" style="font-size:11px;color:var(--text-dim);align-self:center"></span>
+      </div>
+      <div id="logViewer" style="height:400px;overflow-y:auto;background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:10px;font-family:'Consolas','Courier New',monospace;font-size:11px;line-height:1.6;color:#c9d1d9">
+        <div style="color:#8b949e">▶ 시작 버튼을 눌러 실시간 로그를 확인하세요</div>
       </div>
     </div>
-
-  </div><!-- /tab-logs -->
+  </div>
 
 </div><!-- /mainContent -->
 
@@ -569,37 +547,19 @@
 
 <script>
 // ══════════════════════════════════════════
-// Constants
-// ══════════════════════════════════════════
-const ENVS = {
-  dev:  { url: 'https://dev-skix.phnyx.ai',     tenant: 'dev-skix' },
-  stg:  { url: 'https://staging-skix.phnyx.ai',  tenant: 'staging-skix' },
-  prod: { url: 'https://skix.phnyx.ai',          tenant: 'skix' },
-};
-let currentEnv = 'dev';
-
-// 환경별 독립 필드 vs 공통 필드
-const ENV_KEYS = ['xApiKey', 'xApiUid'];
-const COMMON_KEYS = ['graphType', 'proxyUrl', 'srcWeb', 'srcPubmed', 'enableCompliance', 'openaiKey', 'openaiModel', 'enableLlmEval', 'arenaRandomSwap'];
-
-// 메모리에 환경별 설정 저장
-let envSettings = {
-  dev:  { xApiKey: '', xApiUid: '', apiUrl: ENVS.dev.url,  xTenantDomain: ENVS.dev.tenant },
-  stg:  { xApiKey: '', xApiUid: '', apiUrl: ENVS.stg.url,  xTenantDomain: ENVS.stg.tenant },
-  prod: { xApiKey: '', xApiUid: '', apiUrl: ENVS.prod.url, xTenantDomain: ENVS.prod.tenant },
-};
-
-// ══════════════════════════════════════════
 // Tab Switching
 // ══════════════════════════════════════════
 function switchSettingsTab(tabId) {
-  // 탭 버튼 active 전환
-  document.querySelectorAll('.settings-tab').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.tab === tabId);
+  // Hide all tab contents
+  document.querySelectorAll('.settings-tab-content').forEach(function(el) {
+    el.classList.remove('active');
   });
-  // 탭 콘텐츠 active 전환
-  document.querySelectorAll('.settings-tab-content').forEach(el => {
-    el.classList.toggle('active', el.id === tabId);
+  // Show selected tab content
+  var target = document.getElementById(tabId);
+  if (target) target.classList.add('active');
+  // Update tab bar active state
+  document.querySelectorAll('.settings-tab').forEach(function(btn) {
+    btn.classList.toggle('active', btn.getAttribute('data-tab') === tabId);
   });
   // Arena 탭 진입 시 설정 로드
   if (tabId === 'tab-arena') {
@@ -610,7 +570,46 @@ function switchSettingsTab(tabId) {
     loadTesterAccounts();
     loadPendingUsers();
   }
+  // Save last active tab to localStorage
+  try { localStorage.setItem('settings_active_tab', tabId); } catch(e) {}
 }
+
+function restoreLastTab() {
+  try {
+    var saved = localStorage.getItem('settings_active_tab');
+    if (saved) {
+      var tabBtn = document.querySelector('.settings-tab[data-tab="' + saved + '"]');
+      // Only restore if tab exists and is visible
+      if (tabBtn && tabBtn.style.display !== 'none') {
+        switchSettingsTab(saved);
+        return;
+      }
+    }
+  } catch(e) {}
+  // Default to tab 1
+  switchSettingsTab('tab-api');
+}
+
+// ══════════════════════════════════════════
+// Constants
+// ══════════════════════════════════════════
+var ENVS = {
+  dev:  { url: 'https://dev-skix.phnyx.ai',     tenant: 'dev-skix' },
+  stg:  { url: 'https://staging-skix.phnyx.ai',  tenant: 'staging-skix-test' },
+  prod: { url: 'https://skix.phnyx.ai',          tenant: 'prod-skix-test' },
+};
+var currentEnv = 'dev';
+
+// 환경별 독립 필드 vs 공통 필드
+var ENV_KEYS = ['xApiKey', 'xApiUid', 'xTenantDomain', 'apiUrl'];
+var COMMON_KEYS = ['graphType', 'proxyUrl', 'srcWeb', 'srcPubmed', 'enableCompliance', 'openaiKey', 'openaiModel', 'enableLlmEval', 'arenaRandomSwap'];
+
+// 메모리에 환경별 설정 저장
+var envSettings = {
+  dev:  { xApiKey: '', xApiUid: '', apiUrl: ENVS.dev.url,  xTenantDomain: ENVS.dev.tenant },
+  stg:  { xApiKey: '', xApiUid: '', apiUrl: ENVS.stg.url,  xTenantDomain: ENVS.stg.tenant },
+  prod: { xApiKey: '', xApiUid: '', apiUrl: ENVS.prod.url, xTenantDomain: ENVS.prod.tenant },
+};
 
 // ══════════════════════════════════════════
 // Environment Switching
@@ -618,25 +617,26 @@ function switchSettingsTab(tabId) {
 function selectEnv(env, el) {
   storeCurrentEnvValues();
   currentEnv = env;
-  document.querySelectorAll('.env-chip').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('.env-chip').forEach(function(c) { c.classList.remove('active'); });
   el.classList.add('active');
   loadEnvToForm(env);
   autoSaveSettings();
 }
 
 function storeCurrentEnvValues() {
-  for (const key of ENV_KEYS) {
-    const el = document.getElementById(key);
+  for (var i = 0; i < ENV_KEYS.length; i++) {
+    var key = ENV_KEYS[i];
+    var el = document.getElementById(key);
     if (el) envSettings[currentEnv][key] = el.value;
   }
 }
 
 function loadEnvToForm(env) {
-  const es = envSettings[env];
-  const apiUrlEl = document.getElementById('apiUrl');
-  const xTenantEl = document.getElementById('xTenantDomain');
-  const xApiKeyEl = document.getElementById('xApiKey');
-  const xApiUidEl = document.getElementById('xApiUid');
+  var es = envSettings[env];
+  var apiUrlEl = document.getElementById('apiUrl');
+  var xTenantEl = document.getElementById('xTenantDomain');
+  var xApiKeyEl = document.getElementById('xApiKey');
+  var xApiUidEl = document.getElementById('xApiUid');
   if (apiUrlEl) apiUrlEl.value = es.apiUrl || ENVS[env].url;
   if (xTenantEl) xTenantEl.value = es.xTenantDomain || ENVS[env].tenant;
   if (xApiKeyEl) xApiKeyEl.value = es.xApiKey || '';
@@ -649,7 +649,7 @@ function loadEnvToForm(env) {
 async function saveSettings() {
   storeCurrentEnvValues();
 
-  const settings = {
+  var settings = {
     currentEnv: currentEnv,
     environments: {},
     runMode: 'live',
@@ -919,12 +919,32 @@ async function doLoginWithPassword(pw) {
       if (mainContent) mainContent.style.display = '';
       if (settingsTabBar) settingsTabBar.style.display = '';
       loadSettings();
+      showAdminTabs();
     } else {
       if (errEl) errEl.textContent = data.error || '로그인 실패';
     }
   } catch(e) {
     if (errEl) errEl.textContent = '서버 연결 실패';
   }
+}
+
+// ══════════════════════════════════════════
+// Admin-only tab visibility
+// ══════════════════════════════════════════
+function showAdminTabs() {
+  fetch('/api/auth/status').then(function(r) { return r.json(); }).then(function(s) {
+    if (s.isAdmin) {
+      document.querySelector('.settings-tab[data-tab="tab-users"]').style.display = '';
+      document.querySelector('.settings-tab[data-tab="tab-logs"]').style.display = '';
+      restoreLastTab();
+    } else {
+      document.querySelector('.settings-tab[data-tab="tab-users"]').style.display = 'none';
+      document.querySelector('.settings-tab[data-tab="tab-logs"]').style.display = 'none';
+      restoreLastTab();
+    }
+  }).catch(function() {
+    restoreLastTab();
+  });
 }
 
 async function doLogout() {
@@ -1253,6 +1273,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (mainContent) mainContent.style.display = '';
         if (settingsTabBar) settingsTabBar.style.display = '';
         loadSettings();
+        showAdminTabs();
       }
     } else {
       const loginGate = document.getElementById('loginGate');
@@ -1278,6 +1299,102 @@ document.addEventListener('DOMContentLoaded', async function() {
     });
   }, 500);
 });
+
+// ══════════════════════════════════════════
+// 실시간 로그 뷰어
+// ══════════════════════════════════════════
+var logEventSource = null;
+var logLines = [];
+var logLineCount = 0;
+
+function toggleLogStream() {
+  var btn = document.getElementById('logToggleBtn');
+  if (logEventSource) {
+    logEventSource.close();
+    logEventSource = null;
+    btn.textContent = '\u25B6 \uC2E4\uC2DC\uAC04 \uB85C\uADF8 \uC2DC\uC791';
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-outline');
+    return;
+  }
+
+  var viewer = document.getElementById('logViewer');
+  viewer.innerHTML = '<div style="color:#8b949e">\uC5F0\uACB0 \uC911...</div>';
+  logLineCount = 0;
+
+  logEventSource = new EventSource('/api/logs/stream');
+  btn.textContent = '\u23F9 \uC911\uC9C0';
+  btn.classList.remove('btn-outline');
+  btn.classList.add('btn-primary');
+
+  logEventSource.onopen = function() {
+    viewer.innerHTML = '';
+  };
+
+  logEventSource.onmessage = function(e) {
+    if (!e.data) return;
+    logLines.push(e.data);
+    if (logLines.length > 1000) logLines.shift();
+    logLineCount++;
+    renderLogLine(e.data);
+    document.getElementById('logCount').textContent = logLineCount + '\uC904';
+  };
+
+  logEventSource.onerror = function() {
+    logEventSource.close();
+    logEventSource = null;
+    btn.textContent = '\u25B6 \uC2E4\uC2DC\uAC04 \uB85C\uADF8 \uC2DC\uC791';
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-outline');
+    var div = document.createElement('div');
+    div.style.color = '#f85149';
+    div.textContent = '[\uC5F0\uACB0 \uB04A\uAE40 \u2014 \uB2E4\uC2DC \uC2DC\uC791\uD558\uC138\uC694]';
+    viewer.appendChild(div);
+  };
+}
+
+function renderLogLine(line) {
+  var viewer = document.getElementById('logViewer');
+  var filter = (document.getElementById('logFilter').value || '').toLowerCase();
+  if (filter && !line.toLowerCase().includes(filter)) return;
+
+  var color = '#c9d1d9';
+  if (line.includes('ERROR') || line.includes('error') || line.includes('\uC2E4\uD328')) color = '#f85149';
+  else if (line.includes('WARN') || line.includes('warn') || line.includes('\uC8FC\uC758') || line.includes('\uACBD\uACE0')) color = '#d29922';
+  else if (line.includes('[\uD504\uB85D\uC2DC]') || line.includes('[SKIX]')) color = '#58a6ff';
+  else if (line.includes('[GPT]') || line.includes('[\uBC30\uCE58]')) color = '#a5d6ff';
+  else if (line.includes('200') || line.includes('\uC131\uACF5')) color = '#3fb950';
+
+  var div = document.createElement('div');
+  div.style.color = color;
+  div.style.borderBottom = '1px solid #21262d';
+  div.style.padding = '1px 0';
+  div.textContent = line;
+  viewer.appendChild(div);
+
+  while (viewer.children.length > 1000) viewer.removeChild(viewer.firstChild);
+  viewer.scrollTop = viewer.scrollHeight;
+}
+
+function clearLogView() {
+  document.getElementById('logViewer').innerHTML = '<div style="color:#8b949e">\uD654\uBA74\uC774 \uC9C0\uC6CC\uC84C\uC2B5\uB2C8\uB2E4. \uC0C8 \uB85C\uADF8\uAC00 \uACC4\uC18D \uD45C\uC2DC\uB429\uB2C8\uB2E4.</div>';
+  logLineCount = 0;
+  document.getElementById('logCount').textContent = '';
+}
+
+function filterLogs() {
+  var viewer = document.getElementById('logViewer');
+  var filter = (document.getElementById('logFilter').value || '').toLowerCase();
+  viewer.innerHTML = '';
+  var count = 0;
+  for (var i = 0; i < logLines.length; i++) {
+    var line = logLines[i];
+    if (filter && !line.toLowerCase().includes(filter)) continue;
+    renderLogLine(line);
+    count++;
+  }
+  document.getElementById('logCount').textContent = count + '/' + logLines.length + '\uC904';
+}
 </script>
 </body>
 </html>
