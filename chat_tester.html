@@ -927,10 +927,39 @@ function getProxyUrl() {
   return window.location.origin;
 }
 
+// 최신 settings 동기화 (다른 탭에서 환경 변경 시 즉시 반영)
+async function refreshSettingsBeforeCall() {
+  try {
+    const res = await fetch('/api/settings');
+    if (!res.ok) return;
+    const settings = await res.json();
+    if (!settings || Object.keys(settings).length === 0) return;
+    // 모듈 전역 변수 업데이트
+    savedSettings = settings;
+    if (settings.environments) {
+      for (const env of ['dev', 'stg', 'prod']) {
+        if (settings.environments[env]) {
+          envSettings[env] = { ...envSettings[env], ...settings.environments[env] };
+        }
+      }
+    }
+    if (settings.currentEnv && settings.currentEnv !== currentEnv) {
+      currentEnv = settings.currentEnv;
+      // 환경 chip UI 갱신 (있으면)
+      try { if (typeof updateEnvChips === 'function') updateEnvChips(); } catch(e) {}
+    }
+  } catch(e) {
+    console.warn('refreshSettingsBeforeCall failed:', e);
+  }
+}
+
 // ──────────────────────────────────────
 // SSE Streaming API Call
 // ──────────────────────────────────────
 async function callSSE(query, { onGeneration, onProgress, onInfo, onDone, onError, conversationId }) {
+  // 채팅 직전에 최신 settings 가져와 currentEnv/envSettings 동기화
+  // (settings 페이지에서 환경을 변경한 직후 새로고침 없이도 즉시 반영)
+  await refreshSettingsBeforeCall();
   const cfg = getConfig();
   const targetUrl = `${cfg.url}/api/service/conversations/${cfg.graphType}`;
   const body = buildBody(query);
