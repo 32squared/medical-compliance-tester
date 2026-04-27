@@ -1589,6 +1589,7 @@ function renderAssistantEvaluation(msgDiv, evalData) {
   var enhancement = evalData.enhancement || null;
   var isLive = !!evalData.isLive;
   var gptModel = evalData.gptModel || '';
+  var existingFeedback = evalData.feedback || null;
 
   // ── 1. Search results panel ──
   if (searchResults && searchResults.length > 0) {
@@ -2042,6 +2043,16 @@ function renderAssistantEvaluation(msgDiv, evalData) {
   fbDiv.className = 'rlhf-feedback';
   var fbId = 'rlhf-' + msgId;
   var fbState = { thumbs: null, rating: 0, tags: [], sent: false };
+  if (existingFeedback) {
+    var _efRating = existingFeedback.rating || 0;
+    if (_efRating >= 4) fbState.thumbs = 'good';
+    else if (_efRating > 0 && _efRating <= 3) fbState.thumbs = 'bad';
+    fbState.rating = _efRating;
+    fbState.tags = Array.isArray(existingFeedback.labels) ? existingFeedback.labels.slice() : [];
+    fbState.correctedResponse = existingFeedback.corrected_response || '';
+    fbState.memo = existingFeedback.feedback_note || '';
+    fbState.sent = true;
+  }
 
   // Row 1: thumbs + stars + tags
   var fbRow = document.createElement('div');
@@ -2177,6 +2188,32 @@ function renderAssistantEvaluation(msgDiv, evalData) {
   });
   corrDiv.appendChild(corrSaveBtn);
   fbDiv.appendChild(corrDiv);
+
+  // ── 기존 피드백 시각적 복원 ──
+  if (existingFeedback && fbState.sent) {
+    if (fbState.thumbs === 'good') {
+      thumbGood.className = 'rlhf-thumb-btn active-good';
+    } else if (fbState.thumbs === 'bad') {
+      thumbBad.className = 'rlhf-thumb-btn active-bad';
+    }
+    if (fbState.rating > 0) {
+      var _efAllStars = starsDiv.querySelectorAll('.rlhf-star');
+      for (var _efSr = 0; _efSr < _efAllStars.length; _efSr++) {
+        _efAllStars[_efSr].classList.toggle('filled', parseInt(_efAllStars[_efSr].dataset.val) <= fbState.rating);
+      }
+    }
+    var _efTagBtns = tagRow.querySelectorAll('.rlhf-tag-btn');
+    for (var _efTb = 0; _efTb < _efTagBtns.length; _efTb++) {
+      if (fbState.tags.indexOf(_efTagBtns[_efTb].textContent) >= 0) {
+        _efTagBtns[_efTb].classList.add('active');
+      }
+    }
+    corrDiv.classList.add('open');
+    corrDiv.dataset.mode = fbState.thumbs || 'good';
+    if (fbState.correctedResponse) corrTextarea.value = fbState.correctedResponse;
+    if (fbState.memo) corrMemoInput.value = fbState.memo;
+    fbStatusSpan.textContent = '✓ 저장된 피드백';
+  }
 
   msgDiv.appendChild(fbDiv);
 
@@ -2571,6 +2608,22 @@ async function loadConversation(convId) {
     if (!res.ok) { showToast('대화 로드 실패', 'error'); return; }
     const conv = await res.json();
 
+    // 피드백 한 번에 fetch → message_id별 매핑
+    let fbByMsgId = {};
+    try {
+      const fbRes = await fetch(`/api/feedback?conversation_id=${encodeURIComponent(convId)}&limit=200&include_comments=true`);
+      if (fbRes.ok) {
+        const fbList = await fbRes.json();
+        for (const fb of (Array.isArray(fbList) ? fbList : [])) {
+          const mid = fb.message_id;
+          if (!mid) continue;
+          if (!fbByMsgId[mid] || new Date(fb.created_at || 0) > new Date(fbByMsgId[mid].created_at || 0)) {
+            fbByMsgId[mid] = fb;
+          }
+        }
+      }
+    } catch (e) { console.warn('feedback load failed', e); }
+
     // 채팅 영역 초기화
     chatHistory = [];
     currentConvId = convId;
@@ -2593,7 +2646,8 @@ async function loadConversation(convId) {
         addUserMessage(msg.content);
         chatHistory.push({ role: 'user', content: msg.content });
       } else if (msg.role === 'assistant') {
-        addRestoredAssistantMessage(msg.content, msg);
+        const msgWithFb = Object.assign({}, msg, { feedback: fbByMsgId[msg.msgId] || null });
+        addRestoredAssistantMessage(msg.content, msgWithFb);
         chatHistory.push({ role: 'assistant', content: msg.content, compliance: msg.compliance });
       }
     }
@@ -2638,7 +2692,8 @@ function addRestoredAssistantMessage(text, meta = {}) {
     comments: comments,
     enhancement: meta.enhancement || null,
     isLive: false,
-    gptModel: meta.gptModel || ''
+    gptModel: meta.gptModel || '',
+    feedback: meta.feedback || null
   });
 }
 
