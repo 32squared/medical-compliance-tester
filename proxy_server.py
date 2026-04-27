@@ -659,7 +659,13 @@ class ProxyHandler(BaseHTTPRequestHandler):
         return ''
 
     def _is_advisor_blocked(self, path: str, method: str) -> bool:
-        """advisor가 호출 불가한 API 판단"""
+        """advisor가 호출 불가한 API 판단
+
+        admin은 advisor 토큰이 동시에 있어도 차단 면제 (관리자 권한이 우선).
+        admin/tester 토큰이 별도 쿠키로 공존 가능하므로, admin이면 무조건 통과.
+        """
+        if self._is_admin():
+            return False
         if not self._is_advisor():
             return False
         # advisor가 사용해야 하는 tester API는 예외 (로그인/로그아웃)
@@ -1199,8 +1205,9 @@ class ProxyHandler(BaseHTTPRequestHandler):
             '/demo_report.html': os.path.join('reports', 'demo_report.html'),
         }
         # advisor 권한 차단 — 채팅 테스터 외 모든 페이지 접근 시 / 로 리다이렉트
+        # admin은 면제 (admin/tester 토큰 공존 가능 — 관리자 권한이 우선)
         ADVISOR_ALLOWED_PAGES = {'/', '/chat_tester.html'}
-        if path in file_map and self._is_advisor() and path not in ADVISOR_ALLOWED_PAGES:
+        if path in file_map and self._is_advisor() and not self._is_admin() and path not in ADVISOR_ALLOWED_PAGES:
             self.send_response(302)
             self.send_header('Location', '/')
             self.end_headers()
