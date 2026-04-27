@@ -683,7 +683,6 @@ class ProxyHandler(BaseHTTPRequestHandler):
             '/api/auth/reject-user',
             '/api/auth/pending-users',
             '/api/users/',
-            '/api/categories',
             '/api/logs',
             '/api/batch',
             '/api/guidelines/test',
@@ -698,6 +697,9 @@ class ProxyHandler(BaseHTTPRequestHandler):
             return True
         # GET이 아닌 guidelines 수정은 차단
         if path == '/api/guidelines' and method != 'GET':
+            return True
+        # GET이 아닌 categories 수정은 차단 (advisor에게 카테고리 조회는 허용)
+        if path.startswith('/api/categories') and method != 'GET':
             return True
         return False
 
