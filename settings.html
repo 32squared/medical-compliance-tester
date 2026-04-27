@@ -168,14 +168,6 @@
   <span id="testerBadge" style="margin-left:auto;display:none;font-size:11px;color:var(--accent);background:var(--accent-dim);padding:3px 10px;border-radius:6px;cursor:pointer;white-space:nowrap"></span>
 </div>
 
-<!-- ── Settings Tab Bar ── -->
-<div class="settings-tabs" id="settingsTabBar" style="display:none">
-  <button class="settings-tab active" data-tab="tab-api" onclick="switchSettingsTab('tab-api')">&#128299; API 연결 설정</button>
-  <button class="settings-tab" data-tab="tab-arena" onclick="switchSettingsTab('tab-arena')">&#127967; Arena 설정</button>
-  <button class="settings-tab" data-tab="tab-gpt" onclick="switchSettingsTab('tab-gpt')">&#129302; GPT 연결 설정</button>
-  <button class="settings-tab" data-tab="tab-users" onclick="switchSettingsTab('tab-users')">&#128101; 사용자 관리</button>
-  <button class="settings-tab" data-tab="tab-logs" onclick="switchSettingsTab('tab-logs')">&#128203; 서버 실시간 로그</button>
-</div>
 
 <!-- ── Login Gate (비인증 시 표시) ── -->
 <div id="loginGate" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.8);z-index:500;align-items:center;justify-content:center">
@@ -241,10 +233,62 @@
         <input type="text" id="xApiUid" placeholder="사용자 식별 키 입력">
       </div>
 
+      <div class="field-row">
+        <div class="field">
+          <label>X-tenant-Domain</label>
+          <input type="text" id="xTenantDomain" value="dev-skix">
+          <div class="hint">환경 선택시 자동 설정됩니다</div>
+        </div>
+        <div class="field">
+          <label>Base URL</label>
+          <input type="url" id="apiUrl" value="https://dev-skix.phnyx.ai" readonly style="opacity:.7">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>검색 소스</label>
+        <div class="source-checks">
+          <label><input type="checkbox" id="srcWeb" checked> WEB</label>
+          <label><input type="checkbox" id="srcPubmed" checked> PUBMED</label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Graph Type</label>
+        <select id="graphType">
+          <option value="ORCHESTRATED_HYBRID_SEARCH">ORCHESTRATED_HYBRID_SEARCH (신규, 기본)</option>
+          <option value="SUPERVISED_HYBRID_SEARCH">SUPERVISED_HYBRID_SEARCH (구버전)</option>
+          <option value="SUPERVISED_VECTOR_SEARCH">SUPERVISED_VECTOR_SEARCH</option>
+          <option value="SIMPLE_AGENT">SIMPLE_AGENT</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>CORS 프록시 URL (선택)</label>
+        <input type="url" id="proxyUrl" placeholder="비워두면 자동 감지">
+        <div class="hint">비워두면 현재 서버 주소를 자동 사용합니다. 별도 프록시 서버 사용 시에만 입력하세요.</div>
+      </div>
+
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:20px">
+        <button class="btn-primary" onclick="testConnection()">연결 테스트</button>
+        <span id="connResult" style="font-size:12px;"></span>
+      </div>
+
+      <hr class="divider">
+
+      <div class="field">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px">
+          <input type="checkbox" id="enableCompliance" checked style="width:auto">
+          실시간 의료법 준수 검사 (정규식)
+        </label>
+      </div>
+
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn-outline" onclick="loadSettings()">되돌리기</button>
+        <button class="btn-primary" onclick="saveSettings(); showToast('설정이 저장되었습니다','success')">설정 저장</button>
+      </div>
     </div>
   </div>
-
-  </div><!-- /tab-api -->
 
   <!-- ══════════════════════════════════════════ -->
   <!-- Tab 2: Arena 설정 -->
@@ -578,7 +622,8 @@ function restoreLastTab() {
   try {
     var saved = localStorage.getItem('settings_active_tab');
     if (saved) {
-      var tabBtn = document.querySelector('.settings-tab[data-tab="' + saved + '"]');
+      var bar = document.getElementById('settingsTabBar');
+      var tabBtn = bar ? bar.querySelector('.settings-tab[data-tab="' + saved + '"]') : null;
       // Only restore if tab exists and is visible
       if (tabBtn && tabBtn.style.display !== 'none') {
         switchSettingsTab(saved);
@@ -933,15 +978,18 @@ async function doLoginWithPassword(pw) {
 // ══════════════════════════════════════════
 function showAdminTabs() {
   fetch('/api/auth/status').then(function(r) { return r.json(); }).then(function(s) {
+    var bar = document.getElementById('settingsTabBar');
+    if (!bar) { restoreLastTab(); return; }
+    var usersBtn = bar.querySelector('.settings-tab[data-tab="tab-users"]');
+    var logsBtn  = bar.querySelector('.settings-tab[data-tab="tab-logs"]');
     if (s.isAdmin) {
-      document.querySelector('.settings-tab[data-tab="tab-users"]').style.display = '';
-      document.querySelector('.settings-tab[data-tab="tab-logs"]').style.display = '';
-      restoreLastTab();
+      if (usersBtn) usersBtn.style.display = '';
+      if (logsBtn)  logsBtn.style.display = '';
     } else {
-      document.querySelector('.settings-tab[data-tab="tab-users"]').style.display = 'none';
-      document.querySelector('.settings-tab[data-tab="tab-logs"]').style.display = 'none';
-      restoreLastTab();
+      if (usersBtn) usersBtn.style.display = 'none';
+      if (logsBtn)  logsBtn.style.display = 'none';
     }
+    restoreLastTab();
   }).catch(function() {
     restoreLastTab();
   });
