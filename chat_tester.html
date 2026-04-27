@@ -2060,27 +2060,29 @@ function renderAssistantEvaluation(msgDiv, evalData) {
     fbState.thumbs = 'good';
     thumbGood.className = 'rlhf-thumb-btn active-good';
     thumbBad.className = 'rlhf-thumb-btn';
+    // 좋음 선택: 별점/태그/메모 입력 영역 열고, 저장 버튼으로만 저장
     var corr = document.getElementById(fbId + '-correction');
-    if (corr) corr.classList.remove('open');
-    fbState.originalQuery = _fbUserPrompt;
-    fbState.fullResponse = _fbFullText;
-    submitRlhfFeedback(_fbMsgId, fbState).then(function(r) {
-      var st = document.getElementById(fbId + '-status');
-      if (st) st.textContent = r && r.success ? '\u2713 \uD53C\uB4DC\uBC31 \uC800\uC7A5\uB428' : '\u26A0 \uC800\uC7A5 \uC2E4\uD328';
-    });
+    if (corr) {
+      corr.classList.add('open');
+      corr.dataset.mode = 'good';
+    }
+    var st = document.getElementById(fbId + '-status');
+    if (st) st.textContent = '저장 버튼을 눌러 피드백을 확정하세요';
+  });
   });
   thumbBad.addEventListener('click', function() {
     fbState.thumbs = 'bad';
     thumbBad.className = 'rlhf-thumb-btn active-bad';
     thumbGood.className = 'rlhf-thumb-btn';
+    // 나쁨 선택: 수정 응답/메모 입력 영역 열고, 저장 버튼으로만 저장
     var corr = document.getElementById(fbId + '-correction');
-    if (corr) corr.classList.add('open');
-    fbState.originalQuery = _fbUserPrompt;
-    fbState.fullResponse = _fbFullText;
-    submitRlhfFeedback(_fbMsgId, fbState).then(function(r) {
-      var st = document.getElementById(fbId + '-status');
-      if (st) st.textContent = r && r.success ? '\u2713 \uD53C\uB4DC\uBC31 \uC800\uC7A5\uB428' : '\u26A0 \uC800\uC7A5 \uC2E4\uD328';
-    });
+    if (corr) {
+      corr.classList.add('open');
+      corr.dataset.mode = 'bad';
+    }
+    var st = document.getElementById(fbId + '-status');
+    if (st) st.textContent = '수정 응답/메모를 입력 후 저장 버튼을 눌러주세요';
+  });
   });
   fbRow.appendChild(thumbGood);
   fbRow.appendChild(thumbBad);
@@ -2177,34 +2179,6 @@ function renderAssistantEvaluation(msgDiv, evalData) {
   });
   corrDiv.appendChild(corrSaveBtn);
   fbDiv.appendChild(corrDiv);
-
-  // Row 4: Regenerate button for A/B comparison
-  var regenRow = document.createElement('div');
-  regenRow.style.cssText = 'margin-top:8px;display:flex;align-items:center;gap:8px';
-  var regenBtn = document.createElement('button');
-  regenBtn.className = 'rlhf-regen-btn';
-  regenBtn.textContent = '\uD83D\uDD04 \uC7AC\uC0DD\uC131 \uBE44\uAD50';
-  var _regenMsgId = msgId, _regenFullText = fullText, _regenUserPrompt = userPrompt;
-  regenBtn.addEventListener('click', function() {
-    regenBtn.disabled = true;
-    regenBtn.textContent = '\uC7AC\uC0DD\uC131 \uC911...';
-    requestRegenerate(_regenMsgId, _regenUserPrompt, _regenFullText).then(function(result) {
-      regenBtn.disabled = false;
-      regenBtn.textContent = '\uD83D\uDD04 \uC7AC\uC0DD\uC131 \uBE44\uAD50';
-      if (result && result.success && result.regeneratedResponse) {
-        showAbCompare(fbDiv, _regenMsgId, _regenUserPrompt, _regenFullText, result.regeneratedResponse, result.scores || {});
-      } else {
-        showToast('\uC7AC\uC0DD\uC131 \uC2E4\uD328: ' + (result.error || '\uC54C \uC218 \uC5C6\uB294 \uC624\uB958'), 'error');
-      }
-    });
-  });
-  regenRow.appendChild(regenBtn);
-  fbDiv.appendChild(regenRow);
-
-  // A/B comparison container
-  var abContainer = document.createElement('div');
-  abContainer.id = fbId + '-ab';
-  fbDiv.appendChild(abContainer);
 
   msgDiv.appendChild(fbDiv);
 
