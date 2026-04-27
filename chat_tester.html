@@ -459,20 +459,48 @@ function showToast(msg, type = 'info') {
   setTimeout(() => t.remove(), 2500);
 }
 
+// ── 역할 기반 UI 공통 함수 ──
+function applyRoleBasedUI(auth) {
+  const userRole = auth.userRole || (auth.tester && auth.tester.role) || '';
+
+  // 비-Admin: 설정 링크 숨김
+  if (!auth.isAdmin) {
+    const sl = document.getElementById('settingsNavLink');
+    if (sl) sl.style.display = 'none';
+  }
+
+  // advisor: 채팅 테스터 외 모든 메뉴 숨김
+  if (userRole === 'advisor') {
+    document.querySelectorAll('.topbar .nav-btn').forEach(function(el) {
+      var href = el.getAttribute('href') || '';
+      // 채팅 테스터(/, /chat_tester.html) 제외 모두 숨김
+      if (href !== '/' && href !== '/chat_tester.html') {
+        el.style.display = 'none';
+      }
+    });
+  }
+}
+
 // 초기 로드
 // ── 테스터 로그인 공통 로직 ──
 async function initTesterAndAuth() {
   try {
     const authRes = await fetch('/api/auth/status').then(r => r.json());
-    // 설정 링크 숨김 (비Admin)
-    if (!authRes.isAdmin) {
-      const sl = document.getElementById('settingsNavLink');
-      if (sl) sl.style.display = 'none';
-    }
+    // 역할 기반 UI 적용
+    applyRoleBasedUI(authRes);
     // 테스터 배지 또는 로그인 모달
     if (authRes.tester) {
       const badge = document.getElementById('testerBadge');
-      if (badge) { badge.style.display = ''; badge.textContent = `👤 ${authRes.tester.alias}`; }
+      if (badge) {
+        badge.style.display = '';
+        const isAdvisor = (authRes.userRole === 'advisor') || (authRes.tester.role === 'advisor');
+        if (isAdvisor) {
+          badge.textContent = `🩺 ${authRes.tester.alias}`;
+          badge.title = '의사 자문위원';
+        } else {
+          badge.textContent = `👤 ${authRes.tester.alias}`;
+        }
+      }
       loadConversations();
     } else if (authRes.isAdmin) {
       const badge = document.getElementById('testerBadge');
@@ -622,14 +650,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     setText('인증 확인 중...');
     const auth = authRes.status === 'fulfilled' ? authRes.value : {};
 
-    if (!auth.isAdmin) {
-      const sl = document.getElementById('settingsNavLink');
-      if (sl) sl.style.display = 'none';
-    }
+    // 역할 기반 UI 적용
+    applyRoleBasedUI(auth);
 
     if (auth.tester) {
       const badge = document.getElementById('testerBadge');
-      if (badge) { badge.style.display = ''; badge.textContent = `👤 ${auth.tester.alias}`; }
+      if (badge) {
+        badge.style.display = '';
+        const isAdvisor = (auth.userRole === 'advisor') || (auth.tester.role === 'advisor');
+        if (isAdvisor) {
+          badge.textContent = `🩺 ${auth.tester.alias}`;
+          badge.title = '의사 자문위원';
+        } else {
+          badge.textContent = `👤 ${auth.tester.alias}`;
+        }
+      }
     } else if (auth.isAdmin) {
       const badge = document.getElementById('testerBadge');
       if (badge) {
