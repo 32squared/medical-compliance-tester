@@ -40,7 +40,7 @@ API_CONFIG = {
 
     # ─── 엔드포인트 ───
     # POST /api/service/conversations/{graph_type}
-    "graph_type": "SUPERVISED_HYBRID_SEARCH",
+    "graph_type": "ORCHESTRATED_HYBRID_SEARCH",
     "endpoint_template": "/api/service/conversations/{graph_type}",
 
     # ─── 요청 본문 기본값 ───

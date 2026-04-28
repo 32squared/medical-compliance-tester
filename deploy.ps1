@@ -55,14 +55,17 @@ gcloud run deploy $ServiceName `
     --allow-unauthenticated `
     --memory 2Gi --cpu 2 `
     --timeout 900 `
-    --min-instances 1 --max-instances 3 `
-    --concurrency 80 `
+    --min-instances 1 --max-instances 10 `
+    --concurrency 10 `
     --execution-environment gen2 `
     --set-env-vars "DATABASE_URL=$DatabaseUrl" `
     --add-cloudsql-instances $SqlConnection `
     --vpc-connector=medical-connector `
     --vpc-egress=all-traffic `
-    --cpu-boost
+    --cpu-boost `
+    --no-cpu-throttling `
+    --clear-volumes `
+    --clear-volume-mounts
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Deploy failed!" -ForegroundColor Red
     exit 1

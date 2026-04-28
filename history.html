@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>테스트 이력 — 나만의 주치의</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <style>
   :root {
     --bg: #0f172a; --surface: #1e293b; --surface2: #334155; --surface3: #3b4a63;
@@ -29,7 +30,7 @@
             background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; flex-wrap:nowrap; overflow-x:auto; }
   .topbar h1 { font-size:16px; font-weight:700; display:flex; align-items:center; gap:8px; white-space:nowrap; }
   .nav-btn { background:none; border:1px solid var(--border); color:var(--text-dim); border-radius:8px;
-             padding:6px 14px; cursor:pointer; font-size:13px; text-decoration:none; transition:all .15s; }
+             padding:6px 14px; cursor:pointer; font-size:13px; text-decoration:none; transition:all .15s; white-space:nowrap; }
   .nav-btn:hover { background:var(--surface2); color:var(--text); }
   .nav-btn.active { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
 
@@ -268,7 +269,9 @@
   <a href="/" class="nav-btn">채팅 테스터</a>
   <a href="/manager" class="nav-btn">시나리오 관리</a>
   <a href="/history" class="nav-btn active">테스트 이력</a>
-  <a href="/guidelines" class="nav-btn">가이드라인</a>
+  <a href="/guidelines" class="nav-btn">법률 평가 기준</a>
+  <a href="/criteria" class="nav-btn">문진 평가 기준</a>
+  <a href="/rlhf" class="nav-btn">RLHF 관리</a>
   <a href="/settings" class="nav-btn" id="settingsNavLink">&#9881; 설정</a>
   <span id="testerBadge" style="margin-left:auto;display:none;font-size:11px;color:var(--accent);background:var(--accent-dim);padding:3px 10px;border-radius:6px;cursor:pointer;white-space:nowrap" onclick="if(confirm('로그아웃 하시겠습니까?'))testerLogout()"></span>
 </div>
@@ -319,6 +322,8 @@
     <div class="report-tabs">
       <button class="report-tab active" onclick="switchMainTab('history')" id="tabHistory">📋 테스트 이력</button>
       <button class="report-tab" onclick="switchMainTab('report')" id="tabReport">📊 리포트</button>
+      <button class="report-tab" onclick="switchMainTab('enhancement')" id="tabEnhancement">📊 보강 리포트</button>
+      <button class="report-tab" onclick="switchMainTab('reward')" id="tabReward">📈 리워드 트렌드</button>
     </div>
 
     <!-- History Tab Content -->
@@ -411,6 +416,37 @@
         <div class="report-section">
           <div class="report-section-title">💬 커멘트 요약</div>
           <div class="comment-list" id="reportComments"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Enhancement Report Tab Content -->
+    <div id="enhancementTabContent" class="report-dashboard">
+      <div class="report-loading" id="enhancementLoading" style="display:none">
+        <div class="loader-spinner"></div>
+        <div>보강 리포트 로딩 중...</div>
+      </div>
+      <div id="enhancementBody" style="display:none"></div>
+    </div>
+
+    <!-- Reward Trend Tab Content -->
+    <div id="rewardTabContent" class="report-dashboard">
+      <div class="report-loading" id="rewardLoading" style="display:none">
+        <div class="loader-spinner"></div>
+        <div>리워드 트렌드 로딩 중...</div>
+      </div>
+      <div id="rewardBody" style="display:none">
+        <div class="report-section">
+          <div class="report-section-title">📈 일별 Composite Reward 평균 (최근 30일)</div>
+          <div style="position:relative;height:300px">
+            <canvas id="rewardLineChart"></canvas>
+          </div>
+        </div>
+        <div class="report-section">
+          <div class="report-section-title">📊 법률점수 vs 문진점수 분포</div>
+          <div style="position:relative;height:300px">
+            <canvas id="rewardScatterChart"></canvas>
+          </div>
         </div>
       </div>
     </div>
@@ -1363,18 +1399,40 @@
   // ── Report Tab ──
   let currentMainTab = 'history';
   let reportLoaded = false;
+  let rewardTrendLoaded = false;
+  let rewardLineChartInstance = null;
+  let rewardScatterChartInstance = null;
 
   function switchMainTab(tab) {
     currentMainTab = tab;
     document.getElementById('tabHistory').classList.toggle('active', tab === 'history');
     document.getElementById('tabReport').classList.toggle('active', tab === 'report');
+    document.getElementById('tabEnhancement').classList.toggle('active', tab === 'enhancement');
+    var tabReward = document.getElementById('tabReward');
+    if (tabReward) tabReward.classList.toggle('active', tab === 'reward');
     document.getElementById('historyTabContent').style.display = tab === 'history' ? 'flex' : 'none';
     var reportEl = document.getElementById('reportTabContent');
+    var enhEl = document.getElementById('enhancementTabContent');
+    var rewardEl = document.getElementById('rewardTabContent');
     if (tab === 'report') {
       reportEl.classList.add('visible');
       if (!reportLoaded) loadReport();
     } else {
       reportEl.classList.remove('visible');
+    }
+    if (tab === 'enhancement') {
+      enhEl.classList.add('visible');
+      if (!enhancementReportLoaded) loadEnhancementReport();
+    } else {
+      enhEl.classList.remove('visible');
+    }
+    if (rewardEl) {
+      if (tab === 'reward') {
+        rewardEl.classList.add('visible');
+        if (!rewardTrendLoaded) loadRewardTrend();
+      } else {
+        rewardEl.classList.remove('visible');
+      }
     }
   }
 
@@ -1532,6 +1590,289 @@
       commHtml += '<div class="comment-row"><div class="comment-row-label" style="color:var(--text-dim)">커멘트 데이터가 없습니다</div></div>';
     }
     document.getElementById('reportComments').innerHTML = commHtml;
+  }
+
+  // ── Enhancement Report Tab ──
+  var enhancementReportLoaded = false;
+
+  async function loadEnhancementReport() {
+    var loading = document.getElementById('enhancementLoading');
+    var body = document.getElementById('enhancementBody');
+    if (loading) loading.style.display = '';
+    if (body) body.style.display = 'none';
+
+    try {
+      var results = await Promise.all([
+        fetch('/api/prompt-enhancements/report').then(function(r) { return r.ok ? r.json() : {}; }).catch(function() { return {}; }),
+        fetch('/api/prompt-enhancements').then(function(r) { return r.ok ? r.json() : { enhancements: [] }; }).catch(function() { return { enhancements: [] }; })
+      ]);
+      var report = results[0];
+      var listData = results[1];
+      renderEnhancementReport(report, listData.enhancements || []);
+      enhancementReportLoaded = true;
+    } catch(e) {
+      showToast('\uBCF4\uAC15 \uB9AC\uD3EC\uD2B8 \uB85C\uB4DC \uC2E4\uD328', 'error');
+    } finally {
+      if (loading) loading.style.display = 'none';
+      if (body) body.style.display = '';
+    }
+  }
+
+  function renderEnhancementReport(report, enhancements) {
+    var body = document.getElementById('enhancementBody');
+    if (!body) return;
+
+    var total = report.total || 0;
+    var avgGpt = report.avgGptDelta != null ? Math.round(report.avgGptDelta * 10) / 10 : 0;
+    var avgConsult = report.avgConsultDelta != null ? Math.round(report.avgConsultDelta * 10) / 10 : 0;
+    var topInstr = report.topInstructions || [];
+
+    var html = '';
+
+    // 1. Summary Cards
+    var gptColor = avgGpt > 0 ? 'var(--green)' : avgGpt < 0 ? 'var(--red)' : 'var(--text-dim)';
+    var consultColor = avgConsult > 0 ? 'var(--green)' : avgConsult < 0 ? 'var(--red)' : 'var(--text-dim)';
+    html += '<div class="report-section">' +
+      '<div class="report-section-title" style="color:#c4b5fd">\uD83D\uDD04 \uBCF4\uAC15 \uC694\uC57D</div>' +
+      '<div class="report-summary-strip">' +
+        '<div class="report-summary-item" style="border-color:#7c3aed44"><div class="rsi-value" style="color:#c4b5fd">' + total + '</div><div class="rsi-label">\uCD1D \uBCF4\uAC15 \uD69F\uC218</div></div>' +
+        '<div class="report-summary-item" style="border-color:#7c3aed44"><div class="rsi-value" style="color:' + gptColor + '">' + (avgGpt > 0 ? '+' : '') + avgGpt + '</div><div class="rsi-label">\uD3C9\uADE0 GPT \uAC1C\uC120</div></div>' +
+        '<div class="report-summary-item" style="border-color:#7c3aed44"><div class="rsi-value" style="color:' + consultColor + '">' + (avgConsult > 0 ? '+' : '') + avgConsult + '</div><div class="rsi-label">\uD3C9\uADE0 \uBB38\uC9C4 \uAC1C\uC120</div></div>' +
+      '</div></div>';
+
+    // 2. Top Instructions
+    html += '<div class="report-section">' +
+      '<div class="report-section-title" style="color:#c4b5fd">\uD83D\uDCCB \uAC00\uC7A5 \uB9CE\uC774 \uC0AC\uC6A9\uB41C \uBCF4\uAC15 \uC9C0\uC2DC\uBB38</div>';
+    if (topInstr.length === 0) {
+      html += '<div style="color:var(--text-dim);font-size:13px;padding:12px">\uBCF4\uAC15 \uC9C0\uC2DC\uBB38 \uB370\uC774\uD130\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4</div>';
+    } else {
+      var maxCount = topInstr.length > 0 ? topInstr[0].count : 1;
+      for (var ti = 0; ti < topInstr.length && ti < 10; ti++) {
+        var inst = topInstr[ti];
+        var pct = maxCount > 0 ? Math.round((inst.count / maxCount) * 100) : 0;
+        html += '<div class="hbar-row">' +
+          '<div class="hbar-label" style="min-width:30px;font-size:13px;color:#c4b5fd">' + (ti + 1) + '</div>' +
+          '<div class="hbar-track"><div class="hbar-fill" style="width:' + pct + '%;background:linear-gradient(90deg,#7c3aed,#a855f7)"></div></div>' +
+          '<div class="hbar-info" style="min-width:200px">' + escapeHtml(inst.instruction || '') + ' (' + inst.count + '\uD68C)</div>' +
+        '</div>';
+      }
+    }
+    html += '</div>';
+
+    // 3. Enhancement List
+    html += '<div class="report-section">' +
+      '<div class="report-section-title" style="color:#c4b5fd">\uD83D\uDCCA \uAC1C\uBCC4 \uBCF4\uAC15 \uBE44\uAD50 \uBAA9\uB85D</div>';
+    if (enhancements.length === 0) {
+      html += '<div style="color:var(--text-dim);font-size:13px;padding:12px">\uBCF4\uAC15 \uAE30\uB85D\uC774 \uC5C6\uC2B5\uB2C8\uB2E4</div>';
+    } else {
+      for (var ei = 0; ei < enhancements.length; ei++) {
+        var e = enhancements[ei];
+        var oEval = e.originalEval || {};
+        var eEval = e.enhancedEval || {};
+        var oGpt = (oEval.gptEval || {}).score || 0;
+        var oGrade = (oEval.gptEval || {}).grade || '?';
+        var eGpt = (eEval.gptEval || {}).score || 0;
+        var eGrade = (eEval.gptEval || {}).grade || '?';
+        var oConsult = (oEval.consultationEval || {}).totalScore || 0;
+        var eConsult = (eEval.consultationEval || {}).totalScore || 0;
+        var gd = eGpt - oGpt;
+        var cd = eConsult - oConsult;
+        var gdColor = gd > 0 ? '#22c55e' : gd < 0 ? '#ef4444' : '#94a3b8';
+        var cdColor = cd > 0 ? '#22c55e' : cd < 0 ? '#ef4444' : '#94a3b8';
+        var gdSign = gd > 0 ? '+' + gd : '' + gd;
+        var cdSign = cd > 0 ? '+' + cd : '' + cd;
+
+        var eInst = e.instructions || [];
+        var eInstStr = '';
+        for (var ij = 0; ij < eInst.length; ij++) {
+          if (ij > 0) eInstStr += ', ';
+          eInstStr += escapeHtml(eInst[ij]);
+        }
+
+        var queryStr = e.original_query || e.originalQuery || '';
+        var dateStr = e.created_at || e.createdAt || '';
+        if (dateStr) {
+          try { dateStr = new Date(dateStr).toLocaleDateString('ko-KR'); } catch(ex) { /* keep raw */ }
+        }
+
+        html += '<div style="padding:14px;margin-bottom:8px;background:linear-gradient(135deg,#1e1b4b,#1e293b);border-radius:10px;border:1px solid #7c3aed44">' +
+          '<div style="font-size:13px;color:var(--text);margin-bottom:8px;word-break:break-word">\uD83D\uDCAC ' + escapeHtml(queryStr.length > 100 ? queryStr.substring(0, 100) + '...' : queryStr) + '</div>' +
+          '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:6px">' +
+            '<div style="flex:1;min-width:120px">' +
+              '<div style="font-size:11px;color:#94a3b8;margin-bottom:2px">GPT</div>' +
+              '<div style="font-size:13px">' +
+                '<span style="color:#94a3b8">' + escapeHtml(oGrade) + ' ' + oGpt + '\uC810</span> ' +
+                '<span style="color:var(--accent)">\u2192</span> ' +
+                '<span style="font-weight:700;color:' + gdColor + '">' + escapeHtml(eGrade) + ' ' + eGpt + '\uC810 (' + gdSign + ')</span>' +
+              '</div>' +
+            '</div>' +
+            '<div style="flex:1;min-width:120px">' +
+              '<div style="font-size:11px;color:#94a3b8;margin-bottom:2px">\uBB38\uC9C4</div>' +
+              '<div style="font-size:13px">' +
+                '<span style="color:#94a3b8">' + oConsult + '\uC810</span> ' +
+                '<span style="color:var(--accent)">\u2192</span> ' +
+                '<span style="font-weight:700;color:' + cdColor + '">' + eConsult + '\uC810 (' + cdSign + ')</span>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+          (eInstStr ? '<div style="font-size:11px;color:#c4b5fd">\uD83D\uDCA1 ' + eInstStr + '</div>' : '') +
+          (dateStr ? '<div style="font-size:11px;color:var(--text-dim);margin-top:4px">' + escapeHtml(dateStr) + '</div>' : '') +
+        '</div>';
+      }
+    }
+    html += '</div>';
+
+    body.innerHTML = html;
+  }
+
+  // ── Reward Trend Charts ──
+  async function loadRewardTrend() {
+    var loading = document.getElementById('rewardLoading');
+    var body = document.getElementById('rewardBody');
+    if (loading) loading.style.display = '';
+    if (body) body.style.display = 'none';
+
+    try {
+      var statsData = {};
+      var histData = [];
+      var results = await Promise.all([
+        fetch('/api/rlhf/stats').then(function(r) { return r.ok ? r.json() : {}; }).catch(function() { return {}; }),
+        fetch('/api/history').then(function(r) { return r.ok ? r.json() : []; }).catch(function() { return []; })
+      ]);
+      statsData = results[0] || {};
+      histData = Array.isArray(results[1]) ? results[1] : (results[1].runs || []);
+
+      renderRewardCharts(statsData, histData);
+      rewardTrendLoaded = true;
+    } catch(e) {
+      showToast('\uB9AC\uC6CC\uB4DC \uD2B8\uB80C\uB4DC \uB85C\uB529 \uC2E4\uD328: ' + e.message, 'error');
+    } finally {
+      if (loading) loading.style.display = 'none';
+      if (body) body.style.display = '';
+    }
+  }
+
+  function renderRewardCharts(stats, histRuns) {
+    // Build daily composite data from history runs (last 30 days)
+    var dailyMap = {};
+    var now = Date.now();
+    var thirtyDays = 30 * 24 * 60 * 60 * 1000;
+    var scatterPoints = [];
+
+    for (var i = 0; i < histRuns.length; i++) {
+      var run = histRuns[i];
+      var ts = run.startedAt || run.timestamp || '';
+      if (!ts) continue;
+      var d = new Date(ts);
+      if (now - d.getTime() > thirtyDays) continue;
+      var dateKey = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+
+      var s = run.summary || {};
+      var legalScore = s.complianceAvg || s.avgComplianceScore || 0;
+      var consultScore = s.consultationAvg || s.avgConsultationScore || 0;
+      var composite = 0;
+      if (legalScore || consultScore) {
+        composite = (legalScore * 0.5 + consultScore * 0.5) / 100;
+      }
+      var passRate = s.passRate != null ? s.passRate : 0;
+      if (!composite && passRate) composite = passRate / 100;
+
+      if (!dailyMap[dateKey]) dailyMap[dateKey] = { sum: 0, count: 0 };
+      dailyMap[dateKey].sum += composite;
+      dailyMap[dateKey].count += 1;
+
+      if (legalScore || consultScore) {
+        scatterPoints.push({ x: legalScore, y: consultScore });
+      }
+    }
+
+    // Also use stats.dailyRewards if available
+    if (stats.dailyRewards && Array.isArray(stats.dailyRewards)) {
+      for (var di = 0; di < stats.dailyRewards.length; di++) {
+        var dr = stats.dailyRewards[di];
+        var dk = dr.date || dr.day || '';
+        if (!dk) continue;
+        if (!dailyMap[dk]) dailyMap[dk] = { sum: 0, count: 0 };
+        dailyMap[dk].sum += (dr.avgReward || dr.composite || 0);
+        dailyMap[dk].count += 1;
+      }
+    }
+
+    // Sort dates
+    var dates = Object.keys(dailyMap).sort();
+    var labels = dates.map(function(d) { return d.substring(5); }); // MM-DD
+    var values = dates.map(function(d) { return dailyMap[d].count > 0 ? +(dailyMap[d].sum / dailyMap[d].count).toFixed(3) : 0; });
+
+    // Line chart: daily composite reward
+    var lineCtx = document.getElementById('rewardLineChart');
+    if (lineCtx && typeof Chart !== 'undefined') {
+      if (rewardLineChartInstance) rewardLineChartInstance.destroy();
+      rewardLineChartInstance = new Chart(lineCtx, {
+        type: 'line',
+        data: {
+          labels: labels.length > 0 ? labels : ['(데이터 없음)'],
+          datasets: [{
+            label: 'Composite Reward',
+            data: values.length > 0 ? values : [0],
+            borderColor: '#38bdf8',
+            backgroundColor: 'rgba(56,189,248,0.1)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 4,
+            pointBackgroundColor: '#38bdf8'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: '#94a3b8' } }
+          },
+          scales: {
+            x: { ticks: { color: '#94a3b8' }, grid: { color: '#33415533' } },
+            y: { min: 0, max: 1, ticks: { color: '#94a3b8' }, grid: { color: '#33415533' } }
+          }
+        }
+      });
+    }
+
+    // Scatter chart: legal vs consultation scores
+    var scatterCtx = document.getElementById('rewardScatterChart');
+    if (scatterCtx && typeof Chart !== 'undefined') {
+      if (rewardScatterChartInstance) rewardScatterChartInstance.destroy();
+      // If no scatter data, create dummy placeholder
+      var scatterData = scatterPoints.length > 0 ? scatterPoints : [{ x: 0, y: 0 }];
+      rewardScatterChartInstance = new Chart(scatterCtx, {
+        type: 'scatter',
+        data: {
+          datasets: [{
+            label: '\uBC95\uB960 vs \uBB38\uC9C4',
+            data: scatterData,
+            backgroundColor: 'rgba(56,189,248,0.6)',
+            pointRadius: 6,
+            pointHoverRadius: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: '#94a3b8' } },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                  return '\uBC95\uB960: ' + ctx.parsed.x + ' / \uBB38\uC9C4: ' + ctx.parsed.y;
+                }
+              }
+            }
+          },
+          scales: {
+            x: { title: { display: true, text: '\uBC95\uB960\uC810\uC218', color: '#94a3b8' }, min: 0, max: 100, ticks: { color: '#94a3b8' }, grid: { color: '#33415533' } },
+            y: { title: { display: true, text: '\uBB38\uC9C4\uC810\uC218', color: '#94a3b8' }, min: 0, max: 100, ticks: { color: '#94a3b8' }, grid: { color: '#33415533' } }
+          }
+        }
+      });
+    }
   }
 </script>
 </body>

@@ -242,6 +242,49 @@
     .panel { position:fixed; left:0; top:0; bottom:0; z-index:100; width:320px; }
     .panel.collapsed { margin-left:-320px; }
   }
+
+  /* ── RLHF Feedback UI ── */
+  .rlhf-feedback { margin-top:10px; padding:12px 14px; background:var(--bg); border:1px solid var(--border); border-radius:10px; }
+  .rlhf-feedback-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .rlhf-thumb-btn { padding:5px 12px; border-radius:8px; font-size:13px; cursor:pointer; border:1px solid var(--border);
+                    background:var(--surface2); color:var(--text-dim); transition:all .15s; }
+  .rlhf-thumb-btn:hover { border-color:var(--accent); color:var(--text); }
+  .rlhf-thumb-btn.active-good { background:#22c55e33; border-color:var(--green); color:var(--green); }
+  .rlhf-thumb-btn.active-bad { background:#ef444433; border-color:var(--red); color:var(--red); }
+  .rlhf-stars { display:inline-flex; gap:2px; margin-left:8px; }
+  .rlhf-star { font-size:18px; cursor:pointer; color:var(--surface2); transition:color .1s; user-select:none; }
+  .rlhf-star.filled { color:#eab308; }
+  .rlhf-tag-btn { padding:3px 10px; border-radius:14px; font-size:11px; cursor:pointer; border:1px solid var(--border);
+                  background:var(--surface); color:var(--text-dim); transition:all .15s; }
+  .rlhf-tag-btn:hover { border-color:var(--accent); }
+  .rlhf-tag-btn.active { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
+  .rlhf-correction { display:none; margin-top:10px; }
+  .rlhf-correction.open { display:block; }
+  .rlhf-correction textarea { width:100%; padding:8px 12px; background:var(--surface); color:var(--text); border:1px solid var(--border);
+                               border-radius:8px; font-size:13px; resize:vertical; min-height:60px; box-sizing:border-box; font-family:inherit; }
+  .rlhf-correction input { width:100%; padding:8px 12px; background:var(--surface); color:var(--text); border:1px solid var(--border);
+                            border-radius:8px; font-size:13px; margin-top:6px; box-sizing:border-box; }
+  .rlhf-save-btn { margin-top:8px; padding:6px 16px; background:var(--accent); color:#0f172a; border:none; border-radius:8px;
+                   font-size:12px; font-weight:600; cursor:pointer; }
+  .rlhf-save-btn:hover { opacity:.85; }
+  .rlhf-status { font-size:11px; color:var(--green); margin-left:8px; }
+
+  /* ── A/B Comparison Modal ── */
+  .ab-compare-panel { margin-top:10px; padding:14px; background:linear-gradient(135deg,#1e293b,#0f172a); border:1px solid var(--border);
+                      border-radius:12px; }
+  .ab-compare-cols { display:flex; gap:12px; margin-top:10px; }
+  .ab-compare-col { flex:1; padding:12px; background:var(--surface); border:1px solid var(--border); border-radius:10px; min-width:0; }
+  .ab-compare-col.chosen { border-color:var(--green); background:rgba(34,197,94,.06); }
+  .ab-compare-col h4 { font-size:13px; font-weight:700; margin-bottom:8px; color:var(--text); }
+  .ab-compare-text { font-size:12px; line-height:1.6; color:var(--text-dim); max-height:200px; overflow-y:auto; word-break:break-word; }
+  .ab-compare-scores { display:flex; gap:8px; margin-top:8px; font-size:11px; color:var(--text-dim); }
+  .ab-choose-btn { margin-top:8px; width:100%; padding:8px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer;
+                   border:1px solid var(--border); background:var(--surface2); color:var(--text-dim); transition:all .15s; }
+  .ab-choose-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .ab-choose-btn.selected { background:var(--green); color:#fff; border-color:var(--green); }
+  .rlhf-regen-btn { padding:5px 12px; border-radius:8px; font-size:12px; cursor:pointer; border:1px solid #7c3aed44;
+                    background:rgba(124,58,237,.15); color:#c4b5fd; transition:all .15s; }
+  .rlhf-regen-btn:hover { background:rgba(124,58,237,.3); color:#e9d5ff; }
 </style>
 </head>
 <body>
@@ -265,7 +308,9 @@
   <a href="/" class="nav-btn active">채팅 테스터</a>
   <a href="/manager" class="nav-btn">시나리오 관리</a>
   <a href="/history" class="nav-btn">테스트 이력</a>
-  <a href="/guidelines" class="nav-btn">가이드라인</a>
+  <a href="/guidelines" class="nav-btn">법률 평가 기준</a>
+  <a href="/criteria" class="nav-btn">문진 평가 기준</a>
+  <a href="/rlhf" class="nav-btn">RLHF 관리</a>
   <a href="/settings" class="nav-btn" id="settingsNavLink">&#9881; 설정</a>
   <button class="btn-icon sidebar-toggle-btn" onclick="toggleSidebar()" title="대화 목록" style="font-size:14px">&#9776;</button>
   <button class="btn-icon" onclick="newConversation()" title="새 대화" style="font-size:12px">&#128465;</button>
@@ -358,6 +403,98 @@ let cancelRequested = false;
 let runMode = 'live'; // always live
 
 // ──────────────────────────────────────
+// RLHF Feedback Constants & Functions
+// ──────────────────────────────────────
+const FEEDBACK_TAGS = ['진단언급','처방시도','치료지시','적절한거절','응급안내누락','과잉친절','정보부족','우수답변'];
+
+async function submitRlhfFeedback(msgId, data) {
+  try {
+    // thumbs → rating 변환: good=5, bad=1 (0이면 별점 직접 선택값 사용)
+    var rating = data.rating || 0;
+    if (!rating) {
+      if (data.thumbs === 'good') rating = 5;
+      else if (data.thumbs === 'bad') rating = 1;
+    }
+    var res = await fetch('/api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message_id: msgId,
+        conversation_id: currentConvId || '',
+        rating: rating,
+        labels: data.tags || [],
+        corrected_response: data.correctedResponse || '',
+        feedback_note: data.memo || '',
+        original_query: data.originalQuery || '',
+        full_response: data.fullResponse || ''
+      })
+    });
+    var result = await res.json();
+    // 서버 응답: {id, status} — id가 있으면 성공
+    result.success = !!(result.id || result.status === 'ok');
+    return result;
+  } catch(e) {
+    console.error('RLHF feedback error:', e);
+    return { success: false, error: e.message };
+  }
+}
+
+async function requestRegenerate(msgId, userPrompt, originalResponse) {
+  try {
+    var res = await fetch('/api/regenerate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message_id: msgId,
+        conversation_id: currentConvId || '',
+        prompt: userPrompt,
+        original_response: originalResponse
+      })
+    });
+    var result = await res.json();
+    // 서버 응답: {response_text, legal_score, consult_score, composite_reward, ...}
+    // 프론트가 기대하는 형태로 정규화
+    if (result.response_text) {
+      result.success = true;
+      result.regeneratedResponse = result.response_text;
+      result.scores = {
+        legalScore: result.legal_score,
+        consultScore: result.consult_score,
+        regenComposite: result.composite_reward
+      };
+    }
+    return result;
+  } catch(e) {
+    console.error('Regenerate error:', e);
+    return { success: false, error: e.message };
+  }
+}
+
+// chosenText, rejectedText: 실제 응답 텍스트 (백엔드가 텍스트 필요)
+async function submitRlhfPair(userPrompt, chosenText, rejectedText, chosenScore, rejectedScore) {
+  try {
+    var res = await fetch('/api/rlhf/pairs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: userPrompt,
+        response_chosen: chosenText,
+        response_rejected: rejectedText,
+        label_source: 'human',
+        chosen_score: chosenScore || null,
+        rejected_score: rejectedScore || null
+      })
+    });
+    var result = await res.json();
+    result.success = !!(result.id || result.status === 'ok');
+    return result;
+  } catch(e) {
+    console.error('RLHF pair error:', e);
+    return { success: false, error: e.message };
+  }
+}
+
+// ──────────────────────────────────────
 // Settings Persistence (서버 저장)
 // ──────────────────────────────────────
 // 서버에 저장된 설정을 JS 변수로 로드
@@ -435,7 +572,7 @@ async function switchEnv(env) {
 async function testConnectionOnce() {
   const envCfg = getEnvConfig();
   const proxyUrl = getProxyUrl();
-  const targetUrl = `${envCfg.apiUrl}/api/service/conversations/${savedSettings.graphType || 'SUPERVISED_HYBRID_SEARCH'}`;
+  const targetUrl = `${envCfg.apiUrl}/api/service/conversations/${savedSettings.graphType || 'ORCHESTRATED_HYBRID_SEARCH'}`;
 
   try {
     const res = await fetch(proxyUrl, {
@@ -476,20 +613,66 @@ function showToast(msg, type = 'info') {
   setTimeout(() => t.remove(), 2500);
 }
 
+// ── 역할 기반 UI 공통 함수 ──
+function applyRoleBasedUI(auth) {
+  const userRole = auth.userRole || (auth.tester && auth.tester.role) || '';
+
+  // 비-Admin: 설정 링크 숨김
+  if (!auth.isAdmin) {
+    const sl = document.getElementById('settingsNavLink');
+    if (sl) sl.style.display = 'none';
+  }
+
+  // advisor: 채팅 테스터 외 모든 메뉴 숨김 + 평가 결과 숨김
+  if (userRole === 'advisor') {
+    document.querySelectorAll('.topbar .nav-btn').forEach(function(el) {
+      var href = el.getAttribute('href') || '';
+      // 채팅 테스터(/, /chat_tester.html) 제외 모두 숨김
+      if (href !== '/' && href !== '/chat_tester.html') {
+        el.style.display = 'none';
+      }
+    });
+    // advisor에게는 GPT/문진/정규식 평가 결과를 모두 숨김 (중립적 자문 의견 수집 위함)
+    // 동적 CSS 주입으로 향후 생성될 메시지에도 자동 적용
+    var advisorStyle = document.getElementById('advisorHideEvalStyle');
+    if (!advisorStyle) {
+      advisorStyle = document.createElement('style');
+      advisorStyle.id = 'advisorHideEvalStyle';
+      advisorStyle.textContent = `
+        .eval-result-box, .eval-section,
+        [id^="consultation-eval-"], .llm-eval,
+        .compliance-badge, .eval-btn,
+        .eval-loading {
+          display: none !important;
+        }
+      `;
+      document.head.appendChild(advisorStyle);
+    }
+    // body에 advisor 클래스 추가 (다른 곳에서 추가 처리 가능)
+    document.body.classList.add('role-advisor');
+  }
+}
+
 // 초기 로드
 // ── 테스터 로그인 공통 로직 ──
 async function initTesterAndAuth() {
   try {
     const authRes = await fetch('/api/auth/status').then(r => r.json());
-    // 설정 링크 숨김 (비Admin)
-    if (!authRes.isAdmin) {
-      const sl = document.getElementById('settingsNavLink');
-      if (sl) sl.style.display = 'none';
-    }
+    // 역할 기반 UI 적용
+    applyRoleBasedUI(authRes);
     // 테스터 배지 또는 로그인 모달
     if (authRes.tester) {
       const badge = document.getElementById('testerBadge');
-      if (badge) { badge.style.display = ''; badge.textContent = `👤 ${authRes.tester.alias}`; }
+      if (badge) {
+        badge.style.display = '';
+        const isAdvisor = (authRes.userRole === 'advisor') || (authRes.tester.role === 'advisor');
+        if (isAdvisor) {
+          badge.textContent = `🩺 ${authRes.tester.alias}`;
+          badge.title = '의사 자문위원';
+        } else {
+          badge.textContent = `👤 ${authRes.tester.alias}`;
+        }
+      }
       loadConversations();
     } else if (authRes.isAdmin) {
       const badge = document.getElementById('testerBadge');
@@ -639,14 +822,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     setText('인증 확인 중...');
     const auth = authRes.status === 'fulfilled' ? authRes.value : {};
 
-    if (!auth.isAdmin) {
-      const sl = document.getElementById('settingsNavLink');
-      if (sl) sl.style.display = 'none';
-    }
+    // 역할 기반 UI 적용
+    applyRoleBasedUI(auth);
 
     if (auth.tester) {
       const badge = document.getElementById('testerBadge');
-      if (badge) { badge.style.display = ''; badge.textContent = `👤 ${auth.tester.alias}`; }
+      if (badge) {
+        badge.style.display = '';
+        const isAdvisor = (auth.userRole === 'advisor') || (auth.tester.role === 'advisor');
+        if (isAdvisor) {
+          badge.textContent = `🩺 ${auth.tester.alias}`;
+          badge.title = '의사 자문위원';
+        } else {
+          badge.textContent = `👤 ${auth.tester.alias}`;
+        }
+      }
     } else if (auth.isAdmin) {
       const badge = document.getElementById('testerBadge');
       if (badge) {
@@ -663,7 +853,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       setText('대화 기록 로딩 중...');
       await Promise.allSettled([
         loadConversations(),
-        loadScenarioPresets(),
       ]);
     } else {
       showTesterModal();
@@ -699,7 +888,7 @@ function getConfig() {
   const testerUid = getTesterUidFromCookie();
   return {
     url: envCfg.apiUrl || ENVS[currentEnv].url,
-    graphType: savedSettings.graphType || 'SUPERVISED_HYBRID_SEARCH',
+    graphType: savedSettings.graphType || 'ORCHESTRATED_HYBRID_SEARCH',
     headers: {
       'Content-Type': 'application/json',
       'Accept': 'text/event-stream',
@@ -717,11 +906,16 @@ function buildBody(query) {
   // 새 대화: null, 기존 대화: UUID 문자열
   // undefined나 빈 문자열("")은 허용 안 됨
   const strid = (conversationStrid && conversationStrid.trim()) ? conversationStrid.trim() : null;
-  return {
+  const body = {
     query: query,
     conversation_strid: strid,
     source_types: cfg.sourceTypes,
   };
+  // SKIX_A1 에이전트 지원
+  if (savedSettings.agentStrid) {
+    body.agent_strid = savedSettings.agentStrid;
+  }
+  return body;
 }
 
 function getProxyUrl() {
@@ -733,10 +927,34 @@ function getProxyUrl() {
   return window.location.origin;
 }
 
+// 최신 settings 동기화 (다른 탭에서 환경 변경 시 즉시 반영)
+// chat_tester.html은 envSettings 별도 변수 없이 savedSettings.environments[currentEnv]로 직접 접근하므로
+// savedSettings + currentEnv만 갱신하면 getEnvConfig()가 자동으로 최신 값 반환.
+async function refreshSettingsBeforeCall() {
+  try {
+    const res = await fetch('/api/settings');
+    if (!res.ok) return;
+    const settings = await res.json();
+    if (!settings || Object.keys(settings).length === 0) return;
+    // savedSettings 갱신 — getEnvConfig()가 이를 참조함
+    savedSettings = settings;
+    // currentEnv도 동기화 (다른 탭에서 환경 변경 시)
+    if (settings.currentEnv && settings.currentEnv !== currentEnv) {
+      currentEnv = settings.currentEnv;
+      try { if (typeof updateEnvChips === 'function') updateEnvChips(); } catch(e) {}
+    }
+  } catch(e) {
+    console.warn('refreshSettingsBeforeCall failed:', e);
+  }
+}
+
 // ──────────────────────────────────────
 // SSE Streaming API Call
 // ──────────────────────────────────────
-async function callSSE(query, { onGeneration, onProgress, onInfo, onDone, onError }) {
+async function callSSE(query, { onGeneration, onProgress, onInfo, onDone, onError, conversationId }) {
+  // 채팅 직전에 최신 settings 가져와 currentEnv/envSettings 동기화
+  // (settings 페이지에서 환경을 변경한 직후 새로고침 없이도 즉시 반영)
+  await refreshSettingsBeforeCall();
   const cfg = getConfig();
   const targetUrl = `${cfg.url}/api/service/conversations/${cfg.graphType}`;
   const body = buildBody(query);
@@ -749,6 +967,7 @@ async function callSSE(query, { onGeneration, onProgress, onInfo, onDone, onErro
   const fetchUrl = proxyBase ? proxyBase : targetUrl;
   const fetchHeaders = { ...cfg.headers };
   if (proxyBase) fetchHeaders['X-Target-URL'] = targetUrl;
+  if (conversationId) fetchHeaders['X-Conversation-Id'] = conversationId;
 
   const resp = await fetch(fetchUrl, {
     method: 'POST',
@@ -767,6 +986,8 @@ async function callSSE(query, { onGeneration, onProgress, onInfo, onDone, onErro
   let fullText = '';
   let searchResults = [];
   let followUps = [];
+  let graphUsageStrid = null;
+  let tokenUsage = null;
 
   while (true) {
     if (cancelRequested) { reader.cancel(); break; }
@@ -799,15 +1020,35 @@ async function callSSE(query, { onGeneration, onProgress, onInfo, onDone, onErro
         if (data.conversation_strid) conversationStrid = data.conversation_strid;
         if (data.search_results) searchResults = data.search_results;
         if (data.follow_ups) followUps = data.follow_ups;
+        if (data.token_usage) tokenUsage = data.token_usage;
+        if (data.follow_ups_started) {
+          // 추천 질문 생성 시작 신호 — UI 인디케이터 가능 (현재는 무시)
+        }
+        if (data.graph_usage_strid) {
+          graphUsageStrid = data.graph_usage_strid;
+        }
         onInfo({ data, searchResults, followUps });
 
+      } else if (type === 'KEEP_ALIVE') {
+        // 연결 유지 신호 — 무시
+        continue;
+
       } else if (type === 'PROGRESS') {
+        // PROGRESS의 result_items도 검색결과로 누적 (INFO.search_results 보완)
+        if (Array.isArray(event.result_items) && event.result_items.length) {
+          searchResults = searchResults.concat(event.result_items);
+        }
         onProgress({
           status: event.status,
           level: event.level,
           message: event.display_message || '',
           metadata: event.metadata,
+          resultItems: event.result_items || null,
         });
+
+      } else if (type === 'KEEP_ALIVE') {
+        // 연결 유지용 빈 이벤트, 무시
+        continue;
 
       } else if (type === 'STOP') {
         break;
@@ -819,7 +1060,7 @@ async function callSSE(query, { onGeneration, onProgress, onInfo, onDone, onErro
     }
   }
 
-  onDone({ fullText, searchResults, followUps });
+  onDone({ fullText, searchResults, followUps, tokenUsage, graphUsageStrid });
 }
 
 // ──────────────────────────────────────
@@ -1121,6 +1362,7 @@ async function evaluateWithLLM(prompt, responseText, msgId) {
     if (!res.ok) throw new Error(data.error || '평가 실패');
 
     const ev = data.evaluation;
+    window._lastGptEval = ev;  // Store for enhance button
     const gradeClass = `grade-${ev.grade || 'C'}`;
 
     evalContainer.innerHTML = `
@@ -1158,24 +1400,8 @@ async function evaluateWithLLM(prompt, responseText, msgId) {
       header.innerHTML = `<span class="compliance-badge ${gCls}" style="font-size:18px;padding:4px 12px">${ev.grade || '?'} ${ev.score}점 ${gLabel}</span> <span style="font-size:14px;color:var(--text-dim)">GPT 기준</span>`;
     }
 
-    // GPT 평가 결과를 DB에 저장 (msgId를 직접 사용 — 복원된 대화에서도 동작)
-    const saveMsgId = msgId || window._lastAssistantMsgId;
-    console.log('[GPT저장] convId=', currentConvId, 'msgId=', msgId, 'saveMsgId=', saveMsgId);
-    if (currentConvId && saveMsgId) {
-      try {
-        const saveRes = await fetch(`/api/conversations/${currentConvId}/message`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ updateGptEval: true, msgId: saveMsgId, gptEval: ev, gptModel: data.model })
-        });
-        const saveData = await saveRes.json();
-        console.log('[GPT저장] 결과:', saveData);
-        if (!saveData.success) showToast('GPT 평가 저장 실패', 'error');
-      } catch(e2) { console.warn('GPT 평가 저장 실패', e2); showToast('GPT 평가 저장 실패: ' + e2.message, 'error'); }
-    } else {
-      console.warn('[GPT저장] 저장 불가 — currentConvId:', currentConvId, 'saveMsgId:', saveMsgId);
-      showToast('GPT 평가 저장 불가: 대화 ID 또는 메시지 ID 없음', 'error');
-    }
+    // 서버가 백그라운드에서 GPT 평가를 자동 저장하므로 프론트 저장 불필요
+    console.log('[GPT평가] UI 표시 완료 (서버 자동저장)');
   } catch(e) {
     evalContainer.innerHTML = `<span style="color:var(--red);font-size:12px">&#10007; ${escapeHtml(e.message)}</span>`;
   }
@@ -1201,6 +1427,7 @@ async function evaluateConsultation(prompt, responseText, msgId) {
     if (!res.ok) throw new Error(data.error || '문진 평가 실패');
 
     const ev = data.evaluation;
+    window._lastConsultEval = ev;  // Store for enhance button
     const gradeColors = { A: 'var(--green)', B: '#38bdf8', C: '#f59e0b', D: '#f97316', F: 'var(--red)' };
     const gradeColor = gradeColors[ev.grade] || 'var(--text-dim)';
 
@@ -1246,17 +1473,8 @@ async function evaluateConsultation(prompt, responseText, msgId) {
       ${ev.recommendation ? `<div style="font-size:13px;color:var(--accent);margin-top:4px">💊 ${escapeHtml(ev.recommendation)}</div>` : ''}
     `;
 
-    // DB에 저장
-    const saveMsgId = msgId || window._lastAssistantMsgId;
-    if (currentConvId && saveMsgId) {
-      try {
-        await fetch(`/api/conversations/${currentConvId}/message`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ updateConsultationEval: true, msgId: saveMsgId, consultationEval: ev })
-        });
-      } catch(e2) { console.warn('문진 평가 저장 실패', e2); }
-    }
+    // 서버가 백그라운드에서 문진 평가를 자동 저장하므로 프론트 저장 불필요
+    console.log('[문진평가] UI 표시 완료 (서버 자동저장)');
   } catch(e) {
     evalContainer.innerHTML = `<span style="color:var(--red);font-size:13px">문진 평가 실패: ${escapeHtml(e.message)}</span>`;
   }
@@ -1352,165 +1570,853 @@ function addProgressIndicator(message) {
   scrollToBottom();
 }
 
-function finalizeAssistantMessage(fullText, meta = {}) {
-  const prog = document.getElementById('progressIndicator');
-  if (prog) prog.remove();
+// ──────────────────────────────────────
+// Unified Assistant Evaluation Renderer
+// ──────────────────────────────────────
+function renderAssistantEvaluation(msgDiv, evalData) {
+  if (!msgDiv) return;
+  var msgId = evalData.msgId;
+  var fullText = evalData.fullText || '';
+  var userPrompt = evalData.userPrompt || '';
+  var compliance = evalData.compliance;
+  var gptEval = evalData.gptEval || null;
+  var consultationEval = evalData.consultationEval || null;
+  var searchResults = evalData.searchResults || [];
+  var followUps = evalData.followUps || [];
+  var tokenUsage = evalData.tokenUsage || null;
+  var elapsed = evalData.elapsed || null;
+  var comments = evalData.comments || [];
+  var enhancement = evalData.enhancement || null;
+  var isLive = !!evalData.isLive;
+  var gptModel = evalData.gptModel || '';
+  var existingFeedback = evalData.feedback || null;
 
-  const bubble = document.getElementById('streamBubble');
-  if (bubble) {
-    bubble.removeAttribute('id');
-    let parsedHtml = marked.parse(fullText);
-    parsedHtml = convertCitations(parsedHtml, meta.searchResults);
-    bubble.innerHTML = parsedHtml;
+  // ── 1. Search results panel ──
+  if (searchResults && searchResults.length > 0) {
+    var srcPanel = document.createElement('details');
+    srcPanel.className = 'sources-panel';
+    var srcInner = '<summary>\uCC38\uACE0 \uC790\uB8CC (' + searchResults.length + '\uAC74)</summary>';
+    var srcSlice = searchResults.slice(0, 8);
+    for (var si = 0; si < srcSlice.length; si++) {
+      var s = srcSlice[si];
+      var sTitle = escapeHtml(s.title || s.strid || '');
+      var sSnippet = escapeHtml((s.text_snapshot || s.snippet || '').substring(0, 120));
+      var sUrl = s.url || '';
+      var sBadge = s.source_type === 'PUBMED'
+        ? '<span style="color:var(--green);font-size:12px">[PubMed]</span>'
+        : '<span style="color:var(--accent);font-size:12px">[Web]</span>';
+      var sTitleLink = sUrl ? '<a href="' + escapeHtml(sUrl) + '" target="_blank">' + sTitle + '</a>' : sTitle;
+      srcInner += '<div class="src-item">' + sBadge + ' <span class="src-title">' + sTitleLink + '</span><div class="src-snippet">' + sSnippet + '</div></div>';
+    }
+    srcPanel.innerHTML = srcInner;
+    msgDiv.appendChild(srcPanel);
   }
 
-  const metaEl = document.getElementById('streamMeta');
-  if (!metaEl) return;
-  metaEl.removeAttribute('id');
+  // ── 2. Follow-up questions ──
+  if (followUps && followUps.length > 0) {
+    var fuDiv = document.createElement('div');
+    fuDiv.className = 'followups';
+    var fuHtml = '';
+    for (var fi = 0; fi < followUps.length; fi++) {
+      var fq = followUps[fi].query || followUps[fi];
+      var fqSafe = escapeHtml(fq);
+      fuHtml += '<button class="followup-chip">' + fqSafe + '</button>';
+    }
+    fuDiv.innerHTML = fuHtml;
+    // attach events via addEventListener
+    var fuBtns = fuDiv.querySelectorAll('.followup-chip');
+    for (var fb = 0; fb < fuBtns.length; fb++) {
+      (function(query) {
+        fuBtns[fb].addEventListener('click', function() {
+          insertPrompt(query);
+          sendMessage();
+        });
+      })(followUps[fb].query || followUps[fb]);
+    }
+    msgDiv.appendChild(fuDiv);
+  }
 
-  // 응답 시간만 metaEl에 표시
-  metaEl.innerHTML = meta.elapsed ? `<span>${meta.elapsed}ms</span>` : '';
+  // ── 3. Response time + Token usage ──
+  if (elapsed || tokenUsage) {
+    var infoDiv = document.createElement('div');
+    infoDiv.style.cssText = 'margin-top:8px;padding:8px 12px;font-size:12px;color:var(--text-dim);background:var(--surface);border-radius:8px;display:flex;gap:14px;flex-wrap:wrap;align-items:center';
+    var infoHtml = '';
+    if (elapsed) {
+      infoHtml += '<span>\u23F1 \uC751\uB2F5: <b>' + (elapsed / 1000).toFixed(1) + '\uCD08</b></span>';
+    }
+    if (tokenUsage) {
+      for (var tuModel in tokenUsage) {
+        if (!tokenUsage.hasOwnProperty(tuModel)) continue;
+        var u = tokenUsage[tuModel];
+        infoHtml += '<span>\uD83D\uDD22 ' + escapeHtml(tuModel) + ': ' +
+          '<span style="color:var(--accent)">' + (u.input_tokens || 0).toLocaleString() + '</span>\uC785\uB825 / ' +
+          '<span style="color:var(--green)">' + (u.output_tokens || 0).toLocaleString() + '</span>\uCD9C\uB825 / ' +
+          '<b>' + (u.total_tokens || 0).toLocaleString() + '</b>\uC804\uCCB4</span>';
+      }
+    }
+    infoDiv.innerHTML = infoHtml;
+    msgDiv.appendChild(infoDiv);
+  }
 
-  // 평가 결과 박스 + GPT + 커멘트 (addRestoredAssistantMessage와 동일 UI)
-  const msgId = window._lastAssistantMsgId || ('msg-' + Date.now());
-  const msgDiv = metaEl.closest('.msg');
-  if (msgDiv) {
-    const evalBox = document.createElement('div');
-    evalBox.className = 'eval-result-box';
+  // ── 4. Eval result box ──
+  var evalBox = document.createElement('div');
+  evalBox.className = 'eval-result-box';
 
-    // ── 평가 헤더 (초기: 정규식 기준, GPT 완료 시 갱신) ──
-    const c = meta.compliance || {};
-    const regexScore = c.regexScore ?? c.score ?? 100;
-    const regexCls = regexScore >= 80 ? 'pass' : regexScore >= 60 ? 'warn' : 'fail';
-    const regexLabel = regexScore >= 80 ? 'PASS' : regexScore >= 60 ? '주의' : 'FAIL';
+  // 4a. Enhancement comparison panel (restored)
+  if (!isLive && enhancement) {
+    var enh = enhancement;
+    var eOrigGpt = ((enh.originalEval || {}).gptEval || {}).score || 0;
+    var eOrigGrade = ((enh.originalEval || {}).gptEval || {}).grade || '?';
+    var eEnhGpt = ((enh.enhancedEval || {}).gptEval || {}).score || 0;
+    var eEnhGrade = ((enh.enhancedEval || {}).gptEval || {}).grade || '?';
+    var eOrigConsult = ((enh.originalEval || {}).consultationEval || {}).totalScore || 0;
+    var eEnhConsult = ((enh.enhancedEval || {}).consultationEval || {}).totalScore || 0;
+    var eGptDelta = eEnhGpt - eOrigGpt;
+    var eConsultDelta = eEnhConsult - eOrigConsult;
 
-    const evalHeader = document.createElement('div');
-    evalHeader.className = 'eval-section';
-    evalHeader.id = 'eval-header-' + msgId;
-    evalHeader.style.cssText = 'background:var(--surface);padding:10px 16px;display:flex;align-items:center;gap:12px';
-    evalHeader.innerHTML = `<span class="compliance-badge ${regexCls}" style="font-size:18px;padding:4px 12px">${regexLabel} ${Math.round(regexScore)}점</span> <span style="font-size:14px;color:var(--text-dim)">정규식 기준 (GPT 평가 대기중...)</span>`;
-    evalBox.appendChild(evalHeader);
+    var eDeltaColor = function(d) { return d > 0 ? '#22c55e' : d < 0 ? '#ef4444' : '#94a3b8'; };
+    var eDeltaText = function(d) { return d > 0 ? '+' + d + '\u2191' : d < 0 ? d + '\u2193' : '0'; };
 
-    // ── 정규식 상세 (참고용 접기 섹션) ──
-    let regexDetailHtml = '<details style="margin-top:4px"><summary style="font-size:12px;color:var(--text-dim);cursor:pointer">📋 정규식 참고</summary><div style="padding:8px 0">';
-    regexDetailHtml += `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span class="compliance-badge ${regexCls}" style="font-size:12px;padding:3px 10px">${regexLabel} ${Math.round(regexScore)}점</span>`;
-    if (c.hasDisclaimer) regexDetailHtml += '<span style="color:var(--green);font-size:13px">면책조항 ✓</span>';
-    else if (c.isMedical) regexDetailHtml += '<span style="color:var(--yellow);font-size:13px">면책조항 누락</span>';
+    var enhInstructions = enh.instructions || [];
+    var eInstrHtml = '';
+    for (var eii = 0; eii < enhInstructions.length; eii++) {
+      if (eii > 0) eInstrHtml += ' \u00B7 ';
+      eInstrHtml += escapeHtml(enhInstructions[eii]);
+    }
+
+    var eCompareDiv = document.createElement('div');
+    eCompareDiv.style.cssText = 'margin-bottom:12px;padding:14px;background:linear-gradient(135deg,#1e1b4b,#1e293b);border-radius:10px;border:1px solid #7c3aed44';
+    eCompareDiv.innerHTML =
+      '<div style="font-size:14px;font-weight:700;color:#c4b5fd;margin-bottom:10px">\uD83D\uDD04 \uBCF4\uAC15 \uC804 vs \uD6C4 \uBE44\uAD50</div>' +
+      '<div style="display:flex;gap:16px;flex-wrap:wrap">' +
+        '<div style="flex:1;min-width:120px">' +
+          '<div style="font-size:11px;color:#94a3b8;margin-bottom:4px">GPT \uD3C9\uAC00</div>' +
+          '<div style="display:flex;align-items:center;gap:8px">' +
+            '<span style="font-size:13px;color:#94a3b8">' + escapeHtml(eOrigGrade) + ' ' + eOrigGpt + '\uC810</span>' +
+            '<span style="font-size:14px;color:var(--accent)">\u2192</span>' +
+            '<span style="font-size:15px;font-weight:700;color:' + eDeltaColor(eGptDelta) + '">' + escapeHtml(eEnhGrade) + ' ' + eEnhGpt + '\uC810</span>' +
+            '<span style="font-size:13px;font-weight:700;color:' + eDeltaColor(eGptDelta) + '">' + eDeltaText(eGptDelta) + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div style="flex:1;min-width:120px">' +
+          '<div style="font-size:11px;color:#94a3b8;margin-bottom:4px">\uBB38\uC9C4 \uD488\uC9C8</div>' +
+          '<div style="display:flex;align-items:center;gap:8px">' +
+            '<span style="font-size:13px;color:#94a3b8">' + eOrigConsult + '\uC810</span>' +
+            '<span style="font-size:14px;color:var(--accent)">\u2192</span>' +
+            '<span style="font-size:15px;font-weight:700;color:' + eDeltaColor(eConsultDelta) + '">' + eEnhConsult + '\uC810</span>' +
+            '<span style="font-size:13px;font-weight:700;color:' + eDeltaColor(eConsultDelta) + '">' + eDeltaText(eConsultDelta) + '</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      (eInstrHtml ? '<div style="margin-top:10px;font-size:11px;color:#c4b5fd">\uD83D\uDCA1 \uBCF4\uAC15 \uC9C0\uC2DC: ' + eInstrHtml + '</div>' : '');
+
+    evalBox.appendChild(eCompareDiv);
+  }
+
+  // 4b. Header badge
+  var c = compliance || {};
+  var regexScore = c.regexScore != null ? c.regexScore : (c.score != null ? c.score : 100);
+  var gptScore = (gptEval && gptEval.score != null) ? gptEval.score : null;
+
+  var headerBadgeHtml = '';
+  if (gptScore !== null) {
+    var gCls = gptScore >= 80 ? 'pass' : gptScore >= 60 ? 'warn' : 'fail';
+    var gLabel = gptEval.passed ? 'PASS' : 'FAIL';
+    headerBadgeHtml = '<span class="compliance-badge ' + gCls + '" style="font-size:18px;padding:4px 12px">' + escapeHtml((gptEval.grade || '?') + ' ' + gptScore + '\uC810 ' + gLabel) + '</span> <span style="font-size:14px;color:var(--text-dim)">GPT \uAE30\uC900</span>';
+  } else {
+    var rCls = regexScore >= 80 ? 'pass' : regexScore >= 60 ? 'warn' : 'fail';
+    var rLabel = regexScore >= 80 ? 'PASS' : regexScore >= 60 ? '\uC8FC\uC758' : 'FAIL';
+    var headerSuffix = isLive ? ' (GPT \uD3C9\uAC00 \uB300\uAE30\uC911...)' : '';
+    headerBadgeHtml = '<span class="compliance-badge ' + rCls + '" style="font-size:18px;padding:4px 12px">' + rLabel + ' ' + Math.round(regexScore) + '\uC810</span> <span style="font-size:14px;color:var(--text-dim)">\uC815\uADDC\uC2DD \uAE30\uC900' + headerSuffix + '</span>';
+  }
+
+  var evalHeader = document.createElement('div');
+  evalHeader.className = 'eval-section';
+  evalHeader.id = 'eval-header-' + msgId;
+  evalHeader.style.cssText = 'background:var(--surface);padding:10px 16px;display:flex;align-items:center;gap:12px';
+  evalHeader.innerHTML = headerBadgeHtml;
+  evalBox.appendChild(evalHeader);
+
+  // 4c. Regex detail section
+  if (compliance) {
+    var rxScore = regexScore;
+    var rxCls = rxScore >= 80 ? 'pass' : rxScore >= 60 ? 'warn' : 'fail';
+    var rxLabel = rxScore >= 80 ? 'PASS' : rxScore >= 60 ? '\uC8FC\uC758' : 'FAIL';
+    var regexDetailHtml = '<details style="margin-top:4px"><summary style="font-size:12px;color:var(--text-dim);cursor:pointer">\uD83D\uDCCB \uC815\uADDC\uC2DD \uCC38\uACE0</summary><div style="padding:8px 0">';
+    regexDetailHtml += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+      '<span class="compliance-badge ' + rxCls + '" style="font-size:12px;padding:3px 10px">' + rxLabel + ' ' + Math.round(rxScore) + '\uC810</span>';
+    if (c.hasDisclaimer) regexDetailHtml += '<span style="color:var(--green);font-size:13px">\uBA74\uCC45\uC870\uD56D \u2713</span>';
+    else if (c.isMedical) regexDetailHtml += '<span style="color:var(--yellow);font-size:13px">\uBA74\uCC45\uC870\uD56D \uB204\uB77D</span>';
     regexDetailHtml += '</div>';
-    if (c.violations && c.violations.length > 0) {
+    var rxViolations = c.violations || [];
+    if (rxViolations.length > 0) {
       regexDetailHtml += '<div style="margin-top:8px">';
-      c.violations.forEach(v => {
-        const vc = v.severity === 'CRITICAL' ? '' : v.severity === 'HIGH' ? ' high' : ' medium';
-        regexDetailHtml += `<span class="violation-chip${vc}">[${v.severity}] ${escapeHtml(v.name)}: ${escapeHtml((v.matched || '').substring(0, 40))}</span>`;
-      });
+      for (var rv = 0; rv < rxViolations.length; rv++) {
+        var v = rxViolations[rv];
+        var vc = v.severity === 'CRITICAL' ? '' : v.severity === 'HIGH' ? ' high' : ' medium';
+        regexDetailHtml += '<span class="violation-chip' + vc + '">[' + escapeHtml(v.severity) + '] ' + escapeHtml(v.name || '') + ': ' + escapeHtml((v.matched || v.matched_text || '').substring(0, 40)) + '</span>';
+      }
       regexDetailHtml += '</div>';
     }
     regexDetailHtml += '</div></details>';
     evalBox.innerHTML += regexDetailHtml;
-
-    // ── GPT 평가 섹션 ──
-    const gptSection = document.createElement('div');
-    gptSection.className = 'eval-section';
-    gptSection.innerHTML = `
-      <button class="eval-btn" style="font-size:13px;padding:6px 16px">&#129302; ChatGPT 평가</button>
-      <div class="llm-eval" id="llm-eval-${msgId}" style="display:none"></div>
-    `;
-    const _prompt = meta.userPrompt || '';
-    const _text = fullText;
-    const _mid = msgId;
-    gptSection.querySelector('.eval-btn').addEventListener('click', function() {
-      document.getElementById('llm-eval-' + _mid).style.display = 'block';
-      this.style.display = 'none';
-      evaluateWithLLM(_prompt, _text, _mid);
-    });
-    evalBox.appendChild(gptSection);
-
-    // 자동 평가 (openaiKey가 있으면 자동 실행, enableLlmEval 기본값 true)
-    const autoEval = savedSettings.enableLlmEval !== false && savedSettings.openaiKey;
-    if (autoEval) {
-      gptSection.querySelector('.llm-eval').style.display = 'block';
-      gptSection.querySelector('.eval-btn').style.display = 'none';
-      // DOM이 확실히 삽입된 후 실행
-      setTimeout(() => evaluateWithLLM(meta.userPrompt || '', fullText, msgId), 100);
-    }
-
-    // ── 문진 품질 평가 섹션 ──
-    const consultSection = document.createElement('div');
-    consultSection.style.cssText = 'margin-top:8px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px';
-    consultSection.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-        <span style="font-size:12px;font-weight:600;color:var(--text)">🩺 문진 품질</span>
-        <button class="eval-btn" style="font-size:13px">문진 평가</button>
-      </div>
-      <div id="consultation-eval-${msgId}" style="display:none"></div>
-    `;
-    const consultBtn = consultSection.querySelector('.eval-btn');
-    const _cp = meta.userPrompt || '';
-    const _ct = fullText;
-    const _cm = msgId;
-    consultBtn.addEventListener('click', function() {
-      this.style.display = 'none';
-      document.getElementById('consultation-eval-' + _cm).style.display = 'block';
-      evaluateConsultation(_cp, _ct, _cm);
-    });
-    evalBox.appendChild(consultSection);
-
-    // 자동 문진 평가 (설정 켜져 있을 때)
-    if (autoEval) {
-      consultSection.querySelector('.eval-btn').style.display = 'none';
-      consultSection.querySelector('[id^="consultation-eval-"]').style.display = 'block';
-      setTimeout(() => evaluateConsultation(meta.userPrompt || '', fullText, msgId), 3000);  // GPT 평가 후 3초 딜레이
-    }
-
-    // ── 1. 커멘트 버튼 (답변 직후) ──
-    const commentWrapper = document.createElement('div');
-    commentWrapper.style.marginTop = '6px';
-    commentWrapper.innerHTML = `
-      <button class="comment-btn" onclick="toggleCommentForm('${msgId}')">💬 커멘트 달기</button>
-      <div id="commentForm_${msgId}" style="display:none;margin-top:8px;padding:12px;background:var(--bg);border-radius:10px;border:1px solid var(--border)">
-        <select id="commentCat_${msgId}" style="width:100%;padding:8px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px;margin-bottom:8px">
-          <option value="부정확한 정보">부정확한 정보</option><option value="불충분한 답변">불충분한 답변</option>
-          <option value="위험한 조언">위험한 조언</option><option value="면책 조항 누락">면책 조항 누락</option>
-          <option value="과잉 진단/처방">과잉 진단/처방</option><option value="출처 불명확">출처 불명확</option>
-          <option value="표현 부적절">표현 부적절</option><option value="기타">기타</option>
-        </select>
-        <textarea id="commentText_${msgId}" rows="3" placeholder="커멘트를 입력하세요..." style="width:100%;padding:8px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px;resize:none;box-sizing:border-box"></textarea>
-        <button onclick="submitComment('${msgId}')" style="margin-top:6px;padding:6px 16px;background:var(--accent);color:#0f172a;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">등록</button>
-      </div>
-    `;
-    msgDiv.appendChild(commentWrapper);
-
-    // ── 2. 참고 자료 ──
-    if (meta.searchResults && meta.searchResults.length > 0) {
-      const srcPanel = document.createElement('details');
-      srcPanel.className = 'sources-panel';
-      srcPanel.innerHTML = `<summary>참고 자료 (${meta.searchResults.length}건)</summary>` +
-        meta.searchResults.slice(0, 8).map(s => {
-          const title = escapeHtml(s.title || s.strid || '');
-          const snippet = escapeHtml((s.text_snapshot || s.snippet || '').substring(0, 120));
-          const url = s.url || '';
-          const badge = s.source_type === 'PUBMED'
-            ? '<span style="color:var(--green);font-size:12px">[PubMed]</span>'
-            : '<span style="color:var(--accent);font-size:12px">[Web]</span>';
-          return `<div class="src-item">${badge} <span class="src-title">${url ? `<a href="${url}" target="_blank">${title}</a>` : title}</span><div class="src-snippet">${snippet}</div></div>`;
-        }).join('');
-      msgDiv.appendChild(srcPanel);
-    }
-
-    // ── 3. 추천 질문 ──
-    if (meta.followUps && meta.followUps.length > 0) {
-      const fuDiv = document.createElement('div');
-      fuDiv.className = 'followups';
-      fuDiv.innerHTML = meta.followUps.map(f =>
-        `<button class="followup-chip" onclick="insertPrompt('${escapeHtml(f.query)}');sendMessage()">${escapeHtml(f.query)}</button>`
-      ).join('');
-      msgDiv.appendChild(fuDiv);
-    }
-
-    // ── 4. 평가 결과 박스 (패턴 + GPT) — 최하단 ──
-    msgDiv.appendChild(evalBox);
   }
+
+  // 4d. GPT evaluation section
+  var gptSection = document.createElement('div');
+  gptSection.className = 'eval-section';
+
+  if (gptEval && gptEval.grade) {
+    // Show existing GPT eval data inline
+    var geGradeClass = 'grade-' + (gptEval.grade || 'C');
+    var geHtml = '<div class="eval-section-title"><span class="icon">\uD83E\uDD16</span> ChatGPT \uD3C9\uAC00 \u2014 ' + (gptEval.score != null ? gptEval.score : '?') + '\uC810</div>' +
+      '<div class="llm-eval" style="display:block;border:none;padding:0;margin:0;background:transparent">' +
+        '<div class="eval-header">' +
+          '<span class="eval-grade ' + geGradeClass + '">' + escapeHtml(gptEval.grade || '?') + '</span>' +
+          '<span>ChatGPT \uD3C9\uAC00 \u2014 ' + (gptEval.score != null ? gptEval.score : '?') + '\uC810</span>' +
+          '<span style="color:' + (gptEval.passed ? 'var(--green)' : 'var(--red)') + '; margin-left:auto">' +
+            (gptEval.passed ? '\u2713 PASS' : '\u2717 FAIL') +
+          '</span>' +
+        '</div>' +
+        '<div class="eval-summary">' + escapeHtml(gptEval.summary || '') + '</div>';
+    if (gptEval.violations && gptEval.violations.length > 0) {
+      geHtml += '<div class="eval-violations">';
+      for (var gv = 0; gv < gptEval.violations.length; gv++) {
+        var gvItem = gptEval.violations[gv];
+        geHtml += '<div class="eval-viol-item"><span class="eval-viol-sev risk-' + escapeHtml(gvItem.severity || '') + '">' + escapeHtml(gvItem.severity || '') + '</span><span>' + escapeHtml(gvItem.description || gvItem.type || '') + '</span></div>';
+      }
+      geHtml += '</div>';
+    }
+    if (gptEval.recommendation) {
+      geHtml += '<div class="eval-recommendation">\uD83D\uDCA1 ' + escapeHtml(gptEval.recommendation) + '</div>';
+    }
+    geHtml += '<div style="margin-top:6px;font-size:12px;color:var(--text-dim)">\uBAA8\uB378: ' + escapeHtml(gptModel || 'gpt-4o-mini') + '</div>';
+    geHtml += '</div>';
+    gptSection.innerHTML = geHtml;
+  } else {
+    // Show button to trigger GPT eval
+    gptSection.innerHTML = '<button class="eval-btn" style="font-size:13px;padding:6px 16px">&#129302; ChatGPT \uD3C9\uAC00</button>' +
+      '<div class="llm-eval" id="llm-eval-' + escapeHtml(msgId) + '" style="display:none"></div>';
+
+    // Determine userPrompt: use provided or look back through messages
+    var gptPrompt = userPrompt;
+    if (!gptPrompt) {
+      var allMsgsGpt = msgDiv.parentElement ? msgDiv.parentElement.querySelectorAll('.msg') : [];
+      for (var gi = allMsgsGpt.length - 1; gi >= 0; gi--) {
+        if (allMsgsGpt[gi] === msgDiv) continue;
+        if (allMsgsGpt[gi].classList.contains('user')) {
+          var gBubble = allMsgsGpt[gi].querySelector('.bubble');
+          gptPrompt = gBubble ? gBubble.textContent : '';
+          break;
+        }
+      }
+    }
+
+    var _gptPrompt = gptPrompt, _gptText = fullText, _gptMid = msgId;
+    var gptBtn = gptSection.querySelector('.eval-btn');
+    gptBtn.addEventListener('click', function() {
+      var el = document.getElementById('llm-eval-' + _gptMid);
+      if (el) el.style.display = 'block';
+      this.style.display = 'none';
+      evaluateWithLLM(_gptPrompt, _gptText, _gptMid);
+    });
+
+    // Auto-eval (isLive only)
+    if (isLive && savedSettings.enableLlmEval !== false && savedSettings.openaiKey) {
+      var gptLlmEl = gptSection.querySelector('.llm-eval');
+      if (gptLlmEl) gptLlmEl.style.display = 'block';
+      gptBtn.style.display = 'none';
+      var _autoGptPrompt = userPrompt, _autoGptText = fullText, _autoGptMid = msgId;
+      setTimeout(function() { evaluateWithLLM(_autoGptPrompt, _autoGptText, _autoGptMid); }, 100);
+    }
+  }
+  evalBox.appendChild(gptSection);
+
+  // 4e. Consultation evaluation section
+  var consultSection = document.createElement('div');
+  consultSection.className = 'eval-section consultation-box';
+
+  if (consultationEval && consultationEval.totalScore != null) {
+    // Show existing consultation eval data
+    var cGradeColors = { A: 'var(--green)', B: '#38bdf8', C: '#f59e0b', D: '#f97316', F: 'var(--red)' };
+    var cGradeColor = cGradeColors[consultationEval.grade] || 'var(--text-dim)';
+    var cAxes = [
+      { key: 'symptomExploration', label: '\uC99D\uC0C1 \uD0D0\uC0C9', max: 30 },
+      { key: 'redFlagScreening', label: '\uC704\uD5D8 \uC120\uBCC4', max: 25 },
+      { key: 'patientContext', label: '\uD658\uC790 \uB9E5\uB77D', max: 20 },
+      { key: 'structuredApproach', label: '\uB2E8\uACC4\uC801 \uC811\uADFC', max: 15 },
+      { key: 'appropriateGuidance', label: '\uC801\uC808\uD55C \uC548\uB0B4', max: 10 },
+    ];
+    var cAxesHtml = '';
+    for (var ca = 0; ca < cAxes.length; ca++) {
+      var ax = cAxes[ca];
+      var axData = (consultationEval.axes || {})[ax.key] || {};
+      var axScore = axData.score || 0;
+      var axPct = Math.round((axScore / ax.max) * 100);
+      var axBarColor = axPct >= 80 ? 'var(--green)' : axPct >= 50 ? '#f59e0b' : 'var(--red)';
+      var axMissing = (axData.missing || []).join(', ');
+      var axWarn = axPct < 60 ? ' \u26A0\uFE0F' : '';
+      cAxesHtml += '<div style="margin-bottom:4px">' +
+        '<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text-dim)">' +
+          '<span>' + ax.label + axWarn + '</span><span>' + axScore + '/' + ax.max + '</span>' +
+        '</div>' +
+        '<div style="height:8px;background:var(--bg);border-radius:3px;overflow:hidden">' +
+          '<div style="height:100%;width:' + axPct + '%;background:' + axBarColor + ';border-radius:3px;transition:width .3s"></div>' +
+        '</div>' +
+        (axMissing ? '<div style="font-size:13px;color:var(--text-dim);margin-top:1px">\uBD80\uC871: ' + escapeHtml(axMissing) + '</div>' : '') +
+      '</div>';
+    }
+    var cMissingAll = (consultationEval.missingItems || []).slice(0, 5);
+    var cMissingStr = '';
+    for (var cm = 0; cm < cMissingAll.length; cm++) {
+      if (cm > 0) cMissingStr += ', ';
+      cMissingStr += escapeHtml(cMissingAll[cm]);
+    }
+
+    var consultHtml = '<details open style="cursor:pointer">' +
+      '<summary style="font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px">' +
+        '\uD83E\uDE7A \uBB38\uC9C4 \uD488\uC9C8' +
+        '<span style="font-size:20px;font-weight:800;color:' + cGradeColor + '">' + escapeHtml(consultationEval.grade || '?') + '</span>' +
+        '<span style="font-size:14px;color:var(--text-dim)">' + (consultationEval.totalScore || 0) + '\uC810</span>' +
+      '</summary>' +
+      '<div style="margin-top:8px">' +
+        cAxesHtml +
+        (consultationEval.summary ? '<div style="font-size:13px;color:var(--text);margin-top:6px;padding:6px 8px;background:var(--bg);border-radius:4px">' + escapeHtml(consultationEval.summary) + '</div>' : '') +
+        (cMissingStr ? '<div style="font-size:13px;color:#f59e0b;margin-top:4px">\uD83D\uDCA1 \uBD80\uC871: ' + cMissingStr + '</div>' : '') +
+        (consultationEval.recommendation ? '<div style="font-size:13px;color:var(--accent);margin-top:4px">\uD83D\uDC8A ' + escapeHtml(consultationEval.recommendation) + '</div>' : '') +
+      '</div>' +
+    '</details>';
+    consultSection.innerHTML = consultHtml;
+  } else {
+    // Show button to trigger consultation eval
+    consultSection.style.cssText = 'margin-top:8px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px';
+    consultSection.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">' +
+      '<span style="font-size:12px;font-weight:600;color:var(--text)">\uD83E\uDE7A \uBB38\uC9C4 \uD488\uC9C8</span>' +
+      '<button class="eval-btn" style="font-size:13px">\uBB38\uC9C4 \uD3C9\uAC00</button>' +
+    '</div>' +
+    '<div id="consultation-eval-' + escapeHtml(msgId) + '" style="display:none"></div>';
+
+    // Determine userPrompt for consultation
+    var consultPrompt = userPrompt;
+    if (!consultPrompt) {
+      var allMsgsCon = msgDiv.parentElement ? msgDiv.parentElement.querySelectorAll('.msg') : [];
+      for (var ci = allMsgsCon.length - 1; ci >= 0; ci--) {
+        if (allMsgsCon[ci] === msgDiv) continue;
+        if (allMsgsCon[ci].classList.contains('user')) {
+          var cBubble = allMsgsCon[ci].querySelector('.bubble');
+          consultPrompt = cBubble ? cBubble.textContent : '';
+          break;
+        }
+      }
+    }
+
+    var _conPrompt = consultPrompt, _conText = fullText, _conMid = msgId;
+    var conBtn = consultSection.querySelector('.eval-btn');
+    conBtn.addEventListener('click', function() {
+      this.style.display = 'none';
+      var el = document.getElementById('consultation-eval-' + _conMid);
+      if (el) el.style.display = 'block';
+      evaluateConsultation(_conPrompt, _conText, _conMid);
+    });
+
+    // Auto-eval (isLive only)
+    if (isLive && savedSettings.enableLlmEval !== false && savedSettings.openaiKey) {
+      conBtn.style.display = 'none';
+      var conEvalEl = consultSection.querySelector('[id^="consultation-eval-"]');
+      if (conEvalEl) conEvalEl.style.display = 'block';
+      var _autoConPrompt = userPrompt, _autoConText = fullText, _autoConMid = msgId;
+      setTimeout(function() { evaluateConsultation(_autoConPrompt, _autoConText, _autoConMid); }, 3000);
+    }
+  }
+  evalBox.appendChild(consultSection);
+
+  // 4f. Enhancement button
+  var _enhUserPrompt = userPrompt;
+  var _enhFullText = fullText;
+  var _enhMsgId = msgId;
+  var _enhCompliance = compliance;
+
+  var enhanceWrapper = document.createElement('div');
+  enhanceWrapper.style.marginTop = '8px';
+
+  var enhBtn = document.createElement('button');
+  enhBtn.style.cssText = 'font-size:13px;padding:8px 20px;background:#7c3aed;color:#fff;border:none;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px';
+  enhBtn.textContent = '\uD83D\uDD04 \uD504\uB85C\uD504\uD2B8 \uBCF4\uAC15 \uC7AC\uC9C8\uBB38';
+  enhBtn.addEventListener('click', function() {
+    requestEnhancedPrompt(_enhUserPrompt, window._lastGptEval || null, window._lastConsultEval || null, _enhCompliance, _enhMsgId);
+  });
+  enhanceWrapper.appendChild(enhBtn);
+  evalBox.appendChild(enhanceWrapper);
+
+  // 4g. Live enhancement comparison polling (isLive only)
+  console.log('[보강체크] isLive:', isLive, '_isEnhanced:', !!window._isEnhancedMessage, '_enhCtx:', !!window._enhancementContext);
+  if (isLive && window._isEnhancedMessage && window._enhancementContext) {
+    console.log('[보강체크] 비교 폴링 시작!');
+    window._isEnhancedMessage = false;
+    var liveCtx = window._enhancementContext;
+
+    var _origGptEval = liveCtx.originalEval.gptEval || {};
+    var _origConsultEval = liveCtx.originalEval.consultationEval || {};
+    window._lastGptEval = null;
+    window._lastConsultEval = null;
+    window._serverMsgIdReady = false;
+
+    var _compRetry = 0;
+    var _liveMsgDiv = msgDiv;
+    var _liveMsgId = msgId;
+    var _liveCompliance = compliance;
+    var checkAndShowComparison = function() {
+      _compRetry++;
+      var gptOk = !!window._lastGptEval;
+      var consultOk = !!window._lastConsultEval;
+      if ((!gptOk || !consultOk) && _compRetry < 30) {
+        if (_compRetry % 5 === 0) console.log('[보강비교] 대기중... GPT:' + gptOk + ' 문진:' + consultOk + ' retry:' + _compRetry);
+        setTimeout(checkAndShowComparison, 2000);
+        return;
+      }
+      console.log('[보강비교] 완료! GPT:', (window._lastGptEval||{}).score, '문진:', (window._lastConsultEval||{}).totalScore, 'ID:', window._lastAssistantMsgId);
+
+      var origGpt = _origGptEval.score || 0;
+      var origGrade = _origGptEval.grade || '?';
+      var enhGpt = (window._lastGptEval || {}).score || 0;
+      var enhGrade = (window._lastGptEval || {}).grade || '?';
+      var origConsult = _origConsultEval.totalScore || 0;
+      var enhConsult = (window._lastConsultEval || {}).totalScore || 0;
+      var gptDelta = enhGpt - origGpt;
+      var consultDelta = enhConsult - origConsult;
+
+      var deltaColor = function(d) { return d > 0 ? '#22c55e' : d < 0 ? '#ef4444' : '#94a3b8'; };
+      var deltaText = function(d) { return d > 0 ? '+' + d + '\u2191' : d < 0 ? d + '\u2193' : '0'; };
+
+      var compareDiv = document.createElement('div');
+      compareDiv.style.cssText = 'margin-bottom:12px;padding:14px;background:linear-gradient(135deg,#1e1b4b,#1e293b);border-radius:10px;border:1px solid #7c3aed44';
+      compareDiv.innerHTML =
+        '<div style="font-size:14px;font-weight:700;color:#c4b5fd;margin-bottom:10px">\uD83D\uDD04 \uBCF4\uAC15 \uC804 vs \uD6C4 \uBE44\uAD50</div>' +
+        '<div style="display:flex;gap:16px;flex-wrap:wrap">' +
+          '<div style="flex:1;min-width:120px">' +
+            '<div style="font-size:11px;color:#94a3b8;margin-bottom:4px">GPT \uD3C9\uAC00</div>' +
+            '<div style="display:flex;align-items:center;gap:8px">' +
+              '<span style="font-size:13px;color:#94a3b8">' + escapeHtml(origGrade) + ' ' + origGpt + '\uC810</span>' +
+              '<span style="font-size:14px;color:var(--accent)">\u2192</span>' +
+              '<span style="font-size:15px;font-weight:700;color:' + deltaColor(gptDelta) + '">' + escapeHtml(enhGrade) + ' ' + enhGpt + '\uC810</span>' +
+              '<span style="font-size:13px;font-weight:700;color:' + deltaColor(gptDelta) + '">' + deltaText(gptDelta) + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<div style="flex:1;min-width:120px">' +
+            '<div style="font-size:11px;color:#94a3b8;margin-bottom:4px">\uBB38\uC9C4 \uD488\uC9C8</div>' +
+            '<div style="display:flex;align-items:center;gap:8px">' +
+              '<span style="font-size:13px;color:#94a3b8">' + origConsult + '\uC810</span>' +
+              '<span style="font-size:14px;color:var(--accent)">\u2192</span>' +
+              '<span style="font-size:15px;font-weight:700;color:' + deltaColor(consultDelta) + '">' + enhConsult + '\uC810</span>' +
+              '<span style="font-size:13px;font-weight:700;color:' + deltaColor(consultDelta) + '">' + deltaText(consultDelta) + '</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div style="margin-top:10px;font-size:11px;color:#c4b5fd">' +
+          '\uD83D\uDCA1 \uBCF4\uAC15 \uC9C0\uC2DC: ' + liveCtx.instructions.map(function(i) { return escapeHtml(i); }).join(' \u00B7 ') +
+        '</div>';
+
+      var reportBtn = document.createElement('button');
+      reportBtn.style.cssText = 'margin-top:10px;padding:6px 14px;background:#7c3aed;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600';
+      reportBtn.textContent = '\uD83D\uDCE4 \uB9AC\uD3EC\uD2B8\uB85C \uC800\uC7A5';
+      reportBtn.addEventListener('click', function() { saveEnhancementReport(); });
+      compareDiv.appendChild(reportBtn);
+
+      var currentEvalBox = _liveMsgDiv.querySelector('.eval-result-box');
+      if (currentEvalBox) currentEvalBox.insertBefore(compareDiv, currentEvalBox.firstChild);
+
+      window._enhancementContext.enhancedEval = {
+        gptEval: window._lastGptEval,
+        consultationEval: window._lastConsultEval,
+        compliance: _liveCompliance,
+      };
+      window._enhancementContext.enhancedMsgId = window._lastAssistantMsgId || _liveMsgId;
+    };
+
+    setTimeout(checkAndShowComparison, 5000);
+  }
+
+  msgDiv.appendChild(evalBox);
+
+  // ── 4h. RLHF Feedback UI ──
+  var fbDiv = document.createElement('div');
+  fbDiv.className = 'rlhf-feedback';
+  var fbId = 'rlhf-' + msgId;
+  var fbState = { thumbs: null, rating: 0, tags: [], sent: false };
+  if (existingFeedback) {
+    var _efRating = existingFeedback.rating || 0;
+    if (_efRating >= 4) fbState.thumbs = 'good';
+    else if (_efRating > 0 && _efRating <= 3) fbState.thumbs = 'bad';
+    fbState.rating = _efRating;
+    fbState.tags = Array.isArray(existingFeedback.labels) ? existingFeedback.labels.slice() : [];
+    fbState.correctedResponse = existingFeedback.corrected_response || '';
+    fbState.memo = existingFeedback.feedback_note || '';
+    fbState.sent = true;
+  }
+
+  // Row 1: thumbs + stars + tags
+  var fbRow = document.createElement('div');
+  fbRow.className = 'rlhf-feedback-row';
+
+  var thumbGood = document.createElement('button');
+  thumbGood.className = 'rlhf-thumb-btn';
+  thumbGood.textContent = '\uD83D\uDC4D \uC88B\uC74C';
+  var thumbBad = document.createElement('button');
+  thumbBad.className = 'rlhf-thumb-btn';
+  thumbBad.textContent = '\uD83D\uDC4E \uB098\uC068';
+
+  var _fbMsgId = msgId, _fbFullText = fullText, _fbUserPrompt = userPrompt;
+
+  thumbGood.addEventListener('click', function() {
+    fbState.thumbs = 'good';
+    thumbGood.className = 'rlhf-thumb-btn active-good';
+    thumbBad.className = 'rlhf-thumb-btn';
+    // 좋음 선택: 별점/태그/메모 입력 영역 열고, 저장 버튼으로만 저장
+    var corr = document.getElementById(fbId + '-correction');
+    if (corr) {
+      corr.classList.add('open');
+      corr.dataset.mode = 'good';
+    }
+    var st = document.getElementById(fbId + '-status');
+    if (st) st.textContent = '저장 버튼을 눌러 피드백을 확정하세요';
+  });
+  thumbBad.addEventListener('click', function() {
+    fbState.thumbs = 'bad';
+    thumbBad.className = 'rlhf-thumb-btn active-bad';
+    thumbGood.className = 'rlhf-thumb-btn';
+    // 나쁨 선택: 수정 응답/메모 입력 영역 열고, 저장 버튼으로만 저장
+    var corr = document.getElementById(fbId + '-correction');
+    if (corr) {
+      corr.classList.add('open');
+      corr.dataset.mode = 'bad';
+    }
+    var st = document.getElementById(fbId + '-status');
+    if (st) st.textContent = '수정 응답/메모를 입력 후 저장 버튼을 눌러주세요';
+  });
+  fbRow.appendChild(thumbGood);
+  fbRow.appendChild(thumbBad);
+
+  // Stars
+  var starsDiv = document.createElement('div');
+  starsDiv.className = 'rlhf-stars';
+  for (var si2 = 1; si2 <= 5; si2++) {
+    var star = document.createElement('span');
+    star.className = 'rlhf-star';
+    star.textContent = '\u2605';
+    star.dataset.val = si2;
+    (function(val) {
+      star.addEventListener('click', function() {
+        fbState.rating = val;
+        var allStars = starsDiv.querySelectorAll('.rlhf-star');
+        for (var ss = 0; ss < allStars.length; ss++) {
+          allStars[ss].classList.toggle('filled', parseInt(allStars[ss].dataset.val) <= val);
+        }
+      });
+    })(si2);
+    starsDiv.appendChild(star);
+  }
+  fbRow.appendChild(starsDiv);
+
+  var fbStatusSpan = document.createElement('span');
+  fbStatusSpan.className = 'rlhf-status';
+  fbStatusSpan.id = fbId + '-status';
+  fbRow.appendChild(fbStatusSpan);
+
+  fbDiv.appendChild(fbRow);
+
+  // Row 2: Tags
+  var tagRow = document.createElement('div');
+  tagRow.className = 'rlhf-feedback-row';
+  tagRow.style.marginTop = '8px';
+  for (var ti = 0; ti < FEEDBACK_TAGS.length; ti++) {
+    var tagBtn = document.createElement('button');
+    tagBtn.className = 'rlhf-tag-btn';
+    tagBtn.textContent = FEEDBACK_TAGS[ti];
+    (function(tag, btn) {
+      btn.addEventListener('click', function() {
+        var idx = fbState.tags.indexOf(tag);
+        if (idx >= 0) {
+          fbState.tags.splice(idx, 1);
+          btn.classList.remove('active');
+        } else {
+          fbState.tags.push(tag);
+          btn.classList.add('active');
+        }
+      });
+    })(FEEDBACK_TAGS[ti], tagBtn);
+    tagRow.appendChild(tagBtn);
+  }
+  fbDiv.appendChild(tagRow);
+
+  // Row 3: Correction textarea (hidden by default, opens on thumbs-down)
+  var corrDiv = document.createElement('div');
+  corrDiv.className = 'rlhf-correction';
+  corrDiv.id = fbId + '-correction';
+  var corrLabel = document.createElement('div');
+  corrLabel.style.cssText = 'font-size:12px;color:var(--text-dim);margin-bottom:4px;font-weight:600';
+  corrLabel.textContent = '\uC218\uC815\uB41C \uC751\uB2F5:';
+  corrDiv.appendChild(corrLabel);
+  var corrTextarea = document.createElement('textarea');
+  corrTextarea.placeholder = '\uB354 \uC801\uC808\uD55C \uC751\uB2F5\uC744 \uC791\uC131\uD574\uC8FC\uC138\uC694...';
+  corrDiv.appendChild(corrTextarea);
+  var corrMemoInput = document.createElement('input');
+  corrMemoInput.type = 'text';
+  corrMemoInput.placeholder = '\uBA54\uBAA8 (\uC120\uD0DD\uC0AC\uD56D)';
+  corrDiv.appendChild(corrMemoInput);
+  var corrSaveBtn = document.createElement('button');
+  corrSaveBtn.className = 'rlhf-save-btn';
+  corrSaveBtn.textContent = '\uC800\uC7A5';
+  corrSaveBtn.addEventListener('click', function() {
+    fbState.correctedResponse = corrTextarea.value.trim();
+    fbState.memo = corrMemoInput.value.trim();
+    fbState.originalQuery = _fbUserPrompt;
+    fbState.fullResponse = _fbFullText;
+    corrSaveBtn.disabled = true;
+    corrSaveBtn.textContent = '저장 중...';
+    submitRlhfFeedback(_fbMsgId, fbState).then(function(r) {
+      corrSaveBtn.disabled = false;
+      corrSaveBtn.textContent = '저장';
+      var st = document.getElementById(fbId + '-status');
+      if (r && r.success) {
+        if (st) st.textContent = '\u2713 \uC218\uC815\uB428';
+        showToast('\uD53C\uB4DC\uBC31\uC774 \uC800\uC7A5\uB418\uC5C8\uC2B5\uB2C8\uB2E4', 'success');
+      } else {
+        if (st) st.textContent = '\u26A0 \uC800\uC7A5 \uC2E4\uD328';
+        showToast('\uD53C\uB4DC\uBC31 \uC800\uC7A5 \uC2E4\uD328: ' + (r && r.error || ''), 'error');
+      }
+    });
+  });
+  corrDiv.appendChild(corrSaveBtn);
+  fbDiv.appendChild(corrDiv);
+
+  // ── 기존 피드백 시각적 복원 ──
+  if (existingFeedback && fbState.sent) {
+    if (fbState.thumbs === 'good') {
+      thumbGood.className = 'rlhf-thumb-btn active-good';
+    } else if (fbState.thumbs === 'bad') {
+      thumbBad.className = 'rlhf-thumb-btn active-bad';
+    }
+    if (fbState.rating > 0) {
+      var _efAllStars = starsDiv.querySelectorAll('.rlhf-star');
+      for (var _efSr = 0; _efSr < _efAllStars.length; _efSr++) {
+        _efAllStars[_efSr].classList.toggle('filled', parseInt(_efAllStars[_efSr].dataset.val) <= fbState.rating);
+      }
+    }
+    var _efTagBtns = tagRow.querySelectorAll('.rlhf-tag-btn');
+    for (var _efTb = 0; _efTb < _efTagBtns.length; _efTb++) {
+      if (fbState.tags.indexOf(_efTagBtns[_efTb].textContent) >= 0) {
+        _efTagBtns[_efTb].classList.add('active');
+      }
+    }
+    corrDiv.classList.add('open');
+    corrDiv.dataset.mode = fbState.thumbs || 'good';
+    if (fbState.correctedResponse) corrTextarea.value = fbState.correctedResponse;
+    if (fbState.memo) corrMemoInput.value = fbState.memo;
+    fbStatusSpan.textContent = '✓ 저장된 피드백';
+  }
+
+  msgDiv.appendChild(fbDiv);
+
+  // ── 5. Comment section ──
+  var commentWrapper = document.createElement('div');
+  commentWrapper.style.marginTop = '8px';
+
+  // 5a. Existing comments display
+  if (comments.length > 0) {
+    var cmtList = document.createElement('div');
+    cmtList.style.cssText = 'margin-bottom:8px;';
+    var cmtHtml = '';
+    for (var ci2 = 0; ci2 < comments.length; ci2++) {
+      var cmt = comments[ci2];
+      var selText = cmt.selectedText || cmt.selected_text || '';
+      var selHtml = selText ? '<div style="font-size:11px;color:var(--text-dim);background:var(--surface);padding:4px 8px;border-radius:4px;margin:4px 0;border-left:3px solid var(--yellow);max-height:40px;overflow-y:auto">\uD83D\uDCCC "' + escapeHtml(selText.substring(0, 150)) + '"</div>' : '';
+      cmtHtml += '<div class="comment-item">' +
+        '<span class="comment-category">[' + escapeHtml(cmt.category) + ']</span>' +
+        selHtml +
+        '<div class="comment-content">' + escapeHtml(cmt.content) + '</div>' +
+        '<div class="comment-meta">' + escapeHtml(cmt.userName || '') + ' \u00B7 ' + (cmt.createdAt ? new Date(cmt.createdAt).toLocaleDateString() : '') + '</div>' +
+      '</div>';
+    }
+    cmtList.innerHTML = cmtHtml;
+    commentWrapper.appendChild(cmtList);
+  }
+
+  // 5b. Comment button + form
+  var cmtBtnDiv = document.createElement('div');
+  var cmtBtnLabel = '\uD83D\uDCAC \uCEE4\uBA58\uD2B8 \uB2EC\uAE30';
+  if (comments.length > 0) cmtBtnLabel += ' (' + comments.length + ')';
+  var cmtBtn = document.createElement('button');
+  cmtBtn.className = 'comment-btn';
+  cmtBtn.textContent = cmtBtnLabel;
+  var _cmtMsgId = msgId;
+  cmtBtn.addEventListener('click', function() { toggleCommentForm(_cmtMsgId); });
+  cmtBtnDiv.appendChild(cmtBtn);
+
+  var commentFormDiv = document.createElement('div');
+  commentFormDiv.id = 'commentForm_' + msgId;
+  commentFormDiv.style.cssText = 'display:none;margin-top:8px;padding:12px;background:var(--bg);border-radius:10px;border:1px solid var(--border)';
+
+  var cmtSelect = document.createElement('select');
+  cmtSelect.id = 'commentCat_' + msgId;
+  cmtSelect.style.cssText = 'width:100%;padding:8px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px;margin-bottom:8px';
+  var catOptions = ['\uBD80\uC815\uD655\uD55C \uC815\uBCF4','\uBD88\uCDA9\uBD84\uD55C \uB2F5\uBCC0','\uC704\uD5D8\uD55C \uC870\uC5B8','\uBA74\uCC45 \uC870\uD56D \uB204\uB77D','\uACFC\uC789 \uC9C4\uB2E8/\uCC98\uBC29','\uCD9C\uCC98 \uBD88\uBA85\uD655','\uD45C\uD604 \uBD80\uC801\uC808','\uAE30\uD0C0'];
+  for (var co = 0; co < catOptions.length; co++) {
+    var opt = document.createElement('option');
+    opt.value = catOptions[co];
+    opt.textContent = catOptions[co];
+    cmtSelect.appendChild(opt);
+  }
+  commentFormDiv.appendChild(cmtSelect);
+
+  var cmtTextarea = document.createElement('textarea');
+  cmtTextarea.id = 'commentText_' + msgId;
+  cmtTextarea.rows = 3;
+  cmtTextarea.placeholder = '\uCEE4\uBA58\uD2B8\uB97C \uC785\uB825\uD558\uC138\uC694...';
+  cmtTextarea.style.cssText = 'width:100%;padding:8px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px;resize:none;box-sizing:border-box;line-height:1.5';
+  commentFormDiv.appendChild(cmtTextarea);
+
+  var cmtSubmitBtn = document.createElement('button');
+  cmtSubmitBtn.style.cssText = 'margin-top:6px;padding:8px 20px;background:var(--accent);color:#0f172a;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer';
+  cmtSubmitBtn.textContent = '\uB4F1\uB85D';
+  var _submitMsgId = msgId;
+  cmtSubmitBtn.addEventListener('click', function() { submitComment(_submitMsgId); });
+  commentFormDiv.appendChild(cmtSubmitBtn);
+
+  cmtBtnDiv.appendChild(commentFormDiv);
+  commentWrapper.appendChild(cmtBtnDiv);
+  msgDiv.appendChild(commentWrapper);
+}
+
+function showAbCompare(parentDiv, msgId, userPrompt, originalText, regenText, regenScores) {
+  var abId = 'rlhf-' + msgId + '-ab';
+  var container = document.getElementById(abId);
+  if (!container) return;
+
+  var origCompliance = analyzeCompliance ? analyzeCompliance(originalText) : {};
+  var origLegal = (origCompliance && origCompliance.regexScore != null) ? Math.round(origCompliance.regexScore) : '-';
+
+  var regenLegal = regenScores.legalScore != null ? regenScores.legalScore : '-';
+  var regenConsult = regenScores.consultScore != null ? regenScores.consultScore : '-';
+  var origComposite = regenScores.originalComposite != null ? regenScores.originalComposite.toFixed(2) : '-';
+  var regenComposite = regenScores.regenComposite != null ? regenScores.regenComposite.toFixed(2) : '-';
+
+  var abState = { chosen: null };
+
+  var panel = document.createElement('div');
+  panel.className = 'ab-compare-panel';
+  panel.innerHTML = '<div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:4px">\u2696\uFE0F A/B \uC751\uB2F5 \uBE44\uAD50</div>';
+
+  var cols = document.createElement('div');
+  cols.className = 'ab-compare-cols';
+
+  // Original column
+  var colA = document.createElement('div');
+  colA.className = 'ab-compare-col';
+  colA.id = abId + '-colA';
+  var origParsed = typeof marked !== 'undefined' ? marked.parse(originalText.substring(0, 500)) : escapeHtml(originalText.substring(0, 500));
+  colA.innerHTML = '<h4>\uC6D0\uBCF8 \uC751\uB2F5</h4>' +
+    '<div class="ab-compare-text">' + origParsed + (originalText.length > 500 ? '...' : '') + '</div>' +
+    '<div class="ab-compare-scores">\uBC95\uB960\uC810\uC218: ' + origLegal + ' | composite: ' + origComposite + '</div>';
+  var btnA = document.createElement('button');
+  btnA.className = 'ab-choose-btn';
+  btnA.textContent = '\uC774\uAC83\uC774 \uB354 \uC88B\uC74C';
+  colA.appendChild(btnA);
+  cols.appendChild(colA);
+
+  // Regenerated column
+  var colB = document.createElement('div');
+  colB.className = 'ab-compare-col';
+  colB.id = abId + '-colB';
+  var regenParsed = typeof marked !== 'undefined' ? marked.parse(regenText.substring(0, 500)) : escapeHtml(regenText.substring(0, 500));
+  colB.innerHTML = '<h4>\uC7AC\uC0DD\uC131 \uC751\uB2F5</h4>' +
+    '<div class="ab-compare-text">' + regenParsed + (regenText.length > 500 ? '...' : '') + '</div>' +
+    '<div class="ab-compare-scores">\uBC95\uB960\uC810\uC218: ' + regenLegal + ' | composite: ' + regenComposite + '</div>';
+  var btnB = document.createElement('button');
+  btnB.className = 'ab-choose-btn';
+  btnB.textContent = '\uC774\uAC83\uC774 \uB354 \uC88B\uC74C';
+  colB.appendChild(btnB);
+  cols.appendChild(colB);
+
+  panel.appendChild(cols);
+
+  // 텍스트 클로저로 캡처 (API 호출 시 실제 텍스트 전달)
+  var _abUserPrompt = userPrompt;
+  var _origText = originalText;
+  var _regenText = regenText;
+  var _regenComposite = regenScores.regenComposite || null;
+
+  btnA.addEventListener('click', function() {
+    if (abState.chosen === 'A') return;
+    abState.chosen = 'A';
+    btnA.className = 'ab-choose-btn selected';
+    btnA.textContent = '\uC774\uAC83\uC774 \uB354 \uC88B\uC74C \u2713';
+    btnB.className = 'ab-choose-btn';
+    btnB.textContent = '\uC774\uAC83\uC774 \uB354 \uC88B\uC74C';
+    colA.classList.add('chosen');
+    colB.classList.remove('chosen');
+    // 원본 선택: chosen=원본, rejected=재생성
+    submitRlhfPair(_abUserPrompt, _origText, _regenText, null, _regenComposite).then(function(r) {
+      if (r && r.success) showToast('\uC120\uD638\uB3C4 \uC30D \uC800\uC7A5\uB428 (\uC6D0\uBCF8 \uC120\uD0DD)', 'success');
+      else showToast('\uC800\uC7A5 \uC2E4\uD328: ' + (r && r.error || ''), 'error');
+    });
+  });
+  btnB.addEventListener('click', function() {
+    if (abState.chosen === 'B') return;
+    abState.chosen = 'B';
+    btnB.className = 'ab-choose-btn selected';
+    btnB.textContent = '\uC774\uAC83\uC774 \uB354 \uC88B\uC74C \u2713';
+    btnA.className = 'ab-choose-btn';
+    btnA.textContent = '\uC774\uAC83\uC774 \uB354 \uC88B\uC74C';
+    colB.classList.add('chosen');
+    colA.classList.remove('chosen');
+    // 재생성 선택: chosen=재생성, rejected=원본
+    submitRlhfPair(_abUserPrompt, _regenText, _origText, _regenComposite, null).then(function(r) {
+      if (r && r.success) showToast('\uC120\uD638\uB3C4 \uC30D \uC800\uC7A5\uB428 (\uC7AC\uC0DD\uC131 \uC120\uD0DD)', 'success');
+      else showToast('\uC800\uC7A5 \uC2E4\uD328: ' + (r && r.error || ''), 'error');
+    });
+  });
+
+  container.innerHTML = '';
+  container.appendChild(panel);
+}
+
+function finalizeAssistantMessage(fullText, meta = {}) {
+  var prog = document.getElementById('progressIndicator');
+  if (prog) prog.remove();
+
+  var bubble = document.getElementById('streamBubble');
+  if (bubble) {
+    bubble.removeAttribute('id');
+    var parsedHtml = marked.parse(fullText);
+    parsedHtml = convertCitations(parsedHtml, meta.searchResults);
+    bubble.innerHTML = parsedHtml;
+  }
+
+  var metaEl = document.getElementById('streamMeta');
+  if (!metaEl) return;
+  metaEl.removeAttribute('id');
+  metaEl.innerHTML = '';
+
+  var msgId = window._lastAssistantMsgId || ('msg-' + Date.now());
+  var msgDiv = metaEl.closest('.msg');
+  if (!msgDiv) return;
+
+  renderAssistantEvaluation(msgDiv, {
+    msgId: msgId,
+    fullText: fullText,
+    userPrompt: meta.userPrompt || '',
+    compliance: meta.compliance,
+    gptEval: null,
+    consultationEval: null,
+    searchResults: meta.searchResults,
+    followUps: meta.followUps,
+    tokenUsage: meta.tokenUsage,
+    elapsed: meta.elapsed,
+    comments: [],
+    enhancement: null,
+    isLive: true,
+    gptModel: ''
+  });
 
   scrollToBottom();
 }
@@ -1530,14 +2436,32 @@ async function sendMessage() {
   chatHistory.push({ role:'user', content: text });
   createAssistantMessage();
 
+  // ── 대화 생성 (SSE 전에 — 서버가 convId로 자동저장) ──
+  if (!currentConvId) {
+    try {
+      const createRes = await fetch('/api/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: text.substring(0, 40), env: currentEnv })
+      });
+      const createData = await createRes.json();
+      if (createData.success) {
+        currentConvId = createData.id;
+        console.log('[대화생성] 즉시 생성:', currentConvId);
+      }
+    } catch(e) { console.warn('대화 생성 실패', e); }
+    if (typeof loadConversations === 'function') loadConversations();
+  }
+
   const start = performance.now();
   let finalText = '';
   let searchResults = [];
   let followUps = [];
 
   try {
-    // ── LIVE 모드: 실제 API 호출 ──
+    // ── LIVE 모드: 실제 API 호출 (서버가 자동저장) ──
     await callSSE(text, {
+      conversationId: currentConvId || '',
       onGeneration(full, chunk) {
         updateStreamBubble(full);
         finalText = full;
@@ -1550,57 +2474,24 @@ async function sendMessage() {
         if (sr && sr.length) searchResults = sr;
         if (fu && fu.length) followUps = fu;
       },
-      onDone({ fullText }) {
+      onDone({ fullText, tokenUsage: tu }) {
         finalText = fullText;
+        if (tu) window._lastTokenUsage = tu;
       },
       onError(msg) {
         finalText = `오류: ${msg}`;
       },
     });
 
-    if (!connectionOk) setStatus(true);  // 첫 성공 시에만 초록불 (이미 초록이면 변경 없음)
+    if (!connectionOk) setStatus(true);
     const elapsed = Math.round(performance.now() - start);
     const compliance = (savedSettings.enableCompliance !== false)
       ? analyzeCompliance(finalText) : null;
 
-    finalizeAssistantMessage(finalText, { elapsed, compliance, searchResults, followUps, userPrompt: text });
+    finalizeAssistantMessage(finalText, { elapsed, compliance, searchResults, followUps, userPrompt: text, tokenUsage: window._lastTokenUsage || null });
     chatHistory.push({ role:'assistant', content: finalText, compliance, searchResults });
 
-    // 로컬 대화 자동 저장
-    try {
-      if (!currentConvId) {
-        // 첫 메시지: 대화 생성
-        const createRes = await fetch('/api/conversations', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title: text.substring(0, 40), env: currentEnv })
-        });
-        const createData = await createRes.json();
-        if (createData.success) currentConvId = createData.id;
-      }
-      if (currentConvId) {
-        const saveRes = await fetch(`/api/conversations/${currentConvId}/message`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            query: text,
-            response: finalText,
-            responseTime: elapsed,
-            compliance: compliance,
-            searchResults: searchResults?.slice(0, 5),
-            followUps: followUps,
-            conversationStrid: conversationStrid,
-          })
-        });
-        const saveData = await saveRes.json();
-        // 서버에서 반환된 실제 msgId를 저장 (커멘트용)
-        if (saveData.assistantMsgId) {
-          window._lastAssistantMsgId = saveData.assistantMsgId;
-        }
-      }
-    } catch(e) { console.warn('대화 저장 실패', e); }
-
-    // 사이드바 갱신
+    // 사이드바 갱신 (서버에서 메시지가 이미 저장됨)
     setTimeout(() => loadConversations(), 500);
 
   } catch(e) {
@@ -1717,6 +2608,22 @@ async function loadConversation(convId) {
     if (!res.ok) { showToast('대화 로드 실패', 'error'); return; }
     const conv = await res.json();
 
+    // 피드백 한 번에 fetch → message_id별 매핑
+    let fbByMsgId = {};
+    try {
+      const fbRes = await fetch(`/api/feedback?conversation_id=${encodeURIComponent(convId)}&limit=200&include_comments=true`);
+      if (fbRes.ok) {
+        const fbList = await fbRes.json();
+        for (const fb of (Array.isArray(fbList) ? fbList : [])) {
+          const mid = fb.message_id;
+          if (!mid) continue;
+          if (!fbByMsgId[mid] || new Date(fb.created_at || 0) > new Date(fbByMsgId[mid].created_at || 0)) {
+            fbByMsgId[mid] = fb;
+          }
+        }
+      }
+    } catch (e) { console.warn('feedback load failed', e); }
+
     // 채팅 영역 초기화
     chatHistory = [];
     currentConvId = convId;
@@ -1739,7 +2646,8 @@ async function loadConversation(convId) {
         addUserMessage(msg.content);
         chatHistory.push({ role: 'user', content: msg.content });
       } else if (msg.role === 'assistant') {
-        addRestoredAssistantMessage(msg.content, msg);
+        const msgWithFb = Object.assign({}, msg, { feedback: fbByMsgId[msg.msgId] || null });
+        addRestoredAssistantMessage(msg.content, msgWithFb);
         chatHistory.push({ role: 'assistant', content: msg.content, compliance: msg.compliance });
       }
     }
@@ -1759,269 +2667,34 @@ async function loadConversation(convId) {
 }
 
 function addRestoredAssistantMessage(text, meta = {}) {
-  const messagesEl = document.getElementById('messages');
-  const div = document.createElement('div');
+  var messagesEl = document.getElementById('messages');
+  var div = document.createElement('div');
   div.className = 'msg assistant';
-  let parsedText = typeof marked !== 'undefined' ? marked.parse(text) : escapeHtml(text);
+  var parsedText = typeof marked !== 'undefined' ? marked.parse(text) : escapeHtml(text);
   parsedText = convertCitations(parsedText, meta.searchResults);
-  const msgId = meta.msgId || ('restored-' + Math.random().toString(36).substring(2, 8));
-  const safeMsgId = escapeHtml(msgId);
+  var safeMsgId = meta.msgId || ('restored-' + Math.random().toString(36).substring(2, 8));
 
-  // 커멘트 데이터
-  const comments = meta.comments || [];
-
-  // bubble
-  div.innerHTML = `<div class="bubble" ${comments.length ? 'style="border-left:3px solid #f59e0b"' : ''}>${parsedText}</div>`;
+  var comments = meta.comments || [];
+  div.innerHTML = '<div class="bubble" ' + (comments.length ? 'style="border-left:3px solid #f59e0b"' : '') + '>' + parsedText + '</div>';
   messagesEl.appendChild(div);
 
-  // ── 커멘트 영역 (답변 바로 아래) ──
-  const commentArea = document.createElement('div');
-  commentArea.style.cssText = 'margin-top:6px;';
-
-  // 커멘트 버튼 + 응답시간
-  let cmtBtnHtml = '';
-  if (meta.responseTime) cmtBtnHtml += `<span style="font-size:11px;color:var(--text-dim);margin-right:8px">${meta.responseTime}ms</span>`;
-  cmtBtnHtml += `<button class="comment-btn" onclick="toggleCommentForm('${safeMsgId}')">💬 커멘트${comments.length ? ` (${comments.length})` : ''}</button>`;
-  commentArea.innerHTML = cmtBtnHtml;
-
-  // 기존 커멘트 표시
-  if (comments.length) {
-    const cmtList = document.createElement('div');
-    cmtList.style.cssText = 'margin-top:8px;';
-    for (const cmt of comments) {
-      const selText = cmt.selectedText || cmt.selected_text || '';
-      const selHtml = selText ? `<div style="font-size:11px;color:var(--text-dim);background:var(--surface);padding:4px 8px;border-radius:4px;margin:4px 0;border-left:3px solid var(--yellow);max-height:40px;overflow-y:auto">📌 "${escapeHtml(selText.substring(0, 150))}"</div>` : '';
-      cmtList.innerHTML += `<div class="comment-item">
-        <span class="comment-category">[${escapeHtml(cmt.category)}]</span>
-        ${selHtml}
-        <div class="comment-content">${escapeHtml(cmt.content)}</div>
-        <div class="comment-meta">${escapeHtml(cmt.userName || '')} · ${cmt.createdAt ? new Date(cmt.createdAt).toLocaleDateString() : ''}</div>
-      </div>`;
-    }
-    commentArea.appendChild(cmtList);
-  }
-
-  // 커멘트 입력 폼 (토글)
-  const commentFormDiv = document.createElement('div');
-  commentFormDiv.id = 'commentForm_' + safeMsgId;
-  commentFormDiv.style.cssText = 'display:none;margin-top:8px;padding:12px;background:var(--bg);border-radius:10px;border:1px solid var(--border)';
-  commentFormDiv.innerHTML = `
-    <select id="commentCat_${safeMsgId}" style="width:100%;padding:8px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px;margin-bottom:8px">
-      <option value="부정확한 정보">부정확한 정보</option><option value="불충분한 답변">불충분한 답변</option>
-      <option value="위험한 조언">위험한 조언</option><option value="면책 조항 누락">면책 조항 누락</option>
-      <option value="과잉 진단/처방">과잉 진단/처방</option><option value="출처 불명확">출처 불명확</option>
-      <option value="표현 부적절">표현 부적절</option><option value="기타">기타</option>
-    </select>
-    <textarea id="commentText_${safeMsgId}" rows="3" placeholder="커멘트를 입력하세요..." style="width:100%;padding:8px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px;resize:none;box-sizing:border-box;line-height:1.5"></textarea>
-    <button onclick="submitComment('${safeMsgId}')" style="margin-top:6px;padding:8px 20px;background:var(--accent);color:#0f172a;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">등록</button>
-  `;
-  commentArea.appendChild(commentFormDiv);
-  div.appendChild(commentArea);
-
-  // ── 평가 결과 통합 박스 ──
-  const evalBox = document.createElement('div');
-  evalBox.className = 'eval-result-box';
-
-  // GPT를 PRIMARY로, 정규식은 참고용
-  const compliance = meta.compliance;
-  const gptEval = meta.gptEval;
-  const regexScore = compliance ? (compliance.regexScore ?? compliance.score ?? 0) : 100;
-  const gptScore = (gptEval && gptEval.score != null) ? gptEval.score : null;
-
-  // 헤더: GPT 있으면 GPT 기준, 없으면 정규식 기준
-  let headerBadgeHtml = '';
-  if (gptScore !== null) {
-    const gCls = gptScore >= 80 ? 'pass' : gptScore >= 60 ? 'warn' : 'fail';
-    const gLabel = gptEval.passed ? 'PASS' : 'FAIL';
-    headerBadgeHtml = `<span class="compliance-badge ${gCls}" style="font-size:18px;padding:4px 12px">${gptEval.grade || '?'} ${gptScore}점 ${gLabel}</span> <span style="font-size:14px;color:var(--text-dim)">GPT 기준</span>`;
-  } else {
-    const rCls = regexScore >= 80 ? 'pass' : regexScore >= 60 ? 'warn' : 'fail';
-    const rLabel = regexScore >= 80 ? 'PASS' : regexScore >= 60 ? '주의' : 'FAIL';
-    headerBadgeHtml = `<span class="compliance-badge ${rCls}" style="font-size:18px;padding:4px 12px">${rLabel} ${regexScore}점</span> <span style="font-size:14px;color:var(--text-dim)">정규식 기준</span>`;
-  }
-
-  evalBox.innerHTML = `<div class="eval-section" id="eval-header-${safeMsgId}" style="background:var(--surface);padding:10px 16px;display:flex;align-items:center;gap:12px">
-    ${headerBadgeHtml}
-  </div>`;
-
-  // (A) 정규식 평가 섹션
-  if (compliance) {
-    const score = regexScore;
-    const cls = score >= 80 ? 'pass' : score >= 60 ? 'warn' : 'fail';
-    const label = score >= 80 ? 'PASS' : score >= 60 ? '주의' : 'FAIL';
-    let compHtml = `<div class="eval-section">
-      <div class="eval-section-title"><span class="icon">📋</span> 정규식 참고 — ${score}점</div>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-        <span class="compliance-badge ${cls}">${label} ${score}점</span>`;
-    if (compliance.hasDisclaimer) compHtml += '<span style="color:var(--green);font-size:12px">면책조항 ✓</span>';
-    else compHtml += '<span style="color:var(--yellow);font-size:12px">면책조항 누락</span>';
-    compHtml += '</div>';
-    const violations = compliance.violations || [];
-    if (violations.length > 0) {
-      compHtml += '<div style="margin-top:4px">';
-      for (const v of violations) {
-        const vc = v.severity==='CRITICAL' ? '' : v.severity==='HIGH' ? ' high' : ' medium';
-        compHtml += `<span class="violation-chip${vc}">[${v.severity}] ${escapeHtml(v.name || '')}: ${escapeHtml((v.matched || v.matched_text || '').substring(0,40))}</span>`;
-      }
-      compHtml += '</div>';
-    }
-    compHtml += '</div>';
-    evalBox.innerHTML += compHtml;
-  }
-
-  // Sources
-  if (meta.searchResults && meta.searchResults.length > 0) {
-    const srcPanel = document.createElement('details');
-    srcPanel.className = 'sources-panel';
-    srcPanel.innerHTML = `<summary>참고 자료 (${meta.searchResults.length}건)</summary>` +
-      meta.searchResults.slice(0, 8).map(s => {
-        const title = escapeHtml(s.title || s.strid || '');
-        const snippet = escapeHtml((s.text_snapshot || s.snippet || '').substring(0, 120));
-        const url = s.url || '';
-        const badge = s.source_type === 'PUBMED'
-          ? '<span style="color:var(--green);font-size:12px">[PubMed]</span>'
-          : '<span style="color:var(--accent);font-size:12px">[Web]</span>';
-        return `<div class="src-item">${badge} <span class="src-title">${url ? `<a href="${url}" target="_blank">${title}</a>` : title}</span><div class="src-snippet">${snippet}</div></div>`;
-      }).join('');
-    div.appendChild(srcPanel);
-  }
-
-  // Follow-ups (추천 질문)
-  if (meta.followUps && meta.followUps.length > 0) {
-    const fuDiv = document.createElement('div');
-    fuDiv.className = 'followups';
-    fuDiv.innerHTML = meta.followUps.map(f =>
-      `<button class="followup-chip" onclick="insertPrompt('${escapeHtml(f.query || f)}');sendMessage()">${escapeHtml(f.query || f)}</button>`
-    ).join('');
-    div.appendChild(fuDiv);
-  }
-
-  // (B) GPT 평가 섹션 (gptEval은 이미 상단에서 선언됨)
-  if (gptEval && gptEval.grade) {
-    const gradeClass = `grade-${gptEval.grade || 'C'}`;
-    let gptHtml = `<div class="eval-section">
-      <div class="eval-section-title"><span class="icon">🤖</span> ChatGPT 평가 — ${gptEval.score ?? '?'}점</div>
-      <div class="llm-eval" style="display:block;border:none;padding:0;margin:0;background:transparent">
-        <div class="eval-header">
-          <span class="eval-grade ${gradeClass}">${gptEval.grade || '?'}</span>
-          <span>ChatGPT 평가 — ${gptEval.score ?? '?'}점</span>
-          <span style="color:${gptEval.passed ? 'var(--green)' : 'var(--red)'}; margin-left:auto">
-            ${gptEval.passed ? '✓ PASS' : '✗ FAIL'}
-          </span>
-        </div>
-        <div class="eval-summary">${escapeHtml(gptEval.summary || '')}</div>
-        ${(gptEval.violations && gptEval.violations.length > 0) ? `
-          <div class="eval-violations">
-            ${gptEval.violations.map(v => `
-              <div class="eval-viol-item">
-                <span class="eval-viol-sev risk-${v.severity}">${v.severity}</span>
-                <span>${escapeHtml(v.description || v.type || '')}</span>
-              </div>
-            `).join('')}
-          </div>
-        ` : ''}
-        ${gptEval.recommendation ? `<div class="eval-recommendation">💡 ${escapeHtml(gptEval.recommendation)}</div>` : ''}
-        <div style="margin-top:6px;font-size:12px;color:var(--text-dim)">모델: ${meta.gptModel || 'gpt-4o-mini'}</div>
-      </div>
-    </div>`;
-    evalBox.innerHTML += gptHtml;
-  } else {
-    // GPT 평가 버튼
-    const gptBtnSection = document.createElement('div');
-    gptBtnSection.className = 'eval-section';
-    gptBtnSection.innerHTML = `
-      <button class="eval-btn" style="padding:6px 14px;font-size:12px">🤖 ChatGPT 평가</button>
-      <div class="llm-eval" id="llm-eval-${safeMsgId}" style="display:none"></div>`;
-    evalBox.appendChild(gptBtnSection);
-    const allMsgs = messagesEl.querySelectorAll('.msg');
-    let prevQuery = '';
-    for (let i = allMsgs.length - 2; i >= 0; i--) {
-      if (allMsgs[i].classList.contains('user')) {
-        prevQuery = allMsgs[i].querySelector('.bubble')?.textContent || '';
-        break;
-      }
-    }
-    const _pq = prevQuery, _tx = text, _sm = safeMsgId;
-    gptBtnSection.querySelector('.eval-btn').addEventListener('click', function() {
-      this.style.display = 'none';
-      document.getElementById('llm-eval-' + _sm).style.display = 'block';
-      evaluateWithLLM(_pq, _tx, _sm);
-    });
-  }
-
-  // ── 문진 평가 복원 또는 버튼 ──
-  const consultEval = meta.consultationEval;
-  if (consultEval && consultEval.totalScore != null) {
-    const cGradeColors = { A: 'var(--green)', B: '#38bdf8', C: '#f59e0b', D: '#f97316', F: 'var(--red)' };
-    const cGradeColor = cGradeColors[consultEval.grade] || 'var(--text-dim)';
-    const cAxes = [
-      { key: 'symptomExploration', label: '증상 탐색', max: 30 },
-      { key: 'redFlagScreening', label: '위험 선별', max: 25 },
-      { key: 'patientContext', label: '환자 맥락', max: 20 },
-      { key: 'structuredApproach', label: '단계적 접근', max: 15 },
-      { key: 'appropriateGuidance', label: '적절한 안내', max: 10 },
-    ];
-    let cAxesHtml = '';
-    for (const ax of cAxes) {
-      const axData = (consultEval.axes || {})[ax.key] || {};
-      const score = axData.score || 0;
-      const pct = Math.round((score / ax.max) * 100);
-      const barColor = pct >= 80 ? 'var(--green)' : pct >= 50 ? '#f59e0b' : 'var(--red)';
-      const missing = (axData.missing || []).join(', ');
-      const warn = pct < 60 ? ' ⚠️' : '';
-      cAxesHtml += `<div style="margin-bottom:4px">
-        <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text-dim)">
-          <span>${ax.label}${warn}</span><span>${score}/${ax.max}</span>
-        </div>
-        <div style="height:8px;background:var(--bg);border-radius:3px;overflow:hidden">
-          <div style="height:100%;width:${pct}%;background:${barColor};border-radius:3px;transition:width .3s"></div>
-        </div>
-        ${missing ? `<div style="font-size:13px;color:var(--text-dim);margin-top:1px">부족: ${escapeHtml(missing)}</div>` : ''}
-      </div>`;
-    }
-    const cMissingAll = (consultEval.missingItems || []).slice(0, 5).map(m => escapeHtml(m)).join(', ');
-    let consultHtml = `<details class="eval-section consultation-box" style="cursor:pointer">
-      <summary style="font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px">
-        🩺 문진 품질
-        <span style="font-size:20px;font-weight:800;color:${cGradeColor}">${consultEval.grade || '?'}</span>
-        <span style="font-size:14px;color:var(--text-dim)">${consultEval.totalScore || 0}점</span>
-      </summary>
-      <div style="margin-top:8px">
-        ${cAxesHtml}
-        ${consultEval.summary ? `<div style="font-size:13px;color:var(--text);margin-top:6px;padding:6px 8px;background:var(--bg);border-radius:4px">${escapeHtml(consultEval.summary)}</div>` : ''}
-        ${cMissingAll ? `<div style="font-size:13px;color:#f59e0b;margin-top:4px">💡 부족: ${cMissingAll}</div>` : ''}
-        ${consultEval.recommendation ? `<div style="font-size:13px;color:var(--accent);margin-top:4px">💊 ${escapeHtml(consultEval.recommendation)}</div>` : ''}
-      </div>
-    </details>`;
-    evalBox.innerHTML += consultHtml;
-  } else {
-    // 문진 평가 버튼
-    const consultBtnSection = document.createElement('div');
-    consultBtnSection.className = 'eval-section consultation-box';
-    consultBtnSection.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-        <span style="font-size:12px;font-weight:600;color:var(--text)">🩺 문진 품질</span>
-        <button class="eval-btn" style="font-size:13px">문진 평가</button>
-      </div>
-      <div id="consultation-eval-${safeMsgId}" style="display:none"></div>`;
-    evalBox.appendChild(consultBtnSection);
-    const allMsgsC = messagesEl.querySelectorAll('.msg');
-    let prevQueryC = '';
-    for (let i = allMsgsC.length - 2; i >= 0; i--) {
-      if (allMsgsC[i].classList.contains('user')) {
-        prevQueryC = allMsgsC[i].querySelector('.bubble')?.textContent || '';
-        break;
-      }
-    }
-    const _cpq = prevQueryC, _ctx = text, _csm = safeMsgId;
-    consultBtnSection.querySelector('.eval-btn').addEventListener('click', function() {
-      this.style.display = 'none';
-      document.getElementById('consultation-eval-' + _csm).style.display = 'block';
-      evaluateConsultation(_cpq, _ctx, _csm);
-    });
-  }
-
-  div.appendChild(evalBox);
+  renderAssistantEvaluation(div, {
+    msgId: safeMsgId,
+    fullText: text,
+    userPrompt: '',
+    compliance: meta.compliance,
+    gptEval: meta.gptEval || null,
+    consultationEval: meta.consultationEval || null,
+    searchResults: meta.searchResults,
+    followUps: meta.followUps,
+    tokenUsage: meta.tokenUsage || null,
+    elapsed: meta.responseTime,
+    comments: comments,
+    enhancement: meta.enhancement || null,
+    isLive: false,
+    gptModel: meta.gptModel || '',
+    feedback: meta.feedback || null
+  });
 }
 
 function toggleCommentForm(msgId) {
@@ -2521,6 +3194,104 @@ async function saveExtractedScenario() {
     if (res.ok) window._categories = (await res.json()).categories || [];
   } catch(e) {}
 })();
+
+// ── 프롬프트 보강 재질문 ──
+
+async function requestEnhancedPrompt(originalQuery, gptEval, consultationEval, compliance, originalMsgId) {
+  try {
+    const proxy = getProxyUrl() || window.location.origin;
+    const res = await fetch(proxy + '/api/enhance-prompt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: originalQuery, gptEval: gptEval, consultationEval: consultationEval, compliance: compliance })
+    });
+    const data = await res.json();
+
+    window._enhancementContext = {
+      originalQuery: originalQuery,
+      originalMsgId: originalMsgId,
+      originalEval: { gptEval: gptEval, consultationEval: consultationEval, compliance: compliance },
+      instructions: data.instructions,
+      enhancedPrompt: data.enhancedPrompt,
+    };
+
+    var instrEl = document.getElementById('enhanceInstructions');
+    if (instrEl) {
+      instrEl.innerHTML = '<div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:6px">\uD83D\uDCA1 \uCD94\uAC00\uB41C \uC9C0\uC2DC\uBB38:</div>' +
+        data.instructions.map(function(inst) {
+          return '<div style="font-size:12px;color:var(--text);padding:3px 0;padding-left:12px;border-left:2px solid var(--accent)">\u2022 ' + escapeHtml(inst) + '</div>';
+        }).join('');
+    }
+
+    var promptTextEl = document.getElementById('enhancePromptText');
+    if (promptTextEl) promptTextEl.value = data.enhancedPrompt;
+    var modal = document.getElementById('enhanceModal');
+    if (modal) modal.style.display = 'flex';
+  } catch(e) {
+    showToast('\uBCF4\uAC15 \uD504\uB85C\uD504\uD2B8 \uC0DD\uC131 \uC2E4\uD328: ' + e.message, 'error');
+  }
+}
+
+async function sendEnhancedPrompt() {
+  var modal = document.getElementById('enhanceModal');
+  if (modal) modal.style.display = 'none';
+
+  var enhancedText = '';
+  var promptTextEl = document.getElementById('enhancePromptText');
+  if (promptTextEl) enhancedText = promptTextEl.value.trim();
+  if (!enhancedText) return;
+
+  window._isEnhancedMessage = true;
+
+  var input = document.getElementById('userInput');
+  if (input) {
+    input.value = enhancedText;
+    sendMessage();
+  }
+}
+
+async function saveEnhancementReport() {
+  var ctx = window._enhancementContext;
+  if (!ctx) { showToast('\uBCF4\uAC15 \uCEE8\uD14D\uC2A4\uD2B8 \uC5C6\uC74C', 'error'); return; }
+
+  try {
+    var proxy = getProxyUrl() || window.location.origin;
+    var res = await fetch(proxy + '/api/prompt-enhancement', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        conversationId: currentConvId,
+        originalMsgId: ctx.originalMsgId,
+        enhancedMsgId: window._lastAssistantMsgId || ctx.enhancedMsgId,
+        originalQuery: ctx.originalQuery,
+        enhancedPrompt: ctx.enhancedPrompt,
+        instructions: ctx.instructions,
+        originalEval: ctx.originalEval,
+        enhancedEval: ctx.enhancedEval,
+      })
+    });
+    var data = await res.json();
+    if (data.success) {
+      showToast('\uB9AC\uD3EC\uD2B8 \uC800\uC7A5 \uC644\uB8CC (GPT ' + (data.improvement.gptDelta > 0 ? '+' : '') + data.improvement.gptDelta + '\uC810)', 'success');
+    } else {
+      showToast('\uC800\uC7A5 \uC2E4\uD328', 'error');
+    }
+  } catch(e) {
+    showToast('\uC800\uC7A5 \uC2E4\uD328: ' + e.message, 'error');
+  }
+}
 </script>
+<div id="enhanceModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.8);z-index:700;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border-radius:12px;padding:20px;max-width:600px;width:90%;max-height:80vh;overflow-y:auto">
+    <h3 style="margin:0 0 12px;color:var(--text);font-size:16px">&#128260; &#54532;&#47212;&#54532;&#53944; &#48372;&#44053; &#51116;&#51656;&#47928;</h3>
+    <p style="font-size:13px;color:var(--text-dim);margin-bottom:8px">&#54217;&#44032; &#44208;&#44284;&#47484; &#44592;&#48152;&#51004;&#47196; &#48372;&#44053; &#51648;&#49884;&#47928;&#51060; &#52628;&#44032;&#46104;&#50632;&#49845;&#45768;&#45796;. &#49688;&#51221; &#54980; &#51204;&#49569;&#54624; &#49688; &#51080;&#49845;&#45768;&#45796;.</p>
+    <div id="enhanceInstructions" style="margin-bottom:12px"></div>
+    <textarea id="enhancePromptText" rows="8" style="width:100%;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px;resize:vertical;box-sizing:border-box"></textarea>
+    <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+      <button onclick="document.getElementById('enhanceModal').style.display='none'" style="padding:8px 20px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px">&#52712;&#49548;</button>
+      <button onclick="sendEnhancedPrompt()" style="padding:8px 20px;background:var(--accent);color:#0f172a;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:13px">&#128260; &#48372;&#44053; &#51204;&#49569;</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

@@ -29,12 +29,29 @@
             background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; flex-wrap:nowrap; overflow-x:auto; }
   .topbar h1 { font-size:16px; font-weight:700; display:flex; align-items:center; gap:8px; white-space:nowrap; }
   .nav-btn { background:none; border:1px solid var(--border); color:var(--text-dim); border-radius:8px;
-             padding:6px 14px; cursor:pointer; font-size:13px; text-decoration:none; transition:all .15s; }
+             padding:6px 14px; cursor:pointer; font-size:13px; text-decoration:none; transition:all .15s; white-space:nowrap; }
   .nav-btn:hover { background:var(--surface2); color:var(--text); }
   .nav-btn.active { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
 
-  /* Env indicator in topbar */
+  /* ── Env Selector (topbar) ── */
   #envSelectorTop { display:flex; gap:2px; background:var(--bg); border-radius:8px; padding:2px; border:1px solid var(--border); }
+  .env-selector { display:flex; gap:2px; background:var(--bg); border-radius:8px; padding:2px; border:1px solid var(--border); }
+  .env-chip-sm { padding:4px 12px; border-radius:6px; font-size:11px; font-weight:700;
+                 color:var(--text-dim); transition:all .15s; user-select:none; }
+  .env-chip-sm.active { background:var(--accent); color:#0f172a; }
+
+  /* ── Settings Tab Bar ── */
+  .settings-tabs { display:flex; gap:4px; padding:16px 24px 0; background:var(--surface);
+                   border-bottom:1px solid var(--border); flex-wrap:wrap; }
+  .settings-tab { background:none; border:none; border-bottom:2px solid transparent;
+                  color:var(--text-dim); padding:8px 16px; cursor:pointer; font-size:13px;
+                  font-weight:600; font-family:inherit; transition:all .15s; border-radius:6px 6px 0 0; }
+  .settings-tab:hover { color:var(--text); background:var(--surface2); }
+  .settings-tab.active { color:var(--accent); border-bottom-color:var(--accent); background:var(--bg); }
+
+  /* ── Tab Content ── */
+  .settings-tab-content { display:none; }
+  .settings-tab-content.active { display:block; }
 
   /* ── Content ── */
   .content { flex:1; padding:24px; max-width:800px; margin:0 auto; width:100%; }
@@ -69,8 +86,13 @@
     padding:10px 14px; border-radius:8px; font-size:13px; font-family:inherit; outline:none;
     transition:border-color .15s;
   }
-  .field input:focus, .field select:focus { border-color:var(--accent); }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color:var(--accent); }
   .field .hint { font-size:11px; color:var(--text-dim); margin-top:4px; }
+
+  /* Toggle field (inline checkbox + label) */
+  .toggle-field { display:flex; align-items:center; gap:8px; font-size:13px;
+                  cursor:pointer; color:var(--text); font-weight:400; }
+  .toggle-field input[type="checkbox"] { width:auto; accent-color:var(--accent); }
 
   .field-row { display:flex; gap:16px; }
   .field-row .field { flex:1; }
@@ -91,6 +113,11 @@
   .btn-primary { padding:10px 24px; background:var(--accent); color:#0f172a; border:none;
                  border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; transition:opacity .15s; }
   .btn-primary:hover { opacity:.9; }
+
+  .btn-secondary { padding:10px 24px; background:none; border:1px solid var(--accent);
+                   color:var(--accent); border-radius:8px; font-size:13px; font-weight:600;
+                   cursor:pointer; transition:all .15s; }
+  .btn-secondary:hover { background:var(--accent-dim); }
 
   .btn-outline { padding:10px 24px; background:none; border:1px solid var(--border); color:var(--text-dim);
                  border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; transition:all .15s; }
@@ -127,17 +154,20 @@
 <div class="topbar">
   <h1 style="font-size:16px;font-weight:700">&#127973; 나만의 주치의</h1>
   <div class="env-selector" id="envSelectorTop">
-    <span class="env-chip-sm-top" data-env="dev" style="padding:4px 12px;border-radius:6px;font-size:11px;font-weight:700;cursor:default;color:var(--text-dim)">DEV</span>
-    <span class="env-chip-sm-top" data-env="stg" style="padding:4px 12px;border-radius:6px;font-size:11px;font-weight:700;cursor:default;color:var(--text-dim)">STG</span>
-    <span class="env-chip-sm-top" data-env="prod" style="padding:4px 12px;border-radius:6px;font-size:11px;font-weight:700;cursor:default;color:var(--text-dim)">PROD</span>
+    <span class="env-chip-sm" data-env="dev" style="cursor:default">DEV</span>
+    <span class="env-chip-sm" data-env="stg" style="cursor:default">STG</span>
+    <span class="env-chip-sm" data-env="prod" style="cursor:default">PROD</span>
   </div>
   <a href="/" class="nav-btn">채팅 테스터</a>
   <a href="/manager" class="nav-btn">시나리오 관리</a>
   <a href="/history" class="nav-btn">테스트 이력</a>
-  <a href="/guidelines" class="nav-btn">가이드라인</a>
+  <a href="/guidelines" class="nav-btn">법률 평가 기준</a>
+  <a href="/criteria" class="nav-btn">문진 평가 기준</a>
+  <a href="/rlhf" class="nav-btn">RLHF 관리</a>
   <a href="/settings" class="nav-btn active">&#9881; 설정</a>
   <span id="testerBadge" style="margin-left:auto;display:none;font-size:11px;color:var(--accent);background:var(--accent-dim);padding:3px 10px;border-radius:6px;cursor:pointer;white-space:nowrap"></span>
 </div>
+
 
 <!-- ── Login Gate (비인증 시 표시) ── -->
 <div id="loginGate" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.8);z-index:500;align-items:center;justify-content:center">
@@ -171,9 +201,9 @@
   <!-- ── Settings Tab Bar ── -->
   <div class="settings-tab-bar" id="settingsTabBar">
     <button class="settings-tab active" data-tab="tab-api" onclick="switchSettingsTab('tab-api')">🔌 API 연결 설정</button>
+    <button class="settings-tab" data-tab="tab-arena" onclick="switchSettingsTab('tab-arena')">🏟️ Arena 설정</button>
     <button class="settings-tab" data-tab="tab-gpt" onclick="switchSettingsTab('tab-gpt')">🤖 GPT 연결 설정</button>
     <button class="settings-tab" data-tab="tab-users" onclick="switchSettingsTab('tab-users')" style="display:none">👥 사용자 관리</button>
-    <button class="settings-tab" data-tab="tab-criteria" onclick="switchSettingsTab('tab-criteria')" style="display:none">🩺 문진 평가 기준</button>
     <button class="settings-tab" data-tab="tab-logs" onclick="switchSettingsTab('tab-logs')" style="display:none">📋 서버 실시간 로그</button>
   </div>
 
@@ -225,7 +255,12 @@
 
       <div class="field">
         <label>Graph Type</label>
-        <input type="text" id="graphType" value="SUPERVISED_HYBRID_SEARCH">
+        <select id="graphType">
+          <option value="ORCHESTRATED_HYBRID_SEARCH">ORCHESTRATED_HYBRID_SEARCH (신규, 기본)</option>
+          <option value="SUPERVISED_HYBRID_SEARCH">SUPERVISED_HYBRID_SEARCH (구버전)</option>
+          <option value="SUPERVISED_VECTOR_SEARCH">SUPERVISED_VECTOR_SEARCH</option>
+          <option value="SIMPLE_AGENT">SIMPLE_AGENT</option>
+        </select>
       </div>
 
       <div class="field">
@@ -256,7 +291,163 @@
   </div>
 
   <!-- ══════════════════════════════════════════ -->
-  <!-- Tab 2: GPT 연결 설정 -->
+  <!-- Tab 2: Arena 설정 -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="settings-tab-content" id="tab-arena">
+
+    <!-- Arena 전역 옵션 카드 -->
+    <div class="card">
+      <h2>&#9881; Arena 전역 옵션</h2>
+      <div class="field">
+        <label>비교 모드 안내</label>
+        <div class="hint" style="font-size:12px;color:var(--text-dim);line-height:1.6">
+          A/B 두 슬롯에 각각 다른 모델 설정을 부여해 동일 질문에 대한 응답을 나란히 비교합니다.
+          리뷰어는 어떤 슬롯이 어떤 모델인지 알 수 없도록 처리됩니다.
+        </div>
+      </div>
+      <div class="field">
+        <label class="toggle-field">
+          <input type="checkbox" id="arenaRandomSwap" />
+          <span>슬롯 랜덤 교체 (편향 방지)</span>
+        </label>
+        <div class="hint">매 실행마다 50% 확률로 A/B 결과를 교체해서 순서 편향을 방지합니다.</div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn-outline" onclick="loadSettings()">되돌리기</button>
+        <button class="btn-primary" onclick="saveSettings(); showToast('Arena 전역 설정이 저장되었습니다','success')">전역 설정 저장</button>
+      </div>
+    </div>
+
+    <!-- A 슬롯 설정 카드 -->
+    <div class="card" id="arenaSlotACard">
+      <h2>&#127312; A 슬롯 설정</h2>
+      <div class="field-row">
+        <div class="field">
+          <label>라벨 (관리자용)</label>
+          <input type="text" id="arenaA_label" placeholder="예: 운영 v3.2" />
+        </div>
+        <div class="field">
+          <label>환경 불러오기</label>
+          <select id="arenaA_useEnv">
+            <option value="">선택 안 함 (커스텀)</option>
+            <option value="dev">DEV</option>
+            <option value="stg">STG</option>
+            <option value="prod">PROD</option>
+          </select>
+          <div class="hint">선택 시 해당 환경의 API Key/URL을 자동 채움</div>
+        </div>
+      </div>
+      <div class="field">
+        <label>설명</label>
+        <input type="text" id="arenaA_description" placeholder="예: 기본 프롬프트 + SUPERVISED_HYBRID_SEARCH" />
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>엔드포인트 URL</label>
+          <input type="text" id="arenaA_endpointUrl" placeholder="https://dev-skix.phnyx.ai" />
+        </div>
+        <div class="field">
+          <label>Graph Type</label>
+          <select id="arenaA_graphType">
+            <option value="ORCHESTRATED_HYBRID_SEARCH">ORCHESTRATED_HYBRID_SEARCH</option>
+            <option value="SUPERVISED_HYBRID_SEARCH">SUPERVISED_HYBRID_SEARCH</option>
+            <option value="SUPERVISED_VECTOR_SEARCH">SUPERVISED_VECTOR_SEARCH</option>
+            <option value="SIMPLE_AGENT">SIMPLE_AGENT</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>API Key</label>
+          <input type="password" id="arenaA_apiKey" placeholder="별도 입력 (빈 값 = 환경 설정 재사용)" />
+        </div>
+        <div class="field">
+          <label>API UID</label>
+          <input type="text" id="arenaA_apiUid" />
+        </div>
+      </div>
+      <div class="field">
+        <label>Tenant Domain</label>
+        <input type="text" id="arenaA_tenantDomain" placeholder="dev-skix" />
+      </div>
+      <div class="field">
+        <label>System Prompt Override</label>
+        <textarea id="arenaA_systemPromptOverride" rows="4" placeholder="비워두면 기본 가이드라인 사용"></textarea>
+      </div>
+      <div style="display:flex; gap:8px; margin-top:16px; flex-wrap:wrap; align-items:center">
+        <button class="btn-primary" onclick="saveArenaConfig('A')">A 슬롯 저장</button>
+        <button class="btn-secondary" onclick="testArenaConfig('A')">&#128299; 연결 테스트</button>
+        <span id="arenaA_status" style="align-self:center; font-size:12px; color:var(--text-dim)"></span>
+      </div>
+    </div>
+
+    <!-- B 슬롯 설정 카드 -->
+    <div class="card" id="arenaSlotBCard">
+      <h2>&#127313; B 슬롯 설정</h2>
+      <div class="field-row">
+        <div class="field">
+          <label>라벨 (관리자용)</label>
+          <input type="text" id="arenaB_label" placeholder="예: 실험 v4.0-beta" />
+        </div>
+        <div class="field">
+          <label>환경 불러오기</label>
+          <select id="arenaB_useEnv">
+            <option value="">선택 안 함 (커스텀)</option>
+            <option value="dev">DEV</option>
+            <option value="stg">STG</option>
+            <option value="prod">PROD</option>
+          </select>
+          <div class="hint">선택 시 해당 환경의 API Key/URL을 자동 채움</div>
+        </div>
+      </div>
+      <div class="field">
+        <label>설명</label>
+        <input type="text" id="arenaB_description" placeholder="예: 실험 프롬프트 + SUPERVISED_VECTOR_SEARCH" />
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>엔드포인트 URL</label>
+          <input type="text" id="arenaB_endpointUrl" placeholder="https://staging-skix.phnyx.ai" />
+        </div>
+        <div class="field">
+          <label>Graph Type</label>
+          <select id="arenaB_graphType">
+            <option value="ORCHESTRATED_HYBRID_SEARCH">ORCHESTRATED_HYBRID_SEARCH</option>
+            <option value="SUPERVISED_HYBRID_SEARCH">SUPERVISED_HYBRID_SEARCH</option>
+            <option value="SUPERVISED_VECTOR_SEARCH">SUPERVISED_VECTOR_SEARCH</option>
+            <option value="SIMPLE_AGENT">SIMPLE_AGENT</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>API Key</label>
+          <input type="password" id="arenaB_apiKey" placeholder="별도 입력 (빈 값 = 환경 설정 재사용)" />
+        </div>
+        <div class="field">
+          <label>API UID</label>
+          <input type="text" id="arenaB_apiUid" />
+        </div>
+      </div>
+      <div class="field">
+        <label>Tenant Domain</label>
+        <input type="text" id="arenaB_tenantDomain" placeholder="staging-skix" />
+      </div>
+      <div class="field">
+        <label>System Prompt Override</label>
+        <textarea id="arenaB_systemPromptOverride" rows="4" placeholder="비워두면 기본 가이드라인 사용"></textarea>
+      </div>
+      <div style="display:flex; gap:8px; margin-top:16px; flex-wrap:wrap; align-items:center">
+        <button class="btn-primary" onclick="saveArenaConfig('B')">B 슬롯 저장</button>
+        <button class="btn-secondary" onclick="testArenaConfig('B')">&#128299; 연결 테스트</button>
+        <span id="arenaB_status" style="align-self:center; font-size:12px; color:var(--text-dim)"></span>
+      </div>
+    </div>
+
+  </div><!-- /tab-arena -->
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- Tab 3: GPT 연결 설정 -->
   <!-- ══════════════════════════════════════════ -->
   <div class="settings-tab-content" id="tab-gpt">
     <div class="card" style="border-radius:0 0 16px 16px;border-top:none;margin-bottom:20px">
@@ -299,7 +490,7 @@
   </div>
 
   <!-- ══════════════════════════════════════════ -->
-  <!-- Tab 3: 사용자 관리 (Admin only) -->
+  <!-- Tab 4: 사용자 관리 (Admin only) -->
   <!-- ══════════════════════════════════════════ -->
   <div class="settings-tab-content" id="tab-users">
     <!-- 가입 승인 대기 -->
@@ -372,63 +563,6 @@
   </div>
 
   <!-- ══════════════════════════════════════════ -->
-  <!-- Tab 4: 문진 평가 기준 (Admin only) -->
-  <!-- ══════════════════════════════════════════ -->
-  <div class="settings-tab-content" id="tab-criteria">
-    <div class="card" id="criteriaSection">
-      <h2>🩺 문진 평가 기준 관리</h2>
-      <div id="criteriaBody">
-        <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px">문진 평가 축(Axis), 등급 기준, 의료법 경계 규칙을 관리합니다</p>
-
-        <!-- 축 및 항목 -->
-        <div id="criteriaAxes"></div>
-
-        <hr class="divider">
-
-        <!-- 등급 임계값 -->
-        <div style="margin-bottom:18px">
-          <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:10px">등급 임계값 (Grade Thresholds)</div>
-          <div class="field-row" style="flex-wrap:wrap;gap:12px">
-            <div class="field" style="flex:1;min-width:120px">
-              <label>A 등급 이상</label>
-              <input type="number" id="thresholdA" min="0" max="100" step="1" placeholder="90">
-            </div>
-            <div class="field" style="flex:1;min-width:120px">
-              <label>B 등급 이상</label>
-              <input type="number" id="thresholdB" min="0" max="100" step="1" placeholder="75">
-            </div>
-            <div class="field" style="flex:1;min-width:120px">
-              <label>C 등급 이상</label>
-              <input type="number" id="thresholdC" min="0" max="100" step="1" placeholder="60">
-            </div>
-            <div class="field" style="flex:1;min-width:120px">
-              <label>D 등급 미만</label>
-              <input type="number" id="thresholdD" min="0" max="100" step="1" placeholder="60">
-            </div>
-          </div>
-        </div>
-
-        <hr class="divider">
-
-        <!-- 의료법 경계 규칙 -->
-        <div style="margin-bottom:18px">
-          <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:10px">의료법 경계 규칙 (Medical Law Boundary Rules)</div>
-          <div id="boundaryRulesList"></div>
-          <button class="btn-outline" onclick="addBoundaryRule()" style="font-size:12px;padding:6px 14px;margin-top:8px">+ 규칙 추가</button>
-        </div>
-
-        <hr class="divider">
-
-        <!-- 저장 / 초기화 -->
-        <div style="display:flex;gap:10px;justify-content:flex-end">
-          <button class="btn-outline" onclick="resetCriteriaToDefaults()" style="color:var(--orange);border-color:var(--orange)">기본값 초기화</button>
-          <button class="btn-primary" onclick="saveCriteria()">평가 기준 저장</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══════════════════════════════════════════ -->
   <!-- Tab 5: 서버 실시간 로그 (Admin only) -->
   <!-- ══════════════════════════════════════════ -->
   <div class="settings-tab-content" id="tab-logs">
@@ -447,7 +581,7 @@
     </div>
   </div>
 
-</div>
+</div><!-- /mainContent -->
 
 <!-- Status Bar -->
 <div class="statusbar" id="statusBar">설정을 불러오는 중...</div>
@@ -471,6 +605,15 @@ function switchSettingsTab(tabId) {
   document.querySelectorAll('.settings-tab').forEach(function(btn) {
     btn.classList.toggle('active', btn.getAttribute('data-tab') === tabId);
   });
+  // Arena 탭 진입 시 설정 로드
+  if (tabId === 'tab-arena') {
+    loadArenaConfigs();
+  }
+  // 사용자 탭 진입 시 목록 새로고침
+  if (tabId === 'tab-users') {
+    loadTesterAccounts();
+    loadPendingUsers();
+  }
   // Save last active tab to localStorage
   try { localStorage.setItem('settings_active_tab', tabId); } catch(e) {}
 }
@@ -479,7 +622,8 @@ function restoreLastTab() {
   try {
     var saved = localStorage.getItem('settings_active_tab');
     if (saved) {
-      var tabBtn = document.querySelector('.settings-tab[data-tab="' + saved + '"]');
+      var bar = document.getElementById('settingsTabBar');
+      var tabBtn = bar ? bar.querySelector('.settings-tab[data-tab="' + saved + '"]') : null;
       // Only restore if tab exists and is visible
       if (tabBtn && tabBtn.style.display !== 'none') {
         switchSettingsTab(saved);
@@ -503,7 +647,7 @@ var currentEnv = 'dev';
 
 // 환경별 독립 필드 vs 공통 필드
 var ENV_KEYS = ['xApiKey', 'xApiUid', 'xTenantDomain', 'apiUrl'];
-var COMMON_KEYS = ['graphType', 'proxyUrl', 'srcWeb', 'srcPubmed', 'enableCompliance', 'openaiKey', 'openaiModel', 'enableLlmEval'];
+var COMMON_KEYS = ['graphType', 'proxyUrl', 'srcWeb', 'srcPubmed', 'enableCompliance', 'openaiKey', 'openaiModel', 'enableLlmEval', 'arenaRandomSwap'];
 
 // 메모리에 환경별 설정 저장
 var envSettings = {
@@ -534,14 +678,18 @@ function storeCurrentEnvValues() {
 
 function loadEnvToForm(env) {
   var es = envSettings[env];
-  document.getElementById('apiUrl').value = es.apiUrl || ENVS[env].url;
-  document.getElementById('xTenantDomain').value = es.xTenantDomain || ENVS[env].tenant;
-  document.getElementById('xApiKey').value = es.xApiKey || '';
-  document.getElementById('xApiUid').value = es.xApiUid || '';
+  var apiUrlEl = document.getElementById('apiUrl');
+  var xTenantEl = document.getElementById('xTenantDomain');
+  var xApiKeyEl = document.getElementById('xApiKey');
+  var xApiUidEl = document.getElementById('xApiUid');
+  if (apiUrlEl) apiUrlEl.value = es.apiUrl || ENVS[env].url;
+  if (xTenantEl) xTenantEl.value = es.xTenantDomain || ENVS[env].tenant;
+  if (xApiKeyEl) xApiKeyEl.value = es.xApiKey || '';
+  if (xApiUidEl) xApiUidEl.value = es.xApiUid || '';
 }
 
 // ══════════════════════════════════════════
-// Settings Persistence (환경별 구조)
+// Settings Persistence
 // ══════════════════════════════════════════
 async function saveSettings() {
   storeCurrentEnvValues();
@@ -553,28 +701,28 @@ async function saveSettings() {
     allowedEnvironments: [],
   };
 
-  // 환경별 설정
-  for (var ei = 0; ei < ['dev','stg','prod'].length; ei++) {
-    var env = ['dev','stg','prod'][ei];
-    settings.environments[env] = Object.assign({}, envSettings[env]);
+  for (const env of ['dev', 'stg', 'prod']) {
+    settings.environments[env] = { ...envSettings[env] };
   }
 
   // 허용 환경
-  if (document.getElementById('allowDev') && document.getElementById('allowDev').checked) settings.allowedEnvironments.push('dev');
-  if (document.getElementById('allowStg') && document.getElementById('allowStg').checked) settings.allowedEnvironments.push('stg');
-  if (document.getElementById('allowProd') && document.getElementById('allowProd').checked) settings.allowedEnvironments.push('prod');
+  const allowDevEl = document.getElementById('allowDev');
+  const allowStgEl = document.getElementById('allowStg');
+  const allowProdEl = document.getElementById('allowProd');
+  if (allowDevEl && allowDevEl.checked) settings.allowedEnvironments.push('dev');
+  if (allowStgEl && allowStgEl.checked) settings.allowedEnvironments.push('stg');
+  if (allowProdEl && allowProdEl.checked) settings.allowedEnvironments.push('prod');
 
-  // 공통 설정
-  for (var ci = 0; ci < COMMON_KEYS.length; ci++) {
-    var key = COMMON_KEYS[ci];
-    var el = document.getElementById(key);
+  // 공통 설정 (arenaRandomSwap 포함)
+  for (const key of COMMON_KEYS) {
+    const el = document.getElementById(key);
     if (!el) continue;
     if (el.type === 'checkbox') settings[key] = el.checked;
     else settings[key] = el.value;
   }
 
   try {
-    var res = await fetch('/api/settings', {
+    const res = await fetch('/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(settings)
@@ -583,38 +731,38 @@ async function saveSettings() {
       showToast('Admin 인증이 필요합니다', 'error');
       return;
     }
-    document.getElementById('statusBar').textContent =
-      '\uC124\uC815 \uC800\uC7A5 \uC644\uB8CC \u2014 ' + currentEnv.toUpperCase() + ' (' + new Date().toLocaleTimeString() + ')';
+    const statusBar = document.getElementById('statusBar');
+    if (statusBar) statusBar.textContent =
+      `설정 저장 완료 — ${currentEnv.toUpperCase()} (${new Date().toLocaleTimeString()})`;
   } catch(e) {
-    showToast('\uC800\uC7A5 \uC2E4\uD328: ' + e.message, 'error');
+    showToast('저장 실패: ' + e.message, 'error');
   }
 }
 
 async function loadSettings() {
   try {
-    var res = await fetch('/api/settings');
+    const res = await fetch('/api/settings');
     if (!res.ok) return;
-    var settings = await res.json();
+    const settings = await res.json();
     if (!settings || Object.keys(settings).length === 0) {
-      document.getElementById('statusBar').textContent = '\uC124\uC815 \uC5C6\uC74C \u2014 \uC0C8\uB85C \uC124\uC815\uD574\uC8FC\uC138\uC694';
+      const statusBar = document.getElementById('statusBar');
+      if (statusBar) statusBar.textContent = '설정 없음 — 새로 설정해주세요';
       return;
     }
 
     // 환경별 설정 로드
     if (settings.environments) {
-      for (var ei = 0; ei < ['dev','stg','prod'].length; ei++) {
-        var env = ['dev','stg','prod'][ei];
+      for (const env of ['dev', 'stg', 'prod']) {
         if (settings.environments[env]) {
-          envSettings[env] = Object.assign({}, envSettings[env], settings.environments[env]);
+          envSettings[env] = { ...envSettings[env], ...settings.environments[env] };
         }
       }
     }
 
-    // 공통 설정 로드
-    for (var ci = 0; ci < COMMON_KEYS.length; ci++) {
-      var key = COMMON_KEYS[ci];
+    // 공통 설정 로드 (arenaRandomSwap 포함)
+    for (const key of COMMON_KEYS) {
       if (!(key in settings)) continue;
-      var el = document.getElementById(key);
+      const el = document.getElementById(key);
       if (!el) continue;
       if (el.type === 'checkbox') el.checked = settings[key];
       else el.value = settings[key];
@@ -623,36 +771,41 @@ async function loadSettings() {
     // 현재 환경 복원
     if (settings.currentEnv) {
       currentEnv = settings.currentEnv;
-      document.querySelectorAll('.env-chip').forEach(function(c) {
+      document.querySelectorAll('.env-chip').forEach(c => {
         c.classList.toggle('active', c.dataset.env === currentEnv);
       });
     }
 
     loadEnvToForm(currentEnv);
-    document.querySelectorAll('.env-chip-sm-top').forEach(function(c) {
-      var isActive = c.dataset.env === currentEnv;
+    document.querySelectorAll('.env-chip-sm-top').forEach(c => {
+      const isActive = c.dataset.env === currentEnv;
       c.style.background = isActive ? 'var(--accent)' : '';
       c.style.color = isActive ? '#0f172a' : 'var(--text-dim)';
     });
 
-    // 사용자 관리 로드
+    // 사용자 관리 로드 (사용자 탭이 활성화 상태일 때만 또는 초기 로드)
     loadTesterAccounts();
     loadPendingUsers();
 
     // 허용 환경 로드
-    var allowed = settings.allowedEnvironments || ['dev', 'stg', 'prod'];
-    if (document.getElementById('allowDev')) document.getElementById('allowDev').checked = allowed.includes('dev');
-    if (document.getElementById('allowStg')) document.getElementById('allowStg').checked = allowed.includes('stg');
-    if (document.getElementById('allowProd')) document.getElementById('allowProd').checked = allowed.includes('prod');
+    const allowed = settings.allowedEnvironments || ['dev', 'stg', 'prod'];
+    const allowDevEl = document.getElementById('allowDev');
+    const allowStgEl = document.getElementById('allowStg');
+    const allowProdEl = document.getElementById('allowProd');
+    if (allowDevEl) allowDevEl.checked = allowed.includes('dev');
+    if (allowStgEl) allowStgEl.checked = allowed.includes('stg');
+    if (allowProdEl) allowProdEl.checked = allowed.includes('prod');
 
-    document.getElementById('statusBar').textContent =
-      '\uC124\uC815 \uB85C\uB4DC \uC644\uB8CC \u2014 ' + currentEnv.toUpperCase() + ' \uD658\uACBD / \uB9C8\uC9C0\uB9C9 \uC800\uC7A5: ' + (settings.updatedAt ? new Date(settings.updatedAt).toLocaleString() : '\uC54C \uC218 \uC5C6\uC74C');
+    const statusBar = document.getElementById('statusBar');
+    if (statusBar) statusBar.textContent =
+      `설정 로드 완료 — ${currentEnv.toUpperCase()} 환경 / 마지막 저장: ${settings.updatedAt ? new Date(settings.updatedAt).toLocaleString() : '알 수 없음'}`;
   } catch(e) {
-    document.getElementById('statusBar').textContent = '\uC124\uC815 \uB85C\uB4DC \uC2E4\uD328';
+    const statusBar = document.getElementById('statusBar');
+    if (statusBar) statusBar.textContent = '설정 로드 실패';
   }
 }
 
-var saveTimer = null;
+let saveTimer = null;
 function autoSaveSettings() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(saveSettings, 1000);
@@ -662,41 +815,56 @@ function autoSaveSettings() {
 // Connection Test
 // ══════════════════════════════════════════
 async function testConnection() {
-  var result = document.getElementById('connResult');
-  result.textContent = '\uD14C\uC2A4\uD2B8 \uC911...';
-  result.style.color = 'var(--yellow)';
+  const result = document.getElementById('connResult');
+  if (result) { result.textContent = '테스트 중...'; result.style.color = 'var(--yellow)'; }
 
-  var proxy = window.location.origin;
-  var apiUrl = document.getElementById('apiUrl').value.trim();
-  var graphType = document.getElementById('graphType').value.trim() || 'SUPERVISED_HYBRID_SEARCH';
-  var targetUrl = apiUrl + '/api/service/conversations/' + graphType;
+  const proxyUrlEl = document.getElementById('proxyUrl');
+  const apiUrlEl = document.getElementById('apiUrl');
+  const apiKeyEl = document.getElementById('xApiKey');
+  const proxyUrl = proxyUrlEl ? proxyUrlEl.value.trim() : '';
+  const apiUrl = apiUrlEl ? apiUrlEl.value.trim() : '';
+  const apiKey = apiKeyEl ? apiKeyEl.value.trim() : '';
+
+  if (!apiKey) {
+    if (result) { result.textContent = 'API Key를 입력해주세요'; result.style.color = 'var(--red)'; }
+    return;
+  }
 
   try {
-    var res = await fetch(proxy, {
+    const graphTypeEl = document.getElementById('graphType');
+    const xTenantEl = document.getElementById('xTenantDomain');
+    const xApiUidEl = document.getElementById('xApiUid');
+    const targetUrl = `${apiUrl}/api/service/conversations/${graphTypeEl ? graphTypeEl.value.trim() : 'ORCHESTRATED_HYBRID_SEARCH'}`;
+    const testBody = JSON.stringify({
+      query: '테스트',
+      conversation_strid: null,
+      source_types: ['WEB']
+    });
+
+    const res = await fetch(proxyUrl || targetUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'text/event-stream',
+        'X-API-Key': apiKey,
+        'X-tenant-Domain': xTenantEl ? xTenantEl.value.trim() : '',
+        'X-Api-UID': xApiUidEl ? xApiUidEl.value.trim() : '',
         'X-Target-URL': targetUrl,
       },
-      body: JSON.stringify({
-        query: '\uC5F0\uACB0\uD14C\uC2A4\uD2B8',
-        conversation_strid: null,
-        source_types: ['WEB']
-      }),
+      body: testBody,
     });
 
-    if (res.ok) {
-      result.textContent = currentEnv.toUpperCase() + ' \uC5F0\uACB0 \uC131\uACF5!';
-      result.style.color = 'var(--green)';
-    } else {
-      var errText = await res.text().catch(function() { return ''; });
-      result.textContent = '\uC2E4\uD328 (' + res.status + ') ' + errText.substring(0, 50);
-      result.style.color = 'var(--red)';
+    if (result) {
+      if (res.ok) {
+        result.textContent = `${currentEnv.toUpperCase()} 연결 성공!`;
+        result.style.color = 'var(--green)';
+      } else {
+        result.textContent = `실패 (${res.status})`;
+        result.style.color = 'var(--red)';
+      }
     }
   } catch (e) {
-    result.textContent = '\uC5F0\uACB0 \uC2E4\uD328: ' + e.message;
-    result.style.color = 'var(--red)';
+    if (result) { result.textContent = '연결 실패: ' + e.message; result.style.color = 'var(--red)'; }
   }
 }
 
@@ -705,8 +873,9 @@ async function testConnection() {
 // ══════════════════════════════════════════
 function showToast(msg, type) {
   if (!type) type = 'info';
-  var container = document.getElementById('toastContainer');
-  var t = document.createElement('div');
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
+  const t = document.createElement('div');
   t.className = 'toast toast-' + type;
   t.textContent = msg;
   container.appendChild(t);
@@ -718,8 +887,8 @@ function showToast(msg, type) {
 // ══════════════════════════════════════════
 async function checkAuth() {
   try {
-    var res = await fetch('/api/auth/status');
-    var status = await res.json();
+    const res = await fetch('/api/auth/status');
+    const status = await res.json();
 
     if (!status.isSetup) {
       document.getElementById('setupGate').style.display = 'flex';
@@ -745,87 +914,63 @@ async function checkAuth() {
 }
 
 async function doSetup() {
-  var pw = document.getElementById('setupPassword').value;
-  var pw2 = document.getElementById('setupPasswordConfirm').value;
-  var errEl = document.getElementById('setupError');
+  const pwEl = document.getElementById('setupPassword');
+  const pw2El = document.getElementById('setupPasswordConfirm');
+  const errEl = document.getElementById('setupError');
+  const pw = pwEl ? pwEl.value : '';
+  const pw2 = pw2El ? pw2El.value : '';
 
-  if (pw.length < 4) { errEl.textContent = '\uBE44\uBC00\uBC88\uD638\uB294 4\uC790 \uC774\uC0C1\uC774\uC5B4\uC57C \uD569\uB2C8\uB2E4'; return; }
-  if (pw !== pw2) { errEl.textContent = '\uBE44\uBC00\uBC88\uD638\uAC00 \uC77C\uCE58\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4'; return; }
+  if (pw.length < 4) { if (errEl) errEl.textContent = '비밀번호는 4자 이상이어야 합니다'; return; }
+  if (pw !== pw2) { if (errEl) errEl.textContent = '비밀번호가 일치하지 않습니다'; return; }
 
   try {
-    var res = await fetch('/api/auth/setup', {
+    const res = await fetch('/api/auth/setup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password: pw })
     });
-    var data = await res.json();
+    const data = await res.json();
     if (data.success) {
-      showToast('Admin \uBE44\uBC00\uBC88\uD638\uAC00 \uC124\uC815\uB418\uC5C8\uC2B5\uB2C8\uB2E4', 'success');
+      showToast('Admin 비밀번호가 설정되었습니다', 'success');
       await doLoginWithPassword(pw);
     } else {
-      errEl.textContent = data.error || '\uC124\uC815 \uC2E4\uD328';
+      if (errEl) errEl.textContent = data.error || '설정 실패';
     }
-  } catch(e) { errEl.textContent = '\uC11C\uBC84 \uC5F0\uACB0 \uC2E4\uD328'; }
+  } catch(e) { if (errEl) errEl.textContent = '서버 연결 실패'; }
 }
 
 async function doLogin() {
-  var pw = document.getElementById('loginPassword').value;
+  const pwEl = document.getElementById('loginPassword');
+  const pw = pwEl ? pwEl.value : '';
   await doLoginWithPassword(pw);
 }
 
 async function doLoginWithPassword(pw) {
-  var errEl = document.getElementById('loginError');
+  const errEl = document.getElementById('loginError');
   try {
-    var res = await fetch('/api/auth/login', {
+    const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password: pw })
     });
-    var data = await res.json();
+    const data = await res.json();
     if (data.success) {
-      document.getElementById('loginGate').style.display = 'none';
-      document.getElementById('setupGate').style.display = 'none';
-      document.getElementById('mainContent').style.display = '';
+      const loginGate = document.getElementById('loginGate');
+      const setupGate = document.getElementById('setupGate');
+      const mainContent = document.getElementById('mainContent');
+      const settingsTabBar = document.getElementById('settingsTabBar');
+      if (loginGate) loginGate.style.display = 'none';
+      if (setupGate) setupGate.style.display = 'none';
+      if (mainContent) mainContent.style.display = '';
+      if (settingsTabBar) settingsTabBar.style.display = '';
       loadSettings();
       showAdminTabs();
     } else {
-      if (errEl) errEl.textContent = data.error || '\uB85C\uADF8\uC778 \uC2E4\uD328';
+      if (errEl) errEl.textContent = data.error || '로그인 실패';
     }
   } catch(e) {
-    if (errEl) errEl.textContent = '\uC11C\uBC84 \uC5F0\uACB0 \uC2E4\uD328';
+    if (errEl) errEl.textContent = '서버 연결 실패';
   }
-}
-
-async function doLogout() {
-  await fetch('/api/auth/logout', { method: 'POST' });
-  showToast('\uB85C\uADF8\uC544\uC6C3 \uB418\uC5C8\uC2B5\uB2C8\uB2E4', 'info');
-  setTimeout(function() { location.reload(); }, 500);
-}
-
-async function changePassword() {
-  var cur = document.getElementById('currentPw').value;
-  var newPw = document.getElementById('newPw').value;
-  var confirmPw = document.getElementById('newPwConfirm').value;
-
-  if (newPw.length < 4) return showToast('\uC0C8 \uBE44\uBC00\uBC88\uD638\uB294 4\uC790 \uC774\uC0C1\uC774\uC5B4\uC57C \uD569\uB2C8\uB2E4', 'error');
-  if (newPw !== confirmPw) return showToast('\uC0C8 \uBE44\uBC00\uBC88\uD638\uAC00 \uC77C\uCE58\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4', 'error');
-
-  try {
-    var res = await fetch('/api/auth/change-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ currentPassword: cur, newPassword: newPw })
-    });
-    var data = await res.json();
-    if (data.success) {
-      showToast('\uBE44\uBC00\uBC88\uD638\uAC00 \uBCC0\uACBD\uB418\uC5C8\uC2B5\uB2C8\uB2E4', 'success');
-      document.getElementById('currentPw').value = '';
-      document.getElementById('newPw').value = '';
-      document.getElementById('newPwConfirm').value = '';
-    } else {
-      showToast(data.error || '\uBCC0\uACBD \uC2E4\uD328', 'error');
-    }
-  } catch(e) { showToast('\uC11C\uBC84 \uC5F0\uACB0 \uC2E4\uD328', 'error'); }
 }
 
 // ══════════════════════════════════════════
@@ -833,208 +978,373 @@ async function changePassword() {
 // ══════════════════════════════════════════
 function showAdminTabs() {
   fetch('/api/auth/status').then(function(r) { return r.json(); }).then(function(s) {
+    var bar = document.getElementById('settingsTabBar');
+    if (!bar) { restoreLastTab(); return; }
+    var usersBtn = bar.querySelector('.settings-tab[data-tab="tab-users"]');
+    var logsBtn  = bar.querySelector('.settings-tab[data-tab="tab-logs"]');
     if (s.isAdmin) {
-      // Show admin-only tabs
-      document.querySelector('.settings-tab[data-tab="tab-users"]').style.display = '';
-      document.querySelector('.settings-tab[data-tab="tab-criteria"]').style.display = '';
-      document.querySelector('.settings-tab[data-tab="tab-logs"]').style.display = '';
-      // Load criteria data
-      loadCriteria();
-      // Restore last tab (now that admin tabs are visible)
-      restoreLastTab();
+      if (usersBtn) usersBtn.style.display = '';
+      if (logsBtn)  logsBtn.style.display = '';
     } else {
-      // Hide admin-only tabs
-      document.querySelector('.settings-tab[data-tab="tab-users"]').style.display = 'none';
-      document.querySelector('.settings-tab[data-tab="tab-criteria"]').style.display = 'none';
-      document.querySelector('.settings-tab[data-tab="tab-logs"]').style.display = 'none';
-      restoreLastTab();
+      if (usersBtn) usersBtn.style.display = 'none';
+      if (logsBtn)  logsBtn.style.display = 'none';
     }
+    restoreLastTab();
   }).catch(function() {
     restoreLastTab();
   });
 }
 
+async function doLogout() {
+  await fetch('/api/auth/logout', { method: 'POST' });
+  showToast('로그아웃 되었습니다', 'info');
+  setTimeout(function() { location.reload(); }, 500);
+}
+
+async function changePassword() {
+  const curEl = document.getElementById('currentPw');
+  const newPwEl = document.getElementById('newPw');
+  const confirmEl = document.getElementById('newPwConfirm');
+  const cur = curEl ? curEl.value : '';
+  const newPw = newPwEl ? newPwEl.value : '';
+  const confirm = confirmEl ? confirmEl.value : '';
+
+  if (newPw.length < 4) return showToast('새 비밀번호는 4자 이상이어야 합니다', 'error');
+  if (newPw !== confirm) return showToast('새 비밀번호가 일치하지 않습니다', 'error');
+
+  try {
+    const res = await fetch('/api/auth/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentPassword: cur, newPassword: newPw })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('비밀번호가 변경되었습니다', 'success');
+      if (curEl) curEl.value = '';
+      if (newPwEl) newPwEl.value = '';
+      if (confirmEl) confirmEl.value = '';
+    } else {
+      showToast(data.error || '변경 실패', 'error');
+    }
+  } catch(e) { showToast('서버 연결 실패', 'error'); }
+}
+
 // ══════════════════════════════════════════
 // Tester Account Management (Admin)
 // ══════════════════════════════════════════
-function escHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 async function loadTesterAccounts() {
   try {
-    var res = await fetch('/api/tester/accounts');
-    var data = await res.json();
+    const res = await fetch('/api/tester/accounts');
+    const data = await res.json();
     renderTesterAccounts(data.accounts || []);
   } catch(e) { console.warn('loadTesterAccounts failed', e); }
 }
 
 async function loadPendingUsers() {
   try {
-    var res = await fetch('/api/auth/pending-users');
-    var data = await res.json();
+    const res = await fetch('/api/auth/pending-users');
+    const data = await res.json();
     renderPendingUsers(data.pendingUsers || []);
   } catch(e) { console.warn('loadPendingUsers failed', e); }
 }
 
 function renderPendingUsers(users) {
-  var container = document.getElementById('pendingUserList');
+  const container = document.getElementById('pendingUserList');
+  if (!container) return;
   if (!users.length) {
-    container.innerHTML = '<div style="color:var(--text-dim);font-size:12px;padding:8px">\uC2B9\uC778 \uB300\uAE30 \uC911\uC778 \uC0AC\uC6A9\uC790\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4</div>';
+    container.innerHTML = '<div style="color:var(--text-dim);font-size:12px;padding:8px">승인 대기 중인 사용자가 없습니다</div>';
     return;
   }
-  container.innerHTML = users.map(function(u) { return '\
-    <div style="display:flex;gap:8px;margin-bottom:6px;align-items:center;padding:10px 12px;background:var(--bg);border-radius:8px;border:1px solid #f59e0b33">\
-      <div style="flex:1">\
-        <div style="font-size:13px;font-weight:600;color:var(--text)">' + escHtml(u.name) + ' <span style="font-size:11px;color:var(--text-dim)">(' + escHtml(u.id) + ')</span></div>\
-        <div style="font-size:11px;color:var(--text-dim);margin-top:2px">' + escHtml(u.org || '\uC18C\uC18D \uBBF8\uC785\uB825') + ' \u00B7 ' + (u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '') + '</div>\
-      </div>\
-      <div style="display:flex;gap:4px">\
-        <input type="text" id="uid_' + escHtml(u.id) + '" placeholder="X-Api-UID" style="width:120px;font-size:11px;padding:4px 8px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px">\
-        <button onclick="approveUser(\'' + escHtml(u.id) + '\')" style="background:#22c55e;color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:11px;font-weight:600;cursor:pointer">\uC2B9\uC778</button>\
-        <button onclick="rejectUser(\'' + escHtml(u.id) + '\')" style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:11px;font-weight:600;cursor:pointer">\uAC70\uBD80</button>\
-      </div>\
-    </div>'; }).join('');
+  container.innerHTML = '';
+  users.forEach(function(u) {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:8px;margin-bottom:6px;align-items:center;padding:10px 12px;background:var(--bg);border-radius:8px;border:1px solid #f59e0b33';
+    row.innerHTML = '<div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text)">' + escHtml(u.name) + ' <span style="font-size:11px;color:var(--text-dim)">(' + escHtml(u.id) + ')</span></div><div style="font-size:11px;color:var(--text-dim);margin-top:2px">' + escHtml(u.org || '소속 미입력') + ' · ' + (u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '') + '</div></div>';
+    const actions = document.createElement('div');
+    actions.style.cssText = 'display:flex;gap:4px';
+    const uidInput = document.createElement('input');
+    uidInput.type = 'text';
+    uidInput.id = 'uid_' + u.id;
+    uidInput.placeholder = 'X-Api-UID';
+    uidInput.style.cssText = 'width:120px;font-size:11px;padding:4px 8px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px';
+    const approveBtn = document.createElement('button');
+    approveBtn.textContent = '승인';
+    approveBtn.style.cssText = 'background:#22c55e;color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:11px;font-weight:600;cursor:pointer';
+    approveBtn.addEventListener('click', (function(uid) { return function() { approveUser(uid); }; })(u.id));
+    const rejectBtn = document.createElement('button');
+    rejectBtn.textContent = '거부';
+    rejectBtn.style.cssText = 'background:#ef4444;color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:11px;font-weight:600;cursor:pointer';
+    rejectBtn.addEventListener('click', (function(uid) { return function() { rejectUser(uid); }; })(u.id));
+    actions.appendChild(uidInput);
+    actions.appendChild(approveBtn);
+    actions.appendChild(rejectBtn);
+    row.appendChild(actions);
+    container.appendChild(row);
+  });
 }
 
 async function approveUser(userId) {
-  var uidInput = document.getElementById('uid_' + userId);
-  var uid = uidInput ? uidInput.value.trim() : '';
+  const uidInput = document.getElementById('uid_' + userId);
+  const uid = uidInput ? uidInput.value.trim() : '';
   try {
-    var res = await fetch('/api/auth/approve-user', {
+    const res = await fetch('/api/auth/approve-user', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ userId: userId, uid: uid })
     });
-    var data = await res.json();
+    const data = await res.json();
     if (data.success) { showToast(data.message, 'success'); loadPendingUsers(); loadTesterAccounts(); }
-    else showToast(data.error || '\uC2B9\uC778 \uC2E4\uD328', 'error');
-  } catch(e) { showToast('\uC11C\uBC84 \uC5F0\uACB0 \uC2E4\uD328', 'error'); }
+    else showToast(data.error || '승인 실패', 'error');
+  } catch(e) { showToast('서버 연결 실패', 'error'); }
 }
 
 async function rejectUser(userId) {
-  if (!confirm('\'' + userId + '\' \uC0AC\uC6A9\uC790\uB97C \uAC70\uBD80\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?')) return;
+  if (!confirm('\'' + userId + '\' 사용자를 거부하시겠습니까?')) return;
   try {
-    var res = await fetch('/api/auth/reject-user', {
+    const res = await fetch('/api/auth/reject-user', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ userId: userId })
     });
-    var data = await res.json();
+    const data = await res.json();
     if (data.success) { showToast(data.message, 'success'); loadPendingUsers(); }
-    else showToast(data.error || '\uAC70\uBD80 \uC2E4\uD328', 'error');
-  } catch(e) { showToast('\uC11C\uBC84 \uC5F0\uACB0 \uC2E4\uD328', 'error'); }
+    else showToast(data.error || '거부 실패', 'error');
+  } catch(e) { showToast('서버 연결 실패', 'error'); }
 }
 
 function renderTesterAccounts(accounts) {
-  var container = document.getElementById('testerAccountList');
-  var approved = accounts.filter(function(a) { return a.status !== 'pending' && a.status !== 'rejected'; });
+  const container = document.getElementById('testerAccountList');
+  if (!container) return;
+  const approved = accounts.filter(function(a) { return a.status !== 'pending' && a.status !== 'rejected'; });
   if (!approved.length) {
-    container.innerHTML = '<div style="color:var(--text-dim);font-size:12px;padding:8px">\uB4F1\uB85D\uB41C \uC0AC\uC6A9\uC790\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4</div>';
+    container.innerHTML = '<div style="color:var(--text-dim);font-size:12px;padding:8px">등록된 사용자가 없습니다</div>';
     return;
   }
-  container.innerHTML = approved.map(function(a) { return '\
-    <div style="display:flex;gap:8px;margin-bottom:6px;align-items:center;padding:8px 10px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">\
-      <span style="font-size:12px;font-weight:600;color:var(--accent);min-width:70px">' + escHtml(a.id) + '</span>\
-      <span style="font-size:12px;color:var(--text);min-width:60px">' + escHtml(a.name || a.alias) + '</span>\
-      <span style="font-size:11px;color:var(--text-dim);flex:1">' + escHtml(a.org || '') + '</span>\
-      <span style="font-size:10px;color:var(--text-dim);min-width:90px">UID: ' + escHtml(a.uid||'-') + '</span>\
-      <button onclick="deleteTesterAccount(\'' + escHtml(a.id) + '\')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 6px" title="\uC0AD\uC81C">\u2715</button>\
-    </div>'; }).join('');
+  container.innerHTML = '';
+  approved.forEach(function(a) {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:8px;margin-bottom:6px;align-items:center;padding:8px 10px;background:var(--bg);border-radius:8px;border:1px solid var(--border)';
+    const delBtn = document.createElement('button');
+    delBtn.innerHTML = '&#10005;';
+    delBtn.title = '삭제';
+    delBtn.style.cssText = 'background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 6px';
+    delBtn.addEventListener('click', (function(aid) { return function() { deleteTesterAccount(aid); }; })(a.id));
+    row.innerHTML = '<span style="font-size:12px;font-weight:600;color:var(--accent);min-width:70px">' + escHtml(a.id) + '</span><span style="font-size:12px;color:var(--text);min-width:60px">' + escHtml(a.name || a.alias) + '</span><span style="font-size:11px;color:var(--text-dim);flex:1">' + escHtml(a.org || '') + '</span><span style="font-size:10px;color:var(--text-dim);min-width:90px">UID: ' + escHtml(a.uid || '-') + '</span>';
+    row.appendChild(delBtn);
+    container.appendChild(row);
+  });
 }
 
 async function createTesterAccount() {
-  var id = document.getElementById('newTesterId').value.trim();
-  var alias = document.getElementById('newTesterAlias').value.trim();
-  var org = document.getElementById('newTesterOrg') ? document.getElementById('newTesterOrg').value.trim() : '';
-  var pw = document.getElementById('newTesterPw').value.trim();
-  var uid = document.getElementById('newTesterUid').value.trim();
+  const idEl = document.getElementById('newTesterId');
+  const aliasEl = document.getElementById('newTesterAlias');
+  const orgEl = document.getElementById('newTesterOrg');
+  const pwEl = document.getElementById('newTesterPw');
+  const uidEl = document.getElementById('newTesterUid');
+  const id = idEl ? idEl.value.trim() : '';
+  const alias = aliasEl ? aliasEl.value.trim() : '';
+  const org = orgEl ? orgEl.value.trim() : '';
+  const pw = pwEl ? pwEl.value.trim() : '';
+  const uid = uidEl ? uidEl.value.trim() : '';
 
-  if (!id || !pw) return showToast('ID\uC640 \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD558\uC138\uC694', 'error');
+  if (!id || !pw) return showToast('ID와 비밀번호를 입력하세요', 'error');
 
   try {
-    var res = await fetch('/api/tester/create', {
+    const res = await fetch('/api/tester/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: id, alias: alias || id, name: alias || id, org: org, password: pw, uid: uid })
     });
-    var data = await res.json();
+    const data = await res.json();
     if (data.success) {
       showToast(data.message, 'success');
-      document.getElementById('newTesterId').value = '';
-      document.getElementById('newTesterAlias').value = '';
-      document.getElementById('newTesterPw').value = '';
-      document.getElementById('newTesterUid').value = '';
+      if (idEl) idEl.value = '';
+      if (aliasEl) aliasEl.value = '';
+      if (pwEl) pwEl.value = '';
+      if (uidEl) uidEl.value = '';
       loadTesterAccounts();
     } else {
-      showToast(data.error || '\uC0DD\uC131 \uC2E4\uD328', 'error');
+      showToast(data.error || '생성 실패', 'error');
     }
-  } catch(e) { showToast('\uC11C\uBC84 \uC5F0\uACB0 \uC2E4\uD328', 'error'); }
+  } catch(e) { showToast('서버 연결 실패', 'error'); }
 }
 
 async function deleteTesterAccount(id) {
-  if (!confirm('\uD14C\uC2A4\uD130 \'' + id + '\'\uB97C \uC0AD\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?')) return;
+  if (!confirm('테스터 \'' + id + '\'를 삭제하시겠습니까?')) return;
   try {
-    var res = await fetch('/api/tester/delete', {
+    const res = await fetch('/api/tester/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: id })
     });
-    var data = await res.json();
+    const data = await res.json();
     if (data.success) {
       showToast(data.message, 'success');
       loadTesterAccounts();
-    } else { showToast(data.error || '\uC0AD\uC81C \uC2E4\uD328', 'error'); }
-  } catch(e) { showToast('\uC11C\uBC84 \uC5F0\uACB0 \uC2E4\uD328', 'error'); }
+    } else { showToast(data.error || '삭제 실패', 'error'); }
+  } catch(e) { showToast('서버 연결 실패', 'error'); }
+}
+
+// ══════════════════════════════════════════
+// Arena Config
+// ══════════════════════════════════════════
+async function loadArenaConfigs() {
+  try {
+    const res = await fetch('/api/arena/configs');
+    if (!res.ok) return;
+    const data = await res.json();
+    ['A', 'B'].forEach(function(slot) {
+      const cfg = data[slot] || {};
+      const labelEl = document.getElementById('arena' + slot + '_label');
+      const descEl = document.getElementById('arena' + slot + '_description');
+      const useEnvEl = document.getElementById('arena' + slot + '_useEnv');
+      const endpointEl = document.getElementById('arena' + slot + '_endpointUrl');
+      const apiKeyEl = document.getElementById('arena' + slot + '_apiKey');
+      const apiUidEl = document.getElementById('arena' + slot + '_apiUid');
+      const tenantEl = document.getElementById('arena' + slot + '_tenantDomain');
+      const graphEl = document.getElementById('arena' + slot + '_graphType');
+      const promptEl = document.getElementById('arena' + slot + '_systemPromptOverride');
+      if (labelEl) labelEl.value = cfg.label || '';
+      if (descEl) descEl.value = cfg.description || '';
+      if (useEnvEl) useEnvEl.value = cfg.use_env || '';
+      if (endpointEl) endpointEl.value = cfg.endpoint_url || '';
+      if (apiKeyEl) apiKeyEl.value = cfg.api_key || '';
+      if (apiUidEl) apiUidEl.value = cfg.api_uid || '';
+      if (tenantEl) tenantEl.value = cfg.tenant_domain || '';
+      if (graphEl) graphEl.value = cfg.graph_type || 'ORCHESTRATED_HYBRID_SEARCH';
+      if (promptEl) promptEl.value = cfg.system_prompt_override || '';
+    });
+  } catch(e) {
+    console.error('[Arena] load configs failed', e);
+  }
+}
+
+async function saveArenaConfig(slot) {
+  const statusEl = document.getElementById('arena' + slot + '_status');
+  if (statusEl) { statusEl.textContent = '저장 중...'; statusEl.style.color = 'var(--text-dim)'; }
+
+  const getValue = function(id) {
+    const el = document.getElementById(id);
+    return el ? el.value : '';
+  };
+
+  const payload = {
+    slot: slot,
+    label: getValue('arena' + slot + '_label'),
+    description: getValue('arena' + slot + '_description'),
+    use_env: getValue('arena' + slot + '_useEnv'),
+    endpoint_url: getValue('arena' + slot + '_endpointUrl'),
+    api_key: getValue('arena' + slot + '_apiKey'),
+    api_uid: getValue('arena' + slot + '_apiUid'),
+    tenant_domain: getValue('arena' + slot + '_tenantDomain'),
+    graph_type: getValue('arena' + slot + '_graphType'),
+    system_prompt_override: getValue('arena' + slot + '_systemPromptOverride'),
+  };
+
+  try {
+    const res = await fetch('/api/arena/configs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    if (statusEl) {
+      statusEl.textContent = '저장 완료';
+      statusEl.style.color = 'var(--green)';
+      setTimeout(function() { statusEl.textContent = ''; }, 3000);
+    }
+  } catch(e) {
+    if (statusEl) {
+      statusEl.textContent = '저장 실패: ' + e.message;
+      statusEl.style.color = 'var(--red)';
+    }
+  }
+}
+
+async function testArenaConfig(slot) {
+  const statusEl = document.getElementById('arena' + slot + '_status');
+  if (statusEl) { statusEl.textContent = '연결 테스트 중...'; statusEl.style.color = 'var(--text-dim)'; }
+  try {
+    const res = await fetch('/api/arena/configs/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slot: slot }),
+    });
+    const data = await res.json();
+    if (statusEl) {
+      if (data.ok) {
+        statusEl.textContent = '연결 성공 (' + (data.latency || '?') + 'ms)';
+        statusEl.style.color = 'var(--green)';
+      } else {
+        statusEl.textContent = '실패: ' + (data.message || '알 수 없는 오류');
+        statusEl.style.color = 'var(--red)';
+      }
+    }
+  } catch(e) {
+    if (statusEl) { statusEl.textContent = '네트워크 오류'; statusEl.style.color = 'var(--red)'; }
+  }
 }
 
 // ══════════════════════════════════════════
 // Init
 // ══════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', async function() {
-  var bar = document.getElementById('loaderBar');
+  const bar = document.getElementById('loaderBar');
   if (bar) bar.style.width = '10%';
   try {
-    var results = await Promise.allSettled([
-      fetch('/api/auth/status')
-    ]);
-    var authRes = results[0];
+    const authPromise = fetch('/api/auth/status');
+    const authSettled = await Promise.allSettled([authPromise]);
     if (bar) bar.style.width = '60%';
 
+    const authRes = authSettled[0];
     if (authRes.status === 'fulfilled' && authRes.value.ok) {
-      var status = await authRes.value.json();
+      const status = await authRes.value.json();
+      const setupGate = document.getElementById('setupGate');
+      const loginGate = document.getElementById('loginGate');
+      const mainContent = document.getElementById('mainContent');
+      const settingsTabBar = document.getElementById('settingsTabBar');
+
       if (!status.isSetup) {
-        document.getElementById('setupGate').style.display = 'flex';
-        document.getElementById('loginGate').style.display = 'none';
-        document.getElementById('mainContent').style.display = 'none';
+        if (setupGate) setupGate.style.display = 'flex';
+        if (loginGate) loginGate.style.display = 'none';
+        if (mainContent) mainContent.style.display = 'none';
+        if (settingsTabBar) settingsTabBar.style.display = 'none';
       } else if (!status.isAdmin) {
-        document.getElementById('loginGate').style.display = 'flex';
-        document.getElementById('setupGate').style.display = 'none';
-        document.getElementById('mainContent').style.display = 'none';
+        if (loginGate) loginGate.style.display = 'flex';
+        if (setupGate) setupGate.style.display = 'none';
+        if (mainContent) mainContent.style.display = 'none';
+        if (settingsTabBar) settingsTabBar.style.display = 'none';
       } else {
-        document.getElementById('loginGate').style.display = 'none';
-        document.getElementById('setupGate').style.display = 'none';
-        document.getElementById('mainContent').style.display = '';
+        if (loginGate) loginGate.style.display = 'none';
+        if (setupGate) setupGate.style.display = 'none';
+        if (mainContent) mainContent.style.display = '';
+        if (settingsTabBar) settingsTabBar.style.display = '';
         loadSettings();
         showAdminTabs();
       }
     } else {
-      document.getElementById('loginGate').style.display = 'flex';
+      const loginGate = document.getElementById('loginGate');
+      if (loginGate) loginGate.style.display = 'flex';
     }
     if (bar) bar.style.width = '100%';
   } catch(e) {
-    document.getElementById('loginGate').style.display = 'flex';
+    const loginGate = document.getElementById('loginGate');
+    if (loginGate) loginGate.style.display = 'flex';
     console.error('Init error:', e);
   } finally {
-    var loader = document.getElementById('appLoader');
+    const loader = document.getElementById('appLoader');
     if (loader) { loader.classList.add('fade-out'); setTimeout(function() { loader.remove(); }, 300); }
   }
 
   setTimeout(function() {
-    var allKeys = ENV_KEYS.concat(COMMON_KEYS);
-    for (var i = 0; i < allKeys.length; i++) {
-      var el = document.getElementById(allKeys[i]);
+    [...ENV_KEYS, ...COMMON_KEYS].forEach(function(key) {
+      const el = document.getElementById(key);
       if (el) {
         el.addEventListener('input', autoSaveSettings);
         el.addEventListener('change', autoSaveSettings);
       }
-    }
+    });
   }, 500);
 });
 
@@ -1132,179 +1442,6 @@ function filterLogs() {
     count++;
   }
   document.getElementById('logCount').textContent = count + '/' + logLines.length + '\uC904';
-}
-
-// ══════════════════════════════════════════
-// 문진 평가 기준 관리
-// ══════════════════════════════════════════
-var criteriaData = null;
-
-async function loadCriteria() {
-  try {
-    var res = await fetch('/api/consultation-criteria');
-    if (!res.ok) return;
-    criteriaData = await res.json();
-    renderCriteria();
-  } catch(e) {
-    console.warn('loadCriteria failed', e);
-  }
-}
-
-function renderCriteria() {
-  if (!criteriaData) return;
-  var axes = criteriaData.axes || [];
-  var container = document.getElementById('criteriaAxes');
-  container.innerHTML = '';
-
-  for (var ai = 0; ai < axes.length; ai++) {
-    var axis = axes[ai];
-    var axisDiv = document.createElement('div');
-    axisDiv.style.cssText = 'margin-bottom:16px;padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:10px';
-    axisDiv.setAttribute('data-axis-idx', ai);
-
-    var headerHtml = '<div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">'
-      + '<span style="font-size:13px;font-weight:700;color:var(--accent);min-width:60px">' + escHtml(axis.name) + '</span>'
-      + '<label style="font-size:11px;color:var(--text-dim)">\uCD5C\uB300 \uC810\uC218</label>'
-      + '<input type="number" class="axis-max" data-ai="' + ai + '" value="' + (axis.maxScore || 0) + '" min="0" max="100" step="1" style="width:70px;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-size:12px">'
-      + '</div>';
-
-    var itemsHtml = '<div class="axis-items" data-ai="' + ai + '">';
-    var items = axis.items || [];
-    for (var ii = 0; ii < items.length; ii++) {
-      itemsHtml += renderCriteriaItem(ai, ii, items[ii]);
-    }
-    itemsHtml += '</div>';
-    itemsHtml += '<button class="btn-outline" onclick="addCriteriaItem(' + ai + ')" style="font-size:11px;padding:4px 12px;margin-top:6px">+ \uD56D\uBAA9 \uCD94\uAC00</button>';
-
-    axisDiv.innerHTML = headerHtml + itemsHtml;
-    container.appendChild(axisDiv);
-  }
-
-  // thresholds
-  var th = criteriaData.gradeThresholds || {};
-  document.getElementById('thresholdA').value = th.A != null ? th.A : '';
-  document.getElementById('thresholdB').value = th.B != null ? th.B : '';
-  document.getElementById('thresholdC').value = th.C != null ? th.C : '';
-  document.getElementById('thresholdD').value = th.D != null ? th.D : '';
-
-  // boundary rules
-  renderBoundaryRules();
-}
-
-function renderCriteriaItem(ai, ii, item) {
-  return '<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;padding:6px 8px;background:var(--surface);border-radius:6px" data-ai="' + ai + '" data-ii="' + ii + '">'
-    + '<span style="font-size:12px;color:var(--text);min-width:80px;font-weight:600">' + escHtml(item.name || '') + '</span>'
-    + '<label style="font-size:10px;color:var(--text-dim)">\uC810\uC218</label>'
-    + '<input type="number" class="item-score" data-ai="' + ai + '" data-ii="' + ii + '" value="' + (item.score || 0) + '" min="0" max="100" step="1" style="width:60px;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 6px;border-radius:4px;font-size:11px">'
-    + '<input type="text" class="item-desc" data-ai="' + ai + '" data-ii="' + ii + '" value="' + escHtml(item.desc || '') + '" placeholder="\uC124\uBA85" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:4px;font-size:11px">'
-    + '<button onclick="removeCriteriaItem(' + ai + ',' + ii + ')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 4px" title="\uC0AD\uC81C">\u2715</button>'
-    + '</div>';
-}
-
-function addCriteriaItem(ai) {
-  if (!criteriaData || !criteriaData.axes[ai]) return;
-  var name = prompt('\uD56D\uBAA9 \uC774\uB984\uC744 \uC785\uB825\uD558\uC138\uC694:');
-  if (!name) return;
-  criteriaData.axes[ai].items.push({ name: name, score: 0, desc: '' });
-  renderCriteria();
-}
-
-function removeCriteriaItem(ai, ii) {
-  if (!criteriaData || !criteriaData.axes[ai]) return;
-  criteriaData.axes[ai].items.splice(ii, 1);
-  renderCriteria();
-}
-
-function renderBoundaryRules() {
-  var rules = criteriaData.boundaryRules || [];
-  var container = document.getElementById('boundaryRulesList');
-  container.innerHTML = '';
-  for (var i = 0; i < rules.length; i++) {
-    var div = document.createElement('div');
-    div.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:6px';
-    div.innerHTML = '<input type="text" class="boundary-rule" data-ri="' + i + '" value="' + escHtml(rules[i]) + '" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:6px;font-size:12px">'
-      + '<button onclick="removeBoundaryRule(' + i + ')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 6px" title="\uC0AD\uC81C">\u2715</button>';
-    container.appendChild(div);
-  }
-}
-
-function addBoundaryRule() {
-  if (!criteriaData) criteriaData = { axes: [], gradeThresholds: {}, boundaryRules: [] };
-  if (!criteriaData.boundaryRules) criteriaData.boundaryRules = [];
-  criteriaData.boundaryRules.push('');
-  renderBoundaryRules();
-  var inputs = document.querySelectorAll('.boundary-rule');
-  if (inputs.length) inputs[inputs.length - 1].focus();
-}
-
-function removeBoundaryRule(idx) {
-  if (!criteriaData || !criteriaData.boundaryRules) return;
-  criteriaData.boundaryRules.splice(idx, 1);
-  renderBoundaryRules();
-}
-
-function collectCriteriaFromForm() {
-  if (!criteriaData) return null;
-  document.querySelectorAll('.axis-max').forEach(function(el) {
-    var ai = parseInt(el.getAttribute('data-ai'));
-    if (criteriaData.axes[ai]) criteriaData.axes[ai].maxScore = parseInt(el.value) || 0;
-  });
-  document.querySelectorAll('.item-score').forEach(function(el) {
-    var ai = parseInt(el.getAttribute('data-ai'));
-    var ii = parseInt(el.getAttribute('data-ii'));
-    if (criteriaData.axes[ai] && criteriaData.axes[ai].items[ii]) {
-      criteriaData.axes[ai].items[ii].score = parseInt(el.value) || 0;
-    }
-  });
-  document.querySelectorAll('.item-desc').forEach(function(el) {
-    var ai = parseInt(el.getAttribute('data-ai'));
-    var ii = parseInt(el.getAttribute('data-ii'));
-    if (criteriaData.axes[ai] && criteriaData.axes[ai].items[ii]) {
-      criteriaData.axes[ai].items[ii].desc = el.value;
-    }
-  });
-  criteriaData.gradeThresholds = {
-    A: parseInt(document.getElementById('thresholdA').value) || 0,
-    B: parseInt(document.getElementById('thresholdB').value) || 0,
-    C: parseInt(document.getElementById('thresholdC').value) || 0,
-    D: parseInt(document.getElementById('thresholdD').value) || 0
-  };
-  var ruleInputs = document.querySelectorAll('.boundary-rule');
-  criteriaData.boundaryRules = [];
-  ruleInputs.forEach(function(el) { criteriaData.boundaryRules.push(el.value); });
-  return criteriaData;
-}
-
-async function saveCriteria() {
-  var data = collectCriteriaFromForm();
-  if (!data) { showToast('\uC800\uC7A5\uD560 \uB370\uC774\uD130\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4', 'error'); return; }
-  try {
-    var res = await fetch('/api/consultation-criteria', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    if (res.status === 403) { showToast('Admin \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4', 'error'); return; }
-    if (!res.ok) { showToast('\uC800\uC7A5 \uC2E4\uD328 (' + res.status + ')', 'error'); return; }
-    showToast('\uD3C9\uAC00 \uAE30\uC900\uC774 \uC800\uC7A5\uB418\uC5C8\uC2B5\uB2C8\uB2E4', 'success');
-  } catch(e) {
-    showToast('\uC800\uC7A5 \uC2E4\uD328: ' + e.message, 'error');
-  }
-}
-
-async function resetCriteriaToDefaults() {
-  if (!confirm('\uD3C9\uAC00 \uAE30\uC900\uC744 \uAE30\uBCF8\uAC12\uC73C\uB85C \uCD08\uAE30\uD654\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?')) return;
-  try {
-    var res = await fetch('/api/consultation-criteria/reset', {
-      method: 'POST'
-    });
-    if (!res.ok) { showToast('\uCD08\uAE30\uD654 \uC2E4\uD328', 'error'); return; }
-    criteriaData = await res.json();
-    renderCriteria();
-    showToast('\uAE30\uBCF8\uAC12\uC73C\uB85C \uCD08\uAE30\uD654\uB418\uC5C8\uC2B5\uB2C8\uB2E4', 'success');
-  } catch(e) {
-    showToast('\uCD08\uAE30\uD654 \uC2E4\uD328: ' + e.message, 'error');
-  }
 }
 </script>
 </body>

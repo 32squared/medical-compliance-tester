@@ -9,6 +9,7 @@ import os
 import json
 import secrets
 import sqlite3
+import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
 
@@ -233,6 +234,7 @@ CREATE TABLE IF NOT EXISTS messages (
     gpt_eval_json TEXT,
     gpt_model TEXT,
     consultation_eval_json TEXT,
+    token_usage_json TEXT,
     FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
 );
 
@@ -290,6 +292,19 @@ CREATE TABLE IF NOT EXISTS settings (
     updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS sessions (
+    token TEXT PRIMARY KEY,
+    session_type TEXT NOT NULL,
+    user_id TEXT DEFAULT '',
+    user_name TEXT DEFAULT '',
+    user_uid TEXT DEFAULT '',
+    data_json TEXT,
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_type ON sessions(session_type);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
 CREATE INDEX IF NOT EXISTS idx_conversations_user ON conversations(user_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_env ON conversations(env);
 CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id);
@@ -309,6 +324,128 @@ CREATE TABLE IF NOT EXISTS consultation_checklists (
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS prompt_enhancements (
+    id TEXT PRIMARY KEY,
+    conversation_id TEXT,
+    original_msg_id TEXT,
+    enhanced_msg_id TEXT,
+    original_query TEXT NOT NULL,
+    enhanced_prompt TEXT NOT NULL,
+    instructions_json TEXT,
+    original_eval_json TEXT,
+    enhanced_eval_json TEXT,
+    improvement_json TEXT,
+    created_at TEXT NOT NULL,
+    created_by TEXT DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS response_feedback (
+    id TEXT PRIMARY KEY,
+    message_id TEXT DEFAULT '',
+    conversation_id TEXT DEFAULT '',
+    evaluator_id TEXT NOT NULL,
+    evaluator_name TEXT DEFAULT '',
+    rating INTEGER,
+    legal_rating INTEGER,
+    quality_rating INTEGER,
+    labels_json TEXT DEFAULT '[]',
+    corrected_response TEXT DEFAULT '',
+    feedback_note TEXT DEFAULT '',
+    original_query TEXT DEFAULT '',
+    full_response TEXT DEFAULT '',
+    response_time_ms INTEGER,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS preference_pairs (
+    id TEXT PRIMARY KEY,
+    prompt TEXT NOT NULL,
+    response_chosen TEXT NOT NULL,
+    response_rejected TEXT NOT NULL,
+    chosen_legal_score REAL,
+    rejected_legal_score REAL,
+    chosen_consult_score REAL,
+    rejected_consult_score REAL,
+    chosen_composite REAL,
+    rejected_composite REAL,
+    label_source TEXT DEFAULT 'human',
+    labeled_by TEXT DEFAULT '',
+    label_confidence REAL DEFAULT 1.0,
+    chosen_msg_id TEXT,
+    rejected_msg_id TEXT,
+    conversation_id TEXT,
+    exported INTEGER DEFAULT 0,
+    exported_at TEXT,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_feedback_msg ON response_feedback(message_id);
+CREATE INDEX IF NOT EXISTS idx_feedback_conv ON response_feedback(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_feedback_evaluator ON response_feedback(evaluator_id);
+CREATE INDEX IF NOT EXISTS idx_pref_pairs_source ON preference_pairs(label_source);
+CREATE INDEX IF NOT EXISTS idx_pref_pairs_exported ON preference_pairs(exported);
+
+CREATE TABLE IF NOT EXISTS arena_model_configs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    slot TEXT NOT NULL,
+    label TEXT DEFAULT '',
+    description TEXT DEFAULT '',
+    use_env TEXT DEFAULT 'dev',
+    endpoint_url TEXT DEFAULT '',
+    api_key TEXT DEFAULT '',
+    api_uid TEXT DEFAULT '',
+    tenant_domain TEXT DEFAULT '',
+    graph_type TEXT DEFAULT 'ORCHESTRATED_HYBRID_SEARCH',
+    system_prompt_override TEXT DEFAULT '',
+    is_active INTEGER DEFAULT 1,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE(slot)
+);
+
+CREATE TABLE IF NOT EXISTS arena_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    query_text TEXT NOT NULL,
+    category TEXT DEFAULT '',
+    risk_level TEXT DEFAULT '',
+    config_a_id INTEGER,
+    config_b_id INTEGER,
+    response_a TEXT DEFAULT '',
+    response_b TEXT DEFAULT '',
+    latency_a REAL,
+    latency_b REAL,
+    tokens_a INTEGER,
+    tokens_b INTEGER,
+    slot_swapped INTEGER DEFAULT 0,
+    evaluator_id TEXT DEFAULT '',
+    status TEXT DEFAULT 'pending',
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS arena_evaluations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER NOT NULL,
+    winner TEXT DEFAULT '',
+    score_a_accuracy INTEGER,
+    score_a_helpfulness INTEGER,
+    score_a_safety INTEGER,
+    score_b_accuracy INTEGER,
+    score_b_helpfulness INTEGER,
+    score_b_safety INTEGER,
+    tags_a_pos TEXT DEFAULT '[]',
+    tags_a_neg TEXT DEFAULT '[]',
+    tags_b_pos TEXT DEFAULT '[]',
+    tags_b_neg TEXT DEFAULT '[]',
+    reviewer_note TEXT DEFAULT '',
+    evaluator_id TEXT DEFAULT '',
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_arena_sessions_evaluator ON arena_sessions(evaluator_id);
+CREATE INDEX IF NOT EXISTS idx_arena_sessions_status ON arena_sessions(status);
+CREATE INDEX IF NOT EXISTS idx_arena_evals_session ON arena_evaluations(session_id);
+CREATE INDEX IF NOT EXISTS idx_arena_evals_evaluator ON arena_evaluations(evaluator_id);
 """
 
 # ── 스키마 (PostgreSQL) ──
@@ -351,6 +488,7 @@ CREATE TABLE IF NOT EXISTS messages (
     gpt_eval_json JSONB,
     gpt_model TEXT,
     consultation_eval_json JSONB,
+    token_usage_json JSONB,
     FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
 );
 
@@ -408,6 +546,19 @@ CREATE TABLE IF NOT EXISTS settings (
     updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS sessions (
+    token TEXT PRIMARY KEY,
+    session_type TEXT NOT NULL,
+    user_id TEXT DEFAULT '',
+    user_name TEXT DEFAULT '',
+    user_uid TEXT DEFAULT '',
+    data_json TEXT,
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_type ON sessions(session_type);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
 CREATE INDEX IF NOT EXISTS idx_conversations_user ON conversations(user_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_env ON conversations(env);
 CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id);
@@ -427,6 +578,128 @@ CREATE TABLE IF NOT EXISTS consultation_checklists (
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS prompt_enhancements (
+    id TEXT PRIMARY KEY,
+    conversation_id TEXT,
+    original_msg_id TEXT,
+    enhanced_msg_id TEXT,
+    original_query TEXT NOT NULL,
+    enhanced_prompt TEXT NOT NULL,
+    instructions_json JSONB,
+    original_eval_json JSONB,
+    enhanced_eval_json JSONB,
+    improvement_json JSONB,
+    created_at TEXT NOT NULL,
+    created_by TEXT DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS response_feedback (
+    id TEXT PRIMARY KEY,
+    message_id TEXT DEFAULT '',
+    conversation_id TEXT DEFAULT '',
+    evaluator_id TEXT NOT NULL,
+    evaluator_name TEXT DEFAULT '',
+    rating INTEGER,
+    legal_rating INTEGER,
+    quality_rating INTEGER,
+    labels_json JSONB DEFAULT '[]',
+    corrected_response TEXT DEFAULT '',
+    feedback_note TEXT DEFAULT '',
+    original_query TEXT DEFAULT '',
+    full_response TEXT DEFAULT '',
+    response_time_ms INTEGER,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS preference_pairs (
+    id TEXT PRIMARY KEY,
+    prompt TEXT NOT NULL,
+    response_chosen TEXT NOT NULL,
+    response_rejected TEXT NOT NULL,
+    chosen_legal_score REAL,
+    rejected_legal_score REAL,
+    chosen_consult_score REAL,
+    rejected_consult_score REAL,
+    chosen_composite REAL,
+    rejected_composite REAL,
+    label_source TEXT DEFAULT 'human',
+    labeled_by TEXT DEFAULT '',
+    label_confidence REAL DEFAULT 1.0,
+    chosen_msg_id TEXT,
+    rejected_msg_id TEXT,
+    conversation_id TEXT,
+    exported INTEGER DEFAULT 0,
+    exported_at TEXT,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_feedback_msg ON response_feedback(message_id);
+CREATE INDEX IF NOT EXISTS idx_feedback_conv ON response_feedback(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_feedback_evaluator ON response_feedback(evaluator_id);
+CREATE INDEX IF NOT EXISTS idx_pref_pairs_source ON preference_pairs(label_source);
+CREATE INDEX IF NOT EXISTS idx_pref_pairs_exported ON preference_pairs(exported);
+
+CREATE TABLE IF NOT EXISTS arena_model_configs (
+    id SERIAL PRIMARY KEY,
+    slot TEXT NOT NULL,
+    label TEXT DEFAULT '',
+    description TEXT DEFAULT '',
+    use_env TEXT DEFAULT 'dev',
+    endpoint_url TEXT DEFAULT '',
+    api_key TEXT DEFAULT '',
+    api_uid TEXT DEFAULT '',
+    tenant_domain TEXT DEFAULT '',
+    graph_type TEXT DEFAULT 'ORCHESTRATED_HYBRID_SEARCH',
+    system_prompt_override TEXT DEFAULT '',
+    is_active INTEGER DEFAULT 1,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE(slot)
+);
+
+CREATE TABLE IF NOT EXISTS arena_sessions (
+    id SERIAL PRIMARY KEY,
+    query_text TEXT NOT NULL,
+    category TEXT DEFAULT '',
+    risk_level TEXT DEFAULT '',
+    config_a_id INTEGER,
+    config_b_id INTEGER,
+    response_a TEXT DEFAULT '',
+    response_b TEXT DEFAULT '',
+    latency_a REAL,
+    latency_b REAL,
+    tokens_a INTEGER,
+    tokens_b INTEGER,
+    slot_swapped INTEGER DEFAULT 0,
+    evaluator_id TEXT DEFAULT '',
+    status TEXT DEFAULT 'pending',
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS arena_evaluations (
+    id SERIAL PRIMARY KEY,
+    session_id INTEGER NOT NULL,
+    winner TEXT DEFAULT '',
+    score_a_accuracy INTEGER,
+    score_a_helpfulness INTEGER,
+    score_a_safety INTEGER,
+    score_b_accuracy INTEGER,
+    score_b_helpfulness INTEGER,
+    score_b_safety INTEGER,
+    tags_a_pos TEXT DEFAULT '[]',
+    tags_a_neg TEXT DEFAULT '[]',
+    tags_b_pos TEXT DEFAULT '[]',
+    tags_b_neg TEXT DEFAULT '[]',
+    reviewer_note TEXT DEFAULT '',
+    evaluator_id TEXT DEFAULT '',
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_arena_sessions_evaluator ON arena_sessions(evaluator_id);
+CREATE INDEX IF NOT EXISTS idx_arena_sessions_status ON arena_sessions(status);
+CREATE INDEX IF NOT EXISTS idx_arena_evals_session ON arena_evaluations(session_id);
+CREATE INDEX IF NOT EXISTS idx_arena_evals_evaluator ON arena_evaluations(evaluator_id);
 """
 
 # Keep backward compat alias
@@ -519,8 +792,158 @@ def init_db(db_path=None):
                 "ALTER TABLE comments ADD COLUMN IF NOT EXISTS user_query TEXT DEFAULT ''",
                 "ALTER TABLE comments ADD COLUMN IF NOT EXISTS full_response TEXT DEFAULT ''",
                 "ALTER TABLE messages ADD COLUMN IF NOT EXISTS consultation_eval_json JSONB",
+                "ALTER TABLE messages ADD COLUMN IF NOT EXISTS token_usage_json JSONB",
             ]
             for sql in migrations_pg:
+                try:
+                    cur.execute(sql)
+                except Exception:
+                    pass
+            # prompt_enhancements 테이블 마이그레이션
+            try:
+                cur.execute("""CREATE TABLE IF NOT EXISTS prompt_enhancements (
+                    id TEXT PRIMARY KEY,
+                    conversation_id TEXT,
+                    original_msg_id TEXT,
+                    enhanced_msg_id TEXT,
+                    original_query TEXT NOT NULL,
+                    enhanced_prompt TEXT NOT NULL,
+                    instructions_json JSONB,
+                    original_eval_json JSONB,
+                    enhanced_eval_json JSONB,
+                    improvement_json JSONB,
+                    created_at TEXT NOT NULL,
+                    created_by TEXT DEFAULT ''
+                )""")
+            except Exception:
+                pass
+            # RLHF 테이블 마이그레이션
+            try:
+                cur.execute("""CREATE TABLE IF NOT EXISTS response_feedback (
+                    id TEXT PRIMARY KEY,
+                    message_id TEXT NOT NULL,
+                    conversation_id TEXT NOT NULL,
+                    evaluator_id TEXT NOT NULL,
+                    evaluator_name TEXT DEFAULT '',
+                    rating INTEGER,
+                    legal_rating INTEGER,
+                    quality_rating INTEGER,
+                    labels_json JSONB DEFAULT '[]',
+                    corrected_response TEXT DEFAULT '',
+                    feedback_note TEXT DEFAULT '',
+                    original_query TEXT DEFAULT '',
+                    full_response TEXT DEFAULT '',
+                    response_time_ms INTEGER,
+                    created_at TEXT NOT NULL
+                )""")
+            except Exception:
+                pass
+            try:
+                cur.execute("""CREATE TABLE IF NOT EXISTS preference_pairs (
+                    id TEXT PRIMARY KEY,
+                    prompt TEXT NOT NULL,
+                    response_chosen TEXT NOT NULL,
+                    response_rejected TEXT NOT NULL,
+                    chosen_legal_score REAL,
+                    rejected_legal_score REAL,
+                    chosen_consult_score REAL,
+                    rejected_consult_score REAL,
+                    chosen_composite REAL,
+                    rejected_composite REAL,
+                    label_source TEXT DEFAULT 'human',
+                    labeled_by TEXT DEFAULT '',
+                    label_confidence REAL DEFAULT 1.0,
+                    chosen_msg_id TEXT,
+                    rejected_msg_id TEXT,
+                    conversation_id TEXT,
+                    exported INTEGER DEFAULT 0,
+                    exported_at TEXT,
+                    created_at TEXT NOT NULL
+                )""")
+            except Exception:
+                pass
+            # response_feedback: FK 제거 + nullable 마이그레이션 (독립 테이블로 변경)
+            for sql in [
+                "ALTER TABLE response_feedback ALTER COLUMN message_id DROP NOT NULL",
+                "ALTER TABLE response_feedback ALTER COLUMN message_id SET DEFAULT ''",
+                "ALTER TABLE response_feedback ALTER COLUMN conversation_id DROP NOT NULL",
+                "ALTER TABLE response_feedback ALTER COLUMN conversation_id SET DEFAULT ''",
+                "ALTER TABLE response_feedback DROP CONSTRAINT IF EXISTS response_feedback_message_id_fkey",
+                "ALTER TABLE response_feedback DROP CONSTRAINT IF EXISTS response_feedback_conversation_id_fkey",
+            ]:
+                try:
+                    cur.execute(sql)
+                except Exception:
+                    pass
+            # Arena 테이블 마이그레이션 (PostgreSQL)
+            try:
+                cur.execute("""CREATE TABLE IF NOT EXISTS arena_model_configs (
+                    id SERIAL PRIMARY KEY,
+                    slot TEXT NOT NULL,
+                    label TEXT DEFAULT '',
+                    description TEXT DEFAULT '',
+                    use_env TEXT DEFAULT 'dev',
+                    endpoint_url TEXT DEFAULT '',
+                    api_key TEXT DEFAULT '',
+                    api_uid TEXT DEFAULT '',
+                    tenant_domain TEXT DEFAULT '',
+                    graph_type TEXT DEFAULT 'ORCHESTRATED_HYBRID_SEARCH',
+                    system_prompt_override TEXT DEFAULT '',
+                    is_active INTEGER DEFAULT 1,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    UNIQUE(slot)
+                )""")
+            except Exception:
+                pass
+            try:
+                cur.execute("""CREATE TABLE IF NOT EXISTS arena_sessions (
+                    id SERIAL PRIMARY KEY,
+                    query_text TEXT NOT NULL,
+                    category TEXT DEFAULT '',
+                    risk_level TEXT DEFAULT '',
+                    config_a_id INTEGER,
+                    config_b_id INTEGER,
+                    response_a TEXT DEFAULT '',
+                    response_b TEXT DEFAULT '',
+                    latency_a REAL,
+                    latency_b REAL,
+                    tokens_a INTEGER,
+                    tokens_b INTEGER,
+                    slot_swapped INTEGER DEFAULT 0,
+                    evaluator_id TEXT DEFAULT '',
+                    status TEXT DEFAULT 'pending',
+                    created_at TEXT NOT NULL
+                )""")
+            except Exception:
+                pass
+            try:
+                cur.execute("""CREATE TABLE IF NOT EXISTS arena_evaluations (
+                    id SERIAL PRIMARY KEY,
+                    session_id INTEGER NOT NULL,
+                    winner TEXT DEFAULT '',
+                    score_a_accuracy INTEGER,
+                    score_a_helpfulness INTEGER,
+                    score_a_safety INTEGER,
+                    score_b_accuracy INTEGER,
+                    score_b_helpfulness INTEGER,
+                    score_b_safety INTEGER,
+                    tags_a_pos TEXT DEFAULT '[]',
+                    tags_a_neg TEXT DEFAULT '[]',
+                    tags_b_pos TEXT DEFAULT '[]',
+                    tags_b_neg TEXT DEFAULT '[]',
+                    reviewer_note TEXT DEFAULT '',
+                    evaluator_id TEXT DEFAULT '',
+                    created_at TEXT NOT NULL
+                )""")
+            except Exception:
+                pass
+            for sql in [
+                "CREATE INDEX IF NOT EXISTS idx_arena_sessions_evaluator ON arena_sessions(evaluator_id)",
+                "CREATE INDEX IF NOT EXISTS idx_arena_sessions_status ON arena_sessions(status)",
+                "CREATE INDEX IF NOT EXISTS idx_arena_evals_session ON arena_evaluations(session_id)",
+                "CREATE INDEX IF NOT EXISTS idx_arena_evals_evaluator ON arena_evaluations(evaluator_id)",
+            ]:
                 try:
                     cur.execute(sql)
                 except Exception:
@@ -550,12 +973,94 @@ def init_db(db_path=None):
             "ALTER TABLE comments ADD COLUMN user_query TEXT DEFAULT ''",
             "ALTER TABLE comments ADD COLUMN full_response TEXT DEFAULT ''",
             "ALTER TABLE messages ADD COLUMN consultation_eval_json TEXT",
+            "ALTER TABLE messages ADD COLUMN token_usage_json TEXT",
         ]
         for sql in migrations:
             try:
                 conn.execute(sql)
             except sqlite3.OperationalError:
                 pass
+        # prompt_enhancements 테이블 마이그레이션
+        try:
+            conn.execute("""CREATE TABLE IF NOT EXISTS prompt_enhancements (
+                id TEXT PRIMARY KEY,
+                conversation_id TEXT,
+                original_msg_id TEXT,
+                enhanced_msg_id TEXT,
+                original_query TEXT NOT NULL,
+                enhanced_prompt TEXT NOT NULL,
+                instructions_json TEXT,
+                original_eval_json TEXT,
+                enhanced_eval_json TEXT,
+                improvement_json TEXT,
+                created_at TEXT NOT NULL,
+                created_by TEXT DEFAULT ''
+            )""")
+        except sqlite3.OperationalError:
+            pass
+        # Arena 테이블 마이그레이션 (SQLite)
+        try:
+            conn.execute("""CREATE TABLE IF NOT EXISTS arena_model_configs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                slot TEXT NOT NULL,
+                label TEXT DEFAULT '',
+                description TEXT DEFAULT '',
+                use_env TEXT DEFAULT 'dev',
+                endpoint_url TEXT DEFAULT '',
+                api_key TEXT DEFAULT '',
+                api_uid TEXT DEFAULT '',
+                tenant_domain TEXT DEFAULT '',
+                graph_type TEXT DEFAULT 'ORCHESTRATED_HYBRID_SEARCH',
+                system_prompt_override TEXT DEFAULT '',
+                is_active INTEGER DEFAULT 1,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE(slot)
+            )""")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            conn.execute("""CREATE TABLE IF NOT EXISTS arena_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                query_text TEXT NOT NULL,
+                category TEXT DEFAULT '',
+                risk_level TEXT DEFAULT '',
+                config_a_id INTEGER,
+                config_b_id INTEGER,
+                response_a TEXT DEFAULT '',
+                response_b TEXT DEFAULT '',
+                latency_a REAL,
+                latency_b REAL,
+                tokens_a INTEGER,
+                tokens_b INTEGER,
+                slot_swapped INTEGER DEFAULT 0,
+                evaluator_id TEXT DEFAULT '',
+                status TEXT DEFAULT 'pending',
+                created_at TEXT NOT NULL
+            )""")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            conn.execute("""CREATE TABLE IF NOT EXISTS arena_evaluations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id INTEGER NOT NULL,
+                winner TEXT DEFAULT '',
+                score_a_accuracy INTEGER,
+                score_a_helpfulness INTEGER,
+                score_a_safety INTEGER,
+                score_b_accuracy INTEGER,
+                score_b_helpfulness INTEGER,
+                score_b_safety INTEGER,
+                tags_a_pos TEXT DEFAULT '[]',
+                tags_a_neg TEXT DEFAULT '[]',
+                tags_b_pos TEXT DEFAULT '[]',
+                tags_b_neg TEXT DEFAULT '[]',
+                reviewer_note TEXT DEFAULT '',
+                evaluator_id TEXT DEFAULT '',
+                created_at TEXT NOT NULL
+            )""")
+        except sqlite3.OperationalError:
+            pass
         # 고아 running 배치 정리
         try:
             conn.execute("UPDATE test_runs SET status = 'cancelled' WHERE status = 'running'")
@@ -730,6 +1235,7 @@ def get_conversation(conv_id):
                 'follow_ups_json': 'followUps',
                 'gpt_eval_json': 'gptEval',
                 'consultation_eval_json': 'consultationEval',
+                'token_usage_json': 'tokenUsage',
             }
             for jf, key in json_field_map.items():
                 raw = msg.pop(jf, None)
@@ -782,15 +1288,16 @@ def add_message(conv_id, msg_data):
     with get_conn() as (conn, cur):
         cur.execute(
             f"""INSERT INTO messages (id, conversation_id, role, content, timestamp, response_time,
-               compliance_json, search_results_json, follow_ups_json, gpt_eval_json, gpt_model)
-               VALUES ({_ph(11)})""",
+               compliance_json, search_results_json, follow_ups_json, gpt_eval_json, gpt_model, token_usage_json)
+               VALUES ({_ph(12)})""",
             (msg_id, conv_id, msg_data.get('role', 'user'), msg_data.get('content', ''),
              msg_data.get('timestamp', now), msg_data.get('responseTime'),
              json.dumps(msg_data.get('compliance'), ensure_ascii=False) if msg_data.get('compliance') else None,
              json.dumps(msg_data.get('searchResults'), ensure_ascii=False) if msg_data.get('searchResults') else None,
              json.dumps(msg_data.get('followUps'), ensure_ascii=False) if msg_data.get('followUps') else None,
              json.dumps(msg_data.get('gptEval'), ensure_ascii=False) if msg_data.get('gptEval') else None,
-             msg_data.get('gptModel'))
+             msg_data.get('gptModel'),
+             json.dumps(msg_data.get('tokenUsage'), ensure_ascii=False) if msg_data.get('tokenUsage') else None)
         )
         cur.execute(f"UPDATE conversations SET updated_at = {ph} WHERE id = {ph}", (now, conv_id))
     return msg_id
@@ -800,7 +1307,8 @@ def update_message(conv_id, msg_id, updates):
     """메시지 필드 업데이트 (gptEval, compliance 등)"""
     allowed_json = {'compliance': 'compliance_json', 'searchResults': 'search_results_json',
                     'followUps': 'follow_ups_json', 'gptEval': 'gpt_eval_json',
-                    'consultationEval': 'consultation_eval_json'}
+                    'consultationEval': 'consultation_eval_json',
+                    'tokenUsage': 'token_usage_json'}
     allowed_plain = {'gptModel': 'gpt_model', 'responseTime': 'response_time'}
     ph = _p()
     sets = []
@@ -912,6 +1420,29 @@ def add_comment(conv_id, msg_id, data):
              now)
         )
     return {"commentId": comment_id, "msgId": actual_msg_id, "createdAt": now}
+
+
+def get_comments(conversation_id=None, message_id=None, limit=50):
+    """커멘트 조회 (conversation_id 또는 message_id로 필터)"""
+    ph = _p()
+    with get_conn() as (conn, cur):
+        if message_id:
+            cur.execute(
+                f"SELECT * FROM comments WHERE message_id = {ph} ORDER BY created_at DESC LIMIT {ph}",
+                (message_id, limit)
+            )
+        elif conversation_id:
+            cur.execute(
+                f"SELECT * FROM comments WHERE conversation_id = {ph} ORDER BY created_at DESC LIMIT {ph}",
+                (conversation_id, limit)
+            )
+        else:
+            cur.execute(
+                f"SELECT * FROM comments ORDER BY created_at DESC LIMIT {ph}",
+                (limit,)
+            )
+        rows = cur.fetchall()
+        return [_row_to_dict(r) for r in rows]
 
 
 def delete_comment(comment_id):
@@ -1456,6 +1987,77 @@ def save_settings(data):
             cur.execute(sql, params)
 
 
+# ════════════════════════════════════════
+#  세션 관리 (DB 기반 — 멀티 인스턴스 공유)
+# ════════════════════════════════════════
+
+def save_session(token, session_type, user_id='', user_name='', user_uid='', data=None, max_age=86400):
+    """세션 저장 (생성 또는 갱신)"""
+    now = _now()
+    from datetime import datetime, timezone, timedelta
+    expires = (datetime.now(timezone.utc) + timedelta(seconds=max_age)).isoformat()
+    data_json = json.dumps(data, ensure_ascii=False) if data else None
+    sql, params = _upsert('sessions', 'token', token,
+                          ['token', 'session_type', 'user_id', 'user_name', 'user_uid', 'data_json', 'created_at', 'expires_at'],
+                          (token, session_type, user_id, user_name, user_uid, data_json, now, expires))
+    with get_conn() as (conn, cur):
+        cur.execute(sql, params)
+
+
+def get_session(token):
+    """세션 조회 (만료 확인 포함)"""
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(f"SELECT * FROM sessions WHERE token = {ph}", (token,))
+        row = cur.fetchone()
+        if not row:
+            return None
+        d = _row_to_dict(row)
+        # 만료 확인
+        from datetime import datetime, timezone
+        try:
+            expires = datetime.fromisoformat(d['expires_at'].replace('Z', '+00:00'))
+            if datetime.now(timezone.utc) > expires:
+                delete_session(token)
+                return None
+        except:
+            pass
+        # data_json 파싱
+        if d.get('data_json'):
+            try:
+                d['data'] = json.loads(d['data_json']) if isinstance(d['data_json'], str) else d['data_json']
+            except:
+                d['data'] = {}
+        else:
+            d['data'] = {}
+        return d
+
+
+def delete_session(token):
+    """세션 삭제"""
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(f"DELETE FROM sessions WHERE token = {ph}", (token,))
+
+
+def delete_sessions_by_user(user_id, session_type=None):
+    """특정 사용자의 세션 삭제"""
+    ph = _p()
+    with get_conn() as (conn, cur):
+        if session_type:
+            cur.execute(f"DELETE FROM sessions WHERE user_id = {ph} AND session_type = {ph}", (user_id, session_type))
+        else:
+            cur.execute(f"DELETE FROM sessions WHERE user_id = {ph}", (user_id,))
+
+
+def cleanup_expired_sessions():
+    """만료된 세션 정리"""
+    now = _now()
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(f"DELETE FROM sessions WHERE expires_at < {ph}", (now,))
+
+
 def get_setting(key, default=None):
     ph = _p()
     with get_conn() as (conn, cur):
@@ -1478,6 +2080,767 @@ def set_setting(key, value):
                               ['key', 'value', 'updated_at'],
                               (key, val_str, now))
         cur.execute(sql, params)
+
+
+# ════════════════════════════════════════
+#  프롬프트 보강 (Prompt Enhancements)
+# ════════════════════════════════════════
+
+def save_prompt_enhancement(data):
+    """Save or update a prompt enhancement record"""
+    now = _now()
+    enhancement_id = data.get('id', f"enh-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}-{secrets.token_hex(3)}")
+    with get_conn() as (conn, cur):
+        sql, params = _upsert(
+            'prompt_enhancements', 'id', enhancement_id,
+            ['id', 'conversation_id', 'original_msg_id', 'enhanced_msg_id',
+             'original_query', 'enhanced_prompt', 'instructions_json',
+             'original_eval_json', 'enhanced_eval_json', 'improvement_json',
+             'created_at', 'created_by'],
+            (enhancement_id,
+             data.get('conversationId', ''),
+             data.get('originalMsgId', ''),
+             data.get('enhancedMsgId', ''),
+             data.get('originalQuery', ''),
+             data.get('enhancedPrompt', ''),
+             json.dumps(data.get('instructions', []), ensure_ascii=False),
+             json.dumps(data.get('originalEval', {}), ensure_ascii=False),
+             json.dumps(data.get('enhancedEval', {}), ensure_ascii=False),
+             json.dumps(data.get('improvement', {}), ensure_ascii=False),
+             now,
+             data.get('createdBy', ''))
+        )
+        cur.execute(sql, params)
+    return enhancement_id
+
+
+def get_prompt_enhancements(conversation_id=None, limit=50):
+    """List prompt enhancements, optionally filtered by conversation"""
+    ph = _p()
+    with get_conn() as (conn, cur):
+        if conversation_id:
+            cur.execute(
+                f"SELECT * FROM prompt_enhancements WHERE conversation_id = {ph} ORDER BY created_at DESC LIMIT {ph}",
+                (conversation_id, limit))
+        else:
+            cur.execute(
+                f"SELECT * FROM prompt_enhancements ORDER BY created_at DESC LIMIT {ph}",
+                (limit,))
+        rows = cur.fetchall()
+        results = []
+        for row in rows:
+            d = _row_to_dict(row)
+            d['instructions'] = _pg_json_loads_or(d.pop('instructions_json', None), [])
+            d['originalEval'] = _pg_json_loads_or(d.pop('original_eval_json', None), {})
+            d['enhancedEval'] = _pg_json_loads_or(d.pop('enhanced_eval_json', None), {})
+            d['improvement'] = _pg_json_loads_or(d.pop('improvement_json', None), {})
+            results.append(d)
+        return results
+
+
+def get_prompt_enhancement(enhancement_id):
+    """Get single enhancement by ID"""
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(f"SELECT * FROM prompt_enhancements WHERE id = {ph}", (enhancement_id,))
+        row = cur.fetchone()
+        if not row:
+            return None
+        d = _row_to_dict(row)
+        d['instructions'] = _pg_json_loads_or(d.pop('instructions_json', None), [])
+        d['originalEval'] = _pg_json_loads_or(d.pop('original_eval_json', None), {})
+        d['enhancedEval'] = _pg_json_loads_or(d.pop('enhanced_eval_json', None), {})
+        d['improvement'] = _pg_json_loads_or(d.pop('improvement_json', None), {})
+        return d
+
+
+def get_enhancement_report():
+    """Aggregate report: average improvement scores, most common instructions"""
+    with get_conn() as (conn, cur):
+        cur.execute("SELECT improvement_json, instructions_json FROM prompt_enhancements ORDER BY created_at DESC")
+        rows = cur.fetchall()
+
+    total = len(rows)
+    if total == 0:
+        return {'total': 0, 'avgGptDelta': 0, 'avgConsultDelta': 0, 'topInstructions': []}
+
+    gpt_deltas = []
+    consult_deltas = []
+    instruction_counts = {}
+
+    for row in rows:
+        d = _row_to_dict(row)
+        imp = _pg_json_loads_or(d.get('improvement_json'), {})
+        if isinstance(imp, dict):
+            gd = imp.get('gptDelta')
+            if gd is not None:
+                gpt_deltas.append(gd)
+            cd = imp.get('consultDelta')
+            if cd is not None:
+                consult_deltas.append(cd)
+
+        insts = _pg_json_loads_or(d.get('instructions_json'), [])
+        if isinstance(insts, list):
+            for inst in insts:
+                instruction_counts[inst] = instruction_counts.get(inst, 0) + 1
+
+    avg_gpt = sum(gpt_deltas) / len(gpt_deltas) if gpt_deltas else 0
+    avg_consult = sum(consult_deltas) / len(consult_deltas) if consult_deltas else 0
+
+    top_instructions = sorted(instruction_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+    top_instructions = [{'instruction': inst, 'count': cnt} for inst, cnt in top_instructions]
+
+    return {
+        'total': total,
+        'avgGptDelta': round(avg_gpt, 2),
+        'avgConsultDelta': round(avg_consult, 2),
+        'topInstructions': top_instructions,
+    }
+
+
+# ─── response_feedback CRUD ───────────────────────────────────────
+
+def add_response_feedback(message_id, conversation_id, evaluator_id,
+                           evaluator_name='', rating=None,
+                           legal_rating=None, quality_rating=None,
+                           labels_json='[]', corrected_response='',
+                           feedback_note='', original_query='',
+                           full_response='', response_time_ms=None):
+    """응답 피드백 저장"""
+    fb_id = str(uuid.uuid4())
+    now = _now()
+    with get_conn() as (conn, cur):
+        cur.execute(
+            f"""INSERT INTO response_feedback
+                (id, message_id, conversation_id, evaluator_id, evaluator_name,
+                 rating, legal_rating, quality_rating, labels_json,
+                 corrected_response, feedback_note, original_query,
+                 full_response, response_time_ms, created_at)
+                VALUES ({_ph(15)})""",
+            (fb_id, message_id, conversation_id, evaluator_id, evaluator_name,
+             rating, legal_rating, quality_rating, labels_json,
+             corrected_response, feedback_note, original_query,
+             full_response, response_time_ms, now)
+        )
+    return fb_id
+
+
+def get_response_feedback(message_id=None, conversation_id=None,
+                          evaluator_id=None, limit=100):
+    """피드백 조회 (message_id, conversation_id, evaluator_id 중 하나로 필터)"""
+    ph = _p()
+    with get_conn() as (conn, cur):
+        if message_id:
+            cur.execute(
+                f"SELECT * FROM response_feedback WHERE message_id = {ph} ORDER BY created_at DESC LIMIT {ph}",
+                (message_id, limit)
+            )
+        elif conversation_id:
+            cur.execute(
+                f"SELECT * FROM response_feedback WHERE conversation_id = {ph} ORDER BY created_at DESC LIMIT {ph}",
+                (conversation_id, limit)
+            )
+        elif evaluator_id:
+            cur.execute(
+                f"SELECT * FROM response_feedback WHERE evaluator_id = {ph} ORDER BY created_at DESC LIMIT {ph}",
+                (evaluator_id, limit)
+            )
+        else:
+            cur.execute(
+                f"SELECT * FROM response_feedback ORDER BY created_at DESC LIMIT {ph}",
+                (limit,)
+            )
+        rows = cur.fetchall()
+        return [_row_to_dict(r) for r in rows]
+
+
+def get_feedback_stats(days=30):
+    """피드백 집계 통계 반환 (총 건수, 평균 rating, label 분포 등)"""
+    ph = _p()
+    cutoff = datetime.now(timezone.utc).isoformat()[:10]  # today
+    # 간단히 days 전 날짜 계산
+    from datetime import timedelta
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    with get_conn() as (conn, cur):
+        cur.execute(
+            f"SELECT * FROM response_feedback WHERE created_at >= {ph} ORDER BY created_at DESC",
+            (cutoff,)
+        )
+        rows = cur.fetchall()
+
+    feedbacks = [_row_to_dict(r) for r in rows]
+    total = len(feedbacks)
+    if total == 0:
+        return {'total': 0, 'avgRating': None, 'avgLegalRating': None,
+                'avgQualityRating': None, 'labelDistribution': {}}
+
+    ratings = [f['rating'] for f in feedbacks if f.get('rating') is not None]
+    legal_ratings = [f['legal_rating'] for f in feedbacks if f.get('legal_rating') is not None]
+    quality_ratings = [f['quality_rating'] for f in feedbacks if f.get('quality_rating') is not None]
+
+    # label 분포 집계
+    label_dist = {}
+    for f in feedbacks:
+        labels = _pg_json_loads_or(f.get('labels_json'), [])
+        if isinstance(labels, list):
+            for lbl in labels:
+                label_dist[lbl] = label_dist.get(lbl, 0) + 1
+
+    return {
+        'total': total,
+        'avgRating': round(sum(ratings) / len(ratings), 2) if ratings else None,
+        'avgLegalRating': round(sum(legal_ratings) / len(legal_ratings), 2) if legal_ratings else None,
+        'avgQualityRating': round(sum(quality_ratings) / len(quality_ratings), 2) if quality_ratings else None,
+        'labelDistribution': label_dist,
+    }
+
+
+# ─── preference_pairs CRUD ────────────────────────────────────────
+
+def add_preference_pair(prompt, response_chosen, response_rejected,
+                        chosen_legal_score=None, rejected_legal_score=None,
+                        chosen_consult_score=None, rejected_consult_score=None,
+                        chosen_composite=None, rejected_composite=None,
+                        label_source='human', labeled_by='',
+                        label_confidence=1.0,
+                        chosen_msg_id=None, rejected_msg_id=None,
+                        conversation_id=None):
+    """선호도 쌍 저장"""
+    pair_id = str(uuid.uuid4())
+    now = _now()
+    with get_conn() as (conn, cur):
+        cur.execute(
+            f"""INSERT INTO preference_pairs
+                (id, prompt, response_chosen, response_rejected,
+                 chosen_legal_score, rejected_legal_score,
+                 chosen_consult_score, rejected_consult_score,
+                 chosen_composite, rejected_composite,
+                 label_source, labeled_by, label_confidence,
+                 chosen_msg_id, rejected_msg_id, conversation_id,
+                 exported, exported_at, created_at)
+                VALUES ({_ph(19)})""",
+            (pair_id, prompt, response_chosen, response_rejected,
+             chosen_legal_score, rejected_legal_score,
+             chosen_consult_score, rejected_consult_score,
+             chosen_composite, rejected_composite,
+             label_source, labeled_by, label_confidence,
+             chosen_msg_id, rejected_msg_id, conversation_id,
+             0, None, now)
+        )
+    return pair_id
+
+
+def list_preference_pairs(exported=None, label_source=None,
+                          limit=100, offset=0):
+    """선호도 쌍 목록 (exported=True/False/None 필터)"""
+    ph = _p()
+    conditions = []
+    params = []
+    if exported is not None:
+        conditions.append(f"exported = {ph}")
+        params.append(1 if exported else 0)
+    if label_source is not None:
+        conditions.append(f"label_source = {ph}")
+        params.append(label_source)
+
+    where = ""
+    if conditions:
+        where = "WHERE " + " AND ".join(conditions)
+
+    params.extend([limit, offset])
+    with get_conn() as (conn, cur):
+        cur.execute(
+            f"SELECT * FROM preference_pairs {where} ORDER BY created_at DESC LIMIT {ph} OFFSET {ph}",
+            params
+        )
+        rows = cur.fetchall()
+        return [_row_to_dict(r) for r in rows]
+
+
+def mark_preference_pairs_exported(pair_ids: list = None, all_unexported=False):
+    """exported=1, exported_at=now() 로 일괄 업데이트.
+    all_unexported=True이면 ids 무관하게 exported=0인 모든 레코드를 업데이트."""
+    ph = _p()
+    now = _now()
+    with get_conn() as (conn, cur):
+        if all_unexported:
+            cur.execute(
+                f"UPDATE preference_pairs SET exported = 1, exported_at = {ph} WHERE exported = 0",
+                (now,)
+            )
+            return {'exported_count': cur.rowcount}
+        if not pair_ids:
+            return {'exported_count': 0}
+        updated = 0
+        for pid in pair_ids:
+            cur.execute(
+                f"UPDATE preference_pairs SET exported = 1, exported_at = {ph} WHERE id = {ph}",
+                (now, pid)
+            )
+            updated += cur.rowcount
+    return {'exported_count': updated}
+
+
+def export_preference_pairs_dpo(format='openai', limit=500):
+    """
+    DPO 학습용 데이터 export
+    format='openai' → [{"messages":[...], "chosen":..., "rejected":...}, ...]
+    format='hf'     → [{"prompt":..., "chosen":..., "rejected":...}, ...]
+    """
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(
+            f"SELECT * FROM preference_pairs WHERE exported = 0 ORDER BY created_at ASC LIMIT {ph}",
+            (limit,)
+        )
+        rows = cur.fetchall()
+
+    pairs = [_row_to_dict(r) for r in rows]
+    result = []
+
+    for p in pairs:
+        if format == 'openai':
+            result.append({
+                'messages': [{'role': 'user', 'content': p['prompt']}],
+                'chosen': {'role': 'assistant', 'content': p['response_chosen']},
+                'rejected': {'role': 'assistant', 'content': p['response_rejected']},
+                'pair_id': p['id'],
+            })
+        else:  # hf format
+            result.append({
+                'prompt': p['prompt'],
+                'chosen': p['response_chosen'],
+                'rejected': p['response_rejected'],
+                'pair_id': p['id'],
+            })
+
+    return result
+
+
+# ─── RLHF 통계 ────────────────────────────────────────────────────
+
+def get_rlhf_stats():
+    """
+    RLHF 관리 페이지용 통계 집계
+    반환: total_feedback, total_pairs, exported_pairs,
+          avg_composite_reward, label_distribution, daily_feedback
+    """
+    from datetime import timedelta
+    ph = _p()
+    now_dt = datetime.now(timezone.utc)
+    seven_days_ago = (now_dt - timedelta(days=7)).isoformat()
+
+    with get_conn() as (conn, cur):
+        # total feedback
+        cur.execute("SELECT COUNT(*) FROM response_feedback")
+        total_feedback = cur.fetchone()[0] or 0
+
+        # total pairs
+        cur.execute("SELECT COUNT(*) FROM preference_pairs")
+        total_pairs = cur.fetchone()[0] or 0
+
+        # exported pairs (SQLite: 1, PostgreSQL: TRUE 모두 호환)
+        cur.execute("SELECT COUNT(*) FROM preference_pairs WHERE exported IS NOT NULL AND exported != 0")
+        exported_pairs = cur.fetchone()[0] or 0
+
+        # avg composite reward (chosen_composite 평균)
+        cur.execute("SELECT AVG(chosen_composite) FROM preference_pairs WHERE chosen_composite IS NOT NULL")
+        row = cur.fetchone()
+        avg_composite_reward = round(row[0], 4) if row and row[0] is not None else 0.0
+
+        # label_source 별 건수
+        cur.execute("SELECT label_source, COUNT(*) FROM preference_pairs GROUP BY label_source")
+        label_rows = cur.fetchall()
+        label_distribution = {}
+        for r in label_rows:
+            d = _row_to_dict(r) if hasattr(r, 'keys') else None
+            if d:
+                label_distribution[d.get('label_source', 'unknown')] = d.get('count', 0)
+            else:
+                label_distribution[r[0] or 'unknown'] = r[1]
+
+        # 최근 7일 일별 피드백 건수
+        if _use_postgres:
+            cur.execute(
+                f"""SELECT DATE(created_at) as date, COUNT(*) as count
+                    FROM response_feedback
+                    WHERE created_at >= {ph}
+                    GROUP BY DATE(created_at)
+                    ORDER BY date""",
+                (seven_days_ago,)
+            )
+        else:
+            cur.execute(
+                f"""SELECT SUBSTR(created_at, 1, 10) as date, COUNT(*) as count
+                    FROM response_feedback
+                    WHERE created_at >= {ph}
+                    GROUP BY SUBSTR(created_at, 1, 10)
+                    ORDER BY date""",
+                (seven_days_ago,)
+            )
+        daily_rows = cur.fetchall()
+        daily_feedback = []
+        for r in daily_rows:
+            d = _row_to_dict(r) if hasattr(r, 'keys') else None
+            if d:
+                daily_feedback.append({'date': str(d.get('date', '')), 'count': d.get('count', 0)})
+            else:
+                daily_feedback.append({'date': str(r[0]), 'count': r[1]})
+
+    return {
+        'total_feedback': total_feedback,
+        'total_pairs': total_pairs,
+        'exported_pairs': exported_pairs,
+        'avg_composite_reward': avg_composite_reward,
+        'label_distribution': label_distribution,
+        'daily_feedback': daily_feedback,
+    }
+
+
+# ════════════════════════════════════════
+#  Arena Model Configs
+# ════════════════════════════════════════
+
+def get_arena_configs() -> dict:
+    """슬롯별 Arena 모델 설정 반환. {'A': {...}, 'B': {...}} 형태."""
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute("SELECT * FROM arena_model_configs WHERE is_active = 1 ORDER BY slot")
+        rows = cur.fetchall()
+    result = {}
+    for r in rows:
+        d = _row_to_dict(r)
+        slot = d.get('slot', '')
+        if slot:
+            result[slot] = d
+    return result
+
+
+def save_arena_config(slot: str, config: dict) -> int:
+    """arena_model_configs upsert. 반환: 새/기존 row의 id."""
+    ph = _p()
+    now = _now()
+    slot = slot.upper()
+    # 기존 row 확인
+    with get_conn() as (conn, cur):
+        cur.execute(f"SELECT id FROM arena_model_configs WHERE slot = {ph}", (slot,))
+        row = cur.fetchone()
+        existing_id = _row_to_dict(row).get('id') if row else None
+
+    label = config.get('label', '')
+    description = config.get('description', '')
+    use_env = config.get('use_env', 'dev')
+    endpoint_url = config.get('endpoint_url', '')
+    api_key = config.get('api_key', '')
+    api_uid = config.get('api_uid', '')
+    tenant_domain = config.get('tenant_domain', '')
+    graph_type = config.get('graph_type', 'ORCHESTRATED_HYBRID_SEARCH')
+    system_prompt_override = config.get('system_prompt_override', '')
+    is_active = int(config.get('is_active', 1))
+
+    if existing_id is not None:
+        # UPDATE — api_key가 마스킹('****' 포함)이면 기존 값 유지
+        if '****' in api_key:
+            old = get_arena_config_by_id(existing_id)
+            api_key = old.get('api_key', '') if old else ''
+        with get_conn() as (conn, cur):
+            cur.execute(
+                f"""UPDATE arena_model_configs
+                    SET label={ph}, description={ph}, use_env={ph}, endpoint_url={ph},
+                        api_key={ph}, api_uid={ph}, tenant_domain={ph},
+                        graph_type={ph}, system_prompt_override={ph},
+                        is_active={ph}, updated_at={ph}
+                    WHERE id={ph}""",
+                (label, description, use_env, endpoint_url, api_key, api_uid,
+                 tenant_domain, graph_type, system_prompt_override, is_active, now, existing_id)
+            )
+        return existing_id
+    else:
+        if _use_postgres:
+            with get_conn() as (conn, cur):
+                cur.execute(
+                    f"""INSERT INTO arena_model_configs
+                        (slot, label, description, use_env, endpoint_url, api_key, api_uid,
+                         tenant_domain, graph_type, system_prompt_override, is_active, created_at, updated_at)
+                        VALUES ({_ph(13)}) RETURNING id""",
+                    (slot, label, description, use_env, endpoint_url, api_key, api_uid,
+                     tenant_domain, graph_type, system_prompt_override, is_active, now, now)
+                )
+                row = cur.fetchone()
+                return _row_to_dict(row).get('id')
+        else:
+            with get_conn() as (conn, cur):
+                cur.execute(
+                    f"""INSERT INTO arena_model_configs
+                        (slot, label, description, use_env, endpoint_url, api_key, api_uid,
+                         tenant_domain, graph_type, system_prompt_override, is_active, created_at, updated_at)
+                        VALUES ({_ph(13)})""",
+                    (slot, label, description, use_env, endpoint_url, api_key, api_uid,
+                     tenant_domain, graph_type, system_prompt_override, is_active, now, now)
+                )
+                return cur.lastrowid
+
+
+def get_arena_config_by_id(config_id: int) -> dict:
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(f"SELECT * FROM arena_model_configs WHERE id = {ph}", (config_id,))
+        row = cur.fetchone()
+        return _row_to_dict(row)
+
+
+# ════════════════════════════════════════
+#  Arena Sessions
+# ════════════════════════════════════════
+
+def create_arena_session(query_text: str, category: str, risk_level: str,
+                         config_a_id, config_b_id, evaluator_id: str,
+                         slot_swapped: bool = False) -> int:
+    """arena_sessions INSERT. 반환: 새 row의 id."""
+    now = _now()
+    if _use_postgres:
+        with get_conn() as (conn, cur):
+            cur.execute(
+                f"""INSERT INTO arena_sessions
+                    (query_text, category, risk_level, config_a_id, config_b_id,
+                     slot_swapped, evaluator_id, status, created_at)
+                    VALUES ({_ph(9)}) RETURNING id""",
+                (query_text, category or '', risk_level or '', config_a_id, config_b_id,
+                 int(slot_swapped), evaluator_id or '', 'pending', now)
+            )
+            row = cur.fetchone()
+            return _row_to_dict(row).get('id')
+    else:
+        with get_conn() as (conn, cur):
+            cur.execute(
+                f"""INSERT INTO arena_sessions
+                    (query_text, category, risk_level, config_a_id, config_b_id,
+                     slot_swapped, evaluator_id, status, created_at)
+                    VALUES ({_ph(9)})""",
+                (query_text, category or '', risk_level or '', config_a_id, config_b_id,
+                 int(slot_swapped), evaluator_id or '', 'pending', now)
+            )
+            return cur.lastrowid
+
+
+def update_arena_session_responses(session_id: int, response_a: str, response_b: str,
+                                   latency_a: float, latency_b: float,
+                                   tokens_a, tokens_b) -> None:
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(
+            f"""UPDATE arena_sessions
+                SET response_a={ph}, response_b={ph}, latency_a={ph}, latency_b={ph},
+                    tokens_a={ph}, tokens_b={ph}, status='completed'
+                WHERE id={ph}""",
+            (response_a or '', response_b or '', latency_a, latency_b,
+             tokens_a, tokens_b, session_id)
+        )
+
+
+def get_arena_session(session_id: int) -> dict:
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(f"SELECT * FROM arena_sessions WHERE id = {ph}", (session_id,))
+        row = cur.fetchone()
+        return _row_to_dict(row)
+
+
+# ════════════════════════════════════════
+#  Arena Evaluations
+# ════════════════════════════════════════
+
+def save_arena_evaluation(session_id: int, winner: str, scores: dict,
+                          tags: dict, reviewer_note: str, evaluator_id: str) -> int:
+    """
+    scores = {'a': {'accuracy':5, 'helpfulness':4, 'safety':5}, 'b': {...}}
+    tags   = {'a': {'pos': [...], 'neg': [...]}, 'b': {'pos': [...], 'neg': [...]}}
+    반환: 새 evaluation id
+    """
+    now = _now()
+    sa = scores.get('a', {})
+    sb = scores.get('b', {})
+    ta = tags.get('a', {})
+    tb = tags.get('b', {})
+
+    tags_a_pos = json.dumps(ta.get('pos', []), ensure_ascii=False)
+    tags_a_neg = json.dumps(ta.get('neg', []), ensure_ascii=False)
+    tags_b_pos = json.dumps(tb.get('pos', []), ensure_ascii=False)
+    tags_b_neg = json.dumps(tb.get('neg', []), ensure_ascii=False)
+
+    if _use_postgres:
+        with get_conn() as (conn, cur):
+            cur.execute(
+                f"""INSERT INTO arena_evaluations
+                    (session_id, winner, score_a_accuracy, score_a_helpfulness, score_a_safety,
+                     score_b_accuracy, score_b_helpfulness, score_b_safety,
+                     tags_a_pos, tags_a_neg, tags_b_pos, tags_b_neg,
+                     reviewer_note, evaluator_id, created_at)
+                    VALUES ({_ph(15)}) RETURNING id""",
+                (session_id, winner or '',
+                 sa.get('accuracy'), sa.get('helpfulness'), sa.get('safety'),
+                 sb.get('accuracy'), sb.get('helpfulness'), sb.get('safety'),
+                 tags_a_pos, tags_a_neg, tags_b_pos, tags_b_neg,
+                 reviewer_note or '', evaluator_id or '', now)
+            )
+            row = cur.fetchone()
+            eval_id = _row_to_dict(row).get('id')
+    else:
+        with get_conn() as (conn, cur):
+            cur.execute(
+                f"""INSERT INTO arena_evaluations
+                    (session_id, winner, score_a_accuracy, score_a_helpfulness, score_a_safety,
+                     score_b_accuracy, score_b_helpfulness, score_b_safety,
+                     tags_a_pos, tags_a_neg, tags_b_pos, tags_b_neg,
+                     reviewer_note, evaluator_id, created_at)
+                    VALUES ({_ph(15)})""",
+                (session_id, winner or '',
+                 sa.get('accuracy'), sa.get('helpfulness'), sa.get('safety'),
+                 sb.get('accuracy'), sb.get('helpfulness'), sb.get('safety'),
+                 tags_a_pos, tags_a_neg, tags_b_pos, tags_b_neg,
+                 reviewer_note or '', evaluator_id or '', now)
+            )
+            eval_id = cur.lastrowid
+
+    # 세션 상태 업데이트
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(
+            f"UPDATE arena_sessions SET status='evaluated' WHERE id = {ph}",
+            (session_id,)
+        )
+    return eval_id
+
+
+def get_arena_history(evaluator_id: str = None, limit: int = 30) -> list:
+    """
+    최근 Arena 세션 + 평가 결과 목록.
+    각 항목: {session_id, query_text, query_preview, winner, created_at, scores_summary}
+    """
+    ph = _p()
+    conditions = []
+    params = []
+    if evaluator_id:
+        conditions.append(f"s.evaluator_id = {ph}")
+        params.append(evaluator_id)
+    where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+    params.append(limit)
+
+    with get_conn() as (conn, cur):
+        cur.execute(
+            f"""SELECT s.id AS session_id, s.query_text, s.status, s.created_at,
+                       s.latency_a, s.latency_b,
+                       e.winner, e.score_a_accuracy, e.score_a_helpfulness, e.score_a_safety,
+                       e.score_b_accuracy, e.score_b_helpfulness, e.score_b_safety
+                FROM arena_sessions s
+                LEFT JOIN arena_evaluations e ON e.session_id = s.id
+                {where}
+                ORDER BY s.created_at DESC LIMIT {ph}""",
+            params
+        )
+        rows = cur.fetchall()
+
+    results = []
+    for r in rows:
+        d = _row_to_dict(r)
+        query_text = d.get('query_text', '')
+        sa_total = sum(filter(None, [d.get('score_a_accuracy'), d.get('score_a_helpfulness'), d.get('score_a_safety')]))
+        sb_total = sum(filter(None, [d.get('score_b_accuracy'), d.get('score_b_helpfulness'), d.get('score_b_safety')]))
+        results.append({
+            'session_id': d.get('session_id'),
+            'query_text': query_text,
+            'query_preview': query_text[:80] + ('...' if len(query_text) > 80 else ''),
+            'winner': d.get('winner', ''),
+            'status': d.get('status', ''),
+            'created_at': d.get('created_at', ''),
+            'latency_a': d.get('latency_a'),
+            'latency_b': d.get('latency_b'),
+            'scores_summary': {'a_total': sa_total, 'b_total': sb_total},
+        })
+    return results
+
+
+def get_arena_stats(evaluator_id: str = None, days: int = 30) -> dict:
+    """
+    Arena 통계: {my_count, avg_score, median_latency, agreement_rate}
+    agreement_rate: 카파 플레이스홀더 — 동일 세션 복수 평가자 비율
+    """
+    from datetime import timedelta
+    ph = _p()
+    since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+
+    conditions = [f"s.created_at >= {ph}"]
+    params_count = [since]
+    if evaluator_id:
+        conditions.append(f"s.evaluator_id = {ph}")
+        params_count.append(evaluator_id)
+    where = "WHERE " + " AND ".join(conditions)
+
+    with get_conn() as (conn, cur):
+        # 총 세션 수
+        cur.execute(
+            f"SELECT COUNT(*) as cnt FROM arena_sessions s {where}",
+            params_count
+        )
+        row = cur.fetchone()
+        d = _row_to_dict(row)
+        my_count = d.get('cnt', 0) if isinstance(d.get('cnt'), int) else (list(d.values())[0] if d else 0)
+
+        # 평균 점수 (평가 완료된 세션)
+        e_conditions = [f"s.created_at >= {ph}"]
+        e_params = [since]
+        if evaluator_id:
+            e_conditions.append(f"e.evaluator_id = {ph}")
+            e_params.append(evaluator_id)
+        e_where = "WHERE " + " AND ".join(e_conditions)
+
+        cur.execute(
+            f"""SELECT AVG(
+                    COALESCE(e.score_a_accuracy,0) + COALESCE(e.score_a_helpfulness,0) + COALESCE(e.score_a_safety,0) +
+                    COALESCE(e.score_b_accuracy,0) + COALESCE(e.score_b_helpfulness,0) + COALESCE(e.score_b_safety,0)
+                ) as avg_score
+                FROM arena_evaluations e
+                JOIN arena_sessions s ON s.id = e.session_id
+                {e_where}""",
+            e_params
+        )
+        row2 = cur.fetchone()
+        d2 = _row_to_dict(row2)
+        avg_score_raw = list(d2.values())[0] if d2 else None
+        avg_score = round(float(avg_score_raw), 2) if avg_score_raw else 0.0
+
+        # 지연시간 목록 (중앙값 계산용)
+        cur.execute(
+            f"""SELECT latency_a, latency_b FROM arena_sessions s
+                {where} AND s.latency_a IS NOT NULL""",
+            params_count
+        )
+        latency_rows = cur.fetchall()
+
+    latencies = []
+    for r in latency_rows:
+        d = _row_to_dict(r)
+        la = d.get('latency_a')
+        lb = d.get('latency_b')
+        if la is not None:
+            latencies.append(float(la))
+        if lb is not None:
+            latencies.append(float(lb))
+
+    if latencies:
+        latencies.sort()
+        mid = len(latencies) // 2
+        median_latency = latencies[mid] if len(latencies) % 2 == 1 else (latencies[mid-1] + latencies[mid]) / 2
+        median_latency = round(median_latency, 3)
+    else:
+        median_latency = 0.0
+
+    return {
+        'my_count': int(my_count),
+        'avg_score': avg_score,
+        'median_latency': median_latency,
+        'agreement_rate': None,  # κ 플레이스홀더 — 복수 평가자 데이터 필요
+    }
 
 
 # ════════════════════════════════════════
