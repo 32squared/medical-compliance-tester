@@ -624,6 +624,58 @@
   </div>
 </div>
 
+<!-- ── Magic Link 로그인 모달 (사용자 임시 로그인) ── -->
+<div id="impersonateModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0;
+     background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center;">
+  <div style="background:var(--surface); border:1px solid var(--border); border-radius:16px;
+       padding:24px; max-width:560px; width:92%; max-height:90vh; overflow-y:auto;">
+    <h3 style="font-size:16px; color:var(--accent); margin-bottom:8px;">
+      &#128279; <span id="impersonateModalTitle">사용자</span>로 로그인
+    </h3>
+    <p id="impersonateModalSubtitle" style="font-size:11px; color:var(--text-dim); margin-bottom:14px;"></p>
+
+    <div id="impersonateLoading" style="text-align:center; padding:24px 0; color:var(--text-dim); font-size:12px;">
+      Magic Link 발급 중...
+    </div>
+
+    <div id="impersonateResult" style="display:none;">
+      <div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:12px;">
+        <p style="font-size:12px; color:var(--text); margin-bottom:8px; line-height:1.5;">
+          아래 링크를 <b>시크릿 창</b>(Ctrl+Shift+N) 또는 다른 브라우저에서 열어 로그인하세요.<br>
+          <span style="color:#f97316;">현재 창에서 열면 admin 세션이 종료됩니다.</span>
+        </p>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <input id="impersonateUrl" type="text" readonly
+                 style="flex:1; padding:8px 10px; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:6px; font-size:11px; font-family:'Consolas',monospace;">
+          <button id="impersonateCopyBtn" class="btn-small" onclick="copyImpersonateUrl()" style="white-space:nowrap;">
+            &#128203; 복사
+          </button>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
+        <span id="impersonateCountdown" style="font-size:11px; color:#f97316; font-weight:600;">
+          ⏱ 60초 내에 사용해야 합니다
+        </span>
+      </div>
+
+      <div style="background:rgba(56,189,248,0.08); border:1px solid rgba(56,189,248,0.3); border-radius:8px; padding:10px; margin-bottom:14px;">
+        <p style="font-size:11px; color:var(--text-dim); line-height:1.5; margin:0;">
+          💡 <b>팁</b>: 시크릿 창에서 열면 본 admin 세션과 분리되어 두 세션을 동시에 사용할 수 있습니다.
+          이 창(현재 창)에서 직접 열면 admin 토큰이 폐기되고 해당 사용자로 전환됩니다.
+        </p>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:8px;">
+      <button class="btn-secondary" onclick="closeImpersonateModal()">닫기</button>
+      <button id="impersonateOpenBtn" class="btn-primary" onclick="openImpersonateInNewTab()" style="display:none;">
+        &#128279; 새 창에서 열기
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- Status Bar -->
 <div class="statusbar" id="statusBar">설정을 불러오는 중...</div>
 
@@ -1213,12 +1265,36 @@ function renderTesterAccounts(accounts) {
     var roleStyle = roleColors[a.role] || roleColors.tester;
     var roleBadge = '<span style="display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:' + roleStyle.bg + ';color:' + roleStyle.fg + '">' + escHtml(a.role || 'tester') + '</span>';
 
-    topLine.innerHTML =
-      '<span style="font-size:12px;font-weight:600;color:var(--accent);min-width:70px">' + escHtml(a.id) + '</span>' +
-      '<span style="font-size:12px;color:var(--text);min-width:60px">' + escHtml(a.name || a.alias) + '</span>' +
-      roleBadge +
-      '<span style="font-size:11px;color:var(--text-dim);flex:1">' + escHtml(a.org || '') + '</span>' +
-      '<span style="font-size:10px;color:var(--text-dim)">UID: ' + escHtml(a.uid || '-') + '</span>';
+    // 사용자 ID 클릭 가능 (Magic Link 발급)
+    var idLink = document.createElement('a');
+    idLink.href = '#';
+    idLink.style.cssText = 'font-size:12px;font-weight:600;color:var(--accent);min-width:70px;text-decoration:underline;cursor:pointer';
+    idLink.textContent = a.id;
+    idLink.title = '클릭하여 이 사용자로 로그인 (Magic Link)';
+    idLink.addEventListener('click', (function(aid, aname) {
+      return function(ev) { ev.preventDefault(); openImpersonateModal(aid, aname); };
+    })(a.id, a.alias || a.name || a.id));
+    topLine.appendChild(idLink);
+
+    var nameSpan = document.createElement('span');
+    nameSpan.style.cssText = 'font-size:12px;color:var(--text);min-width:60px';
+    nameSpan.textContent = a.name || a.alias || '';
+    topLine.appendChild(nameSpan);
+
+    var roleBadgeSpan = document.createElement('span');
+    roleBadgeSpan.style.cssText = 'display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:' + roleStyle.bg + ';color:' + roleStyle.fg;
+    roleBadgeSpan.textContent = a.role || 'tester';
+    topLine.appendChild(roleBadgeSpan);
+
+    var orgSpan = document.createElement('span');
+    orgSpan.style.cssText = 'font-size:11px;color:var(--text-dim);flex:1';
+    orgSpan.textContent = a.org || '';
+    topLine.appendChild(orgSpan);
+
+    var uidSpan = document.createElement('span');
+    uidSpan.style.cssText = 'font-size:10px;color:var(--text-dim)';
+    uidSpan.textContent = 'UID: ' + (a.uid || '-');
+    topLine.appendChild(uidSpan);
 
     const permBtn = document.createElement('button');
     permBtn.className = 'btn-small';
@@ -1479,6 +1555,158 @@ async function savePermissions() {
     showToast('저장 실패: ' + e.message, 'error');
   }
 }
+
+// ══════════════════════════════════════════
+// Magic Link Impersonate (Admin → 사용자 로그인)
+// ══════════════════════════════════════════
+var _impersonateUrl = '';
+var _impersonateCountdownTimer = null;
+var _impersonateExpiresAt = 0;
+
+async function openImpersonateModal(userId, displayName) {
+  var modal = document.getElementById('impersonateModal');
+  var titleEl = document.getElementById('impersonateModalTitle');
+  var subtitleEl = document.getElementById('impersonateModalSubtitle');
+  var loadingEl = document.getElementById('impersonateLoading');
+  var resultEl = document.getElementById('impersonateResult');
+  var openBtn = document.getElementById('impersonateOpenBtn');
+
+  if (!modal) return;
+  if (titleEl) titleEl.textContent = displayName || userId;
+  if (subtitleEl) subtitleEl.textContent = userId;
+  if (loadingEl) loadingEl.style.display = 'block';
+  if (resultEl) resultEl.style.display = 'none';
+  if (openBtn) openBtn.style.display = 'none';
+  modal.style.display = 'flex';
+
+  // 기존 카운트다운 정리
+  if (_impersonateCountdownTimer) {
+    clearInterval(_impersonateCountdownTimer);
+    _impersonateCountdownTimer = null;
+  }
+  _impersonateUrl = '';
+
+  try {
+    var res = await fetch('/api/admin/impersonate-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId })
+    });
+    if (!res.ok) {
+      var errText = await res.text();
+      throw new Error('HTTP ' + res.status + ': ' + errText);
+    }
+    var data = await res.json();
+    if (!data || !data.magic_url) throw new Error('응답에 magic_url이 없음');
+
+    _impersonateUrl = data.magic_url;
+    var expiresIn = parseInt(data.expires_in_seconds || 60, 10);
+    _impersonateExpiresAt = Date.now() + (expiresIn * 1000);
+
+    // 결과 영역 표시
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (resultEl) resultEl.style.display = 'block';
+    if (openBtn) openBtn.style.display = 'inline-block';
+
+    var urlInput = document.getElementById('impersonateUrl');
+    if (urlInput) {
+      urlInput.value = _impersonateUrl;
+      urlInput.select();
+    }
+
+    // 카운트다운 시작
+    _updateImpersonateCountdown();
+    _impersonateCountdownTimer = setInterval(_updateImpersonateCountdown, 1000);
+
+  } catch(e) {
+    if (loadingEl) {
+      loadingEl.style.display = 'block';
+      loadingEl.style.color = '#ef4444';
+      loadingEl.textContent = '발급 실패: ' + e.message;
+    }
+    showToast('Magic Link 발급 실패: ' + e.message, 'error');
+  }
+}
+
+function _updateImpersonateCountdown() {
+  var countdownEl = document.getElementById('impersonateCountdown');
+  if (!countdownEl) return;
+  var remaining = Math.max(0, Math.floor((_impersonateExpiresAt - Date.now()) / 1000));
+  if (remaining <= 0) {
+    countdownEl.textContent = '⏱ 만료됨 — 닫고 다시 시도하세요';
+    countdownEl.style.color = '#ef4444';
+    if (_impersonateCountdownTimer) {
+      clearInterval(_impersonateCountdownTimer);
+      _impersonateCountdownTimer = null;
+    }
+  } else {
+    countdownEl.textContent = '⏱ ' + remaining + '초 내에 사용해야 합니다';
+    countdownEl.style.color = remaining <= 10 ? '#ef4444' : '#f97316';
+  }
+}
+
+function copyImpersonateUrl() {
+  if (!_impersonateUrl) return;
+  var input = document.getElementById('impersonateUrl');
+  if (input) { input.select(); input.setSelectionRange(0, 99999); }
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(_impersonateUrl).then(function() {
+        showToast('링크가 클립보드에 복사되었습니다', 'success');
+      }, function() {
+        document.execCommand('copy');
+        showToast('링크 복사됨', 'success');
+      });
+    } else {
+      document.execCommand('copy');
+      showToast('링크 복사됨', 'success');
+    }
+  } catch(e) {
+    showToast('복사 실패: ' + e.message, 'error');
+  }
+}
+
+function openImpersonateInNewTab() {
+  if (!_impersonateUrl) return;
+  // 새 창/탭에서 열기 (현재 admin 세션 유지)
+  // 시크릿 창은 자동으로 안 됨 — 사용자에게 안내
+  window.open(_impersonateUrl, '_blank');
+  showToast('새 탭에서 열림 (시크릿 창이 아니면 admin과 충돌할 수 있음)', 'info');
+}
+
+function closeImpersonateModal() {
+  var modal = document.getElementById('impersonateModal');
+  if (modal) modal.style.display = 'none';
+  if (_impersonateCountdownTimer) {
+    clearInterval(_impersonateCountdownTimer);
+    _impersonateCountdownTimer = null;
+  }
+  _impersonateUrl = '';
+}
+
+// ESC 키 + 모달 외부 클릭으로 닫기
+(function setupImpersonateModalCloseHandlers() {
+  if (window._impersonateModalHandlersInstalled) return;
+  window._impersonateModalHandlersInstalled = true;
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      var modal = document.getElementById('impersonateModal');
+      if (modal && modal.style.display === 'flex') closeImpersonateModal();
+    }
+  });
+  function attachOverlay() {
+    var modal = document.getElementById('impersonateModal');
+    if (!modal) return;
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) closeImpersonateModal();
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', attachOverlay);
+  } else {
+    attachOverlay();
+  }
+})();
 
 // ══════════════════════════════════════════
 // Arena Config
