@@ -802,12 +802,24 @@ def init_db(db_path=None):
                     cur.execute(sql)
                 except Exception:
                     pass
-            # 기본 권한 마이그레이션: tester role + permissions=[] 인 사용자에게 기본 부여
-            DEFAULT_TESTER_PERMS = ['view_history', 'manage_scenarios']
+            # 기본 권한 마이그레이션: tester role 의 기본 권한
+            # 빈 권한 또는 이전 기본값(view_history+manage_scenarios)만 있는 경우 → 신규 기본값으로 업그레이드
+            # admin이 수동 변경한 권한은 보존 (정확한 JSONB 매칭)
+            DEFAULT_TESTER_PERMS = [
+                'view_history', 'manage_scenarios',
+                'use_arena', 'run_batch',
+                'view_guidelines', 'view_criteria',
+            ]
+            OLD_DEFAULT_TESTER_PERMS = ['view_history', 'manage_scenarios']
             try:
                 cur.execute(
-                    "UPDATE users SET permissions = %s::jsonb WHERE role = 'tester' AND (permissions IS NULL OR permissions::text = '[]')",
-                    (json.dumps(DEFAULT_TESTER_PERMS),)
+                    """UPDATE users SET permissions = %s::jsonb
+                       WHERE role = 'tester' AND (
+                         permissions IS NULL
+                         OR permissions = '[]'::jsonb
+                         OR permissions = %s::jsonb
+                       )""",
+                    (json.dumps(DEFAULT_TESTER_PERMS), json.dumps(OLD_DEFAULT_TESTER_PERMS))
                 )
             except Exception:
                 pass
@@ -993,12 +1005,23 @@ def init_db(db_path=None):
                 conn.execute(sql)
             except sqlite3.OperationalError:
                 pass
-        # 기본 권한 마이그레이션: tester role + permissions=[] 인 사용자에게 기본 부여
-        DEFAULT_TESTER_PERMS = ['view_history', 'manage_scenarios']
+        # 기본 권한 마이그레이션: tester role 의 기본 권한
+        # 빈 권한 또는 이전 기본값(view_history+manage_scenarios)만 있는 경우 → 신규 기본값으로 업그레이드
+        DEFAULT_TESTER_PERMS = [
+            'view_history', 'manage_scenarios',
+            'use_arena', 'run_batch',
+            'view_guidelines', 'view_criteria',
+        ]
+        OLD_DEFAULT_TESTER_JSON = json.dumps(['view_history', 'manage_scenarios'])
         try:
             conn.execute(
-                "UPDATE users SET permissions = ? WHERE role = 'tester' AND (permissions IS NULL OR permissions = '[]')",
-                (json.dumps(DEFAULT_TESTER_PERMS),)
+                """UPDATE users SET permissions = ?
+                   WHERE role = 'tester' AND (
+                     permissions IS NULL
+                     OR permissions = '[]'
+                     OR permissions = ?
+                   )""",
+                (json.dumps(DEFAULT_TESTER_PERMS), OLD_DEFAULT_TESTER_JSON)
             )
         except sqlite3.OperationalError:
             pass

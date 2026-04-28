@@ -35,15 +35,17 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # ── 권한 카탈로그 ──
 PERMISSION_CATALOG = [
-    {'code': 'manage_scenarios',  'label': '시나리오 관리',   'description': '시나리오 추가/수정/삭제'},
-    {'code': 'view_history',      'label': '테스트 이력',     'description': '테스트 실행 이력 조회'},
-    {'code': 'manage_guidelines', 'label': '법률 평가 기준',  'description': '법률 평가 기준 수정'},
-    {'code': 'manage_criteria',   'label': '문진 평가 기준',  'description': '문진 평가 기준 수정'},
-    {'code': 'manage_rlhf',       'label': 'RLHF 관리',       'description': 'RLHF 페어/통계 관리'},
-    {'code': 'use_arena',         'label': 'Arena 사용',      'description': 'Chat Arena A/B 비교'},
-    {'code': 'view_logs',         'label': '서버 로그',       'description': '서버 실시간 로그 조회'},
-    {'code': 'run_batch',         'label': '배치 실행',       'description': '시나리오 배치 실행'},
-    {'code': 'manage_settings',   'label': '설정 변경',       'description': 'API/GPT 설정 + 카테고리 관리'},
+    {'code': 'manage_scenarios',  'label': '시나리오 관리',        'description': '시나리오 추가/수정/삭제'},
+    {'code': 'view_history',      'label': '테스트 이력',          'description': '테스트 실행 이력 조회'},
+    {'code': 'view_guidelines',   'label': '법률 평가 기준 조회',  'description': '법률 평가 기준 페이지 + 조회'},
+    {'code': 'manage_guidelines', 'label': '법률 평가 기준 수정',  'description': '법률 평가 기준 추가/수정/삭제'},
+    {'code': 'view_criteria',     'label': '문진 평가 기준 조회',  'description': '문진 평가 기준 페이지 + 조회'},
+    {'code': 'manage_criteria',   'label': '문진 평가 기준 수정',  'description': '문진 평가 기준 추가/수정/삭제'},
+    {'code': 'manage_rlhf',       'label': 'RLHF 관리',            'description': 'RLHF 페어/통계 관리'},
+    {'code': 'use_arena',         'label': 'Arena 사용',           'description': 'Chat Arena A/B 비교'},
+    {'code': 'view_logs',         'label': '서버 로그',            'description': '서버 실시간 로그 조회'},
+    {'code': 'run_batch',         'label': '배치 실행',            'description': '시나리오 배치 실행'},
+    {'code': 'manage_settings',   'label': '설정 변경',            'description': 'API/GPT 설정 + 카테고리 관리'},
 ]
 
 
@@ -1254,30 +1256,37 @@ class ProxyHandler(BaseHTTPRequestHandler):
             '/demo_report.html': os.path.join('reports', 'demo_report.html'),
         }
         # 권한 기반 페이지 접근 가드 (admin은 항상 통과, advisor/tester는 permissions 체크)
+        # value가 list면 OR 매칭 (둘 중 하나만 있으면 통과 — view_X 또는 manage_X 둘 다 허용)
         PAGE_PERMISSIONS = {
-            '/manager':               'manage_scenarios',
-            '/scenario_manager.html': 'manage_scenarios',
-            '/history':               'view_history',
-            '/history.html':          'view_history',
-            '/guidelines':            'manage_guidelines',
-            '/guideline_manager.html': 'manage_guidelines',
-            '/criteria':              'manage_criteria',
-            '/criteria_manager.html': 'manage_criteria',
-            '/rlhf':                  'manage_rlhf',
-            '/rlhf_manager.html':     'manage_rlhf',
-            '/arena':                 'use_arena',
-            '/chat_arena.html':       'use_arena',
-            '/settings':              'manage_settings',
-            '/settings.html':         'manage_settings',
+            '/manager':                'manage_scenarios',
+            '/scenario_manager.html':  'manage_scenarios',
+            '/history':                'view_history',
+            '/history.html':           'view_history',
+            '/guidelines':             ['view_guidelines', 'manage_guidelines'],
+            '/guideline_manager.html': ['view_guidelines', 'manage_guidelines'],
+            '/criteria':               ['view_criteria', 'manage_criteria'],
+            '/criteria_manager.html':  ['view_criteria', 'manage_criteria'],
+            '/rlhf':                   'manage_rlhf',
+            '/rlhf_manager.html':      'manage_rlhf',
+            '/arena':                  'use_arena',
+            '/chat_arena.html':        'use_arena',
+            '/settings':               'manage_settings',
+            '/settings.html':          'manage_settings',
         }
         if path in file_map and not self._is_admin():
-            needed_perm = PAGE_PERMISSIONS.get(path)
-            if needed_perm and not self._has_permission(needed_perm):
-                self.send_response(302)
-                self.send_header('Location', '/')
-                self.end_headers()
-                ProxyHandler._add_log(f"[권한] 권한 부족 페이지 접근: {path} (필요: {needed_perm}) → / 리다이렉트")
-                return
+            needed = PAGE_PERMISSIONS.get(path)
+            if needed:
+                # list면 OR 매칭, 단일이면 단일 체크
+                if isinstance(needed, list):
+                    has_any = any(self._has_permission(p) for p in needed)
+                else:
+                    has_any = self._has_permission(needed)
+                if not has_any:
+                    self.send_response(302)
+                    self.send_header('Location', '/')
+                    self.end_headers()
+                    ProxyHandler._add_log(f"[권한] 권한 부족 페이지 접근: {path} (필요: {needed}) → / 리다이렉트")
+                    return
 
         rel_path = file_map.get(path)
         if rel_path:
