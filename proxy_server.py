@@ -1282,6 +1282,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
             if self._is_advisor() and path in ('/arena', '/chat_arena.html'):
                 self.send_response(302)
                 self.send_header('Location', '/')
+                self.send_header('Content-Length', '0')
+                self.send_header('Connection', 'close')
                 self.end_headers()
                 ProxyHandler._add_log(f"[권한] advisor의 Arena 페이지 접근 차단: {path} → /")
                 return
@@ -1295,6 +1297,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 if not has_any:
                     self.send_response(302)
                     self.send_header('Location', '/')
+                    self.send_header('Content-Length', '0')
+                    self.send_header('Connection', 'close')
                     self.end_headers()
                     ProxyHandler._add_log(f"[권한] 권한 부족 페이지 접근: {path} (필요: {needed}) → / 리다이렉트")
                     return
