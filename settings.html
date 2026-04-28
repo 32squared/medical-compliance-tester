@@ -871,6 +871,13 @@ async function testConnection() {
     return;
   }
 
+  // proxyUrl이 비어있거나 localhost면 현재 origin 사용 (CORS 회피)
+  // 직접 SKIX API 호출은 cross-origin이라 브라우저가 차단함
+  let proxyBase = proxyUrl;
+  if (!proxyBase || proxyBase.includes('localhost')) {
+    proxyBase = window.location.origin;
+  }
+
   try {
     const graphTypeEl = document.getElementById('graphType');
     const xTenantEl = document.getElementById('xTenantDomain');
@@ -882,7 +889,8 @@ async function testConnection() {
       source_types: ['WEB']
     });
 
-    const res = await fetch(proxyUrl || targetUrl, {
+    // 우리 서버의 SSE 프록시(_proxy_post)로 호출 → 서버가 X-Target-URL로 SKIX API에 호출
+    const res = await fetch(proxyBase, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -900,7 +908,13 @@ async function testConnection() {
         result.textContent = `${currentEnv.toUpperCase()} 연결 성공!`;
         result.style.color = 'var(--green)';
       } else {
-        result.textContent = `실패 (${res.status})`;
+        // 응답 본문 일부 표시 (에러 원인 파악)
+        let errMsg = '';
+        try {
+          const t = await res.text();
+          errMsg = t.substring(0, 100);
+        } catch(_) {}
+        result.textContent = `실패 (${res.status}) ${errMsg}`;
         result.style.color = 'var(--red)';
       }
     }
