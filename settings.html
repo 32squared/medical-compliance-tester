@@ -141,6 +141,11 @@
   ::-webkit-scrollbar { width:6px; }
   ::-webkit-scrollbar-track { background:transparent; }
   ::-webkit-scrollbar-thumb { background:var(--surface2); border-radius:3px; }
+
+  .btn-small { padding:4px 10px; font-size:11px; background:var(--surface2);
+               color:var(--text); border:1px solid var(--border); border-radius:6px;
+               cursor:pointer; }
+  .btn-small:hover { background:var(--surface3); }
 </style>
 </head>
 <body>
@@ -583,6 +588,94 @@
 
 </div><!-- /mainContent -->
 
+<!-- ── 권한 관리 모달 ── -->
+<div id="permissionsModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0;
+     background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center;">
+  <div style="background:var(--surface); border:1px solid var(--border); border-radius:16px;
+       padding:24px; max-width:500px; width:90%; max-height:90vh; overflow-y:auto;">
+    <h3 style="font-size:16px; color:var(--accent); margin-bottom:8px;">
+      &#128273; <span id="permModalTitle">사용자</span> 권한 관리
+    </h3>
+    <p id="permModalSubtitle" style="font-size:11px; color:var(--text-dim); margin-bottom:16px;"></p>
+
+    <div class="field">
+      <label>Role (기본 역할)</label>
+      <select id="permModalRole">
+        <option value="advisor">advisor (의사 자문위원 — 채팅 테스터만)</option>
+        <option value="tester">tester (일반 테스터)</option>
+        <option value="admin">admin (관리자 — 모든 권한)</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>추가 권한 (admin이 부여)</label>
+      <div id="permCheckboxList" style="display:flex; flex-direction:column; gap:6px; margin-top:8px;">
+        <!-- 동적 생성 -->
+      </div>
+      <p style="font-size:11px; color:var(--text-dim); margin-top:8px;">
+        ※ admin role은 모든 권한 자동 부여 (체크 무관)
+      </p>
+    </div>
+
+    <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:20px;">
+      <button class="btn-secondary" onclick="closePermissionsModal()">취소</button>
+      <button class="btn-primary" onclick="savePermissions()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Magic Link 로그인 모달 (사용자 임시 로그인) ── -->
+<div id="impersonateModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0;
+     background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center;">
+  <div style="background:var(--surface); border:1px solid var(--border); border-radius:16px;
+       padding:24px; max-width:560px; width:92%; max-height:90vh; overflow-y:auto;">
+    <h3 style="font-size:16px; color:var(--accent); margin-bottom:8px;">
+      &#128279; <span id="impersonateModalTitle">사용자</span>로 로그인
+    </h3>
+    <p id="impersonateModalSubtitle" style="font-size:11px; color:var(--text-dim); margin-bottom:14px;"></p>
+
+    <div id="impersonateLoading" style="text-align:center; padding:24px 0; color:var(--text-dim); font-size:12px;">
+      Magic Link 발급 중...
+    </div>
+
+    <div id="impersonateResult" style="display:none;">
+      <div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:12px;">
+        <p style="font-size:12px; color:var(--text); margin-bottom:8px; line-height:1.5;">
+          아래 링크를 <b>시크릿 창</b>(Ctrl+Shift+N) 또는 다른 브라우저에서 열어 로그인하세요.<br>
+          <span style="color:#f97316;">현재 창에서 열면 admin 세션이 종료됩니다.</span>
+        </p>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <input id="impersonateUrl" type="text" readonly
+                 style="flex:1; padding:8px 10px; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:6px; font-size:11px; font-family:'Consolas',monospace;">
+          <button id="impersonateCopyBtn" class="btn-small" onclick="copyImpersonateUrl()" style="white-space:nowrap;">
+            &#128203; 복사
+          </button>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
+        <span id="impersonateCountdown" style="font-size:11px; color:#f97316; font-weight:600;">
+          ⏱ 60초 내에 사용해야 합니다
+        </span>
+      </div>
+
+      <div style="background:rgba(56,189,248,0.08); border:1px solid rgba(56,189,248,0.3); border-radius:8px; padding:10px; margin-bottom:14px;">
+        <p style="font-size:11px; color:var(--text-dim); line-height:1.5; margin:0;">
+          💡 <b>팁</b>: 시크릿 창에서 열면 본 admin 세션과 분리되어 두 세션을 동시에 사용할 수 있습니다.
+          이 창(현재 창)에서 직접 열면 admin 토큰이 폐기되고 해당 사용자로 전환됩니다.
+        </p>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:8px;">
+      <button class="btn-secondary" onclick="closeImpersonateModal()">닫기</button>
+      <button id="impersonateOpenBtn" class="btn-primary" onclick="openImpersonateInNewTab()" style="display:none;">
+        &#128279; 새 창에서 열기
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- Status Bar -->
 <div class="statusbar" id="statusBar">설정을 불러오는 중...</div>
 
@@ -830,6 +923,13 @@ async function testConnection() {
     return;
   }
 
+  // proxyUrl이 비어있거나 localhost면 현재 origin 사용 (CORS 회피)
+  // 직접 SKIX API 호출은 cross-origin이라 브라우저가 차단함
+  let proxyBase = proxyUrl;
+  if (!proxyBase || proxyBase.includes('localhost')) {
+    proxyBase = window.location.origin;
+  }
+
   try {
     const graphTypeEl = document.getElementById('graphType');
     const xTenantEl = document.getElementById('xTenantDomain');
@@ -841,7 +941,8 @@ async function testConnection() {
       source_types: ['WEB']
     });
 
-    const res = await fetch(proxyUrl || targetUrl, {
+    // 우리 서버의 SSE 프록시(_proxy_post)로 호출 → 서버가 X-Target-URL로 SKIX API에 호출
+    const res = await fetch(proxyBase, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -859,7 +960,13 @@ async function testConnection() {
         result.textContent = `${currentEnv.toUpperCase()} 연결 성공!`;
         result.style.color = 'var(--green)';
       } else {
-        result.textContent = `실패 (${res.status})`;
+        // 응답 본문 일부 표시 (에러 원인 파악)
+        let errMsg = '';
+        try {
+          const t = await res.text();
+          errMsg = t.substring(0, 100);
+        } catch(_) {}
+        result.textContent = `실패 (${res.status}) ${errMsg}`;
         result.style.color = 'var(--red)';
       }
     }
@@ -1037,6 +1144,16 @@ function escHtml(s) { const d = document.createElement('div'); d.textContent = s
 
 async function loadTesterAccounts() {
   try {
+    // 카탈로그가 비어있으면 한 번 fetch (배지 라벨 매핑용)
+    if (!Array.isArray(_permCatalog) || !_permCatalog.length) {
+      try {
+        const cr = await fetch('/api/permissions/catalog');
+        if (cr.ok) {
+          const cd = await cr.json();
+          _permCatalog = cd.permissions || [];
+        }
+      } catch(_) { /* silent */ }
+    }
     const res = await fetch('/api/tester/accounts');
     const data = await res.json();
     renderTesterAccounts(data.accounts || []);
@@ -1122,16 +1239,91 @@ function renderTesterAccounts(accounts) {
     return;
   }
   container.innerHTML = '';
+
+  // 권한 코드 → 한글 라벨 매핑 (catalog 캐시)
+  var permLabels = {};
+  if (Array.isArray(_permCatalog) && _permCatalog.length) {
+    _permCatalog.forEach(function(p) { permLabels[p.code] = p.label; });
+  }
+  function permLabel(code) { return permLabels[code] || code; }
+
+  // role 배지 색상
+  var roleColors = {
+    admin: { bg: 'rgba(239,68,68,0.15)', fg: '#ef4444' },
+    tester: { bg: 'rgba(56,189,248,0.15)', fg: '#38bdf8' },
+    advisor: { bg: 'rgba(34,197,94,0.15)', fg: '#22c55e' },
+  };
+
   approved.forEach(function(a) {
     const row = document.createElement('div');
-    row.style.cssText = 'display:flex;gap:8px;margin-bottom:6px;align-items:center;padding:8px 10px;background:var(--bg);border-radius:8px;border:1px solid var(--border)';
+    row.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-bottom:6px;padding:10px;background:var(--bg);border-radius:8px;border:1px solid var(--border)';
+
+    // 1행: 기본 정보 + 액션 버튼
+    const topLine = document.createElement('div');
+    topLine.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap';
+
+    var roleStyle = roleColors[a.role] || roleColors.tester;
+    var roleBadge = '<span style="display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:' + roleStyle.bg + ';color:' + roleStyle.fg + '">' + escHtml(a.role || 'tester') + '</span>';
+
+    // 사용자 ID 클릭 가능 (Magic Link 발급)
+    var idLink = document.createElement('a');
+    idLink.href = '#';
+    idLink.style.cssText = 'font-size:12px;font-weight:600;color:var(--accent);min-width:70px;text-decoration:underline;cursor:pointer';
+    idLink.textContent = a.id;
+    idLink.title = '클릭하여 이 사용자로 로그인 (Magic Link)';
+    idLink.addEventListener('click', (function(aid, aname) {
+      return function(ev) { ev.preventDefault(); openImpersonateModal(aid, aname); };
+    })(a.id, a.alias || a.name || a.id));
+    topLine.appendChild(idLink);
+
+    var nameSpan = document.createElement('span');
+    nameSpan.style.cssText = 'font-size:12px;color:var(--text);min-width:60px';
+    nameSpan.textContent = a.name || a.alias || '';
+    topLine.appendChild(nameSpan);
+
+    var roleBadgeSpan = document.createElement('span');
+    roleBadgeSpan.style.cssText = 'display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:' + roleStyle.bg + ';color:' + roleStyle.fg;
+    roleBadgeSpan.textContent = a.role || 'tester';
+    topLine.appendChild(roleBadgeSpan);
+
+    var orgSpan = document.createElement('span');
+    orgSpan.style.cssText = 'font-size:11px;color:var(--text-dim);flex:1';
+    orgSpan.textContent = a.org || '';
+    topLine.appendChild(orgSpan);
+
+    var uidSpan = document.createElement('span');
+    uidSpan.style.cssText = 'font-size:10px;color:var(--text-dim)';
+    uidSpan.textContent = 'UID: ' + (a.uid || '-');
+    topLine.appendChild(uidSpan);
+
+    const permBtn = document.createElement('button');
+    permBtn.className = 'btn-small';
+    permBtn.textContent = '🔑 권한 관리';
+    permBtn.addEventListener('click', (function(aid, aname) { return function() { openPermissionsModal(aid, aname); }; })(a.id, a.alias || a.name || a.id));
     const delBtn = document.createElement('button');
     delBtn.innerHTML = '&#10005;';
     delBtn.title = '삭제';
     delBtn.style.cssText = 'background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 6px';
     delBtn.addEventListener('click', (function(aid) { return function() { deleteTesterAccount(aid); }; })(a.id));
-    row.innerHTML = '<span style="font-size:12px;font-weight:600;color:var(--accent);min-width:70px">' + escHtml(a.id) + '</span><span style="font-size:12px;color:var(--text);min-width:60px">' + escHtml(a.name || a.alias) + '</span><span style="font-size:11px;color:var(--text-dim);flex:1">' + escHtml(a.org || '') + '</span><span style="font-size:10px;color:var(--text-dim);min-width:90px">UID: ' + escHtml(a.uid || '-') + '</span>';
-    row.appendChild(delBtn);
+    topLine.appendChild(permBtn);
+    topLine.appendChild(delBtn);
+    row.appendChild(topLine);
+
+    // 2행: 권한 칩 (admin은 모든 권한 자동 → 별도 표시)
+    const permLine = document.createElement('div');
+    permLine.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;align-items:center';
+    if (a.role === 'admin') {
+      permLine.innerHTML = '<span style="font-size:10px;color:var(--text-dim);font-style:italic">(모든 권한 자동 부여)</span>';
+    } else if (Array.isArray(a.permissions) && a.permissions.length) {
+      var chipsHtml = a.permissions.map(function(code) {
+        return '<span style="display:inline-block;font-size:10px;padding:2px 7px;border-radius:10px;background:var(--surface2);color:var(--text-dim);border:1px solid var(--border)">' + escHtml(permLabel(code)) + '</span>';
+      }).join('');
+      permLine.innerHTML = chipsHtml;
+    } else {
+      permLine.innerHTML = '<span style="font-size:10px;color:var(--text-dim);font-style:italic">(권한 없음 — 채팅 테스터만)</span>';
+    }
+    row.appendChild(permLine);
+
     container.appendChild(row);
   });
 }
@@ -1185,6 +1377,336 @@ async function deleteTesterAccount(id) {
     } else { showToast(data.error || '삭제 실패', 'error'); }
   } catch(e) { showToast('서버 연결 실패', 'error'); }
 }
+
+// ══════════════════════════════════════════
+// Permission Management (Admin)
+// ══════════════════════════════════════════
+var _permModalUserId = null;
+var _permCatalog = [];
+
+async function openPermissionsModal(userId, displayName) {
+  _permModalUserId = userId;
+  var titleEl = document.getElementById('permModalTitle');
+  var subtitleEl = document.getElementById('permModalSubtitle');
+  if (titleEl) titleEl.textContent = displayName || userId;
+  if (subtitleEl) subtitleEl.textContent = userId;
+
+  try {
+    var catRes, userRes;
+    var results = await Promise.allSettled([
+      fetch('/api/permissions/catalog'),
+      fetch('/api/users/' + encodeURIComponent(userId) + '/permissions')
+    ]);
+    catRes = results[0];
+    userRes = results[1];
+
+    var catData = { permissions: [] };
+    var userData = { role: 'tester', permissions: [] };
+
+    if (catRes.status === 'fulfilled' && catRes.value.ok) {
+      catData = await catRes.value.json();
+    }
+    if (userRes.status === 'fulfilled' && userRes.value.ok) {
+      userData = await userRes.value.json();
+    }
+
+    _permCatalog = catData.permissions || [];
+
+    // 카탈로그가 비어 있으면 기본 목록 사용
+    if (_permCatalog.length === 0) {
+      _permCatalog = [
+        { code: 'manage_scenarios',  label: '시나리오 관리',      description: '시나리오 생성·수정·삭제' },
+        { code: 'view_history',      label: '테스트 이력',        description: '배치 실행 이력 조회' },
+        { code: 'manage_guidelines', label: '법률 평가 기준',     description: '가이드라인 관리' },
+        { code: 'manage_criteria',   label: '문진 평가 기준',     description: '문진 기준 관리' },
+        { code: 'manage_rlhf',       label: 'RLHF 관리',         description: 'RLHF 데이터 관리' },
+        { code: 'use_arena',         label: 'Arena 사용',         description: 'A/B 챗봇 비교 평가' },
+        { code: 'view_logs',         label: '서버 로그',          description: '실시간 서버 로그 조회' },
+        { code: 'run_batch',         label: '배치 실행',          description: '배치 테스트 실행' },
+        { code: 'manage_settings',   label: '설정 변경',          description: '시스템 설정 관리' }
+      ];
+    }
+
+    // role 선택
+    var roleEl = document.getElementById('permModalRole');
+    if (roleEl) {
+      roleEl.value = userData.role || 'tester';
+      // role 변경 시 use_arena 체크박스 자동 처리 (advisor면 disable + uncheck)
+      roleEl.onchange = function() { _applyRoleConstraints(roleEl.value); };
+    }
+
+    // 체크박스 리스트 동적 생성
+    var list = document.getElementById('permCheckboxList');
+    if (list) {
+      list.innerHTML = '';
+      var userPerms = {};
+      var permArr = userData.permissions || [];
+      for (var pi = 0; pi < permArr.length; pi++) { userPerms[permArr[pi]] = true; }
+
+      for (var ci = 0; ci < _permCatalog.length; ci++) {
+        var perm = _permCatalog[ci];
+        var lbl = document.createElement('label');
+        lbl.style.cssText = 'display:flex; align-items:center; gap:8px; cursor:pointer; padding:6px 8px; border-radius:6px; border:1px solid var(--border); background:var(--bg);';
+        lbl.dataset.permLabel = perm.code;
+        var chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.dataset.perm = perm.code;
+        chk.checked = !!userPerms[perm.code];
+        chk.style.margin = '0';
+        var infoDiv = document.createElement('div');
+        var labelDiv = document.createElement('div');
+        labelDiv.style.cssText = 'font-size:13px;font-weight:600';
+        labelDiv.textContent = perm.label;
+        var descDiv = document.createElement('div');
+        descDiv.style.cssText = 'font-size:11px;color:var(--text-dim)';
+        descDiv.textContent = perm.description;
+        infoDiv.appendChild(labelDiv);
+        infoDiv.appendChild(descDiv);
+        lbl.appendChild(chk);
+        lbl.appendChild(infoDiv);
+        list.appendChild(lbl);
+      }
+    }
+
+    // 초기 role 기반 제약 적용
+    _applyRoleConstraints(userData.role || 'tester');
+
+    var modal = document.getElementById('permissionsModal');
+    if (modal) modal.style.display = 'flex';
+  } catch(e) {
+    showToast('권한 정보 로드 실패: ' + e.message, 'error');
+  }
+}
+
+// role에 따른 권한 제약 적용 (advisor는 use_arena 강제 차단)
+function _applyRoleConstraints(role) {
+  var list = document.getElementById('permCheckboxList');
+  if (!list) return;
+  var labels = list.querySelectorAll('label[data-perm-label]');
+  labels.forEach(function(lbl) {
+    var code = lbl.dataset.permLabel;
+    var chk = lbl.querySelector('input[type="checkbox"]');
+    if (!chk) return;
+    if (role === 'advisor' && code === 'use_arena') {
+      chk.checked = false;
+      chk.disabled = true;
+      lbl.style.opacity = '0.5';
+      lbl.style.cursor = 'not-allowed';
+      lbl.title = 'advisor는 채팅 테스터만 사용 (Arena 권한은 부여 불가)';
+    } else {
+      chk.disabled = false;
+      lbl.style.opacity = '';
+      lbl.style.cursor = 'pointer';
+      lbl.title = '';
+    }
+  });
+}
+
+function closePermissionsModal() {
+  var modal = document.getElementById('permissionsModal');
+  if (modal) modal.style.display = 'none';
+  _permModalUserId = null;
+}
+
+// ESC 키 + 모달 외부 클릭으로 닫기 (한 번만 등록)
+(function setupPermModalCloseHandlers() {
+  if (window._permModalHandlersInstalled) return;
+  window._permModalHandlersInstalled = true;
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      var modal = document.getElementById('permissionsModal');
+      if (modal && modal.style.display === 'flex') closePermissionsModal();
+    }
+  });
+  // 외부 overlay 클릭 시 닫기 — DOMContentLoaded 후 바인딩
+  function attachOverlay() {
+    var modal = document.getElementById('permissionsModal');
+    if (!modal) return;
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) closePermissionsModal();
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', attachOverlay);
+  } else {
+    attachOverlay();
+  }
+})();
+
+async function savePermissions() {
+  if (!_permModalUserId) return;
+  var roleEl = document.getElementById('permModalRole');
+  var role = roleEl ? roleEl.value : 'tester';
+  var checkboxes = document.querySelectorAll('#permCheckboxList input[type="checkbox"]');
+  var perms = [];
+  checkboxes.forEach(function(cb) { if (cb.checked) perms.push(cb.dataset.perm); });
+
+  try {
+    var res = await fetch('/api/users/' + encodeURIComponent(_permModalUserId) + '/permissions', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: role, permissions: perms })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    showToast('권한 저장 완료', 'success');
+    closePermissionsModal();
+    if (typeof loadTesterAccounts === 'function') loadTesterAccounts();
+  } catch(e) {
+    showToast('저장 실패: ' + e.message, 'error');
+  }
+}
+
+// ══════════════════════════════════════════
+// Magic Link Impersonate (Admin → 사용자 로그인)
+// ══════════════════════════════════════════
+var _impersonateUrl = '';
+var _impersonateCountdownTimer = null;
+var _impersonateExpiresAt = 0;
+
+async function openImpersonateModal(userId, displayName) {
+  var modal = document.getElementById('impersonateModal');
+  var titleEl = document.getElementById('impersonateModalTitle');
+  var subtitleEl = document.getElementById('impersonateModalSubtitle');
+  var loadingEl = document.getElementById('impersonateLoading');
+  var resultEl = document.getElementById('impersonateResult');
+  var openBtn = document.getElementById('impersonateOpenBtn');
+
+  if (!modal) return;
+  if (titleEl) titleEl.textContent = displayName || userId;
+  if (subtitleEl) subtitleEl.textContent = userId;
+  if (loadingEl) loadingEl.style.display = 'block';
+  if (resultEl) resultEl.style.display = 'none';
+  if (openBtn) openBtn.style.display = 'none';
+  modal.style.display = 'flex';
+
+  // 기존 카운트다운 정리
+  if (_impersonateCountdownTimer) {
+    clearInterval(_impersonateCountdownTimer);
+    _impersonateCountdownTimer = null;
+  }
+  _impersonateUrl = '';
+
+  try {
+    var res = await fetch('/api/admin/impersonate-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId })
+    });
+    if (!res.ok) {
+      var errText = await res.text();
+      throw new Error('HTTP ' + res.status + ': ' + errText);
+    }
+    var data = await res.json();
+    if (!data || !data.magic_url) throw new Error('응답에 magic_url이 없음');
+
+    _impersonateUrl = data.magic_url;
+    var expiresIn = parseInt(data.expires_in_seconds || 60, 10);
+    _impersonateExpiresAt = Date.now() + (expiresIn * 1000);
+
+    // 결과 영역 표시
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (resultEl) resultEl.style.display = 'block';
+    if (openBtn) openBtn.style.display = 'inline-block';
+
+    var urlInput = document.getElementById('impersonateUrl');
+    if (urlInput) {
+      urlInput.value = _impersonateUrl;
+      urlInput.select();
+    }
+
+    // 카운트다운 시작
+    _updateImpersonateCountdown();
+    _impersonateCountdownTimer = setInterval(_updateImpersonateCountdown, 1000);
+
+  } catch(e) {
+    if (loadingEl) {
+      loadingEl.style.display = 'block';
+      loadingEl.style.color = '#ef4444';
+      loadingEl.textContent = '발급 실패: ' + e.message;
+    }
+    showToast('Magic Link 발급 실패: ' + e.message, 'error');
+  }
+}
+
+function _updateImpersonateCountdown() {
+  var countdownEl = document.getElementById('impersonateCountdown');
+  if (!countdownEl) return;
+  var remaining = Math.max(0, Math.floor((_impersonateExpiresAt - Date.now()) / 1000));
+  if (remaining <= 0) {
+    countdownEl.textContent = '⏱ 만료됨 — 닫고 다시 시도하세요';
+    countdownEl.style.color = '#ef4444';
+    if (_impersonateCountdownTimer) {
+      clearInterval(_impersonateCountdownTimer);
+      _impersonateCountdownTimer = null;
+    }
+  } else {
+    countdownEl.textContent = '⏱ ' + remaining + '초 내에 사용해야 합니다';
+    countdownEl.style.color = remaining <= 10 ? '#ef4444' : '#f97316';
+  }
+}
+
+function copyImpersonateUrl() {
+  if (!_impersonateUrl) return;
+  var input = document.getElementById('impersonateUrl');
+  if (input) { input.select(); input.setSelectionRange(0, 99999); }
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(_impersonateUrl).then(function() {
+        showToast('링크가 클립보드에 복사되었습니다', 'success');
+      }, function() {
+        document.execCommand('copy');
+        showToast('링크 복사됨', 'success');
+      });
+    } else {
+      document.execCommand('copy');
+      showToast('링크 복사됨', 'success');
+    }
+  } catch(e) {
+    showToast('복사 실패: ' + e.message, 'error');
+  }
+}
+
+function openImpersonateInNewTab() {
+  if (!_impersonateUrl) return;
+  // 새 창/탭에서 열기 (현재 admin 세션 유지)
+  // 시크릿 창은 자동으로 안 됨 — 사용자에게 안내
+  window.open(_impersonateUrl, '_blank');
+  showToast('새 탭에서 열림 (시크릿 창이 아니면 admin과 충돌할 수 있음)', 'info');
+}
+
+function closeImpersonateModal() {
+  var modal = document.getElementById('impersonateModal');
+  if (modal) modal.style.display = 'none';
+  if (_impersonateCountdownTimer) {
+    clearInterval(_impersonateCountdownTimer);
+    _impersonateCountdownTimer = null;
+  }
+  _impersonateUrl = '';
+}
+
+// ESC 키 + 모달 외부 클릭으로 닫기
+(function setupImpersonateModalCloseHandlers() {
+  if (window._impersonateModalHandlersInstalled) return;
+  window._impersonateModalHandlersInstalled = true;
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      var modal = document.getElementById('impersonateModal');
+      if (modal && modal.style.display === 'flex') closeImpersonateModal();
+    }
+  });
+  function attachOverlay() {
+    var modal = document.getElementById('impersonateModal');
+    if (!modal) return;
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) closeImpersonateModal();
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', attachOverlay);
+  } else {
+    attachOverlay();
+  }
+})();
 
 // ══════════════════════════════════════════
 // Arena Config
