@@ -207,7 +207,8 @@ CREATE TABLE IF NOT EXISTS users (
     uid TEXT DEFAULT '',
     created_at TEXT NOT NULL,
     approved_at TEXT,
-    approved_by TEXT
+    approved_by TEXT,
+    permissions TEXT DEFAULT '[]'
 );
 
 CREATE TABLE IF NOT EXISTS conversations (
@@ -461,7 +462,8 @@ CREATE TABLE IF NOT EXISTS users (
     uid TEXT DEFAULT '',
     created_at TEXT NOT NULL,
     approved_at TEXT,
-    approved_by TEXT
+    approved_by TEXT,
+    permissions JSONB DEFAULT '[]'::jsonb
 );
 
 CREATE TABLE IF NOT EXISTS conversations (
@@ -793,12 +795,22 @@ def init_db(db_path=None):
                 "ALTER TABLE comments ADD COLUMN IF NOT EXISTS full_response TEXT DEFAULT ''",
                 "ALTER TABLE messages ADD COLUMN IF NOT EXISTS consultation_eval_json JSONB",
                 "ALTER TABLE messages ADD COLUMN IF NOT EXISTS token_usage_json JSONB",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '[]'::jsonb",
             ]
             for sql in migrations_pg:
                 try:
                     cur.execute(sql)
                 except Exception:
                     pass
+            # 기본 권한 마이그레이션: tester role + permissions=[] 인 사용자에게 기본 부여
+            DEFAULT_TESTER_PERMS = ['view_history', 'manage_scenarios']
+            try:
+                cur.execute(
+                    "UPDATE users SET permissions = %s::jsonb WHERE role = 'tester' AND (permissions IS NULL OR permissions::text = '[]')",
+                    (json.dumps(DEFAULT_TESTER_PERMS),)
+                )
+            except Exception:
+                pass
             # prompt_enhancements 테이블 마이그레이션
             try:
                 cur.execute("""CREATE TABLE IF NOT EXISTS prompt_enhancements (
@@ -974,12 +986,22 @@ def init_db(db_path=None):
             "ALTER TABLE comments ADD COLUMN full_response TEXT DEFAULT ''",
             "ALTER TABLE messages ADD COLUMN consultation_eval_json TEXT",
             "ALTER TABLE messages ADD COLUMN token_usage_json TEXT",
+            "ALTER TABLE users ADD COLUMN permissions TEXT DEFAULT '[]'",
         ]
         for sql in migrations:
             try:
                 conn.execute(sql)
             except sqlite3.OperationalError:
                 pass
+        # 기본 권한 마이그레이션: tester role + permissions=[] 인 사용자에게 기본 부여
+        DEFAULT_TESTER_PERMS = ['view_history', 'manage_scenarios']
+        try:
+            conn.execute(
+                "UPDATE users SET permissions = ? WHERE role = 'tester' AND (permissions IS NULL OR permissions = '[]')",
+                (json.dumps(DEFAULT_TESTER_PERMS),)
+            )
+        except sqlite3.OperationalError:
+            pass
         # prompt_enhancements 테이블 마이그레이션
         try:
             conn.execute("""CREATE TABLE IF NOT EXISTS prompt_enhancements (
@@ -1142,7 +1164,7 @@ def create_user(data):
 
 
 def update_user(user_id, updates):
-    allowed = ['name', 'org', 'password_hash', 'password_salt', 'status', 'role', 'uid', 'approved_at', 'approved_by']
+    allowed = ['name', 'org', 'password_hash', 'password_salt', 'status', 'role', 'uid', 'approved_at', 'approved_by', 'permissions']
     sets = []
     vals = []
     ph = _p()
@@ -1183,6 +1205,34 @@ def delete_user(user_id):
     with get_conn() as (conn, cur):
         cur.execute(f"DELETE FROM users WHERE id = {_p()}", (user_id,))
     return True
+
+
+def get_user_permissions(user_id: str) -> list:
+    """users.permissions JSON parse 해서 반환"""
+    user = get_user(user_id)
+    if not user:
+        return []
+    raw = user.get('permissions', '[]')
+    return _pg_json_loads_or(raw, [])
+
+
+def set_user_permissions(user_id: str, perms: list) -> None:
+    """permissions JSON으로 저장"""
+    ph = _p()
+    perms_val = json.dumps(perms) if not _use_postgres else json.dumps(perms)
+    with get_conn() as (conn, cur):
+        cur.execute(f"UPDATE users SET permissions = {ph} WHERE id = {ph}", (perms_val, user_id))
+
+
+def get_user_role_permissions(user_id: str) -> dict:
+    """role + permissions 한 번에 조회 (효율)"""
+    user = get_user(user_id)
+    if not user:
+        return {'role': '', 'permissions': []}
+    role = user.get('role', 'tester')
+    raw = user.get('permissions', '[]')
+    perms = _pg_json_loads_or(raw, [])
+    return {'role': role, 'permissions': perms}
 
 
 # ════════════════════════════════════════

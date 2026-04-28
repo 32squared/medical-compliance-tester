@@ -141,6 +141,11 @@
   ::-webkit-scrollbar { width:6px; }
   ::-webkit-scrollbar-track { background:transparent; }
   ::-webkit-scrollbar-thumb { background:var(--surface2); border-radius:3px; }
+
+  .btn-small { padding:4px 10px; font-size:11px; background:var(--surface2);
+               color:var(--text); border:1px solid var(--border); border-radius:6px;
+               cursor:pointer; }
+  .btn-small:hover { background:var(--surface3); }
 </style>
 </head>
 <body>
@@ -582,6 +587,42 @@
   </div>
 
 </div><!-- /mainContent -->
+
+<!-- ── 권한 관리 모달 ── -->
+<div id="permissionsModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0;
+     background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center;">
+  <div style="background:var(--surface); border:1px solid var(--border); border-radius:16px;
+       padding:24px; max-width:500px; width:90%; max-height:90vh; overflow-y:auto;">
+    <h3 style="font-size:16px; color:var(--accent); margin-bottom:8px;">
+      &#128273; <span id="permModalTitle">사용자</span> 권한 관리
+    </h3>
+    <p id="permModalSubtitle" style="font-size:11px; color:var(--text-dim); margin-bottom:16px;"></p>
+
+    <div class="field">
+      <label>Role (기본 역할)</label>
+      <select id="permModalRole">
+        <option value="advisor">advisor (의사 자문위원 — 채팅 테스터만)</option>
+        <option value="tester">tester (일반 테스터)</option>
+        <option value="admin">admin (관리자 — 모든 권한)</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>추가 권한 (admin이 부여)</label>
+      <div id="permCheckboxList" style="display:flex; flex-direction:column; gap:6px; margin-top:8px;">
+        <!-- 동적 생성 -->
+      </div>
+      <p style="font-size:11px; color:var(--text-dim); margin-top:8px;">
+        ※ admin role은 모든 권한 자동 부여 (체크 무관)
+      </p>
+    </div>
+
+    <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:20px;">
+      <button class="btn-secondary" onclick="closePermissionsModal()">취소</button>
+      <button class="btn-primary" onclick="savePermissions()">저장</button>
+    </div>
+  </div>
+</div>
 
 <!-- Status Bar -->
 <div class="statusbar" id="statusBar">설정을 불러오는 중...</div>
@@ -1125,12 +1166,17 @@ function renderTesterAccounts(accounts) {
   approved.forEach(function(a) {
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;gap:8px;margin-bottom:6px;align-items:center;padding:8px 10px;background:var(--bg);border-radius:8px;border:1px solid var(--border)';
+    const permBtn = document.createElement('button');
+    permBtn.className = 'btn-small';
+    permBtn.textContent = '🔑 권한 관리';
+    permBtn.addEventListener('click', (function(aid, aname) { return function() { openPermissionsModal(aid, aname); }; })(a.id, a.alias || a.name || a.id));
     const delBtn = document.createElement('button');
     delBtn.innerHTML = '&#10005;';
     delBtn.title = '삭제';
     delBtn.style.cssText = 'background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 6px';
     delBtn.addEventListener('click', (function(aid) { return function() { deleteTesterAccount(aid); }; })(a.id));
     row.innerHTML = '<span style="font-size:12px;font-weight:600;color:var(--accent);min-width:70px">' + escHtml(a.id) + '</span><span style="font-size:12px;color:var(--text);min-width:60px">' + escHtml(a.name || a.alias) + '</span><span style="font-size:11px;color:var(--text-dim);flex:1">' + escHtml(a.org || '') + '</span><span style="font-size:10px;color:var(--text-dim);min-width:90px">UID: ' + escHtml(a.uid || '-') + '</span>';
+    row.appendChild(permBtn);
     row.appendChild(delBtn);
     container.appendChild(row);
   });
@@ -1184,6 +1230,152 @@ async function deleteTesterAccount(id) {
       loadTesterAccounts();
     } else { showToast(data.error || '삭제 실패', 'error'); }
   } catch(e) { showToast('서버 연결 실패', 'error'); }
+}
+
+// ══════════════════════════════════════════
+// Permission Management (Admin)
+// ══════════════════════════════════════════
+var _permModalUserId = null;
+var _permCatalog = [];
+
+async function openPermissionsModal(userId, displayName) {
+  _permModalUserId = userId;
+  var titleEl = document.getElementById('permModalTitle');
+  var subtitleEl = document.getElementById('permModalSubtitle');
+  if (titleEl) titleEl.textContent = displayName || userId;
+  if (subtitleEl) subtitleEl.textContent = userId;
+
+  try {
+    var catRes, userRes;
+    var results = await Promise.allSettled([
+      fetch('/api/permissions/catalog'),
+      fetch('/api/users/' + encodeURIComponent(userId) + '/permissions')
+    ]);
+    catRes = results[0];
+    userRes = results[1];
+
+    var catData = { permissions: [] };
+    var userData = { role: 'tester', permissions: [] };
+
+    if (catRes.status === 'fulfilled' && catRes.value.ok) {
+      catData = await catRes.value.json();
+    }
+    if (userRes.status === 'fulfilled' && userRes.value.ok) {
+      userData = await userRes.value.json();
+    }
+
+    _permCatalog = catData.permissions || [];
+
+    // 카탈로그가 비어 있으면 기본 목록 사용
+    if (_permCatalog.length === 0) {
+      _permCatalog = [
+        { code: 'manage_scenarios',  label: '시나리오 관리',      description: '시나리오 생성·수정·삭제' },
+        { code: 'view_history',      label: '테스트 이력',        description: '배치 실행 이력 조회' },
+        { code: 'manage_guidelines', label: '법률 평가 기준',     description: '가이드라인 관리' },
+        { code: 'manage_criteria',   label: '문진 평가 기준',     description: '문진 기준 관리' },
+        { code: 'manage_rlhf',       label: 'RLHF 관리',         description: 'RLHF 데이터 관리' },
+        { code: 'use_arena',         label: 'Arena 사용',         description: 'A/B 챗봇 비교 평가' },
+        { code: 'view_logs',         label: '서버 로그',          description: '실시간 서버 로그 조회' },
+        { code: 'run_batch',         label: '배치 실행',          description: '배치 테스트 실행' },
+        { code: 'manage_settings',   label: '설정 변경',          description: '시스템 설정 관리' }
+      ];
+    }
+
+    // role 선택
+    var roleEl = document.getElementById('permModalRole');
+    if (roleEl) roleEl.value = userData.role || 'tester';
+
+    // 체크박스 리스트 동적 생성
+    var list = document.getElementById('permCheckboxList');
+    if (list) {
+      list.innerHTML = '';
+      var userPerms = {};
+      var permArr = userData.permissions || [];
+      for (var pi = 0; pi < permArr.length; pi++) { userPerms[permArr[pi]] = true; }
+
+      for (var ci = 0; ci < _permCatalog.length; ci++) {
+        var perm = _permCatalog[ci];
+        var lbl = document.createElement('label');
+        lbl.style.cssText = 'display:flex; align-items:center; gap:8px; cursor:pointer; padding:6px 8px; border-radius:6px; border:1px solid var(--border); background:var(--bg);';
+        var chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.dataset.perm = perm.code;
+        chk.checked = !!userPerms[perm.code];
+        chk.style.margin = '0';
+        var infoDiv = document.createElement('div');
+        var labelDiv = document.createElement('div');
+        labelDiv.style.cssText = 'font-size:13px;font-weight:600';
+        labelDiv.textContent = perm.label;
+        var descDiv = document.createElement('div');
+        descDiv.style.cssText = 'font-size:11px;color:var(--text-dim)';
+        descDiv.textContent = perm.description;
+        infoDiv.appendChild(labelDiv);
+        infoDiv.appendChild(descDiv);
+        lbl.appendChild(chk);
+        lbl.appendChild(infoDiv);
+        list.appendChild(lbl);
+      }
+    }
+
+    var modal = document.getElementById('permissionsModal');
+    if (modal) modal.style.display = 'flex';
+  } catch(e) {
+    showToast('권한 정보 로드 실패: ' + e.message, 'error');
+  }
+}
+
+function closePermissionsModal() {
+  var modal = document.getElementById('permissionsModal');
+  if (modal) modal.style.display = 'none';
+  _permModalUserId = null;
+}
+
+// ESC 키 + 모달 외부 클릭으로 닫기 (한 번만 등록)
+(function setupPermModalCloseHandlers() {
+  if (window._permModalHandlersInstalled) return;
+  window._permModalHandlersInstalled = true;
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      var modal = document.getElementById('permissionsModal');
+      if (modal && modal.style.display === 'flex') closePermissionsModal();
+    }
+  });
+  // 외부 overlay 클릭 시 닫기 — DOMContentLoaded 후 바인딩
+  function attachOverlay() {
+    var modal = document.getElementById('permissionsModal');
+    if (!modal) return;
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) closePermissionsModal();
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', attachOverlay);
+  } else {
+    attachOverlay();
+  }
+})();
+
+async function savePermissions() {
+  if (!_permModalUserId) return;
+  var roleEl = document.getElementById('permModalRole');
+  var role = roleEl ? roleEl.value : 'tester';
+  var checkboxes = document.querySelectorAll('#permCheckboxList input[type="checkbox"]');
+  var perms = [];
+  checkboxes.forEach(function(cb) { if (cb.checked) perms.push(cb.dataset.perm); });
+
+  try {
+    var res = await fetch('/api/users/' + encodeURIComponent(_permModalUserId) + '/permissions', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: role, permissions: perms })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    showToast('권한 저장 완료', 'success');
+    closePermissionsModal();
+    if (typeof loadTesterAccounts === 'function') loadTesterAccounts();
+  } catch(e) {
+    showToast('저장 실패: ' + e.message, 'error');
+  }
 }
 
 // ══════════════════════════════════════════
