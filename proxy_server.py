@@ -1261,6 +1261,9 @@ class ProxyHandler(BaseHTTPRequestHandler):
         }
         # 권한 기반 페이지 접근 가드 (admin은 항상 통과, advisor/tester는 permissions 체크)
         # value가 list면 OR 매칭 (둘 중 하나만 있으면 통과 — view_X 또는 manage_X 둘 다 허용)
+        # 주의: /settings는 자체 admin 로그인 모달(loginGate)이 있으므로 가드에서 제외.
+        # 페이지는 누구나 접근 가능하되 admin 인증 후만 mainContent 표시 (settings.html JS).
+        # 변경 API(POST/PUT/DELETE /api/settings)는 manage_settings 권한 필요 (perm_blocks).
         PAGE_PERMISSIONS = {
             '/manager':                'manage_scenarios',
             '/scenario_manager.html':  'manage_scenarios',
@@ -1274,8 +1277,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
             '/rlhf_manager.html':      'manage_rlhf',
             '/arena':                  'use_arena',
             '/chat_arena.html':        'use_arena',
-            '/settings':               'manage_settings',
-            '/settings.html':          'manage_settings',
+            # '/settings'는 의도적으로 제외 — admin 로그인 진입점이므로 누구나 페이지는 봐야 함
         }
         if path in file_map and not self._is_admin():
             # advisor 강제 차단: Arena 페이지는 use_arena 권한 무관하게 차단
