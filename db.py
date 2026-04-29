@@ -251,6 +251,7 @@ CREATE TABLE IF NOT EXISTS comments (
     user_query TEXT DEFAULT '',
     full_response TEXT DEFAULT '',
     created_at TEXT NOT NULL,
+    updated_at TEXT,
     FOREIGN KEY (message_id) REFERENCES messages(id),
     FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
 );
@@ -506,6 +507,7 @@ CREATE TABLE IF NOT EXISTS comments (
     user_query TEXT DEFAULT '',
     full_response TEXT DEFAULT '',
     created_at TEXT NOT NULL,
+    updated_at TEXT,
     FOREIGN KEY (message_id) REFERENCES messages(id),
     FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
 );
@@ -793,6 +795,7 @@ def init_db(db_path=None):
                 "ALTER TABLE comments ADD COLUMN IF NOT EXISTS selected_text TEXT DEFAULT ''",
                 "ALTER TABLE comments ADD COLUMN IF NOT EXISTS user_query TEXT DEFAULT ''",
                 "ALTER TABLE comments ADD COLUMN IF NOT EXISTS full_response TEXT DEFAULT ''",
+                "ALTER TABLE comments ADD COLUMN IF NOT EXISTS updated_at TEXT",
                 "ALTER TABLE messages ADD COLUMN IF NOT EXISTS consultation_eval_json JSONB",
                 "ALTER TABLE messages ADD COLUMN IF NOT EXISTS token_usage_json JSONB",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '[]'::jsonb",
@@ -1004,6 +1007,7 @@ def init_db(db_path=None):
             "ALTER TABLE comments ADD COLUMN selected_text TEXT DEFAULT ''",
             "ALTER TABLE comments ADD COLUMN user_query TEXT DEFAULT ''",
             "ALTER TABLE comments ADD COLUMN full_response TEXT DEFAULT ''",
+            "ALTER TABLE comments ADD COLUMN updated_at TEXT",
             "ALTER TABLE messages ADD COLUMN consultation_eval_json TEXT",
             "ALTER TABLE messages ADD COLUMN token_usage_json TEXT",
             "ALTER TABLE users ADD COLUMN permissions TEXT DEFAULT '[]'",
@@ -1539,9 +1543,50 @@ def get_comments(conversation_id=None, message_id=None, limit=50):
         return [_row_to_dict(r) for r in rows]
 
 
+def get_comment(comment_id):
+    """단일 커멘트 조회 (소유자 확인용)"""
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(f"SELECT * FROM comments WHERE id = {ph}", (comment_id,))
+        row = cur.fetchone()
+        return _row_to_dict(row) if row else None
+
+
+def update_comment(comment_id, content, category=None):
+    """
+    커멘트 수정 — content는 필수, category는 선택.
+    updated_at에 현재 시각 기록.
+    소유자 확인은 호출자(API 핸들러) 책임.
+    """
+    if len(content) > MAX_COMMENT_LENGTH:
+        raise ValueError(f"커멘트는 {MAX_COMMENT_LENGTH}자 이하여야 합니다 (현재: {len(content)}자)")
+    if not content.strip():
+        raise ValueError("커멘트 내용을 입력해주세요")
+
+    now = _now()
+    ph = _p()
+    with get_conn() as (conn, cur):
+        if category:
+            cur.execute(
+                f"UPDATE comments SET content = {ph}, category = {ph}, updated_at = {ph} WHERE id = {ph}",
+                (content, category, now, comment_id)
+            )
+        else:
+            cur.execute(
+                f"UPDATE comments SET content = {ph}, updated_at = {ph} WHERE id = {ph}",
+                (content, now, comment_id)
+            )
+        # 영향받은 row 수 확인 (rowcount는 SQLite/Postgres 모두 지원)
+        if hasattr(cur, 'rowcount') and cur.rowcount == 0:
+            return False
+    return True
+
+
 def delete_comment(comment_id):
     with get_conn() as (conn, cur):
         cur.execute(f"DELETE FROM comments WHERE id = {_p()}", (comment_id,))
+        if hasattr(cur, 'rowcount') and cur.rowcount == 0:
+            return False
     return True
 
 
