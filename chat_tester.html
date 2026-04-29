@@ -827,6 +827,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     setText('인증 확인 중...');
     const auth = authRes.status === 'fulfilled' ? authRes.value : {};
 
+    // 전역 보관: 커멘트 수정/삭제 권한 판단에 사용 (본인 또는 admin)
+    window._currentAuth = {
+      isAdmin: !!auth.isAdmin,
+      testerId: (auth.tester && auth.tester.id) ? auth.tester.id : '',
+    };
+
     // 역할 기반 UI 적용
     applyRoleBasedUI(auth);
 
