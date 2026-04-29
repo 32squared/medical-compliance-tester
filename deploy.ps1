@@ -77,14 +77,20 @@ Write-Host "[3/3] Deploy complete!" -ForegroundColor Green
 $url = gcloud run services describe $ServiceName --region $Region --format "value(status.url)" 2>$null
 
 Write-Host ""
-Write-Host "============================================" -ForegroundColor Cyan
-Write-Host "  URL: $url" -ForegroundColor Green
+Write-Host "════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "  ★ 운영 공식 URL (이 URL을 사용자에게 안내) ★" -ForegroundColor Yellow
+Write-Host "  → $url" -ForegroundColor Green
+Write-Host "════════════════════════════════════════════════════════════" -ForegroundColor Cyan
 Write-Host "  Chat:       $url/"
 Write-Host "  Scenario:   $url/manager"
 Write-Host "  History:    $url/history"
 Write-Host "  Settings:   $url/settings"
 Write-Host "  Guidelines: $url/guidelines"
-Write-Host "============================================" -ForegroundColor Cyan
+Write-Host "  Arena:      $url/arena"
+Write-Host "════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "참고: gcloud run deploy 출력의 'Service URL'은 다른 alias이며," -ForegroundColor DarkGray
+Write-Host "      위 공식 URL과 같은 서비스를 가리킵니다 (둘 다 동작함)." -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "Storage: Cloud SQL PostgreSQL ($SqlConnection)" -ForegroundColor Green
 Write-Host ""
