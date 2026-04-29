@@ -658,6 +658,11 @@ function applyRoleBasedUI(auth) {
 async function initTesterAndAuth() {
   try {
     const authRes = await fetch('/api/auth/status').then(r => r.json());
+    // 전역 보관: 커멘트 수정/삭제 권한 판단에 사용
+    window._currentAuth = {
+      isAdmin: !!authRes.isAdmin,
+      testerId: (authRes.tester && authRes.tester.id) ? authRes.tester.id : '',
+    };
     // 역할 기반 UI 적용
     applyRoleBasedUI(authRes);
     // 테스터 배지 또는 로그인 모달
@@ -2221,23 +2226,60 @@ function renderAssistantEvaluation(msgDiv, evalData) {
   var commentWrapper = document.createElement('div');
   commentWrapper.style.marginTop = '8px';
 
-  // 5a. Existing comments display
+  // 5a. Existing comments display (수정/삭제는 본인 또는 admin만)
   if (comments.length > 0) {
     var cmtList = document.createElement('div');
+    cmtList.id = 'cmtList_' + msgId;
     cmtList.style.cssText = 'margin-bottom:8px;';
-    var cmtHtml = '';
+    var auth = window._currentAuth || { isAdmin: false, testerId: '' };
     for (var ci2 = 0; ci2 < comments.length; ci2++) {
       var cmt = comments[ci2];
+      var cmtId = cmt.id || cmt.commentId || '';
+      var ownerId = cmt.userId || cmt.user_id || '';
+      var canEdit = !!(auth.isAdmin || (auth.testerId && auth.testerId === ownerId));
       var selText = cmt.selectedText || cmt.selected_text || '';
+      var updatedAt = cmt.updatedAt || cmt.updated_at || '';
       var selHtml = selText ? '<div style="font-size:11px;color:var(--text-dim);background:var(--surface);padding:4px 8px;border-radius:4px;margin:4px 0;border-left:3px solid var(--yellow);max-height:40px;overflow-y:auto">\uD83D\uDCCC "' + escapeHtml(selText.substring(0, 150)) + '"</div>' : '';
-      cmtHtml += '<div class="comment-item">' +
+
+      var item = document.createElement('div');
+      item.className = 'comment-item';
+      item.id = 'cmtItem_' + cmtId;
+      item.style.position = 'relative';
+      item.dataset.cmtId = cmtId;
+      item.dataset.cmtCategory = cmt.category || '기타';
+      item.dataset.cmtContent = cmt.content || '';
+
+      var actionHtml = '';
+      if (canEdit && cmtId) {
+        actionHtml =
+          '<div class="comment-actions" style="position:absolute;top:8px;right:10px;display:flex;gap:4px">' +
+            '<button class="cmt-edit-btn" type="button" title="수정" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);font-size:11px;padding:2px 7px;border-radius:4px;cursor:pointer">\u270F\uFE0F</button>' +
+            '<button class="cmt-del-btn" type="button" title="삭제" style="background:transparent;border:1px solid var(--border);color:#ef4444;font-size:11px;padding:2px 7px;border-radius:4px;cursor:pointer">\uD83D\uDDD1</button>' +
+          '</div>';
+      }
+      var updatedTag = updatedAt ? ' <span style="color:var(--text-dim);font-size:10px">(수정됨)</span>' : '';
+
+      item.innerHTML =
+        actionHtml +
         '<span class="comment-category">[' + escapeHtml(cmt.category) + ']</span>' +
         selHtml +
         '<div class="comment-content">' + escapeHtml(cmt.content) + '</div>' +
-        '<div class="comment-meta">' + escapeHtml(cmt.userName || '') + ' \u00B7 ' + (cmt.createdAt ? new Date(cmt.createdAt).toLocaleDateString() : '') + '</div>' +
-      '</div>';
+        '<div class="comment-meta">' + escapeHtml(cmt.userName || cmt.user_name || '') + ' \u00B7 ' +
+          (cmt.createdAt || cmt.created_at ? new Date(cmt.createdAt || cmt.created_at).toLocaleDateString() : '') +
+          updatedTag +
+        '</div>';
+
+      if (canEdit && cmtId) {
+        var editBtn = item.querySelector('.cmt-edit-btn');
+        var delBtn = item.querySelector('.cmt-del-btn');
+        (function(itemEl, cId) {
+          if (editBtn) editBtn.addEventListener('click', function() { startEditComment(itemEl, cId); });
+          if (delBtn) delBtn.addEventListener('click', function() { deleteCommentConfirm(cId); });
+        })(item, cmtId);
+      }
+
+      cmtList.appendChild(item);
     }
-    cmtList.innerHTML = cmtHtml;
     commentWrapper.appendChild(cmtList);
   }
 
@@ -2700,6 +2742,133 @@ function addRestoredAssistantMessage(text, meta = {}) {
 function toggleCommentForm(msgId) {
   const form = document.getElementById('commentForm_' + msgId);
   if (form) form.style.display = form.style.display === 'none' ? '' : 'none';
+}
+
+// ── 커멘트 수정/삭제 ──
+function startEditComment(itemEl, commentId) {
+  if (!itemEl || !commentId) return;
+  var category = itemEl.dataset.cmtCategory || '기타';
+  var content = itemEl.dataset.cmtContent || '';
+
+  var contentEl = itemEl.querySelector('.comment-content');
+  var actionEl = itemEl.querySelector('.comment-actions');
+  if (contentEl) contentEl.style.display = 'none';
+  if (actionEl) actionEl.style.display = 'none';
+
+  var existing = itemEl.querySelector('.cmt-edit-form');
+  if (existing) {
+    existing.style.display = '';
+    return;
+  }
+
+  var form = document.createElement('div');
+  form.className = 'cmt-edit-form';
+  form.style.cssText = 'margin-top:6px;padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:6px';
+
+  var sel = document.createElement('select');
+  sel.style.cssText = 'width:100%;padding:6px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;font-size:12px;margin-bottom:6px';
+  var catOptions = ['부정확한 정보','불충분한 답변','위험한 조언','면책 조항 누락','과잉 진단/처방','출처 불명확','표현 부적절','기타'];
+  for (var oi = 0; oi < catOptions.length; oi++) {
+    var opt = document.createElement('option');
+    opt.value = catOptions[oi];
+    opt.textContent = catOptions[oi];
+    if (catOptions[oi] === category) opt.selected = true;
+    sel.appendChild(opt);
+  }
+  if (catOptions.indexOf(category) < 0 && category) {
+    var extraOpt = document.createElement('option');
+    extraOpt.value = category;
+    extraOpt.textContent = category;
+    extraOpt.selected = true;
+    sel.appendChild(extraOpt);
+  }
+  form.appendChild(sel);
+
+  var ta = document.createElement('textarea');
+  ta.rows = 3;
+  ta.value = content;
+  ta.style.cssText = 'width:100%;padding:6px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;font-size:13px;line-height:1.5;box-sizing:border-box;resize:vertical';
+  form.appendChild(ta);
+
+  var btns = document.createElement('div');
+  btns.style.cssText = 'display:flex;gap:6px;margin-top:6px;justify-content:flex-end';
+  var saveBtn = document.createElement('button');
+  saveBtn.type = 'button';
+  saveBtn.textContent = '저장';
+  saveBtn.style.cssText = 'padding:6px 14px;background:var(--accent);color:#0f172a;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer';
+  var cancelBtn = document.createElement('button');
+  cancelBtn.type = 'button';
+  cancelBtn.textContent = '취소';
+  cancelBtn.style.cssText = 'padding:6px 14px;background:transparent;color:var(--text-dim);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer';
+  btns.appendChild(cancelBtn);
+  btns.appendChild(saveBtn);
+  form.appendChild(btns);
+
+  saveBtn.addEventListener('click', function() {
+    var newContent = ta.value.trim();
+    var newCategory = sel.value;
+    if (!newContent) { showToast('내용을 입력하세요', 'error'); return; }
+    saveEditComment(commentId, newContent, newCategory, saveBtn);
+  });
+  cancelBtn.addEventListener('click', function() {
+    cancelEditComment(itemEl);
+  });
+
+  itemEl.appendChild(form);
+  ta.focus();
+}
+
+function cancelEditComment(itemEl) {
+  if (!itemEl) return;
+  var contentEl = itemEl.querySelector('.comment-content');
+  var actionEl = itemEl.querySelector('.comment-actions');
+  var form = itemEl.querySelector('.cmt-edit-form');
+  if (form) form.parentNode.removeChild(form);
+  if (contentEl) contentEl.style.display = '';
+  if (actionEl) actionEl.style.display = '';
+}
+
+async function saveEditComment(commentId, content, category, btn) {
+  if (!currentConvId) { showToast('대화를 확인할 수 없습니다', 'error'); return; }
+  if (btn) { btn.disabled = true; btn.textContent = '저장 중...'; }
+  try {
+    var res = await fetch('/api/conversations/' + encodeURIComponent(currentConvId) + '/comments/' + encodeURIComponent(commentId), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: content, category: category })
+    });
+    var data = await res.json();
+    if (res.ok && data.success) {
+      showToast('커멘트가 수정되었습니다', 'success');
+      loadConversation(currentConvId);
+    } else {
+      showToast(data.error || '수정 실패', 'error');
+    }
+  } catch (e) {
+    showToast('서버 연결 실패', 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '저장'; }
+  }
+}
+
+async function deleteCommentConfirm(commentId) {
+  if (!currentConvId) { showToast('대화를 확인할 수 없습니다', 'error'); return; }
+  if (!confirm('이 커멘트를 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.')) return;
+  try {
+    var res = await fetch('/api/conversations/' + encodeURIComponent(currentConvId) + '/comments/' + encodeURIComponent(commentId), {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    var data = await res.json();
+    if (res.ok && data.success) {
+      showToast('커멘트가 삭제되었습니다', 'success');
+      loadConversation(currentConvId);
+    } else {
+      showToast(data.error || '삭제 실패', 'error');
+    }
+  } catch (e) {
+    showToast('서버 연결 실패', 'error');
+  }
 }
 
 async function submitComment(msgId) {
