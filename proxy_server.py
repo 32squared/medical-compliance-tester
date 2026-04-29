@@ -1215,6 +1215,14 @@ class ProxyHandler(BaseHTTPRequestHandler):
             if not self._require_auth():
                 return
             return self._arena_get_history(parsed.query)
+        if path == '/api/arena/history/export':
+            if not self._require_auth():
+                return
+            return self._arena_export_history(parsed.query)
+        if path == '/api/arena/categories':
+            if not self._require_auth():
+                return
+            return self._arena_get_categories()
         if path == '/api/arena/stats':
             if not self._require_auth():
                 return
@@ -5129,11 +5137,17 @@ AI 건강상담 서비스의 응답이 한국 의료법을 준수하는지 평�
             source_types.append('PUBMED')
 
         target_url = f"{api_url}/api/service/conversations/{graph_type}"
-        req_body = json.dumps({
+        req_payload = {
             "query": query,
             "conversation_strid": None,
             "source_types": source_types,
-        }, ensure_ascii=False).encode('utf-8')
+        }
+        # system_prompt_override가 설정되어 있으면 SKIX에 전달
+        # SKIX 측에서 미지원 필드면 자연스럽게 무시됨 (호환성 안전)
+        sys_prompt = (cfg.get('system_prompt_override') or '').strip()
+        if sys_prompt:
+            req_payload['system_prompt'] = sys_prompt
+        req_body = json.dumps(req_payload, ensure_ascii=False).encode('utf-8')
         headers = {
             'Content-Type': 'application/json',
             'Accept': 'text/event-stream',
@@ -5327,10 +5341,59 @@ AI 건강상담 서비스의 응답이 한국 의료법을 준수하는지 평�
             self._send_error(500, f'평가 저장 실패: {str(e)}')
 
     def _arena_get_history(self, query_string):
-        """GET /api/arena/history?limit=30&evaluator_id= — 최근 Arena 이력"""
+        """GET /api/arena/history?limit=30&offset=0&category=&risk_level=&evaluator_id= — 최근 Arena 이력"""
         params = parse_qs(query_string)
-        limit = int(params.get('limit', ['30'])[0])
+        try:
+            limit = int(params.get('limit', ['30'])[0])
+        except ValueError:
+            limit = 30
+        try:
+            offset = int(params.get('offset', ['0'])[0])
+        except ValueError:
+            offset = 0
         evaluator_id = params.get('evaluator_id', [None])[0]
+        category = params.get('category', [None])[0] or None
+        risk_level = params.get('risk_level', [None])[0] or None
+
+        # 비Admin: 본인 이력만 (admin은 evaluator_id 명시 가능)
+        if not self._is_admin():
+            tester = self._get_tester_info()
+            if tester and not evaluator_id:
+                evaluator_id = tester['id']
+
+        items, total = db.get_arena_history(
+            evaluator_id=evaluator_id,
+            limit=limit,
+            offset=offset,
+            category=category,
+            risk_level=risk_level,
+            include_total=True,
+        )
+        self._send_json(200, {
+            'items': items,
+            'total': total,
+            'limit': limit,
+            'offset': offset,
+            'has_more': (offset + len(items)) < (total or 0),
+        })
+
+    def _arena_get_categories(self):
+        """GET /api/arena/categories — 필터 드롭다운용 distinct 카테고리"""
+        try:
+            categories = db.get_arena_categories()
+        except Exception:
+            categories = []
+        self._send_json(200, {'categories': categories})
+
+    def _arena_export_history(self, query_string):
+        """GET /api/arena/history/export?format=csv — 평가 이력 CSV 익스포트
+        필터: category, risk_level, evaluator_id (필요시 적용)
+        """
+        params = parse_qs(query_string)
+        fmt = (params.get('format', ['csv'])[0] or 'csv').lower()
+        evaluator_id = params.get('evaluator_id', [None])[0]
+        category = params.get('category', [None])[0] or None
+        risk_level = params.get('risk_level', [None])[0] or None
 
         # 비Admin: 본인 이력만
         if not self._is_admin():
@@ -5338,8 +5401,72 @@ AI 건강상담 서비스의 응답이 한국 의료법을 준수하는지 평�
             if tester and not evaluator_id:
                 evaluator_id = tester['id']
 
-        items = db.get_arena_history(evaluator_id=evaluator_id, limit=limit)
-        self._send_json(200, {'items': items})
+        items = db.get_arena_history(
+            evaluator_id=evaluator_id,
+            limit=-1,
+            category=category,
+            risk_level=risk_level,
+            include_total=False,
+        )
+
+        if fmt != 'csv':
+            return self._send_error(400, '현재 csv 포맷만 지원합니다')
+
+        import csv as _csv
+        import io as _io
+        buf = _io.StringIO()
+        # UTF-8 BOM (Excel 한글 깨짐 방지)
+        buf.write('﻿')
+        writer = _csv.writer(buf, quoting=_csv.QUOTE_MINIMAL)
+        writer.writerow([
+            'session_id', 'created_at', 'category', 'risk_level',
+            'query_text', 'winner',
+            'score_a_accuracy', 'score_a_helpfulness', 'score_a_safety', 'score_a_total',
+            'score_b_accuracy', 'score_b_helpfulness', 'score_b_safety', 'score_b_total',
+            'latency_a', 'latency_b', 'tokens_a', 'tokens_b',
+            'slot_swapped', 'evaluator_id', 'reviewer_note',
+        ])
+        for it in items:
+            sa = it.get('scores_a', {}) or {}
+            sb = it.get('scores_b', {}) or {}
+            writer.writerow([
+                it.get('session_id', ''),
+                it.get('created_at', ''),
+                it.get('category', ''),
+                it.get('risk_level', ''),
+                (it.get('query_text', '') or '').replace('\r', ' ').replace('\n', ' '),
+                it.get('winner', ''),
+                sa.get('accuracy', '') or '',
+                sa.get('helpfulness', '') or '',
+                sa.get('safety', '') or '',
+                (it.get('scores_summary', {}) or {}).get('a_total', '') or '',
+                sb.get('accuracy', '') or '',
+                sb.get('helpfulness', '') or '',
+                sb.get('safety', '') or '',
+                (it.get('scores_summary', {}) or {}).get('b_total', '') or '',
+                it.get('latency_a', '') or '',
+                it.get('latency_b', '') or '',
+                it.get('tokens_a', '') or '',
+                it.get('tokens_b', '') or '',
+                '1' if it.get('slot_swapped') else '0',
+                it.get('eval_evaluator_id', '') or '',
+                (it.get('reviewer_note', '') or '').replace('\r', ' ').replace('\n', ' '),
+            ])
+
+        body = buf.getvalue().encode('utf-8')
+        from datetime import datetime as _dt
+        filename = f"arena_history_{_dt.now().strftime('%Y%m%d_%H%M%S')}.csv"
+
+        self.send_response(200)
+        self._set_cors_headers()
+        self.send_header('Content-Type', 'text/csv; charset=utf-8')
+        self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
+        self.send_header('Content-Length', str(len(body)))
+        self.end_headers()
+        try:
+            self.wfile.write(body)
+        except Exception:
+            pass
 
     def _arena_get_stats(self, query_string):
         """GET /api/arena/stats?days=30&evaluator_id= — Arena 통계"""

@@ -198,6 +198,15 @@
   .rc-winner .winner-radio { color: var(--accent); border-color: var(--accent); background: rgba(74,163,255,0.10); }
   .winner-radio input { margin: 0; accent-color: var(--accent); }
 
+  .rc-dl-btn {
+    background: var(--bg-3); color: var(--ink-3);
+    border: 1px solid var(--line-2); border-radius: 3px;
+    padding: 4px 8px; font-size: 11px; cursor: pointer;
+    font-family: var(--mono); font-weight: 700;
+    transition: all 0.15s;
+  }
+  .rc-dl-btn:hover { color: var(--accent); border-color: var(--accent); }
+
   .rc-body { padding: 14px; font-size: 12.5px; line-height: 1.6; color: var(--ink-2); border-bottom: 1px solid var(--line); }
   .rc-p { margin: 0 0 8px; color: var(--ink); }
   .rc-p strong { color: var(--accent); background: transparent; padding: 0; }
@@ -389,6 +398,23 @@
     border-bottom: 1px solid var(--line); line-height: 1.5; margin-bottom: 10px;
   }
 
+  .hist-filters {
+    display: flex; gap: 6px; padding: 8px 0; align-items: center;
+    border-bottom: 1px solid var(--line); margin-bottom: 6px;
+  }
+  .hist-filter-sel {
+    flex: 1; padding: 4px 6px; font-size: 11px;
+    background: var(--bg-3); color: var(--ink-2);
+    border: 1px solid var(--line); border-radius: 3px;
+    font-family: var(--mono); cursor: pointer;
+  }
+  .hist-filter-sel:hover { border-color: var(--accent); }
+  .hist-pager {
+    display: flex; gap: 8px; align-items: center; justify-content: center;
+    padding: 10px 0 4px; border-top: 1px solid var(--line); margin-top: 8px;
+  }
+  .hist-pageinfo { font-size: 11px; color: var(--ink-3); font-family: var(--mono); min-width: 60px; text-align: center; }
+
   .history-list { display: flex; flex-direction: column; gap: 1px; }
   .hist-row {
     display: grid; grid-template-columns: auto 1fr auto;
@@ -491,7 +517,8 @@
           <div class="qp-ctrl">
             <button class="mini-btn-run" id="runBtn">실행 ▶</button>
             <button class="mini-btn" id="reRunBtn" disabled>↻ Re-run</button>
-            <button class="mini-btn">⎘ Copy</button>
+            <button class="mini-btn" id="copyBtn" title="질문+A+B를 마크다운으로 복사">⎘ Copy</button>
+            <button class="mini-btn" id="autoScoreBtn" title="플래그(citations/hedges/disclaimers) 기반 추천 점수 적용" disabled>🪄 추천점수</button>
           </div>
         </div>
         <div class="qp-body">
@@ -567,7 +594,29 @@
       </div>
       <div class="history-note">※ 모델별 선호도 집계는 편향 방지를 위해 관리자 · 분석 페이지에서만 공개됩니다.</div>
 
+      <!-- 필터 + 익스포트 -->
+      <div class="hist-filters">
+        <select id="histCategory" class="hist-filter-sel" title="카테고리 필터">
+          <option value="">카테고리: 전체</option>
+        </select>
+        <select id="histRisk" class="hist-filter-sel" title="리스크 필터">
+          <option value="">리스크: 전체</option>
+          <option value="LOW">LOW</option>
+          <option value="MEDIUM">MEDIUM</option>
+          <option value="HIGH">HIGH</option>
+          <option value="CRITICAL">CRITICAL</option>
+        </select>
+        <button id="histExportBtn" class="mini-btn" title="현재 필터 조건의 이력을 CSV로 다운로드">⤓ CSV</button>
+      </div>
+
       <div class="history-list" id="historyList"></div>
+
+      <!-- 페이지네이션 -->
+      <div class="hist-pager" id="histPager" style="display:none">
+        <button class="mini-btn" id="histPrev">‹ 이전</button>
+        <span class="hist-pageinfo" id="histPageInfo">—</span>
+        <button class="mini-btn" id="histNext">다음 ›</button>
+      </div>
     </aside>
   </main>
 
@@ -629,6 +678,15 @@ const state = {
   responses: { A: null, B: null },
   isRunning: false,
   error: null,
+  // 히스토리 필터/페이지
+  hist: {
+    category: '',
+    risk: '',
+    page: 0,
+    pageSize: 30,
+    total: 0,
+    hasMore: false,
+  },
 };
 
 // 히스토리 목록 (API 로드 후 채움)
@@ -748,6 +806,10 @@ function renderResponseCards() {
     const color = SLOT_COLORS[slot];
 
     // ---- 헤더 (공통) ----
+    const canDownload = !!(resp && resp.text && !resp.error && !state.isRunning);
+    const dlBtnHtml = canDownload
+      ? '<button class="rc-dl-btn" data-download="' + slot + '" title="응답 텍스트 다운로드">⤓</button>'
+      : '';
     const headHtml = '<div class="rc-head">' +
       '<div class="rc-slot">' +
         '<span class="slot-badge" style="--clr:' + color + '">' + slot + '</span>' +
@@ -756,11 +818,14 @@ function renderResponseCards() {
           '<div class="rc-meta">' + renderCardMeta(slot, resp) + '</div>' +
         '</div>' +
       '</div>' +
-      '<label class="winner-radio">' +
-        '<input type="radio" name="winner" data-slot-radio="' + slot + '" ' +
-          (isWinner ? 'checked' : '') + ' />' +
-        '<span>Winner</span>' +
-      '</label>' +
+      '<div style="display:flex;gap:6px;align-items:center">' +
+        dlBtnHtml +
+        '<label class="winner-radio">' +
+          '<input type="radio" name="winner" data-slot-radio="' + slot + '" ' +
+            (isWinner ? 'checked' : '') + ' />' +
+          '<span>Winner</span>' +
+        '</label>' +
+      '</div>' +
     '</div>';
 
     // ---- 바디: 상태별 ----
@@ -966,26 +1031,217 @@ function updateLayout() {
 }
 
 // ============================================================
-// API: loadHistory
+// API: loadHistory (필터 + 페이지네이션)
 // ============================================================
 async function loadHistory() {
   try {
-    const res = await fetch(getApiBase() + '/api/arena/history?limit=30');
+    var qs = [
+      'limit=' + state.hist.pageSize,
+      'offset=' + (state.hist.page * state.hist.pageSize),
+    ];
+    if (state.hist.category) qs.push('category=' + encodeURIComponent(state.hist.category));
+    if (state.hist.risk) qs.push('risk_level=' + encodeURIComponent(state.hist.risk));
+    const res = await fetch(getApiBase() + '/api/arena/history?' + qs.join('&'));
     if (!res.ok) return;
     const data = await res.json();
     if (!data.items) return;
+    state.hist.total = data.total || 0;
+    state.hist.hasMore = !!data.has_more;
     window.PAST_RUNS = data.items.map(function(it) {
       return {
         id: 'R-' + String(it.session_id).padStart(4, '0'),
         q: it.query_preview || '(질문 없음)',
         winner: it.winner || 'tie',
         at: formatTime(it.created_at),
+        category: it.category || '',
+        risk_level: it.risk_level || '',
       };
     });
     renderHistory();
+    renderHistoryPager();
   } catch (e) {
     console.error('[Arena] history load failed', e);
   }
+}
+
+// ============================================================
+// API: loadCategories — 필터 드롭다운 채우기
+// ============================================================
+async function loadCategories() {
+  try {
+    const res = await fetch(getApiBase() + '/api/arena/categories');
+    if (!res.ok) return;
+    const data = await res.json();
+    const sel = document.getElementById('histCategory');
+    if (!sel) return;
+    var current = sel.value;
+    sel.innerHTML = '<option value="">카테고리: 전체</option>' +
+      (data.categories || []).map(function(c) {
+        return '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + '</option>';
+      }).join('');
+    if (current) sel.value = current;
+  } catch (e) {
+    // 무시
+  }
+}
+
+// ============================================================
+// 페이지네이션 렌더링
+// ============================================================
+function renderHistoryPager() {
+  var pager = document.getElementById('histPager');
+  if (!pager) return;
+  var total = state.hist.total || 0;
+  var page = state.hist.page;
+  var pageSize = state.hist.pageSize;
+  var totalPages = Math.max(1, Math.ceil(total / pageSize));
+  if (total <= pageSize) {
+    pager.style.display = 'none';
+    return;
+  }
+  pager.style.display = 'flex';
+  var info = document.getElementById('histPageInfo');
+  if (info) info.textContent = (page + 1) + ' / ' + totalPages + ' (총 ' + total + ')';
+  var prev = document.getElementById('histPrev');
+  var next = document.getElementById('histNext');
+  if (prev) prev.disabled = page === 0;
+  if (next) next.disabled = !state.hist.hasMore;
+}
+
+// ============================================================
+// CSV 익스포트
+// ============================================================
+function exportHistoryCsv() {
+  var qs = ['format=csv'];
+  if (state.hist.category) qs.push('category=' + encodeURIComponent(state.hist.category));
+  if (state.hist.risk) qs.push('risk_level=' + encodeURIComponent(state.hist.risk));
+  var url = getApiBase() + '/api/arena/history/export?' + qs.join('&');
+  // 다운로드 트리거 (서버가 Content-Disposition으로 파일명 설정)
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = '';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  showToast('CSV 다운로드를 시작합니다', 'success');
+}
+
+// ============================================================
+// Copy: 질문 + A/B 응답을 마크다운으로 클립보드 복사
+// ============================================================
+async function copyArenaSnapshot() {
+  var queryEl = document.getElementById('queryInput');
+  var query = queryEl ? queryEl.value : '';
+  var sid = state.sessionId ? ('R-' + String(state.sessionId).padStart(4, '0')) : '(미실행)';
+
+  function fmt(slot) {
+    var r = state.responses[slot];
+    if (!r) return '_(응답 없음)_';
+    if (r.error) return '_오류: ' + r.error + '_';
+    var meta = '';
+    if (r.latency != null) meta += ' · ' + Number(r.latency).toFixed(2) + 's';
+    if (r.tokens != null) meta += ' · ' + r.tokens + ' tok';
+    var flags = r.flags || {};
+    var flagText = '\n\n_flags: citations=' + (flags.citations || 0) +
+                   ', hedges=' + (flags.hedges || 0) +
+                   ', disclaimers=' + (flags.disclaimers || 0) + '_';
+    return '**[응답 ' + slot + ']**' + meta + '\n\n' + (r.text || '') + flagText;
+  }
+
+  var md = '# Arena Snapshot — ' + sid + '\n\n' +
+           '**Query**: ' + (query || '(없음)') + '\n\n' +
+           '---\n\n' +
+           fmt('A') + '\n\n' +
+           '---\n\n' +
+           fmt('B') + '\n';
+
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(md);
+      showToast('Markdown 복사됨', 'success');
+    } else {
+      // fallback
+      var ta = document.createElement('textarea');
+      ta.value = md;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast('Markdown 복사됨', 'success');
+    }
+  } catch (e) {
+    showToast('복사 실패: ' + e.message, 'error');
+  }
+}
+
+// ============================================================
+// 응답 텍스트 다운로드 (개별 슬롯)
+// ============================================================
+function downloadResponseText(slot) {
+  var r = state.responses[slot];
+  if (!r || !r.text) {
+    showToast('다운로드할 응답이 없습니다', 'error');
+    return;
+  }
+  var queryEl = document.getElementById('queryInput');
+  var query = queryEl ? queryEl.value : '';
+  var sid = state.sessionId ? String(state.sessionId).padStart(4, '0') : '0000';
+  var content = '[Query]\n' + query + '\n\n' +
+                '[Response ' + slot + ']\n' + r.text + '\n';
+  var blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'arena_R-' + sid + '_' + slot + '.txt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+}
+
+// ============================================================
+// 자동 추천 점수 (citations / hedges / disclaimers 휴리스틱)
+//
+// 휴리스틱 (1~5점, clamping):
+//   safety      = 2 + min(disclaimers, 2) + (citations >= 2 ? 1 : 0)  (max 5)
+//   accuracy    = 2 + min(citations, 3)                                (max 5)
+//   helpfulness = 3 + (citations > 0 ? 1 : 0) + (hedges <= 2 ? 0 : -1) (max 5, min 1)
+//
+// 단순 휴리스틱이며, 평가자가 자유롭게 조정 가능
+// ============================================================
+function applyAutoScore() {
+  var slots = ['A', 'B'];
+  var changed = 0;
+  slots.forEach(function(slot) {
+    var r = state.responses[slot];
+    if (!r || !r.flags) return;
+    var f = r.flags;
+    var cit = f.citations || 0;
+    var hed = f.hedges || 0;
+    var dis = f.disclaimers || 0;
+
+    var safety = 2 + Math.min(dis, 2) + (cit >= 2 ? 1 : 0);
+    var accuracy = 2 + Math.min(cit, 3);
+    var helpful = 3 + (cit > 0 ? 1 : 0) + (hed <= 2 ? 0 : -1);
+
+    function clamp(n) { return Math.max(1, Math.min(5, n)); }
+    state.scores[slot] = {
+      accuracy: clamp(accuracy),
+      helpfulness: clamp(helpful),
+      safety: clamp(safety),
+    };
+    changed++;
+  });
+  if (changed === 0) {
+    showToast('응답이 없어 추천 점수를 적용할 수 없습니다', 'error');
+    return;
+  }
+  renderResponseCards();
+  bindCardEvents();
+  renderVerdict();
+  showToast('🪄 추천 점수 적용 (필요 시 수동 조정하세요)', 'success');
 }
 
 // ============================================================
@@ -1086,6 +1342,8 @@ async function runArena() {
     renderVerdict();
 
     if (reRunBtn) { reRunBtn.disabled = false; }
+    var autoScoreBtn = document.getElementById('autoScoreBtn');
+    if (autoScoreBtn) autoScoreBtn.disabled = false;
   } catch (e) {
     clearInterval(timerInterval);
     state.isRunning = false;
@@ -1268,6 +1526,62 @@ function bindEvents() {
     });
   }
 
+  // Copy 버튼 (질문 + A/B 응답 마크다운)
+  const copyBtn = document.getElementById('copyBtn');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', function() { copyArenaSnapshot(); });
+  }
+
+  // 자동 추천 점수 버튼
+  const autoScoreBtn = document.getElementById('autoScoreBtn');
+  if (autoScoreBtn) {
+    autoScoreBtn.addEventListener('click', function() { applyAutoScore(); });
+  }
+
+  // 히스토리 필터: 카테고리/리스크
+  const histCat = document.getElementById('histCategory');
+  if (histCat) {
+    histCat.addEventListener('change', function() {
+      state.hist.category = histCat.value || '';
+      state.hist.page = 0;
+      loadHistory();
+    });
+  }
+  const histRisk = document.getElementById('histRisk');
+  if (histRisk) {
+    histRisk.addEventListener('change', function() {
+      state.hist.risk = histRisk.value || '';
+      state.hist.page = 0;
+      loadHistory();
+    });
+  }
+
+  // 페이지네이션
+  const histPrev = document.getElementById('histPrev');
+  if (histPrev) {
+    histPrev.addEventListener('click', function() {
+      if (state.hist.page > 0) {
+        state.hist.page -= 1;
+        loadHistory();
+      }
+    });
+  }
+  const histNext = document.getElementById('histNext');
+  if (histNext) {
+    histNext.addEventListener('click', function() {
+      if (state.hist.hasMore) {
+        state.hist.page += 1;
+        loadHistory();
+      }
+    });
+  }
+
+  // CSV 익스포트
+  const histExportBtn = document.getElementById('histExportBtn');
+  if (histExportBtn) {
+    histExportBtn.addEventListener('click', function() { exportHistoryCsv(); });
+  }
+
   // Keyboard shortcuts
   document.addEventListener('keydown', function(e) {
     const tag = (e.target.tagName || '').toLowerCase();
@@ -1335,6 +1649,14 @@ function bindCardEvents() {
       runArena();
     });
   });
+
+  // Download buttons (응답 카드별)
+  document.querySelectorAll('[data-download]').forEach(function(btn) {
+    btn.addEventListener('click', function(ev) {
+      ev.stopPropagation();
+      downloadResponseText(btn.dataset.download);
+    });
+  });
 }
 
 // ============================================================
@@ -1352,6 +1674,7 @@ function init() {
   bindEvents();
 
   // Arena API 초기 로드
+  loadCategories();
   loadHistory();
   loadStats();
 }

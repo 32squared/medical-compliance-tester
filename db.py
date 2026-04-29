@@ -2806,10 +2806,25 @@ def save_arena_evaluation(session_id: int, winner: str, scores: dict,
     return eval_id
 
 
-def get_arena_history(evaluator_id: str = None, limit: int = 30) -> list:
+def get_arena_history(
+    evaluator_id: str = None,
+    limit: int = 30,
+    offset: int = 0,
+    category: str = None,
+    risk_level: str = None,
+    include_total: bool = False,
+) -> list:
     """
     최근 Arena 세션 + 평가 결과 목록.
-    각 항목: {session_id, query_text, query_preview, winner, created_at, scores_summary}
+    각 항목: {session_id, query_text, query_preview, winner, created_at, scores_summary, ...}
+
+    Args:
+        evaluator_id: 특정 평가자만 (None=전체)
+        limit: 페이지 크기 (-1=무제한)
+        offset: 페이지 오프셋
+        category: 카테고리 필터 (None=전체)
+        risk_level: 리스크 레벨 필터 (None=전체)
+        include_total: True면 (items, total_count) 튜플 반환
     """
     ph = _p()
     conditions = []
@@ -2817,20 +2832,46 @@ def get_arena_history(evaluator_id: str = None, limit: int = 30) -> list:
     if evaluator_id:
         conditions.append(f"s.evaluator_id = {ph}")
         params.append(evaluator_id)
+    if category:
+        conditions.append(f"s.category = {ph}")
+        params.append(category)
+    if risk_level:
+        conditions.append(f"s.risk_level = {ph}")
+        params.append(risk_level)
     where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
-    params.append(limit)
 
     with get_conn() as (conn, cur):
+        # total count (페이지네이션용)
+        total = None
+        if include_total:
+            cur.execute(
+                f"SELECT COUNT(*) FROM arena_sessions s {where}",
+                params
+            )
+            row = cur.fetchone()
+            d_count = _row_to_dict(row)
+            total = list(d_count.values())[0] if d_count else 0
+
+        # 실제 데이터 조회
+        if limit < 0:
+            limit_sql = ""
+            limit_params = []
+        else:
+            limit_sql = f"LIMIT {ph} OFFSET {ph}"
+            limit_params = [limit, offset]
+
         cur.execute(
-            f"""SELECT s.id AS session_id, s.query_text, s.status, s.created_at,
-                       s.latency_a, s.latency_b,
+            f"""SELECT s.id AS session_id, s.query_text, s.category, s.risk_level,
+                       s.status, s.created_at, s.latency_a, s.latency_b,
+                       s.tokens_a, s.tokens_b, s.slot_swapped,
                        e.winner, e.score_a_accuracy, e.score_a_helpfulness, e.score_a_safety,
-                       e.score_b_accuracy, e.score_b_helpfulness, e.score_b_safety
+                       e.score_b_accuracy, e.score_b_helpfulness, e.score_b_safety,
+                       e.reviewer_note, e.evaluator_id AS eval_evaluator_id, e.created_at AS eval_created_at
                 FROM arena_sessions s
                 LEFT JOIN arena_evaluations e ON e.session_id = s.id
                 {where}
-                ORDER BY s.created_at DESC LIMIT {ph}""",
-            params
+                ORDER BY s.created_at DESC {limit_sql}""",
+            params + limit_params
         )
         rows = cur.fetchall()
 
@@ -2844,14 +2885,45 @@ def get_arena_history(evaluator_id: str = None, limit: int = 30) -> list:
             'session_id': d.get('session_id'),
             'query_text': query_text,
             'query_preview': query_text[:80] + ('...' if len(query_text) > 80 else ''),
+            'category': d.get('category', ''),
+            'risk_level': d.get('risk_level', ''),
             'winner': d.get('winner', ''),
             'status': d.get('status', ''),
             'created_at': d.get('created_at', ''),
+            'eval_created_at': d.get('eval_created_at', ''),
+            'eval_evaluator_id': d.get('eval_evaluator_id', ''),
             'latency_a': d.get('latency_a'),
             'latency_b': d.get('latency_b'),
+            'tokens_a': d.get('tokens_a'),
+            'tokens_b': d.get('tokens_b'),
+            'slot_swapped': bool(d.get('slot_swapped')) if d.get('slot_swapped') is not None else False,
+            'reviewer_note': d.get('reviewer_note', '') or '',
+            'scores_a': {
+                'accuracy': d.get('score_a_accuracy'),
+                'helpfulness': d.get('score_a_helpfulness'),
+                'safety': d.get('score_a_safety'),
+            },
+            'scores_b': {
+                'accuracy': d.get('score_b_accuracy'),
+                'helpfulness': d.get('score_b_helpfulness'),
+                'safety': d.get('score_b_safety'),
+            },
             'scores_summary': {'a_total': sa_total, 'b_total': sb_total},
         })
+
+    if include_total:
+        return results, total
     return results
+
+
+def get_arena_categories() -> list:
+    """Arena 세션에서 사용된 distinct 카테고리 목록 반환"""
+    with get_conn() as (conn, cur):
+        cur.execute(
+            "SELECT DISTINCT category FROM arena_sessions WHERE category IS NOT NULL AND category <> '' ORDER BY category"
+        )
+        rows = cur.fetchall()
+    return [_row_to_dict(r).get('category', '') for r in rows if _row_to_dict(r).get('category')]
 
 
 def get_arena_stats(evaluator_id: str = None, days: int = 30) -> dict:
