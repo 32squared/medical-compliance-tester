@@ -97,10 +97,10 @@ Write-Host "[3/3] DEV Deploy complete!" -ForegroundColor Green
 $url = gcloud run services describe $ServiceName --region $Region --format "value(status.url)" 2>$null
 
 Write-Host ""
-Write-Host "════════════════════════════════════════════════════════════" -ForegroundColor Cyan
-Write-Host "  ★ DEV 공식 URL (gcloud 공식 alias) ★" -ForegroundColor Yellow
-Write-Host "  → $url" -ForegroundColor Green
-Write-Host "════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "============================================================" -ForegroundColor Cyan
+Write-Host "  *** DEV 공식 URL (gcloud 공식 alias) ***" -ForegroundColor Yellow
+Write-Host "      $url" -ForegroundColor Green
+Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host "  Chat:       $url/"
 Write-Host "  Scenario:   $url/manager"
 Write-Host "  History:    $url/history"
@@ -108,10 +108,10 @@ Write-Host "  Settings:   $url/settings"
 Write-Host "  Guidelines: $url/guidelines"
 Write-Host "  RLHF:       $url/rlhf_manager.html"
 Write-Host "  Arena:      $url/arena"
-Write-Host "════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "참고: gcloud run deploy의 'Service URL' 출력은 다른 alias이며," -ForegroundColor DarkGray
-Write-Host "      위 공식 URL과 같은 서비스를 가리킵니다." -ForegroundColor DarkGray
+Write-Host "참고: gcloud run deploy의 'Service URL' 출력은 다른 alias이며" -ForegroundColor DarkGray
+Write-Host "      위 공식 URL과 같은 서비스를 가리킵니다" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "Storage: Cloud SQL '$DbName' on $SqlInstance (DEV DB)" -ForegroundColor Yellow
 Write-Host "운영 DB(medical_app)와 완전히 분리됩니다." -ForegroundColor DarkGray
