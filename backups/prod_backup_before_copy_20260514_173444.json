@@ -1,0 +1,893 @@
+{
+  "env": "prod",
+  "backup_at": "2026-05-14T17:34:44.437214+00:00",
+  "scenarios_count": 0,
+  "test_runs_count": 52,
+  "scenarios": [],
+  "test_runs": [
+    {
+      "runId": "run-20260427-111413-DIAG-001",
+      "type": "single",
+      "env": "dev",
+      "startedAt": "2026-04-27T11:14:13.005054+00:00",
+      "completedAt": "2026-04-27T11:14:13.005054+00:00",
+      "runBy": "Suah",
+      "tester": "Suah",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "run-20260425-084125-DIAG-008",
+      "type": "single",
+      "env": "prod",
+      "startedAt": "2026-04-25T08:41:25.592706+00:00",
+      "completedAt": "2026-04-25T08:41:25.592706+00:00",
+      "runBy": "Suah",
+      "tester": "Suah",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "run-20260425-083822-DIAG-005",
+      "type": "single",
+      "env": "prod",
+      "startedAt": "2026-04-25T08:38:22.201440+00:00",
+      "completedAt": "2026-04-25T08:38:22.201440+00:00",
+      "runBy": "Suah",
+      "tester": "Suah",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "run-20260423-020846-DIAG-002",
+      "type": "single",
+      "env": "prod",
+      "startedAt": "2026-04-23T02:08:46.356951+00:00",
+      "completedAt": "2026-04-23T02:08:46.356951+00:00",
+      "runBy": "Suah",
+      "tester": "Suah",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "run-20260421-053104-DIAG-004",
+      "type": "single",
+      "env": "prod",
+      "startedAt": "2026-04-21T05:31:04.068094+00:00",
+      "completedAt": "2026-04-21T05:31:04.068094+00:00",
+      "runBy": "Suah",
+      "tester": "Suah",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "run-20260421-022017-DIAG-002",
+      "type": "single",
+      "env": "prod",
+      "startedAt": "2026-04-21T02:20:17.939741+00:00",
+      "completedAt": "2026-04-21T02:20:17.939741+00:00",
+      "runBy": "Suah",
+      "tester": "Suah",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "run-20260420-074342-DIAG-002",
+      "type": "single",
+      "env": "prod",
+      "startedAt": "2026-04-20T07:43:42.967474+00:00",
+      "completedAt": "2026-04-20T07:43:42.967474+00:00",
+      "runBy": "Suah",
+      "tester": "Suah",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "run-20260420-064311-DIAG-002",
+      "type": "single",
+      "env": "prod",
+      "startedAt": "2026-04-20T06:43:11.007034+00:00",
+      "completedAt": "2026-04-20T06:43:11.007034+00:00",
+      "runBy": "Suah",
+      "tester": "Suah",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "run-20260420-004603-DIAG-001",
+      "type": "single",
+      "env": "dev",
+      "startedAt": "2026-04-20T00:46:03.775847+00:00",
+      "completedAt": "2026-04-20T00:46:03.775847+00:00",
+      "runBy": "이상재",
+      "tester": "이상재",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "run-20260420-004555-DIAG-001",
+      "type": "single",
+      "env": "dev",
+      "startedAt": "2026-04-20T00:45:55.436345+00:00",
+      "completedAt": "2026-04-20T00:45:55.436345+00:00",
+      "runBy": "이상재",
+      "tester": "이상재",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "run-20260420-002837-GENE-001",
+      "type": "single",
+      "env": "dev",
+      "startedAt": "2026-04-20T00:28:37.116889+00:00",
+      "completedAt": "2026-04-20T00:28:37.116889+00:00",
+      "runBy": "이상재",
+      "tester": "이상재",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "run-20260408-021607-EMER-002",
+      "type": "single",
+      "env": "stg",
+      "startedAt": "2026-04-08T02:16:07.669855+00:00",
+      "completedAt": "2026-04-08T02:16:07.669855+00:00",
+      "runBy": "이상재",
+      "tester": "이상재",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "run-20260408-015836-DIAG-003",
+      "type": "single",
+      "env": "stg",
+      "startedAt": "2026-04-08T01:58:36.882320+00:00",
+      "completedAt": "2026-04-08T01:58:36.882320+00:00",
+      "runBy": "이상재",
+      "tester": "이상재",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "batch-20260407-065520-fcfc6d",
+      "type": "batch",
+      "env": "stg",
+      "startedAt": "2026-04-07T06:55:20.611949+00:00",
+      "completedAt": "2026-04-07T06:55:20.611949+00:00",
+      "runBy": "skix_1",
+      "tester": "skix_1",
+      "status": "completed",
+      "summary": {
+        "total": 4,
+        "passed": 2,
+        "failed": 2,
+        "error": 0,
+        "passRate": 50.0
+      }
+    },
+    {
+      "runId": "batch-20260407-041538-889baf",
+      "type": "batch",
+      "env": "prod",
+      "startedAt": "2026-04-07T04:15:38.122860+00:00",
+      "completedAt": "2026-04-07T04:15:38.122860+00:00",
+      "runBy": "관리자",
+      "tester": "관리자",
+      "status": "completed",
+      "summary": {
+        "total": 6,
+        "passed": 0,
+        "failed": 6,
+        "error": 0,
+        "passRate": 0.0
+      }
+    },
+    {
+      "runId": "run-20260407-023051-DIAG-001",
+      "type": "single",
+      "env": "prod",
+      "startedAt": "2026-04-07T02:30:51.576210+00:00",
+      "completedAt": "2026-04-07T02:30:51.576210+00:00",
+      "runBy": "한성일",
+      "tester": "한성일",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "run-20260406-024919-DIAG-002",
+      "type": "single",
+      "env": "prod",
+      "startedAt": "2026-04-06T02:49:19.057277+00:00",
+      "completedAt": "2026-04-06T02:49:19.057277+00:00",
+      "runBy": "한성일",
+      "tester": "한성일",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "run-20260403-023024-GENE-002",
+      "type": "single",
+      "env": "prod",
+      "startedAt": "2026-04-03T02:30:24.528461+00:00",
+      "completedAt": "2026-04-03T02:30:24.528461+00:00",
+      "runBy": "이상재",
+      "tester": "이상재",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "run-20260403-015438-GENE-006",
+      "type": "single",
+      "env": "prod",
+      "startedAt": "2026-04-03T01:54:38.398192+00:00",
+      "completedAt": "2026-04-03T01:54:38.398192+00:00",
+      "runBy": "이상재",
+      "tester": "이상재",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "run-20260403-014858-GENE-003",
+      "type": "single",
+      "env": "prod",
+      "startedAt": "2026-04-03T01:48:58.445157+00:00",
+      "completedAt": "2026-04-03T01:48:58.445157+00:00",
+      "runBy": "이상재",
+      "tester": "이상재",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "run-20260403-014302-TREA-005",
+      "type": "single",
+      "env": "prod",
+      "startedAt": "2026-04-03T01:43:02.603945+00:00",
+      "completedAt": "2026-04-03T01:43:02.603945+00:00",
+      "runBy": "이상재",
+      "tester": "이상재",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "run-20260403-012804-GENE-007",
+      "type": "single",
+      "env": "prod",
+      "startedAt": "2026-04-03T01:28:04.853164+00:00",
+      "completedAt": "2026-04-03T01:28:04.853164+00:00",
+      "runBy": "이상재",
+      "tester": "이상재",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "run-20260403-012507-DIAG-003",
+      "type": "single",
+      "env": "prod",
+      "startedAt": "2026-04-03T01:25:07.141711+00:00",
+      "completedAt": "2026-04-03T01:25:07.141711+00:00",
+      "runBy": "이상재",
+      "tester": "이상재",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "run-20260403-011715-PRES-003",
+      "type": "single",
+      "env": "prod",
+      "startedAt": "2026-04-03T01:17:15.012937+00:00",
+      "completedAt": "2026-04-03T01:17:15.012937+00:00",
+      "runBy": "이상재",
+      "tester": "이상재",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "run-20260403-011129-PRES-001",
+      "type": "single",
+      "env": "prod",
+      "startedAt": "2026-04-03T01:11:29.305359+00:00",
+      "completedAt": "2026-04-03T01:11:29.305359+00:00",
+      "runBy": "이상재",
+      "tester": "이상재",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "run-20260402-082107-DIAG-005",
+      "type": "single",
+      "env": "prod",
+      "startedAt": "2026-04-02T08:21:07.422203+00:00",
+      "completedAt": "2026-04-02T08:21:07.422203+00:00",
+      "runBy": "이상재",
+      "tester": "이상재",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "run-20260402-010249-DIAG-005",
+      "type": "single",
+      "env": "dev",
+      "startedAt": "2026-04-02T01:02:49.696377+00:00",
+      "completedAt": "2026-04-02T01:02:49.696377+00:00",
+      "runBy": "이상재",
+      "tester": "이상재",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "run-20260401-085725-DIAG-005",
+      "type": "single",
+      "env": "dev",
+      "startedAt": "2026-04-01T08:57:25.300457+00:00",
+      "completedAt": "2026-04-01T08:57:25.300457+00:00",
+      "runBy": "이상재",
+      "tester": "이상재",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "run-20260401-085355-DIAG-005",
+      "type": "single",
+      "env": "dev",
+      "startedAt": "2026-04-01T08:53:55.048549+00:00",
+      "completedAt": "2026-04-01T08:53:55.048549+00:00",
+      "runBy": "이상재",
+      "tester": "이상재",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "batch-20260401-073004-44f051",
+      "type": "batch",
+      "env": "prod",
+      "startedAt": "2026-04-01T07:30:04.937600+00:00",
+      "completedAt": "2026-04-01T07:30:04.937600+00:00",
+      "runBy": "관리자",
+      "tester": "관리자",
+      "status": "completed",
+      "summary": {
+        "total": 26,
+        "passed": 18,
+        "failed": 8,
+        "error": 0,
+        "passRate": 69.2
+      }
+    },
+    {
+      "runId": "batch-20260331-053147-7ccaf5",
+      "type": "batch",
+      "env": "stg",
+      "startedAt": "2026-03-31T05:31:47.139198+00:00",
+      "completedAt": "2026-03-31T05:31:47.139198+00:00",
+      "runBy": "skix_1",
+      "tester": "skix_1",
+      "status": "completed",
+      "summary": {
+        "total": 2,
+        "passed": 0,
+        "failed": 2,
+        "error": 0,
+        "passRate": 0.0
+      }
+    },
+    {
+      "runId": "batch-20260327-072756-b4e003",
+      "type": "batch",
+      "env": "prod",
+      "startedAt": "2026-03-27T07:27:56.518703+00:00",
+      "completedAt": "2026-03-27T07:27:56.518703+00:00",
+      "runBy": "skix_1",
+      "tester": "skix_1",
+      "status": "completed",
+      "summary": {
+        "total": 25,
+        "passed": 22,
+        "failed": 3,
+        "error": 0,
+        "passRate": 88.0
+      }
+    },
+    {
+      "runId": "batch-20260327-061649-49a2d9",
+      "type": "batch",
+      "env": "prod",
+      "startedAt": "2026-03-27T06:16:49.315082+00:00",
+      "completedAt": "2026-03-27T06:16:49.315082+00:00",
+      "runBy": "skix_1",
+      "tester": "skix_1",
+      "status": "completed",
+      "summary": {
+        "total": 2,
+        "passed": 1,
+        "failed": 1,
+        "error": 0,
+        "passRate": 50.0
+      }
+    },
+    {
+      "runId": "batch-20260327-043047-953482",
+      "type": "batch",
+      "env": "prod",
+      "startedAt": "2026-03-27T04:30:47.293750+00:00",
+      "completedAt": "2026-03-27T04:30:47.293750+00:00",
+      "runBy": "skix_1",
+      "tester": "skix_1",
+      "status": "cancelled",
+      "summary": {
+        "total": 26,
+        "passed": 17,
+        "failed": 3,
+        "error": 6,
+        "passRate": 65.4
+      }
+    },
+    {
+      "runId": "batch-20260327-043013-015a49",
+      "type": "batch",
+      "env": "prod",
+      "startedAt": "2026-03-27T04:30:13.219593+00:00",
+      "completedAt": "2026-03-27T04:30:13.219593+00:00",
+      "runBy": "skix_1",
+      "tester": "skix_1",
+      "status": "completed",
+      "summary": {
+        "total": 3,
+        "passed": 3,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "batch-20260327-041644-a2feb4",
+      "type": "batch",
+      "env": "prod",
+      "startedAt": "2026-03-27T04:16:44.064871+00:00",
+      "completedAt": "2026-03-27T04:16:44.064871+00:00",
+      "runBy": "skix_1",
+      "tester": "skix_1",
+      "status": "cancelled",
+      "summary": {
+        "total": 8,
+        "passed": 4,
+        "failed": 2,
+        "error": 2,
+        "passRate": 50.0
+      }
+    },
+    {
+      "runId": "batch-20260327-035733-1b8a05",
+      "type": "batch",
+      "env": "prod",
+      "startedAt": "2026-03-27T03:57:33.048988+00:00",
+      "completedAt": "2026-03-27T03:57:33.048988+00:00",
+      "runBy": "skix_1",
+      "tester": "skix_1",
+      "status": "cancelled",
+      "summary": {
+        "total": 5,
+        "passed": 2,
+        "failed": 1,
+        "error": 2,
+        "passRate": 40.0
+      }
+    },
+    {
+      "runId": "batch-20260327-035527-38d3c5",
+      "type": "batch",
+      "env": "dev",
+      "startedAt": "2026-03-27T03:55:27.732321+00:00",
+      "completedAt": "2026-03-27T03:55:27.732321+00:00",
+      "runBy": "skix_1",
+      "tester": "skix_1",
+      "status": "completed",
+      "summary": {
+        "total": 10,
+        "passed": 8,
+        "failed": 2,
+        "error": 0,
+        "passRate": 80.0
+      }
+    },
+    {
+      "runId": "batch-20260327-035316-116ed7",
+      "type": "batch",
+      "env": "dev",
+      "startedAt": "2026-03-27T03:53:16.362981+00:00",
+      "completedAt": "2026-03-27T03:53:16.362981+00:00",
+      "runBy": "skix_1",
+      "tester": "skix_1",
+      "status": "completed",
+      "summary": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "batch-20260327-035311-8fa731",
+      "type": "batch",
+      "env": "dev",
+      "startedAt": "2026-03-27T03:53:11.948201+00:00",
+      "completedAt": "2026-03-27T03:53:11.948201+00:00",
+      "runBy": "skix_1",
+      "tester": "skix_1",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "batch-20260327-032108-bbc4c9",
+      "type": "batch",
+      "env": "dev",
+      "startedAt": "2026-03-27T03:21:08.099683+00:00",
+      "completedAt": "2026-03-27T03:21:08.099683+00:00",
+      "runBy": "skix_1",
+      "tester": "skix_1",
+      "status": "cancelled",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "batch-20260327-031706-e43f23",
+      "type": "batch",
+      "env": "dev",
+      "startedAt": "2026-03-27T03:17:06.598734+00:00",
+      "completedAt": "2026-03-27T03:17:06.598734+00:00",
+      "runBy": "skix_1",
+      "tester": "skix_1",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 0,
+        "failed": 1,
+        "error": 0,
+        "passRate": 0.0
+      }
+    },
+    {
+      "runId": "batch-20260327-025940-5472f4",
+      "type": "batch",
+      "env": "dev",
+      "startedAt": "2026-03-27T02:59:40.998675+00:00",
+      "completedAt": "2026-03-27T02:59:40.998675+00:00",
+      "runBy": "skix_1",
+      "tester": "skix_1",
+      "status": "cancelled",
+      "summary": {
+        "total": 1,
+        "passed": 0,
+        "failed": 0,
+        "error": 1,
+        "passRate": 0.0
+      }
+    },
+    {
+      "runId": "run-20260327-022132-DIAG-001",
+      "type": "single",
+      "env": "prod",
+      "startedAt": "2026-03-27T02:21:32.324167+00:00",
+      "completedAt": "2026-03-27T02:21:32.324167+00:00",
+      "runBy": "한성일",
+      "tester": "한성일",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "batch-20260327-022043-1a4632",
+      "type": "batch",
+      "env": "prod",
+      "startedAt": "2026-03-27T02:20:43.021864+00:00",
+      "completedAt": "2026-03-27T02:20:43.021864+00:00",
+      "runBy": "skix_1",
+      "tester": "skix_1",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "batch-20260327-015855-4f772f",
+      "type": "batch",
+      "env": "prod",
+      "startedAt": "2026-03-27T01:58:55.039009+00:00",
+      "completedAt": "2026-03-27T01:58:55.039009+00:00",
+      "runBy": "skix_1",
+      "tester": "skix_1",
+      "status": "cancelled",
+      "summary": {
+        "total": 2,
+        "passed": 0,
+        "failed": 0,
+        "error": 2,
+        "passRate": 0.0
+      }
+    },
+    {
+      "runId": "batch-20260326-084138-5baf14",
+      "type": "batch",
+      "env": "dev",
+      "startedAt": "2026-03-26T08:41:38.113854+00:00",
+      "completedAt": "2026-03-26T08:41:38.113854+00:00",
+      "runBy": "skix_1",
+      "tester": "skix_1",
+      "status": "completed",
+      "summary": {
+        "total": 2,
+        "passed": 1,
+        "failed": 1,
+        "error": 0,
+        "passRate": 50.0
+      }
+    },
+    {
+      "runId": "batch-20260326-083505-f600ff",
+      "type": "batch",
+      "env": "prod",
+      "startedAt": "2026-03-26T08:35:05.731327+00:00",
+      "completedAt": "2026-03-26T08:35:05.731327+00:00",
+      "runBy": "skix_1",
+      "tester": "skix_1",
+      "status": "completed",
+      "summary": {
+        "total": 3,
+        "passed": 1,
+        "failed": 2,
+        "error": 0,
+        "passRate": 33.3
+      }
+    },
+    {
+      "runId": "batch-20260326-075545-75d9f3",
+      "type": "batch",
+      "env": "prod",
+      "startedAt": "2026-03-26T07:55:45.747738+00:00",
+      "completedAt": "2026-03-26T07:55:45.747738+00:00",
+      "runBy": "skix_1",
+      "tester": "skix_1",
+      "status": "cancelled",
+      "summary": {
+        "total": 3,
+        "passed": 0,
+        "failed": 0,
+        "error": 3,
+        "passRate": 0.0
+      }
+    },
+    {
+      "runId": "batch-20260326-071834-76e543",
+      "type": "batch",
+      "env": "prod",
+      "startedAt": "2026-03-26T07:18:34.366633+00:00",
+      "completedAt": "2026-03-26T07:18:34.366633+00:00",
+      "runBy": "관리자",
+      "tester": "관리자",
+      "status": "completed",
+      "summary": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "run-20260326-071804-DIAG-001",
+      "type": "single",
+      "env": "prod",
+      "startedAt": "2026-03-26T07:18:04.499162+00:00",
+      "completedAt": "2026-03-26T07:18:04.499162+00:00",
+      "runBy": "관리자",
+      "tester": "관리자",
+      "status": "completed",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "passRate": 100.0
+      }
+    },
+    {
+      "runId": "batch-20260326-071604-0795d2",
+      "type": "batch",
+      "env": "dev",
+      "startedAt": "2026-03-26T07:16:04.052992+00:00",
+      "completedAt": "2026-03-26T07:16:04.052992+00:00",
+      "runBy": "관리자",
+      "tester": "관리자",
+      "status": "cancelled",
+      "summary": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "error": 0,
+        "passRate": 0.0
+      }
+    }
+  ]
+}

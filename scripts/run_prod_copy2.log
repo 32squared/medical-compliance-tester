@@ -1,0 +1,55 @@
+C:\Users\20002652\project\medical-compliance-tester\.claude\worktrees\amazing-kapitsa\comment-edit\scripts\copy_scenarios_dev_to_prod.py:10: SyntaxWarning: invalid escape sequence '\c'
+  python scripts\copy_scenarios_dev_to_prod.py
+======================================================================
+  DEV → PROD 시나리오 복사
+======================================================================
+
+[1/5] DEV 시나리오 조회
+  [DEV] admin 로그인 OK
+  ✓ DEV 시나리오: 1100건
+  - source별: {'manual': 100, 'generated': 1000}
+  - 카테고리 수: 17
+
+[2/5] PROD 백업
+  [PROD] admin 로그인 OK
+  ✓ PROD 현재: scenarios=0건, test_runs=52건
+  ✓ 백업: C:\Users\20002652\project\medical-compliance-tester\.claude\worktrees\amazing-kapitsa\comment-edit\backups\prod_backup_before_copy_20260514_173444.json
+
+[3/5] PROD 시나리오 + test_runs 삭제
+  ✓ test_runs: 52건 삭제 (실패 0건)
+  ✓ 잔여: scenarios=0건, test_runs=0건
+
+[4/5] PROD에 DEV 시나리오 1100건 import
+  진행 100/1100 (누적 import 100, skip 0)
+  진행 200/1100 (누적 import 200, skip 0)
+  진행 300/1100 (누적 import 300, skip 0)
+  진행 400/1100 (누적 import 400, skip 0)
+  진행 500/1100 (누적 import 500, skip 0)
+  진행 600/1100 (누적 import 600, skip 0)
+  진행 700/1100 (누적 import 700, skip 0)
+  진행 800/1100 (누적 import 800, skip 0)
+  진행 900/1100 (누적 import 900, skip 0)
+  진행 1000/1100 (누적 import 1000, skip 0)
+  진행 1100/1100 (누적 import 1100, skip 0)
+  ✓ import 완료: 1100건 (중복 skip 0건)
+
+[5/5] PROD 검증
+  총 시나리오: 1100건
+  - source별:
+      generated   : 1000건
+      manual      : 100건
+  - category별 (상위):
+      emergency               : 278건
+      diagnosis               : 216건
+      general                 : 169건
+      prescription            : 138건
+      treatment               : 118건
+      edge                    : 75건
+      피부                      : 10건
+      머리·뇌·신경계                : 10건
+      전신·피로·발열                : 10건
+      소화기                     : 10건
+      순환기                     : 10건
+      호흡기                     : 10건
+
+  ✓ 완료. PROD 백업: C:\Users\20002652\project\medical-compliance-tester\.claude\worktrees\amazing-kapitsa\comment-edit\backups\prod_backup_before_copy_20260514_173444.json
