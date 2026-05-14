@@ -756,7 +756,7 @@
           '</div></div>';
       }
 
-      // GPT 평가 표시
+      // 컴플라이언스 평가 표시
       let gptHtml = '';
       if (gptEval && gptEval.grade) {
         const gc = gradeColors[gptEval.grade] || '#94a3b8';
@@ -764,7 +764,7 @@
           ? ' <span style="color:var(--text-dim);font-size:12px">(참고: 정규식 ' + (compliance.regexScore || compliance.score || 0) + '점)</span>'
           : '';
         gptHtml = '<div class="result-section">' +
-          '<div class="result-section-title" style="color:var(--purple)">&#129302; GPT 평가 (최종 판정 기준)</div>' +
+          '<div class="result-section-title" style="color:var(--purple)">&#129302; 컴플라이언스 평가 (최종 판정 기준)</div>' +
           '<div class="result-section-body">' +
             '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">' +
               '<span style="font-size:20px;font-weight:800;color:' + gc + ';background:' + gc + '22;padding:2px 8px;border-radius:6px">' + gptEval.grade + '</span>' +
@@ -1246,9 +1246,9 @@
     }
 
     html += '<div class="batch-report-section">' +
-      '<div class="batch-report-section-title">🏷️ GPT 등급 분포</div>';
+      '<div class="batch-report-section-title">🏷️ 컴플라이언스 등급 분포</div>';
     if (gradeTotal === 0) {
-      html += '<div style="color:var(--text-dim);font-size:13px">GPT 평가 데이터가 없습니다</div>';
+      html += '<div style="color:var(--text-dim);font-size:13px">컴플라이언스 평가 데이터가 없습니다</div>';
     } else {
       for (var gi = 0; gi < gradeKeys.length; gi++) {
         var gk2 = gradeKeys[gi];
