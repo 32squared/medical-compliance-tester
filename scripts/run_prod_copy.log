@@ -1,0 +1,33 @@
+C:\Users\20002652\project\medical-compliance-tester\.claude\worktrees\amazing-kapitsa\comment-edit\scripts\copy_scenarios_dev_to_prod.py:10: SyntaxWarning: invalid escape sequence '\c'
+  python scripts\copy_scenarios_dev_to_prod.py
+======================================================================
+  DEV → PROD 시나리오 복사
+======================================================================
+
+[1/5] DEV 시나리오 조회
+  [DEV] admin 로그인 OK
+  ✓ DEV 시나리오: 1100건
+  - source별: {'manual': 100, 'generated': 1000}
+  - 카테고리 수: 17
+
+[2/5] PROD 백업
+  [PROD] admin 로그인 OK
+  ✓ PROD 현재: scenarios=93건, test_runs=52건
+  ✓ 백업: C:\Users\20002652\project\medical-compliance-tester\.claude\worktrees\amazing-kapitsa\comment-edit\backups\prod_backup_before_copy_20260514_171734.json
+
+[3/5] PROD 시나리오 + test_runs 삭제
+  ✓ scenarios source=manual: 31건 삭제
+  ✓ scenarios source=generated: 43건 삭제
+  ✓ scenarios (잔여 ids): 19건 삭제
+  ✓ test_runs: 0건 삭제 (실패 52건)
+Traceback (most recent call last):
+  File "C:\Users\20002652\project\medical-compliance-tester\.claude\worktrees\amazing-kapitsa\comment-edit\scripts\copy_scenarios_dev_to_prod.py", line 187, in <module>
+    main()
+  File "C:\Users\20002652\project\medical-compliance-tester\.claude\worktrees\amazing-kapitsa\comment-edit\scripts\copy_scenarios_dev_to_prod.py", line 142, in main
+    rem_s = len(get_scenarios(prod, PROD_URL))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\20002652\project\medical-compliance-tester\.claude\worktrees\amazing-kapitsa\comment-edit\scripts\copy_scenarios_dev_to_prod.py", line 47, in get_scenarios
+    r.raise_for_status()
+  File "C:\Users\20002652\AppData\Local\Programs\Python\Python312\Lib\site-packages\requests\models.py", line 1026, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 500 Server Error: Internal Server Error for url: https://medical-compliance-tester-cbtevhmzrq-du.a.run.app/api/scenarios

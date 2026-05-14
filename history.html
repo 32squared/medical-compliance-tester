@@ -1215,7 +1215,34 @@
     var errors = s.error || 0;
     var rate = s.passRate != null ? s.passRate : (total > 0 ? Math.round((passed / total) * 100) : 0);
 
+    // 분석용 미리계산: 각 result에 gradeKey 추가
+    function _grade(r) {
+      var g = r.gptEval && r.gptEval.grade;
+      return g || 'N/A';
+    }
+    function _category(r) {
+      return r.category || (r.subcategory || '미분류');
+    }
+    function _risk(r) {
+      return r.riskLevel || 'UNKNOWN';
+    }
+    function _passed(r) {
+      if (r.status === 'error' || !r.response) return null;
+      if (r.gptEval) return r.gptEval.passed === true;
+      return (r.finalScore || 0) >= 60;
+    }
+
     var html = '';
+
+    // 0. 재평가 액션 바 (P0-3)
+    var currentVer = (results[0] && results[0].guidelineVersion) || (run.summary && run.summary.guidelineVersion) || '';
+    html += '<div class="batch-report-section" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+      '<span class="batch-report-section-title" style="margin:0">♻️ 재평가</span>' +
+      '<span style="font-size:11px;color:var(--text-dim)">가이드라인 v' + escapeHtml(currentVer || 'unknown') + ' 적용</span>' +
+      '<button class="btn-small" onclick="reEvaluateBatch(\'' + escapeHtml(run.runId || '') + '\', false)" style="padding:4px 12px;font-size:12px">정규식만 재평가</button>' +
+      '<button class="btn-small" onclick="reEvaluateBatch(\'' + escapeHtml(run.runId || '') + '\', true)" style="padding:4px 12px;font-size:12px;background:rgba(168,85,247,0.15);color:var(--purple);border-color:var(--purple)">🤖 컴플라이언스 평가 포함 재평가</button>' +
+      '<span style="font-size:10px;color:var(--text-dim);margin-left:8px">⚠️ GPT 포함 시 OpenAI 비용·시간 소요</span>' +
+      '</div>';
 
     // 1. Summary Cards
     html += '<div class="batch-report-section">' +
@@ -1307,7 +1334,7 @@
     }
     html += '</div>';
 
-    // 4. 의료법 경계 위반 목록
+    // 4. 의료법 경계 위반 목록 (P0-2: 시나리오 역참조 포함)
     var violationMap = {};
     for (var ri3 = 0; ri3 < results.length; ri3++) {
       var comp = results[ri3].compliance;
@@ -1316,37 +1343,63 @@
           var v = comp.violations[vi];
           var vName = v.name || v.rule || v.rule_name || '기타';
           if (!violationMap[vName]) {
-            violationMap[vName] = { count: 0, examples: [], law: v.law || '', severity: v.severity || '', description: v.description || '' };
+            violationMap[vName] = { count: 0, examples: [], scenarios: [], law: v.law || '', severity: v.severity || '', description: v.description || '' };
           }
           violationMap[vName].count++;
           if (v.matched && violationMap[vName].examples.length < 3) {
             violationMap[vName].examples.push(v.matched);
           }
+          // 시나리오 역참조: 결과 인덱스 + 시나리오 메타
+          violationMap[vName].scenarios.push({
+            resultIndex: ri3,
+            scenarioId: results[ri3].scenarioId || '',
+            category: results[ri3].category || '',
+            prompt: (results[ri3].prompt || '').substring(0, 80),
+            grade: (results[ri3].gptEval && results[ri3].gptEval.grade) || 'N/A',
+            risk: results[ri3].riskLevel || '',
+          });
         }
       }
     }
     var violationKeys = Object.keys(violationMap).sort(function(a, b) { return violationMap[b].count - violationMap[a].count; });
 
     html += '<div class="batch-report-section">' +
-      '<div class="batch-report-section-title">⚖️ 의료법 경계 사항</div>';
+      '<div class="batch-report-section-title">⚖️ 의료법 경계 사항 (위반 → 시나리오 역참조)</div>';
     if (violationKeys.length === 0) {
       html += '<div style="color:var(--green);font-size:13px">✓ 위반 사항이 없습니다</div>';
     } else {
-      html += '<div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">총 ' + violationKeys.length + '종류의 위반 유형이 발견되었습니다</div>';
+      html += '<div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">총 ' + violationKeys.length + '종류의 위반 유형. 펼쳐서 해당 시나리오 보기.</div>';
+      // 안전한 ID 생성을 위해 인덱스 사용
       for (var vk = 0; vk < violationKeys.length; vk++) {
         var vKey = violationKeys[vk];
         var vData = violationMap[vKey];
-        html += '<div class="violation-group">' +
-          '<div class="violation-group-header">' +
+        var vId = 'vexp_' + vk;
+        html += '<details class="violation-group" style="cursor:pointer">' +
+          '<summary class="violation-group-header" style="cursor:pointer;outline:none">' +
             '<span style="color:var(--red);font-weight:700">' + escapeHtml(vData.severity) + '</span>' +
             '<span class="violation-group-name">' + escapeHtml(vKey) + '</span>' +
             '<span class="violation-group-count">' + vData.count + '건</span>' +
             (vData.law ? '<span style="font-size:11px;color:var(--text-dim)">' + escapeHtml(vData.law) + '</span>' : '') +
-          '</div>';
+          '</summary>';
+        // 패턴 매칭 예시
         for (var ve = 0; ve < vData.examples.length; ve++) {
-          html += '<div class="violation-example">"' + escapeHtml(vData.examples[ve]) + '"</div>';
+          html += '<div class="violation-example">매칭: "' + escapeHtml(vData.examples[ve]) + '"</div>';
         }
-        html += '</div>';
+        // 시나리오 역참조 목록 (최대 30개 표시)
+        var slist = vData.scenarios.slice(0, 30);
+        html += '<div style="margin-top:8px;padding:8px;background:var(--bg);border-radius:6px">' +
+          '<div style="font-size:11px;color:var(--text-dim);margin-bottom:6px">발생 시나리오 ' + vData.scenarios.length + '건' + (vData.scenarios.length > 30 ? ' (상위 30건만 표시)' : '') + '</div>';
+        for (var si = 0; si < slist.length; si++) {
+          var sd = slist[si];
+          html += '<div style="padding:4px 6px;border-bottom:1px solid var(--border);font-size:11px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
+            '<span style="font-weight:700;color:' + (gradeColorMap[sd.grade] || '#94a3b8') + ';min-width:18px">' + escapeHtml(sd.grade) + '</span>' +
+            '<span style="color:var(--text-dim);min-width:80px">' + escapeHtml(sd.category) + '</span>' +
+            '<span style="color:var(--text-dim);font-size:10px;min-width:60px">' + escapeHtml(sd.risk) + '</span>' +
+            '<span style="flex:1">' + escapeHtml(sd.prompt) + '...</span>' +
+            '<a href="#result-' + sd.resultIndex + '" style="color:var(--accent);font-size:11px;text-decoration:none" onclick="event.stopPropagation(); switchBatchView(\'individual\'); setTimeout(function(){ var el = document.querySelectorAll(\'.result-item\')[' + sd.resultIndex + ']; if (el) { el.scrollIntoView({behavior:\'smooth\', block:\'center\'}); el.style.outline=\'2px solid var(--accent)\'; setTimeout(function(){ el.style.outline=\'\'; }, 2000); } }, 100); return false;">개별 보기 →</a>' +
+            '</div>';
+        }
+        html += '</div></details>';
       }
     }
     html += '</div>';
@@ -1393,7 +1446,211 @@
     }
     html += '</div>';
 
+    // ─────────────────────────────────────────────────────────────────────
+    // P0-1: 카테고리 × 등급 cross-tab
+    // ─────────────────────────────────────────────────────────────────────
+    var catGradeMap = {};   // cat -> { grade -> count }
+    var catTotalMap = {};   // cat -> total
+    var catPassMap  = {};   // cat -> passed
+    for (var ci2 = 0; ci2 < results.length; ci2++) {
+      var rc = results[ci2];
+      var cat = _category(rc);
+      var grd = _grade(rc);
+      var pass = _passed(rc);
+      if (!catGradeMap[cat]) {
+        catGradeMap[cat] = { A:0, B:0, C:0, D:0, F:0, 'N/A':0 };
+        catTotalMap[cat] = 0;
+        catPassMap[cat]  = 0;
+      }
+      catGradeMap[cat][grd] = (catGradeMap[cat][grd] || 0) + 1;
+      catTotalMap[cat]++;
+      if (pass === true) catPassMap[cat]++;
+    }
+    var catKeys = Object.keys(catGradeMap).sort(function(a, b) { return catTotalMap[b] - catTotalMap[a]; });
+
+    html += '<div class="batch-report-section">' +
+      '<div class="batch-report-section-title">📂 카테고리 × 등급 매트릭스</div>';
+    if (catKeys.length === 0) {
+      html += '<div style="color:var(--text-dim);font-size:13px">데이터 없음</div>';
+    } else {
+      html += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">' +
+        '<thead><tr style="background:var(--bg);border-bottom:2px solid var(--border)">' +
+        '<th style="text-align:left;padding:6px 8px">카테고리</th>' +
+        '<th style="padding:6px 4px;color:#22c55e">A</th>' +
+        '<th style="padding:6px 4px;color:#38bdf8">B</th>' +
+        '<th style="padding:6px 4px;color:#eab308">C</th>' +
+        '<th style="padding:6px 4px;color:#f97316">D</th>' +
+        '<th style="padding:6px 4px;color:#ef4444">F</th>' +
+        '<th style="padding:6px 4px;color:var(--text-dim)">N/A</th>' +
+        '<th style="padding:6px 8px">전체</th>' +
+        '<th style="padding:6px 8px">통과율</th>' +
+        '</tr></thead><tbody>';
+      for (var cki = 0; cki < catKeys.length; cki++) {
+        var ck = catKeys[cki];
+        var ct = catTotalMap[ck];
+        var cp = catPassMap[ck];
+        var cpr = ct > 0 ? Math.round((cp / ct) * 100) : 0;
+        var cprCol = cpr >= 80 ? '#22c55e' : cpr >= 60 ? '#eab308' : '#ef4444';
+        html += '<tr style="border-bottom:1px solid var(--border)">' +
+          '<td style="padding:6px 8px;font-weight:600">' + escapeHtml(ck) + '</td>' +
+          '<td style="padding:6px 4px;text-align:center">' + (catGradeMap[ck].A || 0) + '</td>' +
+          '<td style="padding:6px 4px;text-align:center">' + (catGradeMap[ck].B || 0) + '</td>' +
+          '<td style="padding:6px 4px;text-align:center">' + (catGradeMap[ck].C || 0) + '</td>' +
+          '<td style="padding:6px 4px;text-align:center">' + (catGradeMap[ck].D || 0) + '</td>' +
+          '<td style="padding:6px 4px;text-align:center">' + (catGradeMap[ck].F || 0) + '</td>' +
+          '<td style="padding:6px 4px;text-align:center;color:var(--text-dim)">' + (catGradeMap[ck]['N/A'] || 0) + '</td>' +
+          '<td style="padding:6px 8px;text-align:center;font-weight:600">' + ct + '</td>' +
+          '<td style="padding:6px 8px;text-align:center;color:' + cprCol + ';font-weight:700">' + cpr + '%</td>' +
+          '</tr>';
+      }
+      html += '</tbody></table></div>';
+    }
+    html += '</div>';
+
+    // ─────────────────────────────────────────────────────────────────────
+    // P0-1b: 리스크 × 통과율
+    // ─────────────────────────────────────────────────────────────────────
+    var riskLevels = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'UNKNOWN'];
+    var riskColors = { CRITICAL: '#ef4444', HIGH: '#f97316', MEDIUM: '#eab308', LOW: '#22c55e', UNKNOWN: '#94a3b8' };
+    var riskTotal = {};
+    var riskPass = {};
+    for (var rli = 0; rli < riskLevels.length; rli++) {
+      riskTotal[riskLevels[rli]] = 0; riskPass[riskLevels[rli]] = 0;
+    }
+    for (var ri5 = 0; ri5 < results.length; ri5++) {
+      var rr5 = results[ri5];
+      var rsk = _risk(rr5);
+      if (!riskTotal.hasOwnProperty(rsk)) { riskTotal[rsk] = 0; riskPass[rsk] = 0; }
+      riskTotal[rsk]++;
+      if (_passed(rr5) === true) riskPass[rsk]++;
+    }
+    html += '<div class="batch-report-section">' +
+      '<div class="batch-report-section-title">🎯 리스크 레벨별 통과율</div>';
+    var hasRisk = false;
+    for (var rlj = 0; rlj < riskLevels.length; rlj++) {
+      if (riskTotal[riskLevels[rlj]] > 0) { hasRisk = true; break; }
+    }
+    if (!hasRisk) {
+      html += '<div style="color:var(--text-dim);font-size:13px">리스크 메타 없음 (구 버전 데이터)</div>';
+    } else {
+      for (var rlk = 0; rlk < riskLevels.length; rlk++) {
+        var rl = riskLevels[rlk];
+        var rtot = riskTotal[rl];
+        if (rtot === 0) continue;
+        var rpas = riskPass[rl];
+        var rpct = Math.round((rpas / rtot) * 100);
+        var rpctW = Math.max(2, rpct);
+        html += '<div class="batch-hbar-row">' +
+          '<div class="batch-hbar-label" style="color:' + riskColors[rl] + '">' + rl + '</div>' +
+          '<div class="batch-hbar-track"><div class="batch-hbar-fill" style="width:' + rpctW + '%;background:' + riskColors[rl] + '"></div></div>' +
+          '<div class="batch-hbar-info">' + rpas + '/' + rtot + ' (' + rpct + '%)</div></div>';
+      }
+    }
+    html += '</div>';
+
+    // ─────────────────────────────────────────────────────────────────────
+    // P1-5: 응답 메타 통계
+    // ─────────────────────────────────────────────────────────────────────
+    var lens = [], cits = [], rts = [];
+    var byGradeLen = { A:[], B:[], C:[], D:[], F:[] };
+    for (var ri6 = 0; ri6 < results.length; ri6++) {
+      var rr6 = results[ri6];
+      var L = rr6.responseLength;
+      if (L == null && rr6.response) L = rr6.response.length;
+      if (L != null) lens.push(L);
+      if (rr6.citationCount != null) cits.push(rr6.citationCount);
+      else if (rr6.searchResults) cits.push(rr6.searchResults.length);
+      if (rr6.responseTime) rts.push(rr6.responseTime);
+      var gK = _grade(rr6);
+      if (byGradeLen[gK] && L != null) byGradeLen[gK].push(L);
+    }
+    function _stat(arr) {
+      if (!arr.length) return { avg: 0, min: 0, max: 0, median: 0, count: 0 };
+      var sorted = arr.slice().sort(function(a,b){ return a-b; });
+      var sum = arr.reduce(function(a,b){ return a+b; }, 0);
+      return {
+        count: arr.length,
+        avg: Math.round(sum / arr.length),
+        min: sorted[0],
+        max: sorted[sorted.length-1],
+        median: sorted[Math.floor(sorted.length/2)],
+      };
+    }
+    var lenStat = _stat(lens);
+    var citStat = _stat(cits);
+    var rtStat  = _stat(rts);
+    html += '<div class="batch-report-section">' +
+      '<div class="batch-report-section-title">📊 응답 메타 통계</div>';
+    if (lenStat.count === 0 && citStat.count === 0) {
+      html += '<div style="color:var(--text-dim);font-size:13px">응답 메타 데이터 없음</div>';
+    } else {
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:10px">';
+      // 응답 길이
+      html += '<div style="background:var(--bg);padding:10px;border-radius:8px;border:1px solid var(--border)">' +
+        '<div style="font-size:11px;color:var(--text-dim)">응답 길이 (chars)</div>' +
+        '<div style="font-size:18px;font-weight:700;margin-top:4px">' + lenStat.avg + '</div>' +
+        '<div style="font-size:11px;color:var(--text-dim)">중앙 ' + lenStat.median + ' · 범위 ' + lenStat.min + '~' + lenStat.max + '</div>' +
+        '</div>';
+      // citations
+      html += '<div style="background:var(--bg);padding:10px;border-radius:8px;border:1px solid var(--border)">' +
+        '<div style="font-size:11px;color:var(--text-dim)">인용 출처 수</div>' +
+        '<div style="font-size:18px;font-weight:700;margin-top:4px">' + citStat.avg + '</div>' +
+        '<div style="font-size:11px;color:var(--text-dim)">중앙 ' + citStat.median + ' · 범위 ' + citStat.min + '~' + citStat.max + '</div>' +
+        '</div>';
+      // response time
+      html += '<div style="background:var(--bg);padding:10px;border-radius:8px;border:1px solid var(--border)">' +
+        '<div style="font-size:11px;color:var(--text-dim)">응답 시간 (ms)</div>' +
+        '<div style="font-size:18px;font-weight:700;margin-top:4px">' + rtStat.avg + '</div>' +
+        '<div style="font-size:11px;color:var(--text-dim)">중앙 ' + rtStat.median + ' · 범위 ' + rtStat.min + '~' + rtStat.max + '</div>' +
+        '</div>';
+      html += '</div>';
+      // 등급별 평균 응답 길이 (인사이트)
+      html += '<div style="margin-top:14px;font-size:11px;color:var(--text-dim);margin-bottom:6px">등급별 평균 응답 길이</div>';
+      var gradeOrder = ['A','B','C','D','F'];
+      for (var gli = 0; gli < gradeOrder.length; gli++) {
+        var glk = gradeOrder[gli];
+        var glArr = byGradeLen[glk];
+        if (!glArr || !glArr.length) continue;
+        var glAvg = Math.round(glArr.reduce(function(a,b){return a+b;}, 0) / glArr.length);
+        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:12px">' +
+          '<span style="display:inline-block;width:24px;text-align:center;font-weight:700;color:' + (gradeColorMap[glk]||'#94a3b8') + '">' + glk + '</span>' +
+          '<span style="color:var(--text-dim);font-size:11px">' + glArr.length + '건 평균</span>' +
+          '<span style="font-weight:600">' + glAvg + ' chars</span>' +
+          '</div>';
+      }
+    }
+    html += '</div>';
+
     area.innerHTML = html;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // P0-3: 재평가 실행 (GPT 포함 옵션)
+  // ─────────────────────────────────────────────────────────────────────
+  async function reEvaluateBatch(runId, includeGpt) {
+    if (!runId) { alert('runId가 없습니다'); return; }
+    if (includeGpt && !confirm(includeGpt ?
+        '컴플라이언스 평가(GPT)를 포함해 모든 응답을 재평가합니다.\nOpenAI 호출 비용과 시간(수십초~수분)이 소요됩니다.\n계속하시겠습니까?' :
+        '정규식만 재평가합니다. 계속하시겠습니까?')) return;
+    if (!includeGpt && !confirm('정규식만 재평가합니다 (현재 가이드라인 적용). 계속하시겠습니까?')) return;
+    try {
+      var res = await fetch('/api/history/re-evaluate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ runId: runId, includeGpt: includeGpt })
+      });
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'HTTP ' + res.status);
+      alert(data.message || '재평가 완료');
+      // 결과 다시 로드
+      if (typeof loadRunDetails === 'function') {
+        loadRunDetails(runId);
+      } else {
+        location.reload();
+      }
+    } catch (e) {
+      alert('재평가 실패: ' + e.message);
+    }
   }
 
   // ── Report Tab ──
