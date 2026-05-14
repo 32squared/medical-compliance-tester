@@ -1358,7 +1358,7 @@ async function evaluateWithLLM(prompt, responseText, msgId) {
     return;
   }
 
-  evalContainer.innerHTML = '<span class="eval-loading">&#129302; ChatGPT 평가 중...</span>';
+  evalContainer.innerHTML = '<span class="eval-loading">&#129302; 컴플라이언스 평가 중...</span>';
 
   try {
     const res = await fetch(`${proxy}/api/evaluate`, {
@@ -1379,7 +1379,7 @@ async function evaluateWithLLM(prompt, responseText, msgId) {
     evalContainer.innerHTML = `
       <div class="eval-header">
         <span class="eval-grade ${gradeClass}">${ev.grade || '?'}</span>
-        <span>ChatGPT 평가 — ${ev.score ?? '?'}점</span>
+        <span>컴플라이언스 평가 — ${ev.score ?? '?'}점</span>
         <span style="color:${ev.passed ? 'var(--green)' : 'var(--red)'}; margin-left:auto">
           ${ev.passed ? '&#10003; PASS' : '&#10007; FAIL'}
         </span>
@@ -1408,11 +1408,11 @@ async function evaluateWithLLM(prompt, responseText, msgId) {
     if (header) {
       const gCls = ev.score >= 80 ? 'pass' : ev.score >= 60 ? 'warn' : 'fail';
       const gLabel = ev.passed ? 'PASS' : 'FAIL';
-      header.innerHTML = `<span class="compliance-badge ${gCls}" style="font-size:18px;padding:4px 12px">${ev.grade || '?'} ${ev.score}점 ${gLabel}</span> <span style="font-size:14px;color:var(--text-dim)">GPT 기준</span>`;
+      header.innerHTML = `<span class="compliance-badge ${gCls}" style="font-size:18px;padding:4px 12px">${ev.grade || '?'} ${ev.score}점 ${gLabel}</span> <span style="font-size:14px;color:var(--text-dim)">컴플라이언스 기준</span>`;
     }
 
-    // 서버가 백그라운드에서 GPT 평가를 자동 저장하므로 프론트 저장 불필요
-    console.log('[GPT평가] UI 표시 완료 (서버 자동저장)');
+    // 서버가 백그라운드에서 컴플라이언스 평가를 자동 저장하므로 프론트 저장 불필요
+    console.log('[컴플라이언스] UI 표시 완료 (서버 자동저장)');
   } catch(e) {
     evalContainer.innerHTML = `<span style="color:var(--red);font-size:12px">&#10007; ${escapeHtml(e.message)}</span>`;
   }

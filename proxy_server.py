@@ -2115,13 +2115,14 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
         return self._send_json(200, {"message": "이력 업데이트 완료"})
 
     def _delete_history_run(self, run_id):
-        """DELETE /api/history/<runId> — 이력 삭제"""
+        """DELETE /api/history/<runId> — 이력 삭제 (PostgreSQL/SQLite 양쪽 호환)"""
         existing = db.get_test_run(run_id)
         if not existing:
             return self._send_error(404, f'이력을 찾을 수 없습니다: {run_id}')
-        from db import get_conn
-        with get_conn() as conn:
-            conn.execute("DELETE FROM test_runs WHERE id = ?", (run_id,))
+        from db import get_conn, _p
+        ph = _p()
+        with get_conn() as (conn, cur):
+            cur.execute(f"DELETE FROM test_runs WHERE id = {ph}", (run_id,))
         self._send_json(200, {"message": "이력 삭제 완료"})
 
     def _save_history_result(self, body):

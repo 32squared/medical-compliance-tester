@@ -1266,7 +1266,7 @@ async function sendToChat(id) {
     window._lastComplianceResult = runComplianceCheck(fullText, s);
     window._lastGptEval = null;
 
-    // GPT 평가 (프론트 실시간 표시)
+    // 컴플라이언스 평가 (프론트 실시간 표시)
     const gptCheck = document.getElementById('gptEvalCheck');
     if (gptCheck && gptCheck.checked) {
       window._lastGptEval = await runGptEval(s.prompt, fullText, proxyUrl);
@@ -1275,7 +1275,7 @@ async function sendToChat(id) {
       if (gptResult) gptResult.innerHTML = '<span style="color:var(--text-dim)">OpenAI API Key가 설정되지 않았습니다. <a href="/settings" style="color:var(--accent)">설정</a>에서 입력하세요.</span>';
     } else {
       const gptResult = document.getElementById('gptEvalResult');
-      if (gptResult) gptResult.innerHTML = '<span style="color:var(--text-dim)">GPT 평가 건너뜀</span>';
+      if (gptResult) gptResult.innerHTML = '<span style="color:var(--text-dim)">컴플라이언스 평가 건너뜀</span>';
     }
 
     // GPT-first: Show final judgment based on GPT if available
@@ -1446,7 +1446,7 @@ function openStreamModal(scenario) {
         </div>
         <div id="gptEvalArea">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-            <label style="font-size:12px;color:var(--purple);font-weight:600">&#129302; GPT 평가</label>
+            <label style="font-size:12px;color:var(--purple);font-weight:600">&#129302; 컴플라이언스 평가</label>
             <label style="font-size:11px;color:var(--text-dim);display:flex;align-items:center;gap:4px;cursor:pointer;margin-left:auto">
               <input type="checkbox" id="gptEvalCheck" checked style="width:auto;accent-color:var(--purple)"> 자동 평가 진행
             </label>
@@ -1562,10 +1562,10 @@ function runComplianceCheck(text, scenario) {
 
   if (dedupViolations.length === 0) {
     result.innerHTML = `<span style="color:var(--green)">&#10003; 위반 없음 (패턴 분석: ${score}점)${hasDisclaimer ? ' / 면책조항 포함' : ''}${verLabel}</span>
-      <div style="color:var(--text-dim);font-size:12px;margin-top:4px">GPT 평가 포함 시 하이브리드 점수가 산출됩니다</div>`;
+      <div style="color:var(--text-dim);font-size:12px;margin-top:4px">컴플라이언스 평가 포함 시 하이브리드 점수가 산출됩니다</div>`;
   } else {
     result.innerHTML = `<div style="color:var(--red);font-weight:600;margin-bottom:6px">&#10007; ${dedupViolations.length}건 위반 감지 (패턴 분석: ${score}점)${verLabel}</div>
-      <div style="color:var(--text-dim);font-size:12px;margin-bottom:6px">GPT 평가 포함 시 하이브리드 점수가 산출됩니다</div>` +
+      <div style="color:var(--text-dim);font-size:12px;margin-bottom:6px">컴플라이언스 평가 포함 시 하이브리드 점수가 산출됩니다</div>` +
       dedupViolations.map(v => `<div style="padding:4px 8px;margin:3px 0;background:var(--surface2);border-radius:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
         <span class="sc-risk risk-${v.severity}" style="font-size:13px">${v.severity}</span>
         <span>${escHtml(v.name)}</span><span style="color:var(--text-dim)">— ${escHtml(v.law)}</span>
@@ -1576,14 +1576,14 @@ function runComplianceCheck(text, scenario) {
   return { score, regexScore: score, violations: dedupViolations, hasDisclaimer, guidelineVersion: _smGuidelineVersion };
 }
 
-// GPT 평가
+// 컴플라이언스 평가
 async function runGptEval(prompt, response, proxyUrl) {
   const area = document.getElementById('gptEvalArea');
   const result = document.getElementById('gptEvalResult');
   if (!area || !result) return;
 
   area.style.display = 'block';
-  result.innerHTML = '<span style="color:var(--purple)">&#129302; ChatGPT 평가 중...</span>';
+  result.innerHTML = '<span style="color:var(--purple)">&#129302; 컴플라이언스 평가 중...</span>';
 
   try {
     const res = await fetch(`${proxyUrl}/api/evaluate`, {
