@@ -458,6 +458,27 @@
 <!-- Toast -->
 <div class="toast-container" id="toastContainer"></div>
 
+<!-- P1-4: 배치 A/B 비교 모달 -->
+<div id="compareModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;max-width:1100px;width:94%;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <h3 style="font-size:16px;color:var(--accent);margin:0">📊 배치 A/B 비교</h3>
+      <button onclick="closeCompareModal()" style="background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer">✕</button>
+    </div>
+    <div id="compareSelectArea" style="margin-bottom:14px">
+      <p style="font-size:12px;color:var(--text-dim);margin-bottom:8px">기준 배치(A)와 비교 배치(B)를 선택하세요</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <label style="font-size:11px;color:var(--text-dim)">A (기준):</label>
+        <select id="compareRunA" style="flex:1;min-width:200px;padding:6px 8px;font-size:12px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px"></select>
+        <label style="font-size:11px;color:var(--text-dim)">B (비교):</label>
+        <select id="compareRunB" style="flex:1;min-width:200px;padding:6px 8px;font-size:12px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px"></select>
+        <button onclick="runCompare()" class="btn-small" style="padding:6px 14px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer">비교 실행</button>
+      </div>
+    </div>
+    <div id="compareResultArea"></div>
+  </div>
+</div>
+
 <script>
   let currentRunId = null;
   let historyData = [];
@@ -693,8 +714,30 @@
     document.getElementById('scError').textContent = errors;
     document.getElementById('scRate').textContent = rate + '%';
 
-    const results = run.results || [];
+    const rawResults = run.results || [];
     const area = document.getElementById('resultsArea');
+
+    // P1-6: 세그먼트 필터
+    window._currentRunResults = rawResults;
+    window._currentRunMeta = run;
+
+    const _catSet = {}; const _riskSet = {}; const _violSet = {};
+    for (const _r of rawResults) {
+      if (_r.category) _catSet[_r.category] = true;
+      if (_r.riskLevel) _riskSet[_r.riskLevel] = true;
+      if (_r.compliance && _r.compliance.violations) {
+        for (const _v of _r.compliance.violations) {
+          const _vn = _v.name || _v.rule || _v.rule_name;
+          if (_vn) _violSet[_vn] = true;
+        }
+      }
+    }
+    const catList = Object.keys(_catSet).sort();
+    const riskList = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].filter(r => _riskSet[r]);
+    const violList = Object.keys(_violSet).sort();
+
+    window._segFilter = window._segFilter || { status: '', grade: '', risk: '', category: '', violation: '', search: '' };
+    const F = window._segFilter;
 
     let progressHtml = '';
     if (run.status === 'running') {
@@ -702,12 +745,53 @@
       progressHtml = '<div style="color:var(--accent);font-size:12px;margin-bottom:12px">\u23F3 ' + completed + '/' + (run.summary?.total || 0) + ' \uC644\uB8CC \u2014 \uC790\uB3D9 \uAC31\uC2E0 \uC911...</div>';
     }
 
+    const results = rawResults.filter((r) => {
+      if (F.status && (r.status || '').toLowerCase() !== F.status) return false;
+      if (F.grade) {
+        const g = (r.gptEval && r.gptEval.grade) || '';
+        if (F.grade === 'N/A' && g) return false;
+        if (F.grade !== 'N/A' && g !== F.grade) return false;
+      }
+      if (F.risk && (r.riskLevel || '') !== F.risk) return false;
+      if (F.category && (r.category || '') !== F.category) return false;
+      if (F.violation) {
+        const hasViol = (r.compliance && r.compliance.violations || []).some(v => (v.name || v.rule || v.rule_name) === F.violation);
+        if (!hasViol) return false;
+      }
+      if (F.search) {
+        const q = F.search.toLowerCase();
+        const inPrompt = (r.prompt || '').toLowerCase().includes(q);
+        const inResp = (r.response || '').toLowerCase().includes(q);
+        if (!inPrompt && !inResp) return false;
+      }
+      return true;
+    });
+
+    const _statusOpts = '<option value="">\uC0C1\uD0DC: \uC804\uCCB4</option>' + ['pass','fail','error'].map(s => '<option value="' + s + '"' + (F.status === s ? ' selected' : '') + '>' + s.toUpperCase() + '</option>').join('');
+    const _gradeOpts  = '<option value="">\uB4F1\uAE09: \uC804\uCCB4</option>' + ['A','B','C','D','F','N/A'].map(g => '<option value="' + g + '"' + (F.grade === g ? ' selected' : '') + '>' + g + '</option>').join('');
+    const _riskOpts   = riskList.length ? ('<option value="">\uB9AC\uC2A4\uD06C: \uC804\uCCB4</option>' + riskList.map(r => '<option value="' + r + '"' + (F.risk === r ? ' selected' : '') + '>' + r + '</option>').join('')) : '';
+    const _catOpts    = catList.length ? ('<option value="">\uCE74\uD14C\uACE0\uB9AC: \uC804\uCCB4</option>' + catList.map(c => '<option value="' + escapeHtml(c) + '"' + (F.category === c ? ' selected' : '') + '>' + escapeHtml(c) + '</option>').join('')) : '';
+    const _violOpts   = violList.length ? ('<option value="">\uC704\uBC18: \uC804\uCCB4</option>' + violList.map(v => '<option value="' + escapeHtml(v) + '"' + (F.violation === v ? ' selected' : '') + '>' + escapeHtml(v) + '</option>').join('')) : '';
+
+    const filterBar = '<div class="seg-filter" style="background:var(--bg);padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+      '<span style="font-size:11px;color:var(--text-dim);font-weight:600">\uD83D\uDD0D \uD544\uD130</span>' +
+      '<select id="segFilterStatus" style="padding:4px 6px;font-size:11px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px">' + _statusOpts + '</select>' +
+      '<select id="segFilterGrade" style="padding:4px 6px;font-size:11px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px">' + _gradeOpts + '</select>' +
+      (_riskOpts ? '<select id="segFilterRisk" style="padding:4px 6px;font-size:11px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px">' + _riskOpts + '</select>' : '') +
+      (_catOpts ? '<select id="segFilterCategory" style="padding:4px 6px;font-size:11px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px">' + _catOpts + '</select>' : '') +
+      (_violOpts ? '<select id="segFilterViolation" style="padding:4px 6px;font-size:11px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;max-width:200px">' + _violOpts + '</select>' : '') +
+      '<input id="segFilterSearch" type="text" placeholder="\uD14D\uC2A4\uD2B8 \uAC80\uC0C9..." value="' + escapeHtml(F.search) + '" style="flex:1;min-width:120px;padding:4px 8px;font-size:11px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px">' +
+      '<span style="font-size:11px;color:var(--accent);font-weight:600">' + results.length + ' / ' + rawResults.length + '\uAC74</span>' +
+      '<button onclick="resetSegFilter()" style="padding:4px 8px;font-size:11px;background:transparent;color:var(--text-dim);border:1px solid var(--border);border-radius:4px;cursor:pointer">\uCD08\uAE30\uD654</button>' +
+      '</div>';
+
     if (results.length === 0) {
-      area.innerHTML = progressHtml + '<div class="empty-state"><div class="empty-desc">결과 데이터가 없습니다.</div></div>';
+      area.innerHTML = progressHtml + filterBar + '<div class="empty-state"><div class="empty-desc">\uD544\uD130 \uC870\uAC74\uC5D0 \uB9DE\uB294 \uACB0\uACFC\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.</div></div>';
+      bindSegFilterEvents();
       return;
     }
 
-    area.innerHTML = progressHtml + results.map((r, idx) => {
+    area.innerHTML = progressHtml + filterBar + results.map((r, idx) => {
       const st = (r.status || '').toLowerCase();
       let statusLabel, statusClass;
       if (st === 'pass') { statusLabel = '\u2705 PASS'; statusClass = 'pass'; }
@@ -857,12 +941,248 @@
         '</div>' +
       '</div>';
     }).join('');
+
+    // P1-6: 필터 변경 시 재렌더 위해 이벤트 바인딩
+    bindSegFilterEvents();
   }
 
   // ── Toggle Result Card ──
   function toggleResult(idx) {
     const card = document.getElementById('result-' + idx);
     if (card) card.classList.toggle('expanded');
+  }
+
+  // ── P1-6: 세그먼트 필터 이벤트 바인딩/리셋 ──
+  function bindSegFilterEvents() {
+    var mapEl = {
+      segFilterStatus: 'status',
+      segFilterGrade: 'grade',
+      segFilterRisk: 'risk',
+      segFilterCategory: 'category',
+      segFilterViolation: 'violation',
+    };
+    Object.keys(mapEl).forEach(function(elId) {
+      var el = document.getElementById(elId);
+      if (!el) return;
+      el.addEventListener('change', function() {
+        window._segFilter = window._segFilter || {};
+        window._segFilter[mapEl[elId]] = el.value;
+        _rerenderFilteredResults();
+      });
+    });
+    var srch = document.getElementById('segFilterSearch');
+    if (srch) {
+      var _t = null;
+      srch.addEventListener('input', function() {
+        clearTimeout(_t);
+        _t = setTimeout(function() {
+          window._segFilter = window._segFilter || {};
+          window._segFilter.search = srch.value;
+          _rerenderFilteredResults();
+        }, 300);
+      });
+    }
+  }
+  function _rerenderFilteredResults() {
+    if (window._currentRunMeta) {
+      renderDetail(window._currentRunMeta);
+    }
+  }
+  function resetSegFilter() {
+    window._segFilter = { status: '', grade: '', risk: '', category: '', violation: '', search: '' };
+    _rerenderFilteredResults();
+  }
+
+  // ────────────────────────────────────────────────────────────────────
+  // P1-4: 배치 A/B 비교 (가이드라인 변경 효과 측정)
+  // ────────────────────────────────────────────────────────────────────
+  function openCompareModal(currentRunId) {
+    var modal = document.getElementById('compareModal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    document.getElementById('compareResultArea').innerHTML = '';
+    // 최근 run 목록 가져와 두 셀렉트 채우기
+    fetch('/api/history').then(r => r.json()).then(data => {
+      var runs = (data.runs || []).filter(r => r.type === 'batch');
+      var aSel = document.getElementById('compareRunA');
+      var bSel = document.getElementById('compareRunB');
+      var opts = runs.map(r => {
+        var label = (r.runId || '') + ' · ' + formatTimestamp(r.startedAt || r.completedAt) + ' · ' + ((r.summary || {}).total || 0) + '건 · ' + ((r.summary || {}).passRate != null ? r.summary.passRate + '%' : '?');
+        return '<option value="' + escapeHtml(r.runId) + '">' + escapeHtml(label) + '</option>';
+      }).join('');
+      aSel.innerHTML = opts;
+      bSel.innerHTML = opts;
+      if (currentRunId) {
+        aSel.value = currentRunId;
+      }
+      // B는 다음 후보 자동 선택
+      if (runs.length >= 2) {
+        var idxA = runs.findIndex(r => r.runId === aSel.value);
+        var bRun = runs[idxA === 0 ? 1 : 0];
+        bSel.value = bRun.runId;
+      }
+    });
+  }
+
+  function closeCompareModal() {
+    var modal = document.getElementById('compareModal');
+    if (modal) modal.style.display = 'none';
+  }
+
+  async function runCompare() {
+    var aId = document.getElementById('compareRunA').value;
+    var bId = document.getElementById('compareRunB').value;
+    if (!aId || !bId) return;
+    if (aId === bId) {
+      document.getElementById('compareResultArea').innerHTML = '<div style="padding:14px;color:var(--red)">동일한 배치를 선택했습니다. 다른 배치를 골라주세요.</div>';
+      return;
+    }
+    var area = document.getElementById('compareResultArea');
+    area.innerHTML = '<div style="padding:14px;color:var(--text-dim)">로딩 중...</div>';
+    try {
+      var [rA, rB] = await Promise.all([
+        fetch('/api/history/' + encodeURIComponent(aId)).then(r => r.json()),
+        fetch('/api/history/' + encodeURIComponent(bId)).then(r => r.json()),
+      ]);
+      renderCompareReport(rA, rB);
+    } catch (e) {
+      area.innerHTML = '<div style="padding:14px;color:var(--red)">비교 데이터 로드 실패: ' + escapeHtml(e.message) + '</div>';
+    }
+  }
+
+  function renderCompareReport(runA, runB) {
+    var area = document.getElementById('compareResultArea');
+    var resA = runA.results || [];
+    var resB = runB.results || [];
+
+    function _grade(r) { return (r.gptEval && r.gptEval.grade) || 'N/A'; }
+    function _passed(r) {
+      if (r.status === 'error' || !r.response) return false;
+      if (r.gptEval) return r.gptEval.passed === true;
+      return (r.finalScore || 0) >= 60;
+    }
+    function _cat(r) { return r.category || '미분류'; }
+
+    // 1. 요약 diff
+    var sA = runA.summary || {}, sB = runB.summary || {};
+    var prA = sA.passRate != null ? sA.passRate : (sA.total > 0 ? Math.round((sA.passed || 0) / sA.total * 100) : 0);
+    var prB = sB.passRate != null ? sB.passRate : (sB.total > 0 ? Math.round((sB.passed || 0) / sB.total * 100) : 0);
+    var prDiff = prB - prA;
+    var diffArrow = prDiff > 0 ? '▲ +' + prDiff : (prDiff < 0 ? '▼ ' + prDiff : '— 0');
+    var diffColor = prDiff > 0 ? 'var(--green)' : (prDiff < 0 ? 'var(--red)' : 'var(--text-dim)');
+
+    var html = '<div style="background:var(--bg);padding:14px;border-radius:8px;margin-bottom:12px;border:1px solid var(--border)">' +
+      '<div style="font-size:13px;font-weight:700;margin-bottom:10px">📈 통과율 변화</div>' +
+      '<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">' +
+        '<div style="text-align:center"><div style="font-size:11px;color:var(--text-dim)">A 기준</div><div style="font-size:24px;font-weight:800">' + prA + '%</div><div style="font-size:11px;color:var(--text-dim)">' + (sA.passed || 0) + '/' + (sA.total || 0) + '건</div></div>' +
+        '<div style="font-size:20px;color:var(--text-dim)">→</div>' +
+        '<div style="text-align:center"><div style="font-size:11px;color:var(--text-dim)">B</div><div style="font-size:24px;font-weight:800">' + prB + '%</div><div style="font-size:11px;color:var(--text-dim)">' + (sB.passed || 0) + '/' + (sB.total || 0) + '건</div></div>' +
+        '<div style="font-size:24px;font-weight:800;color:' + diffColor + ';margin-left:auto">' + diffArrow + '%p</div>' +
+      '</div></div>';
+
+    // 2. 등급 분포 비교
+    var gradeA = { A:0, B:0, C:0, D:0, F:0, 'N/A':0 };
+    var gradeB = { A:0, B:0, C:0, D:0, F:0, 'N/A':0 };
+    for (var i = 0; i < resA.length; i++) gradeA[_grade(resA[i])] = (gradeA[_grade(resA[i])] || 0) + 1;
+    for (var j = 0; j < resB.length; j++) gradeB[_grade(resB[j])] = (gradeB[_grade(resB[j])] || 0) + 1;
+    html += '<div style="background:var(--bg);padding:14px;border-radius:8px;margin-bottom:12px;border:1px solid var(--border)">' +
+      '<div style="font-size:13px;font-weight:700;margin-bottom:10px">🏷️ 등급 분포 변화</div>' +
+      '<table style="width:100%;font-size:12px;border-collapse:collapse">' +
+        '<thead><tr style="border-bottom:1px solid var(--border)"><th style="text-align:left;padding:4px 8px">등급</th><th style="padding:4px 8px">A 배치</th><th style="padding:4px 8px">B 배치</th><th style="padding:4px 8px">변화</th></tr></thead><tbody>';
+    ['A','B','C','D','F','N/A'].forEach(function(g) {
+      var aC = gradeA[g] || 0, bC = gradeB[g] || 0, d = bC - aC;
+      var dStr = d > 0 ? '+' + d : '' + d;
+      var dCol = d > 0 ? (g === 'A' || g === 'B' ? 'var(--green)' : 'var(--red)') : d < 0 ? (g === 'F' || g === 'D' ? 'var(--green)' : 'var(--red)') : 'var(--text-dim)';
+      html += '<tr style="border-bottom:1px solid var(--border)">' +
+        '<td style="padding:4px 8px;font-weight:700">' + g + '</td>' +
+        '<td style="padding:4px 8px;text-align:center">' + aC + '</td>' +
+        '<td style="padding:4px 8px;text-align:center">' + bC + '</td>' +
+        '<td style="padding:4px 8px;text-align:center;color:' + dCol + ';font-weight:700">' + dStr + '</td>' +
+        '</tr>';
+    });
+    html += '</tbody></table></div>';
+
+    // 3. 카테고리별 통과율 비교
+    var catA = {}, catB = {};
+    for (var k = 0; k < resA.length; k++) {
+      var c = _cat(resA[k]);
+      if (!catA[c]) catA[c] = { total: 0, passed: 0 };
+      catA[c].total++;
+      if (_passed(resA[k])) catA[c].passed++;
+    }
+    for (var l = 0; l < resB.length; l++) {
+      var c2 = _cat(resB[l]);
+      if (!catB[c2]) catB[c2] = { total: 0, passed: 0 };
+      catB[c2].total++;
+      if (_passed(resB[l])) catB[c2].passed++;
+    }
+    var allCats = Object.keys(Object.assign({}, catA, catB)).sort();
+    html += '<div style="background:var(--bg);padding:14px;border-radius:8px;margin-bottom:12px;border:1px solid var(--border)">' +
+      '<div style="font-size:13px;font-weight:700;margin-bottom:10px">📂 카테고리별 통과율 변화</div>' +
+      '<table style="width:100%;font-size:12px;border-collapse:collapse">' +
+        '<thead><tr style="border-bottom:1px solid var(--border)"><th style="text-align:left;padding:4px 8px">카테고리</th><th style="padding:4px 8px">A 통과율</th><th style="padding:4px 8px">B 통과율</th><th style="padding:4px 8px">변화</th></tr></thead><tbody>';
+    allCats.forEach(function(cat) {
+      var aT = (catA[cat] || {}).total || 0;
+      var aP = (catA[cat] || {}).passed || 0;
+      var bT = (catB[cat] || {}).total || 0;
+      var bP = (catB[cat] || {}).passed || 0;
+      var aR = aT > 0 ? Math.round(aP / aT * 100) : null;
+      var bR = bT > 0 ? Math.round(bP / bT * 100) : null;
+      var d = (aR != null && bR != null) ? (bR - aR) : null;
+      var dStr = d == null ? '-' : (d > 0 ? '▲ +' + d : (d < 0 ? '▼ ' + d : '— 0')) + '%p';
+      var dCol = d == null ? 'var(--text-dim)' : (d > 0 ? 'var(--green)' : (d < 0 ? 'var(--red)' : 'var(--text-dim)'));
+      html += '<tr style="border-bottom:1px solid var(--border)">' +
+        '<td style="padding:4px 8px">' + escapeHtml(cat) + '</td>' +
+        '<td style="padding:4px 8px;text-align:center">' + (aR != null ? aR + '%' : '-') + ' <span style="color:var(--text-dim);font-size:10px">(' + aP + '/' + aT + ')</span></td>' +
+        '<td style="padding:4px 8px;text-align:center">' + (bR != null ? bR + '%' : '-') + ' <span style="color:var(--text-dim);font-size:10px">(' + bP + '/' + bT + ')</span></td>' +
+        '<td style="padding:4px 8px;text-align:center;color:' + dCol + ';font-weight:700">' + dStr + '</td>' +
+        '</tr>';
+    });
+    html += '</tbody></table></div>';
+
+    // 4. 위반 유형 빈도 비교
+    var violA = {}, violB = {};
+    for (var m = 0; m < resA.length; m++) {
+      var v = resA[m].compliance && resA[m].compliance.violations || [];
+      for (var n = 0; n < v.length; n++) {
+        var vn = v[n].name || v[n].rule || '기타';
+        violA[vn] = (violA[vn] || 0) + 1;
+      }
+    }
+    for (var o = 0; o < resB.length; o++) {
+      var v2 = resB[o].compliance && resB[o].compliance.violations || [];
+      for (var p = 0; p < v2.length; p++) {
+        var vn2 = v2[p].name || v2[p].rule || '기타';
+        violB[vn2] = (violB[vn2] || 0) + 1;
+      }
+    }
+    var allViols = Object.keys(Object.assign({}, violA, violB)).sort(function(a, b) {
+      return ((violB[b] || 0) - (violA[b] || 0)) - ((violB[a] || 0) - (violA[a] || 0));
+    });
+    html += '<div style="background:var(--bg);padding:14px;border-radius:8px;border:1px solid var(--border)">' +
+      '<div style="font-size:13px;font-weight:700;margin-bottom:10px">⚖️ 위반 유형 빈도 변화 (위반 감소 = 개선)</div>';
+    if (allViols.length === 0) {
+      html += '<div style="font-size:12px;color:var(--text-dim)">위반 사항이 없습니다 (양쪽 모두)</div>';
+    } else {
+      html += '<table style="width:100%;font-size:12px;border-collapse:collapse">' +
+        '<thead><tr style="border-bottom:1px solid var(--border)"><th style="text-align:left;padding:4px 8px">위반 유형</th><th style="padding:4px 8px">A 빈도</th><th style="padding:4px 8px">B 빈도</th><th style="padding:4px 8px">변화</th></tr></thead><tbody>';
+      allViols.forEach(function(vn) {
+        var aV = violA[vn] || 0, bV = violB[vn] || 0, d = bV - aV;
+        // 위반 감소가 개선이므로 색상 반전: 감소=green, 증가=red
+        var dStr = d > 0 ? '▲ +' + d : (d < 0 ? '▼ ' + d : '— 0');
+        var dCol = d < 0 ? 'var(--green)' : (d > 0 ? 'var(--red)' : 'var(--text-dim)');
+        html += '<tr style="border-bottom:1px solid var(--border)">' +
+          '<td style="padding:4px 8px">' + escapeHtml(vn) + '</td>' +
+          '<td style="padding:4px 8px;text-align:center">' + aV + '</td>' +
+          '<td style="padding:4px 8px;text-align:center">' + bV + '</td>' +
+          '<td style="padding:4px 8px;text-align:center;color:' + dCol + ';font-weight:700">' + dStr + '</td>' +
+          '</tr>';
+      });
+      html += '</tbody></table>';
+    }
+    html += '</div>';
+
+    area.innerHTML = html;
   }
 
   // ── Re-evaluate Run with current guidelines ──
@@ -1242,6 +1562,7 @@
       '<button class="btn-small" onclick="reEvaluateBatch(\'' + escapeHtml(run.runId || '') + '\', false)" style="padding:4px 12px;font-size:12px">정규식만 재평가</button>' +
       '<button class="btn-small" onclick="reEvaluateBatch(\'' + escapeHtml(run.runId || '') + '\', true)" style="padding:4px 12px;font-size:12px;background:rgba(168,85,247,0.15);color:var(--purple);border-color:var(--purple)">🤖 컴플라이언스 평가 포함 재평가</button>' +
       '<span style="font-size:10px;color:var(--text-dim);margin-left:8px">⚠️ GPT 포함 시 OpenAI 비용·시간 소요</span>' +
+      '<button class="btn-small" onclick="openCompareModal(\'' + escapeHtml(run.runId || '') + '\')" style="padding:4px 12px;font-size:12px;background:rgba(56,189,248,0.15);color:var(--accent);border-color:var(--accent);margin-left:auto">📊 다른 배치와 비교 (A/B)</button>' +
       '</div>';
 
     // 1. Summary Cards
