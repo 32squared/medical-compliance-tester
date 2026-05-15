@@ -602,9 +602,16 @@ def _db_run_to_proxy(r):
     failed = r.get('failed', 0)
     error = total - passed - failed if total > passed + failed else 0
     pass_rate = round(passed / total * 100, 1) if total > 0 else 0.0
+    _rid = str(r.get('id', ''))
+    if _rid.startswith('job-'):
+        _type = 'job-batch'
+    elif _rid.startswith('batch-') or _rid.startswith('merged-'):
+        _type = 'batch'
+    else:
+        _type = 'single'
     return {
         'runId': r.get('id', ''),
-        'type': 'batch' if str(r.get('id', '')).startswith('batch-') else 'single',
+        'type': _type,
         'env': r.get('env', 'dev'),
         'startedAt': r.get('runAt', ''),
         'completedAt': r.get('runAt', ''),
@@ -2498,10 +2505,100 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
     _MAX_CONCURRENT_BATCHES = 4
     _CHUNK_SIZE = 50
 
+    # Phase 4 — Cloud Run Job 분기 임계값. 이상이면 Service background thread 대신 Job 트리거.
+    _JOB_THRESHOLD = 500
+    # GCP/Job 식별자
+    _GCP_PROJECT = os.environ.get('GCP_PROJECT', 'medical-compliance-tester')
+    _GCP_REGION = os.environ.get('GCP_REGION', 'asia-northeast3')
+    _JOB_NAME = os.environ.get('BATCH_JOB_NAME', 'batch-runner')
+
+    def _trigger_job_run(self, scenario_ids, run_by='', label=''):
+        """Cloud Run Job 'batch-runner' 비동기 트리거.
+
+        google-cloud-run 라이브러리를 사용해 RUN_ID/SCENARIO_IDS_JSON/RUN_BY/LABEL 을
+        execution-override 환경변수로 전달한다. Job 실행 자체는 Cloud Run 측에서 async.
+        본 함수는 DB에 'running' 상태 즉시 저장하고 runId 만 반환한다 (사용자가 폴링).
+        """
+        try:
+            from google.cloud import run_v2
+            from google.cloud.run_v2 import types as run_types
+        except ImportError as e:
+            ProxyHandler._add_log(f"[job] google-cloud-run import 실패: {e}")
+            return self._send_error(500, f'Job 트리거 라이브러리 누락: {e}')
+
+        run_id = f"job-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{secrets.token_hex(3)}"
+        now = datetime.now(timezone.utc).isoformat()
+        current_env = db.get_settings().get('currentEnv', 'prod')
+
+        # DB에 즉시 running 상태 저장 — 사용자가 history 폴링 가능
+        try:
+            _save_run_to_db({
+                'runId': run_id, 'type': 'job-batch', 'env': current_env,
+                'status': 'running', 'startedAt': now, 'completedAt': None,
+                'runBy': run_by,
+                'summary': {'total': len(scenario_ids), 'passed': 0, 'failed': 0, 'error': 0, 'passRate': 0},
+                'results': [],
+            })
+        except Exception as e:
+            ProxyHandler._add_log(f"[job] 초기 DB 저장 실패: {str(e)[:200]}")
+
+        # Job execution override — RUN_ID/SCENARIO_IDS_JSON/RUN_BY/LABEL 만 추가. RUN_MODE/DATABASE_URL은 Job 정의에 이미.
+        try:
+            client = run_v2.JobsClient()
+            job_path = f"projects/{ProxyHandler._GCP_PROJECT}/locations/{ProxyHandler._GCP_REGION}/jobs/{ProxyHandler._JOB_NAME}"
+            env_vars = [
+                run_types.EnvVar(name='RUN_ID', value=run_id),
+                run_types.EnvVar(name='SCENARIO_IDS_JSON', value=json.dumps(scenario_ids)),
+                run_types.EnvVar(name='RUN_BY', value=run_by or 'service-trigger'),
+                run_types.EnvVar(name='LABEL', value=label or ''),
+            ]
+            overrides = run_types.RunJobRequest.Overrides(
+                container_overrides=[
+                    run_types.RunJobRequest.Overrides.ContainerOverride(env=env_vars)
+                ]
+            )
+            request = run_types.RunJobRequest(name=job_path, overrides=overrides)
+            operation = client.run_job(request=request)
+            # 실행 트리거만 보내고 즉시 반환 — wait 하지 않음
+            ProxyHandler._add_log(
+                f"[job] 트리거 OK runId={run_id} count={len(scenario_ids)} runBy={run_by} env={current_env}"
+            )
+            self._send_json(202, {
+                'runId': run_id,
+                'status': 'queued',
+                'type': 'job-batch',
+                'total': len(scenario_ids),
+                'message': f'{len(scenario_ids)}개 시나리오 Cloud Run Job으로 시작됨',
+            })
+        except Exception as e:
+            ProxyHandler._add_log(f"[job] 트리거 실패 runId={run_id}: {type(e).__name__}: {str(e)[:300]}")
+            # DB 상태를 error로 업데이트
+            try:
+                _save_run_to_db({
+                    'runId': run_id, 'type': 'job-batch', 'env': current_env,
+                    'status': 'completed', 'startedAt': now,
+                    'completedAt': datetime.now(timezone.utc).isoformat(),
+                    'runBy': run_by,
+                    'summary': {'total': len(scenario_ids), 'passed': 0, 'failed': 0, 'error': len(scenario_ids), 'passRate': 0},
+                    'results': [],
+                })
+            except Exception:
+                pass
+            return self._send_error(500, f'Job 트리거 실패: {type(e).__name__}: {str(e)[:200]}')
+
     def _batch_run(self, body):
-        """POST /api/test/batch — 청크 기반 병렬 실행 (50개 단위, 재시도, 중지 지원)"""
-        import time as _time
-        from concurrent.futures import ThreadPoolExecutor, as_completed
+        """POST /api/test/batch — 청크 기반 병렬 실행 (BatchExecutor 위임).
+
+        실행 로직 자체는 batch_executor.BatchExecutor 가 담당. 본 메서드는
+        - 입력 검증 + 동시 실행 제한 + Tester UID 결정
+        - 초기 상태(_batch_status / _active_batches / DB running) 세팅
+        - background thread 에서 executor.run_batch 호출 + 콜백으로 진행상태/점진DB저장
+        - 완료 시 cleanup
+        만 담당한다. (Cloud Run Jobs 이전 — Phase 1)
+
+        Phase 4: 500건 이상 또는 useJob=true 이면 Cloud Run Job 으로 위임.
+        """
+        from batch_executor import BatchExecutor, build_skix_config
 
         try:
             payload = json.loads(body)
@@ -2512,6 +2609,15 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
         if not scenario_ids:
             return self._send_error(400, '실행할 시나리오 ID를 지정하세요')
 
+        # Phase 4 — Job 분기: 임계값 이상 또는 명시적 useJob=true
+        use_job = bool(payload.get('useJob')) or (len(scenario_ids) >= ProxyHandler._JOB_THRESHOLD)
+        if use_job:
+            return self._trigger_job_run(
+                scenario_ids,
+                run_by=self._get_alias(),
+                label=payload.get('label', ''),
+            )
+
         # 동시 실행 제한 체크
         with ProxyHandler._active_batches_lock:
             if len(ProxyHandler._active_batches) >= ProxyHandler._MAX_CONCURRENT_BATCHES:
@@ -2519,34 +2625,17 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
                 return self._send_error(429,
                     f'현재 {len(ProxyHandler._active_batches)}개 배치 실행 중 ({active_users}). 잠시 후 재시도하세요.')
 
-        # 설정 로드
+        # 설정 + Tester UID 결정 → skix_config
         settings = db.get_settings()
-        current_env = settings.get('currentEnv', 'dev')
-        env_defaults = {
-            'dev':  {'apiUrl': 'https://dev-skix.phnyx.ai',    'xTenantDomain': 'dev-skix'},
-            'stg':  {'apiUrl': 'https://staging-skix.phnyx.ai', 'xTenantDomain': 'staging-skix-test'},
-            'prod': {'apiUrl': 'https://skix.phnyx.ai',         'xTenantDomain': 'prod-skix-test'},
-        }
-        env_cfg = settings.get('environments', {}).get(current_env, {})
-        api_key = env_cfg.get('xApiKey', settings.get('xApiKey', ''))
-        api_uid_default = env_cfg.get('xApiUid', settings.get('xApiUid', ''))
-        tenant_domain = env_cfg.get('xTenantDomain', env_defaults.get(current_env, {}).get('xTenantDomain', 'dev-skix'))
-        api_url = env_cfg.get('apiUrl', env_defaults.get(current_env, {}).get('apiUrl', 'https://dev-skix.phnyx.ai'))
-        graph_type = settings.get('graphType', 'ORCHESTRATED_HYBRID_SEARCH')
         tester = self._get_tester_info()
-        api_uid = tester['uid'] if tester else api_uid_default
-        if not api_uid:
-            api_uid = api_uid_default or 'batch-test'
+        tester_uid = tester['uid'] if tester else None
+        skix_cfg = build_skix_config(settings, tester_uid=tester_uid)
+        current_env = skix_cfg.get('current_env', 'dev')
 
-        if not api_key:
+        if not skix_cfg.get('api_key'):
             return self._send_error(400, f'{current_env.upper()} 환경의 API Key가 설정되지 않았습니다.')
 
-        source_types = []
-        if settings.get('srcWeb', True): source_types.append('WEB')
-        if settings.get('srcPubmed', True): source_types.append('PUBMED')
-
         openai_key = settings.get('openaiKey', '') or settings.get('openai_api_key', '')
-        gpt_model = settings.get('openaiModel', 'gpt-4o-mini')
         run_id = f"batch-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{secrets.token_hex(3)}"
         run_by = self._get_alias()
         now = datetime.now(timezone.utc).isoformat()
@@ -2574,356 +2663,95 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
             "results": []
         })
 
-        # 단일 시나리오 실행 (재시도 로직 + 에러 분류 + 부분 응답 보존)
-        def execute_single(sid, sc):
-            MAX_READ_TIME = 90  # resp.read() 전체 타임아웃 (초)
-            max_retries = 2
-            attempt_log = []          # 모든 attempt 기록 (재시도 추적)
-            best_partial_text = ''    # 시도들 중 가장 긴 부분 응답 보존
-            best_partial_meta = None  # 가장 좋은 시도의 메타 (first_token_time 등)
+        # 단일 시나리오 실행 — BatchExecutor 로 위임 (Cloud Run Jobs 이전 — Phase 1)
+        executor_obj = BatchExecutor(
+            settings=settings,
+            openai_key=openai_key,
+            skix_config=skix_cfg,
+            evaluate_gpt_fn=_evaluate_gpt,
+            evaluate_consultation_fn=_evaluate_consultation,
+            log_fn=ProxyHandler._add_log,
+        )
 
-            for attempt in range(max_retries + 1):
-                t0 = _time.time()
-                # attempt별 메타 초기화
-                cur_full_text = ''
-                cur_first_token = None
-                cur_last_token = None
-                cur_stopped = False
-                cur_search_results = []
-                http_status = None
-                err_cat = None
-                err_msg = None
-                try:
-                    target_url = f"{api_url}/api/service/conversations/{graph_type}"
-                    req_body_bytes = json.dumps({
-                        "query": sc['prompt'], "conversation_strid": None, "source_types": source_types,
-                    }, ensure_ascii=False).encode('utf-8')
-                    hdrs = {
-                        'Content-Type': 'application/json', 'Accept': 'text/event-stream',
-                        'X-API-Key': api_key, 'X-tenant-Domain': tenant_domain, 'X-Api-UID': api_uid,
-                    }
-                    ctx = ssl.create_default_context()
-                    req = Request(url=target_url, data=req_body_bytes, headers=hdrs, method='POST')
-                    resp = urlopen(req, context=ctx, timeout=60)
-                    try:
-                        http_status = resp.getcode()
-                    except Exception:
-                        http_status = None
-
-                    # 라인 단위 SSE 파싱 — TTFT/응답 종료 시간 + 부분 응답 보존
-                    full_text = ''
-                    read_start = _time.time()
-                    line_buffer = b''
-                    first_token_time = None
-                    last_token_time = None
-                    stopped = False
-                    collected_search_results_batch = []
-                    try:
-                        resp.fp.raw._sock.settimeout(30)  # 소켓 레벨 30초 타임아웃
-                    except Exception:
-                        pass
-                    while True:
-                        if _time.time() - read_start > MAX_READ_TIME:
-                            raise TimeoutError(f'SKIX 응답 읽기 타임아웃 ({MAX_READ_TIME}초)')
-                        chunk = resp.read(8192)
-                        if not chunk:
-                            break
-                        line_buffer += chunk
-
-                        # 라인 단위 즉시 파싱 (스트리밍 시간 측정용)
-                        while b'\n' in line_buffer:
-                            line_bytes, line_buffer = line_buffer.split(b'\n', 1)
-                            line = line_bytes.decode('utf-8', errors='replace').strip()
-                            if not line.startswith('data:'):
-                                continue
-                            json_str = line[5:].strip()
-                            if not json_str:
-                                continue
-                            try:
-                                ed = json.loads(json_str)
-                                etype = ed.get('type', '')
-                                if etype == 'GENERATION':
-                                    now = _time.time()
-                                    if first_token_time is None:
-                                        first_token_time = now
-                                    last_token_time = now
-                                    full_text += ed.get('text', '')
-                                elif etype == 'KEEP_ALIVE':
-                                    continue
-                                elif etype == 'INFO':
-                                    edata = ed.get('data', {})
-                                    if edata.get('search_results'):
-                                        collected_search_results_batch.extend(edata['search_results'])
-                                elif etype == 'PROGRESS':
-                                    result_items = ed.get('result_items')
-                                    if result_items and isinstance(result_items, list):
-                                        collected_search_results_batch.extend(result_items)
-                                elif etype == 'STOP':
-                                    stopped = True
-                                    if not full_text and ed.get('text'):
-                                        full_text = ed.get('text', '')
-                                        if first_token_time is None:
-                                            first_token_time = _time.time()
-                                        last_token_time = _time.time()
-                            except json.JSONDecodeError:
-                                pass
-
-                    el = int((_time.time() - t0) * 1000)
-                    # 응답 시간 메트릭 (ms)
-                    first_token_ms = int((first_token_time - t0) * 1000) if first_token_time else None
-                    last_token_ms = int((last_token_time - t0) * 1000) if last_token_time else None
-                    generation_ms = (last_token_ms - first_token_ms) if (first_token_ms is not None and last_token_ms is not None) else None
-
-                    # 응답 완료 여부 판정
-                    completed = stopped or bool(full_text)
-                    # 부분 응답 감지: 텍스트는 있지만 STOP 이벤트 못 받음
-                    is_partial = bool(full_text) and not stopped
-
-                    # attempt 성공 로그
-                    attempt_log.append({
-                        'attempt': attempt + 1,
-                        'ok': True,
-                        'durationMs': el,
-                        'httpStatus': http_status,
-                        'responseLen': len(full_text or ''),
-                        'stopped': stopped,
-                        'partial': is_partial,
-                    })
-                    # ── LLM-only 평가 (정규식 평가 제거) ──
-                    # 사용자 결정: 컴플라이언스 평가는 LLM만 사용. 정규식은 결과에 영향 X.
-                    gpt = None
-                    consult = None
-                    if openai_key and full_text:
-                        from concurrent.futures import ThreadPoolExecutor as _EvalTPE
-                        try:
-                            eval_exec = _EvalTPE(max_workers=2)
-                            gpt_f = eval_exec.submit(_evaluate_gpt, sc['prompt'], full_text, openai_key, gpt_model)
-                            consult_f = eval_exec.submit(_evaluate_consultation, sc['prompt'], full_text, openai_key, gpt_model)
-                            try:
-                                gpt = gpt_f.result(timeout=120)
-                            except Exception as _e:
-                                ProxyHandler._add_log(f"[컴플라이언스] 실패 sid={sid}: {str(_e)[:120]}")
-                                gpt = None
-                            try:
-                                consult = consult_f.result(timeout=120)
-                            except Exception:
-                                consult = None
-                            eval_exec.shutdown(wait=False, cancel_futures=True)
-                        except Exception as _ex:
-                            ProxyHandler._add_log(f"[컴플라이언스] 실행기 실패 sid={sid}: {str(_ex)[:120]}")
-
-                    # LLM 평가 결과만 최종 판정에 사용
-                    if gpt and gpt.get('grade'):
-                        final_score = gpt.get('score', 0)
-                        final_passed = gpt.get('passed', False)
-                        final_source = 'gpt'
-                        # 응답 없으면 무조건 fail/error
-                        if not full_text:
-                            st = 'error'
-                        else:
-                            st = 'pass' if final_passed else 'fail'
-                    else:
-                        # LLM 평가 실패 → error (정규식 fallback 안 함)
-                        final_score = None
-                        final_passed = False
-                        final_source = 'gpt_failed' if openai_key else 'no_key'
-                        st = 'error' if not full_text or not gpt else 'fail'
-
-                    return {
-                        "scenarioId": sid, "prompt": sc['prompt'], "response": full_text,
-                        "status": st, "responseTime": el,
-                        "finalScore": final_score, "finalSource": final_source,
-                        "gptScore": gpt.get('score') if gpt else None,
-                        "expectedBehavior": sc.get('expectedBehavior', ''),
-                        "riskLevel": sc.get('riskLevel', ''),
-                        "shouldRefuse": sc.get('shouldRefuse', False),
-                        # ── 분석용 메타 ──
-                        "category": sc.get('category', ''),
-                        "subcategory": sc.get('subcategory', ''),
-                        "tags": sc.get('tags', []),
-                        "source": sc.get('source', 'manual'),
-                        # ── 응답 메타 ──
-                        "responseLength": len(full_text or ''),
-                        "citationCount": len(collected_search_results_batch or []),
-                        # ── 응답 시간 metric (ms) ──
-                        "firstTokenMs": first_token_ms,
-                        "lastTokenMs": last_token_ms,
-                        "generationMs": generation_ms,
-                        # ── API 호출 상태 ──
-                        "httpStatus": http_status,
-                        "completed": completed,
-                        "partialResponse": is_partial,
-                        "attempts": len(attempt_log),
-                        "attemptLog": attempt_log,
-                        # compliance(정규식)은 결과에 포함 안 함 — LLM만 사용
-                        "gptEval": gpt,
-                        "consultationEval": consult,
-                        "guidelineVersion": gpt.get('guidelineVersion', '') if gpt else '',
-                        "searchResults": collected_search_results_batch[:5] if collected_search_results_batch else [],
-                    }
-                except Exception as e:
-                    # 에러 카테고리 분류
-                    err_type = type(e).__name__
-                    err_msg = str(e)[:300]
-                    if 'TimeoutError' in err_type or '타임아웃' in err_msg or 'timeout' in err_msg.lower():
-                        err_cat = 'timeout_read' if ('read' in err_msg.lower() or '읽기' in err_msg) else 'timeout'
-                    elif 'HTTPError' in err_type:
-                        err_cat = 'http_error'
-                        try:
-                            http_status = getattr(e, 'code', None)
-                        except Exception:
-                            pass
-                    elif 'URLError' in err_type or 'ConnectionError' in err_type:
-                        err_cat = 'network_error'
-                    elif 'JSONDecodeError' in err_type:
-                        err_cat = 'parse_error'
-                    elif 'ssl' in err_msg.lower() or 'SSL' in err_type:
-                        err_cat = 'ssl_error'
-                    else:
-                        err_cat = err_type or 'unknown'
-
-                    # 부분 응답 보존: 시도 도중 받았던 텍스트
-                    partial_now = locals().get('full_text', '') or ''
-                    if partial_now and len(partial_now) > len(best_partial_text):
-                        best_partial_text = partial_now
-                        best_partial_meta = {
-                            'firstTokenMs': int((first_token_time - t0) * 1000) if locals().get('first_token_time') else None,
-                            'lastTokenMs': int((last_token_time - t0) * 1000) if locals().get('last_token_time') else None,
-                            'searchResults': locals().get('collected_search_results_batch', [])[:5],
-                        }
-
-                    el = int((_time.time() - t0) * 1000)
-                    attempt_log.append({
-                        'attempt': attempt + 1,
-                        'ok': False,
-                        'durationMs': el,
-                        'httpStatus': http_status,
-                        'errorCategory': err_cat,
-                        'error': err_msg,
-                        'partialLen': len(partial_now),
-                    })
-                    ProxyHandler._add_log(
-                        f"[배치] sid={sid} attempt={attempt+1}/{max_retries+1} 실패: {err_cat} {err_msg[:120]} (partial={len(partial_now)} chars)"
-                    )
-
-                    if attempt < max_retries:
-                        _time.sleep(2 ** attempt)
-                        continue
-
-                    # 최종 실패 — 가장 좋은 부분 응답 보존 + 상세 에러 메타
-                    partial_meta = best_partial_meta or {}
-                    ft = partial_meta.get('firstTokenMs')
-                    lt = partial_meta.get('lastTokenMs')
-                    return {
-                        "scenarioId": sid,
-                        "prompt": sc['prompt'],
-                        "response": best_partial_text,
-                        "status": "error",
-                        "responseTime": el,
-                        "error": err_msg,
-                        "errorCategory": err_cat,
-                        "httpStatus": http_status,
-                        "attempts": len(attempt_log),
-                        "attemptLog": attempt_log,
-                        "completed": False,
-                        "partialResponse": bool(best_partial_text),
-                        "firstTokenMs": ft,
-                        "lastTokenMs": lt,
-                        "generationMs": (lt - ft) if (ft is not None and lt is not None) else None,
-                        "responseLength": len(best_partial_text or ''),
-                        "category": sc.get('category', ''),
-                        "subcategory": sc.get('subcategory', ''),
-                        "riskLevel": sc.get('riskLevel', ''),
-                        "source": sc.get('source', 'manual'),
-                        "searchResults": partial_meta.get('searchResults', []),
-                    }
-
-        # 백그라운드 스레드: 청크 기반 병렬 실행
+        # 백그라운드 스레드: BatchExecutor 위임 + 콜백으로 진행상태/점진DB저장
         def run_batch():
             try:
                 data = db.get_scenarios()
                 scenarios_map = {s['id']: s for s in data.get('scenarios', [])}
-                all_results = []
-                passed = failed = errors = 0
-                completed_count = 0
-                cancelled = False
-                max_workers = min(10, len(scenario_ids))
 
-                # 청크 단위 실행
-                for chunk_start in range(0, len(scenario_ids), ProxyHandler._CHUNK_SIZE):
-                    if ProxyHandler._cancel_flags.get(run_id):
-                        cancelled = True
-                        break
+                def cancel_check():
+                    return bool(ProxyHandler._cancel_flags.get(run_id))
 
-                    chunk = scenario_ids[chunk_start : chunk_start + ProxyHandler._CHUNK_SIZE]
-                    chunk_items = []
-                    for sid in chunk:
-                        sc = scenarios_map.get(sid)
-                        if not sc:
-                            all_results.append({"scenarioId": sid, "status": "error",
-                                                "error": "시나리오 없음", "prompt": "", "response": "", "responseTime": 0})
-                            errors += 1
-                            completed_count += 1
-                            continue
-                        chunk_items.append((sid, sc))
+                def on_result(result):
+                    with ProxyHandler._batch_lock:
+                        st = ProxyHandler._batch_status.get(run_id)
+                        if st is not None:
+                            st["completed"] = st.get("completed", 0) + 1
+                            st["current"] = result.get('scenarioId', '')
+                            s = result.get('status')
+                            if s == 'pass':
+                                st["passed"] = st.get("passed", 0) + 1
+                            elif s == 'error':
+                                st["errors"] = st.get("errors", 0) + 1
+                            else:
+                                st["failed"] = st.get("failed", 0) + 1
+                            # 폴링용 요약 (응답 본문 제외)
+                            st.setdefault("latestResults", []).append({
+                                "scenarioId": result.get('scenarioId', ''),
+                                "status": s,
+                                "finalScore": result.get('finalScore', 0),
+                                "finalSource": result.get('finalSource', 'regex'),
+                                "responseTime": result.get('responseTime', 0),
+                                "prompt": (result.get('prompt', '') or '')[:80],
+                            })
+                            passed_now = st["passed"]
+                            failed_now = st["failed"]
+                            errors_now = st["errors"]
+                            completed_now = st["completed"]
+                    # 점진 DB 저장 (lock 밖에서) — 매 결과마다 즉시 반영
+                    total_so_far = completed_now
+                    pr = round(passed_now / total_so_far * 100, 1) if total_so_far > 0 else 0.0
+                    # all_results 는 BatchExecutor 가 모은 결과 — closure 로 접근
+                    try:
+                        _save_run_to_db({
+                            "runId": run_id, "type": "batch", "env": current_env,
+                            "status": "running", "startedAt": now, "runBy": run_by,
+                            "summary": {
+                                "total": len(scenario_ids),
+                                "passed": passed_now,
+                                "failed": failed_now,
+                                "error": errors_now,
+                                "passRate": pr,
+                            },
+                            "results": collected_results,
+                        })
+                    except Exception as save_err:
+                        ProxyHandler._add_log(f"[배치] 중간 저장 실패: {str(save_err)[:100]}")
 
-                    # 청크 내 병렬 실행
-                    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                        futures = {}
-                        for i, (sid, sc) in enumerate(chunk_items):
-                            if ProxyHandler._cancel_flags.get(run_id):
-                                cancelled = True
-                                break
-                            if i > 0:
-                                _time.sleep(0.2)
-                            futures[executor.submit(execute_single, sid, sc)] = sid
+                # BatchExecutor 가 모으는 results 와 별도로 closure 안에 누적
+                # (run_batch 결과 dict 의 'results' 와 동일 객체를 사용하기 위해 미리 list 할당)
+                collected_results = []
+                _orig_on_result = on_result
 
-                        for future in as_completed(futures):
-                            if ProxyHandler._cancel_flags.get(run_id):
-                                cancelled = True
-                                executor.shutdown(wait=False, cancel_futures=True)
-                                break
-                            result = future.result()
-                            all_results.append(result)
-                            completed_count += 1
-                            if result['status'] == 'pass': passed += 1
-                            elif result['status'] == 'error': errors += 1
-                            else: failed += 1
-                            with ProxyHandler._batch_lock:
-                                ProxyHandler._batch_status[run_id]["completed"] = completed_count
-                                ProxyHandler._batch_status[run_id]["current"] = result['scenarioId']
-                                ProxyHandler._batch_status[run_id]["passed"] = passed
-                                ProxyHandler._batch_status[run_id]["failed"] = failed
-                                ProxyHandler._batch_status[run_id]["errors"] = errors
-                                # 최근 완료 결과 추가 (요약만 — 응답 전체 제외하여 메모리 절약)
-                                ProxyHandler._batch_status[run_id]["latestResults"].append({
-                                    "scenarioId": result['scenarioId'],
-                                    "status": result['status'],
-                                    "finalScore": result.get('finalScore', 0),
-                                    "finalSource": result.get('finalSource', 'regex'),
-                                    "responseTime": result.get('responseTime', 0),
-                                    "prompt": result.get('prompt', '')[:80],
-                                })
+                def on_result_wrapper(result):
+                    collected_results.append(result)
+                    _orig_on_result(result)
 
-                            # Fix 3: 각 시나리오 완료 시 즉시 DB 저장
-                            total_so_far = len(all_results)
-                            pr = round(passed / total_so_far * 100, 1) if total_so_far > 0 else 0.0
-                            try:
-                                _save_run_to_db({
-                                    "runId": run_id, "type": "batch", "env": current_env,
-                                    "status": "running", "startedAt": now, "runBy": run_by,
-                                    "summary": {"total": len(scenario_ids), "passed": passed,
-                                                "failed": failed, "error": errors, "passRate": pr},
-                                    "results": all_results
-                                })
-                            except Exception as save_err:
-                                ProxyHandler._add_log(f"[배치] 중간 저장 실패: {str(save_err)[:100]}")
-
-                    if cancelled:
-                        break
+                summary = executor_obj.run_batch(
+                    run_id=run_id,
+                    scenarios_map=scenarios_map,
+                    scenario_ids=scenario_ids,
+                    on_progress=None,
+                    on_result=on_result_wrapper,
+                    cancel_check=cancel_check,
+                )
 
                 # 최종 저장
-                total = len(all_results)
+                total = summary['completed']
+                passed = summary['passed']
+                failed = summary['failed']
+                errors = summary['errors']
+                cancelled = summary['cancelled']
                 pass_rate = round(passed / total * 100, 1) if total > 0 else 0.0
                 final_status = "cancelled" if cancelled else "completed"
                 _save_run_to_db({
@@ -2933,7 +2761,7 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
                     "runBy": run_by,
                     "summary": {"total": total, "passed": passed, "failed": failed,
                                 "error": errors, "passRate": pass_rate},
-                    "results": all_results
+                    "results": summary['results'],
                 })
 
                 done_status = "cancelled" if cancelled else "done"
@@ -2950,6 +2778,7 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
                     ProxyHandler._active_batches.pop(run_id, None)
                 ProxyHandler._cancel_flags.pop(run_id, None)
 
+
         thread = threading.Thread(target=run_batch, daemon=True)
         thread.start()
 
@@ -2960,11 +2789,83 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
         })
 
     def _cancel_batch(self, run_id):
-        """POST /api/test/cancel/{runId} — 배치 중지"""
-        if run_id not in ProxyHandler._batch_status:
+        """POST /api/test/cancel/{runId} — 배치 중지.
+
+        - Service background thread batch (type='batch'): _cancel_flags 플래그 토글 → BatchExecutor 가 다음 청크 시작 전 중단.
+        - Cloud Run Job batch (type='job-batch'): 해당 runId 의 running execution 을 찾아 Cloud Run API 로 cancel. Job 측 SIGTERM 핸들러 가 마지막 flush 후 종료 (job_runner.py).
+        """
+        # type 판정: DB 조회 → service / job
+        run = None
+        try:
+            run = db.get_test_run(run_id)
+        except Exception:
+            run = None
+
+        is_job = bool(run and run.get('id', '').startswith('job-'))
+        # 메모리 status 와 DB 둘 다 없으면 404
+        if not run and run_id not in ProxyHandler._batch_status:
             return self._send_error(404, '배치를 찾을 수 없습니다')
+
+        if is_job:
+            return self._cancel_job_batch(run_id)
+
+        # Service background thread cancel
         ProxyHandler._cancel_flags[run_id] = True
         self._send_json(200, {"success": True, "message": "중지 요청됨. 현재 실행 중인 시나리오 완료 후 중지됩니다."})
+
+    def _cancel_job_batch(self, run_id):
+        """Cloud Run Job execution 취소.
+
+        runId 로 실행 중인 execution 을 찾으려면 Job 의 execution 리스트에서
+        env vars 의 RUN_ID 가 일치하는 것을 골라 cancel. Cloud Run API 직접 호출.
+        """
+        try:
+            from google.cloud import run_v2
+            from google.cloud.run_v2 import types as run_types
+        except ImportError as e:
+            return self._send_error(500, f'Job 취소 라이브러리 누락: {e}')
+
+        try:
+            exec_client = run_v2.ExecutionsClient()
+            parent = f"projects/{ProxyHandler._GCP_PROJECT}/locations/{ProxyHandler._GCP_REGION}/jobs/{ProxyHandler._JOB_NAME}"
+            executions = exec_client.list_executions(parent=parent)
+            target_exec = None
+            for ex in executions:
+                # execution 의 template containers env 에서 RUN_ID 찾기
+                try:
+                    containers = ex.template.containers if ex.template else []
+                except Exception:
+                    containers = []
+                matched = False
+                for c in containers:
+                    for env in getattr(c, 'env', []) or []:
+                        if env.name == 'RUN_ID' and env.value == run_id:
+                            matched = True
+                            break
+                    if matched:
+                        break
+                if not matched:
+                    continue
+                # 아직 실행 중인 execution만
+                if ex.completion_time:
+                    continue
+                target_exec = ex
+                break
+
+            if not target_exec:
+                return self._send_error(404, f'실행 중인 Job execution 을 찾지 못함 (runId={run_id})')
+
+            cancel_req = run_types.CancelExecutionRequest(name=target_exec.name)
+            exec_client.cancel_execution(request=cancel_req)
+            ProxyHandler._add_log(f"[job] cancel 요청 OK runId={run_id} exec={target_exec.name}")
+            self._send_json(200, {
+                'success': True,
+                'message': f'Job execution 취소 요청 완료 — SIGTERM grace 안에 마지막 결과 flush 후 종료',
+                'executionName': target_exec.name,
+            })
+        except Exception as e:
+            ProxyHandler._add_log(f"[job] cancel 실패 runId={run_id}: {type(e).__name__}: {str(e)[:200]}")
+            return self._send_error(500, f'Job 취소 실패: {type(e).__name__}: {str(e)[:200]}')
 
     def _get_active_batches(self):
         """GET /api/test/active-batches — 현재 실행 중인 배치 목록"""
