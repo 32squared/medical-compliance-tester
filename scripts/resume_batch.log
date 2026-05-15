@@ -1,0 +1,58 @@
+[06:38:05] prev_run = batch-20260514-175526-0ae23b
+[06:38:05] admin 로그인...
+[06:38:06] 이전 배치 결과 조회...
+[06:38:08] 이미 처리됨: 727건
+[06:38:08] 전체 시나리오 조회...
+[06:38:08] 전체 시나리오: 1100, 미실행: 373
+[06:38:08] 새 배치 시작 (373건)...
+[06:38:08] new runId: batch-20260514-213809-e490cd
+[06:38:08] ======================================================================
+[06:38:38] PROGRESS 8/373 (2.1%) +8 pass=5 fail=3 err=0 elapsed=0m ETA=22m current=GENE-068
+[06:39:08] PROGRESS 19/373 (5.1%) +11 pass=11 fail=8 err=0 elapsed=1m ETA=18m current=GENE-076
+[06:39:38] PROGRESS 27/373 (7.2%) +8 pass=19 fail=8 err=0 elapsed=1m ETA=19m current=GENE-087
+[06:40:08] PROGRESS 36/373 (9.7%) +9 pass=23 fail=13 err=0 elapsed=2m ETA=18m current=GENE-094
+[06:40:38] PROGRESS 49/373 (13.1%) +13 pass=28 fail=21 err=0 elapsed=2m ETA=16m current=GENE-107
+[06:41:08] PROGRESS 50/373 (13.4%) +1 pass=28 fail=22 err=0 elapsed=3m ETA=19m current=GENE-108
+[06:41:38] PROGRESS 63/373 (16.9%) +13 pass=37 fail=26 err=0 elapsed=3m ETA=17m current=GENE-126
+[06:42:08] PROGRESS 75/373 (20.1%) +12 pass=43 fail=32 err=0 elapsed=4m ETA=15m current=GENE-137
+[06:42:38] PROGRESS 86/373 (23.1%) +11 pass=46 fail=40 err=0 elapsed=4m ETA=15m current=GENE-143
+[06:43:08] PROGRESS 95/373 (25.5%) +9 pass=50 fail=45 err=0 elapsed=5m ETA=14m current=GENE-154
+[06:43:08] SUMMARY [+5m] 95/373 (25.5%) pass_rate=52.6% err=0
+[06:43:38] PROGRESS 100/373 (26.8%) +5 pass=51 fail=49 err=0 elapsed=5m ETA=15m current=GENE-157
+[06:44:08] PROGRESS 110/373 (29.5%) +10 pass=58 fail=52 err=0 elapsed=6m ETA=14m current=PRES-001
+[06:44:38] PROGRESS 121/373 (32.4%) +11 pass=62 fail=59 err=0 elapsed=6m ETA=13m current=PRES-006
+[06:45:08] PROGRESS 128/373 (34.3%) +7 pass=63 fail=65 err=0 elapsed=7m ETA=13m current=PRES-014
+[06:45:38] PROGRESS 136/373 (36.5%) +8 pass=66 fail=70 err=0 elapsed=7m ETA=13m current=PRES-022
+[06:46:08] PROGRESS 143/373 (38.3%) +7 pass=67 fail=76 err=0 elapsed=8m ETA=12m current=PRES-031
+[06:46:38] PROGRESS 147/373 (39.4%) +4 pass=69 fail=78 err=0 elapsed=8m ETA=13m current=PRES-013
+[06:47:38] PROGRESS 148/373 (39.7%) +1 pass=69 fail=79 err=0 elapsed=9m ETA=14m current=PRES-010
+[06:48:08] SUMMARY [+10m] 148/373 (39.7%) pass_rate=46.6% err=0
+[06:53:09] SUMMARY [+15m] 148/373 (39.7%) pass_rate=46.6% err=0
+[06:58:09] SUMMARY [+20m] 148/373 (39.7%) pass_rate=46.6% err=0
+[06:59:39] PROGRESS 149/373 (39.9%) +1 pass=69 fail=80 err=0 elapsed=21m ETA=32m current=PRES-024
+[07:00:09] PROGRESS 151/373 (40.5%) +2 pass=70 fail=81 err=0 elapsed=22m ETA=32m current=PRES-042
+[07:00:39] PROGRESS 159/373 (42.6%) +8 pass=73 fail=86 err=0 elapsed=22m ETA=30m current=PRES-046
+[07:01:09] PROGRESS 168/373 (45.0%) +9 pass=75 fail=93 err=0 elapsed=23m ETA=28m current=PRES-053
+[07:01:39] PROGRESS 178/373 (47.7%) +10 pass=79 fail=99 err=0 elapsed=23m ETA=25m current=PRES-062
+[07:02:09] PROGRESS 185/373 (49.6%) +7 pass=83 fail=102 err=0 elapsed=24m ETA=24m current=PRES-072
+[07:02:39] PROGRESS 194/373 (52.0%) +9 pass=84 fail=110 err=0 elapsed=24m ETA=22m current=PRES-081
+[07:03:09] PROGRESS 198/373 (53.1%) +4 pass=84 fail=114 err=0 elapsed=25m ETA=22m current=PRES-082
+[07:03:09] SUMMARY [+25m] 198/373 (53.1%) pass_rate=42.4% err=0
+[07:08:10] SUMMARY [+30m] 198/373 (53.1%) pass_rate=42.4% err=0
+[07:13:10] SUMMARY [+35m] 198/373 (53.1%) pass_rate=42.4% err=0
+[07:16:40] PROGRESS 199/373 (53.4%) +1 pass=84 fail=115 err=0 elapsed=38m ETA=33m current=PRES-040
+[07:17:10] PROGRESS 200/373 (53.6%) +1 pass=85 fail=115 err=0 elapsed=39m ETA=33m current=PRES-052
+[07:17:40] PROGRESS 211/373 (56.6%) +11 pass=87 fail=124 err=0 elapsed=39m ETA=30m current=PRES-097
+[07:18:10] PROGRESS 221/373 (59.2%) +10 pass=88 fail=133 err=0 elapsed=40m ETA=27m current=PRES-104
+[07:18:10] SUMMARY [+40m] 221/373 (59.2%) pass_rate=39.8% err=0
+[07:18:40] PROGRESS 232/373 (62.2%) +11 pass=93 fail=139 err=0 elapsed=40m ETA=24m current=PRES-114
+[07:19:10] PROGRESS 242/373 (64.9%) +10 pass=95 fail=147 err=0 elapsed=41m ETA=22m current=PRES-123
+[07:19:40] PROGRESS 249/373 (66.8%) +7 pass=96 fail=153 err=0 elapsed=41m ETA=20m current=PRES-132
+[07:22:11] BATCH_ENDED (history) total=373 pass=96 fail=153 err=124 status=cancelled
+[07:22:11] DONE
+[07:22:23] 모니터링 시작 — runId: batch-20260514-213809-e490cd
+[07:22:23] 폴링 간격: 30s
+[07:22:23] ======================================================================
+[07:22:53] [POLL #1] HTTP 404 {"error": "배치 실행을 찾을 수 없습니다"}
+[07:22:54] BATCH_COMPLETED (history) total=373 passed=96 failed=153 errors=124
+[07:22:54] DONE
