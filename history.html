@@ -2004,6 +2004,118 @@
     }
     html += '</div>';
 
+    // ─────────────────────────────────────────────────────────────────────
+    // API 호출 상태 분석 (에러 카테고리 / 부분 응답 / 재시도)
+    // ─────────────────────────────────────────────────────────────────────
+    var errCats = {};
+    var errSamples = {};
+    var partialCount = 0;
+    var notCompletedCount = 0;
+    var totalAttempts = 0;
+    var retryCount = 0;
+    var errorCount = 0;
+    var httpStatusCounts = {};
+
+    for (var ri7 = 0; ri7 < results.length; ri7++) {
+      var rr7 = results[ri7];
+      if (rr7.partialResponse) partialCount++;
+      if (rr7.completed === false) notCompletedCount++;
+      if (rr7.attempts != null) {
+        totalAttempts += rr7.attempts;
+        if (rr7.attempts > 1) retryCount++;
+      }
+      if (rr7.httpStatus) {
+        var hk = String(rr7.httpStatus);
+        httpStatusCounts[hk] = (httpStatusCounts[hk] || 0) + 1;
+      }
+      if (rr7.status === 'error' || rr7.errorCategory) {
+        errorCount++;
+        var ec = rr7.errorCategory || 'unknown';
+        errCats[ec] = (errCats[ec] || 0) + 1;
+        if (!errSamples[ec] && rr7.error) {
+          errSamples[ec] = {
+            scenarioId: rr7.scenarioId,
+            category: rr7.category || '',
+            error: (rr7.error || '').substring(0, 200),
+            httpStatus: rr7.httpStatus,
+            attempts: rr7.attempts,
+          };
+        }
+      }
+    }
+
+    var errKeys = Object.keys(errCats).sort(function(a, b) { return errCats[b] - errCats[a]; });
+    var hasApiIssue = errorCount > 0 || partialCount > 0 || notCompletedCount > 0 || retryCount > 0;
+
+    html += '<div class="batch-report-section">' +
+      '<div class="batch-report-section-title">🚨 API 호출 상태 (에러/부분 응답/재시도)</div>';
+
+    if (!hasApiIssue) {
+      html += '<div style="color:var(--green);font-size:13px">✓ 모든 응답이 정상 완료됨 (n=' + results.length + ')</div>';
+    } else {
+      // 4개 카드 요약
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:10px;margin-bottom:14px">';
+      html += '<div style="background:rgba(239,68,68,0.08);padding:10px;border-radius:8px;border:1px solid rgba(239,68,68,0.3)">' +
+        '<div style="font-size:11px;color:var(--text-dim)">🔴 에러 (3회 재시도 모두 실패)</div>' +
+        '<div style="font-size:18px;font-weight:700;margin-top:4px;color:#ef4444">' + errorCount + ' / ' + results.length + '</div>' +
+        '<div style="font-size:10px;color:var(--text-dim)">(' + (results.length > 0 ? (errorCount/results.length*100).toFixed(1) : 0) + '%)</div>' +
+        '</div>';
+      html += '<div style="background:rgba(249,115,22,0.08);padding:10px;border-radius:8px;border:1px solid rgba(249,115,22,0.3)">' +
+        '<div style="font-size:11px;color:var(--text-dim)">🟠 부분 응답 (STOP 미수신)</div>' +
+        '<div style="font-size:18px;font-weight:700;margin-top:4px;color:#f97316">' + partialCount + '</div>' +
+        '<div style="font-size:10px;color:var(--text-dim)">텍스트 일부만 받음</div>' +
+        '</div>';
+      html += '<div style="background:rgba(234,179,8,0.08);padding:10px;border-radius:8px;border:1px solid rgba(234,179,8,0.3)">' +
+        '<div style="font-size:11px;color:var(--text-dim)">🟡 재시도 발생</div>' +
+        '<div style="font-size:18px;font-weight:700;margin-top:4px;color:#eab308">' + retryCount + '</div>' +
+        '<div style="font-size:10px;color:var(--text-dim)">총 시도 ' + totalAttempts + '회</div>' +
+        '</div>';
+      html += '<div style="background:var(--bg);padding:10px;border-radius:8px;border:1px solid var(--border)">' +
+        '<div style="font-size:11px;color:var(--text-dim)">⚪ 미완료 (응답 종료 안 됨)</div>' +
+        '<div style="font-size:18px;font-weight:700;margin-top:4px">' + notCompletedCount + '</div>' +
+        '<div style="font-size:10px;color:var(--text-dim)">STOP 이벤트 미수신</div>' +
+        '</div>';
+      html += '</div>';
+
+      // 에러 카테고리 분포
+      if (errKeys.length > 0) {
+        html += '<div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;font-weight:600">에러 카테고리 분포</div>' +
+          '<table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:10px">' +
+          '<thead><tr style="border-bottom:1px solid var(--border)">' +
+          '<th style="text-align:left;padding:4px 8px">카테고리</th>' +
+          '<th style="padding:4px 8px;text-align:center">건수</th>' +
+          '<th style="text-align:left;padding:4px 8px">샘플 시나리오</th>' +
+          '<th style="text-align:left;padding:4px 8px">메시지</th>' +
+          '</tr></thead><tbody>';
+        for (var ek = 0; ek < errKeys.length; ek++) {
+          var eKey = errKeys[ek];
+          var eSamp = errSamples[eKey] || {};
+          html += '<tr style="border-bottom:1px solid var(--border)">' +
+            '<td style="padding:4px 8px;font-weight:600;color:#ef4444">' + escapeHtml(eKey) + '</td>' +
+            '<td style="padding:4px 8px;text-align:center">' + errCats[eKey] + '</td>' +
+            '<td style="padding:4px 8px;font-size:11px;color:var(--text-dim)">' + escapeHtml(eSamp.scenarioId || '') + ' (' + escapeHtml(eSamp.category || '') + ')</td>' +
+            '<td style="padding:4px 8px;font-size:11px;color:var(--text-dim)">' + escapeHtml((eSamp.error || '').substring(0, 80)) + '</td>' +
+            '</tr>';
+        }
+        html += '</tbody></table>';
+      }
+
+      // HTTP 상태 코드 분포
+      var hsKeys = Object.keys(httpStatusCounts);
+      if (hsKeys.length > 0) {
+        html += '<div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;font-weight:600">HTTP 상태 코드 분포</div>' +
+          '<div style="display:flex;gap:8px;flex-wrap:wrap">';
+        hsKeys.sort().forEach(function(hs) {
+          var col = hs.startsWith('2') ? '#22c55e' : (hs.startsWith('4') ? '#f97316' : (hs.startsWith('5') ? '#ef4444' : '#94a3b8'));
+          html += '<span style="padding:3px 8px;border-radius:4px;font-size:11px;background:' + col + '22;color:' + col + ';font-weight:600">' +
+            hs + ': ' + httpStatusCounts[hs] + '건' +
+            '</span>';
+        });
+        html += '</div>';
+      }
+    }
+    html += '</div>';
+
     area.innerHTML = html;
   }
 
