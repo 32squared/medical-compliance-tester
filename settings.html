@@ -485,6 +485,14 @@
         </label>
       </div>
 
+      <div class="field">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px">
+          <input type="checkbox" id="excludePhrInEvaluation" checked style="width:auto">
+          PHR 섹션은 평가 대상에서 제외 (권장)
+        </label>
+        <div class="hint">"## 개인 건강기록(PHR) 참고" 헤더 이하 섹션은 시스템 자동 안내문이므로 의료법/문진 평가 시 제외합니다.</div>
+      </div>
+
       <hr class="divider">
 
       <div style="display:flex;gap:10px;justify-content:flex-end">
@@ -740,7 +748,7 @@ var currentEnv = 'dev';
 
 // 환경별 독립 필드 vs 공통 필드
 var ENV_KEYS = ['xApiKey', 'xApiUid', 'xTenantDomain', 'apiUrl'];
-var COMMON_KEYS = ['graphType', 'proxyUrl', 'srcWeb', 'srcPubmed', 'enableCompliance', 'openaiKey', 'openaiModel', 'enableLlmEval', 'arenaRandomSwap'];
+var COMMON_KEYS = ['graphType', 'proxyUrl', 'srcWeb', 'srcPubmed', 'enableCompliance', 'openaiKey', 'openaiModel', 'enableLlmEval', 'arenaRandomSwap', 'excludePhrInEvaluation'];
 
 // 메모리에 환경별 설정 저장
 var envSettings = {
