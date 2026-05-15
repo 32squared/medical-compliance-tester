@@ -1289,7 +1289,7 @@ async function sendToChat(id) {
         const regexInfo = compResult ? ` <span style="color:var(--text-dim);font-size:13px">(참고: 정규식 ${compResult.regexScore || compResult.score || 0}점)</span>` : '';
         finalJudgment.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--surface2);border-radius:8px;border:1px solid ${gc}44">
           <span style="font-size:14px;color:var(--text-dim)">최종 판정 기준:</span>
-          <span style="font-size:18px;font-weight:800;color:${gc}">&#129302; GPT ${gptEv.grade} (${gptEv.score ?? '?'}점)</span>
+          <span style="font-size:18px;font-weight:800;color:${gc}">&#129302; 컴플라이언스 ${gptEv.grade} (${gptEv.score ?? '?'}점)</span>
           <span style="font-weight:600">${gptEv.passed ? '<span style="color:var(--green)">PASS</span>' : '<span style="color:var(--red)">FAIL</span>'}</span>
           ${regexInfo}
         </div>`;

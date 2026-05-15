@@ -808,7 +808,7 @@
 
       // Determine finalSource
       const finalSource = (gptEval && gptEval.grade) ? 'gpt' : 'regex';
-      const sourceIndicator = finalSource === 'gpt' ? '\uD83E\uDD16 GPT 기준' : '\uD83D\uDCCB 정규식 기준';
+      const sourceIndicator = finalSource === 'gpt' ? '\uD83E\uDD16 컴플라이언스 기준' : '\uD83D\uDCCB 정규식 (참고)';
 
       // 의료법 검수 표시
       let complianceHtml = '';
@@ -1472,7 +1472,7 @@
               for (const r of results) {
                 const stIcon = r.status === 'pass' ? '✅' : r.status === 'fail' ? '❌' : '⚠️';
                 const stColor = r.status === 'pass' ? 'var(--green)' : r.status === 'fail' ? 'var(--red)' : 'var(--yellow)';
-                const srcLabel = r.finalSource === 'gpt' ? '🤖 GPT' : '📋 정규식';
+                const srcLabel = r.finalSource === 'gpt' ? '🤖 컴플라이언스' : '📋 정규식 (참고)';
                 html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid var(--border);font-size:12px">' +
                   '<span>' + stIcon + '</span>' +
                   '<span style="font-weight:600;min-width:90px">' + escapeHtml(r.scenarioId) + '</span>' +
@@ -1561,7 +1561,7 @@
       '<span style="font-size:11px;color:var(--text-dim)">가이드라인 v' + escapeHtml(currentVer || 'unknown') + ' 적용</span>' +
       '<button class="btn-small" onclick="reEvaluateBatch(\'' + escapeHtml(run.runId || '') + '\', false)" style="padding:4px 12px;font-size:12px">정규식만 재평가</button>' +
       '<button class="btn-small" onclick="reEvaluateBatch(\'' + escapeHtml(run.runId || '') + '\', true)" style="padding:4px 12px;font-size:12px;background:rgba(168,85,247,0.15);color:var(--purple);border-color:var(--purple)">🤖 컴플라이언스 평가 포함 재평가</button>' +
-      '<span style="font-size:10px;color:var(--text-dim);margin-left:8px">⚠️ GPT 포함 시 OpenAI 비용·시간 소요</span>' +
+      '<span style="font-size:10px;color:var(--text-dim);margin-left:8px">⚠️ 컴플라이언스 포함 시 OpenAI 비용·시간 소요</span>' +
       '<button class="btn-small" onclick="openCompareModal(\'' + escapeHtml(run.runId || '') + '\')" style="padding:4px 12px;font-size:12px;background:rgba(56,189,248,0.15);color:var(--accent);border-color:var(--accent);margin-left:auto">📊 다른 배치와 비교 (A/B)</button>' +
       '</div>';
 
@@ -1576,7 +1576,7 @@
         '<div class="batch-summary-card"><div class="bsc-value" style="color:var(--accent);font-size:32px">' + rate + '%</div><div class="bsc-label">통과율</div></div>' +
       '</div></div>';
 
-    // 2. GPT 등급 분포
+    // 2. 컴플라이언스 등급 분포
     var gradeCounts = { A: 0, B: 0, C: 0, D: 0, F: 0 };
     var gradeColorMap = { A: '#22c55e', B: '#38bdf8', C: '#eab308', D: '#f97316', F: '#ef4444' };
     var gradeTotal = 0;
@@ -1946,12 +1946,12 @@
   }
 
   // ─────────────────────────────────────────────────────────────────────
-  // P0-3: 재평가 실행 (GPT 포함 옵션)
+  // P0-3: 재평가 실행 (컴플라이언스 포함 옵션)
   // ─────────────────────────────────────────────────────────────────────
   async function reEvaluateBatch(runId, includeGpt) {
     if (!runId) { alert('runId가 없습니다'); return; }
     if (includeGpt && !confirm(includeGpt ?
-        '컴플라이언스 평가(GPT)를 포함해 모든 응답을 재평가합니다.\nOpenAI 호출 비용과 시간(수십초~수분)이 소요됩니다.\n계속하시겠습니까?' :
+        '컴플라이언스 평가(LLM 호출)를 포함해 모든 응답을 재평가합니다.\nOpenAI 호출 비용과 시간(수십초~수분)이 소요됩니다.\n계속하시겠습니까?' :
         '정규식만 재평가합니다. 계속하시겠습니까?')) return;
     if (!includeGpt && !confirm('정규식만 재평가합니다 (현재 가이드라인 적용). 계속하시겠습니까?')) return;
     try {
@@ -2214,7 +2214,7 @@
       '<div class="report-section-title" style="color:#c4b5fd">\uD83D\uDD04 \uBCF4\uAC15 \uC694\uC57D</div>' +
       '<div class="report-summary-strip">' +
         '<div class="report-summary-item" style="border-color:#7c3aed44"><div class="rsi-value" style="color:#c4b5fd">' + total + '</div><div class="rsi-label">\uCD1D \uBCF4\uAC15 \uD69F\uC218</div></div>' +
-        '<div class="report-summary-item" style="border-color:#7c3aed44"><div class="rsi-value" style="color:' + gptColor + '">' + (avgGpt > 0 ? '+' : '') + avgGpt + '</div><div class="rsi-label">\uD3C9\uADE0 GPT \uAC1C\uC120</div></div>' +
+        '<div class="report-summary-item" style="border-color:#7c3aed44"><div class="rsi-value" style="color:' + gptColor + '">' + (avgGpt > 0 ? '+' : '') + avgGpt + '</div><div class="rsi-label">\uD3C9\uADE0 컴플라이언스 \uAC1C\uC120</div></div>' +
         '<div class="report-summary-item" style="border-color:#7c3aed44"><div class="rsi-value" style="color:' + consultColor + '">' + (avgConsult > 0 ? '+' : '') + avgConsult + '</div><div class="rsi-label">\uD3C9\uADE0 \uBB38\uC9C4 \uAC1C\uC120</div></div>' +
       '</div></div>';
 
@@ -2277,7 +2277,7 @@
           '<div style="font-size:13px;color:var(--text);margin-bottom:8px;word-break:break-word">\uD83D\uDCAC ' + escapeHtml(queryStr.length > 100 ? queryStr.substring(0, 100) + '...' : queryStr) + '</div>' +
           '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:6px">' +
             '<div style="flex:1;min-width:120px">' +
-              '<div style="font-size:11px;color:#94a3b8;margin-bottom:2px">GPT</div>' +
+              '<div style="font-size:11px;color:#94a3b8;margin-bottom:2px">컴플라이언스</div>' +
               '<div style="font-size:13px">' +
                 '<span style="color:#94a3b8">' + escapeHtml(oGrade) + ' ' + oGpt + '\uC810</span> ' +
                 '<span style="color:var(--accent)">\u2192</span> ' +
