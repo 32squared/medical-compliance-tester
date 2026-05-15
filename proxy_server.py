@@ -2394,12 +2394,25 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
             "results": []
         })
 
-        # 단일 시나리오 실행 (재시도 로직 포함)
+        # 단일 시나리오 실행 (재시도 로직 + 에러 분류 + 부분 응답 보존)
         def execute_single(sid, sc):
             MAX_READ_TIME = 90  # resp.read() 전체 타임아웃 (초)
             max_retries = 2
+            attempt_log = []          # 모든 attempt 기록 (재시도 추적)
+            best_partial_text = ''    # 시도들 중 가장 긴 부분 응답 보존
+            best_partial_meta = None  # 가장 좋은 시도의 메타 (first_token_time 등)
+
             for attempt in range(max_retries + 1):
                 t0 = _time.time()
+                # attempt별 메타 초기화
+                cur_full_text = ''
+                cur_first_token = None
+                cur_last_token = None
+                cur_stopped = False
+                cur_search_results = []
+                http_status = None
+                err_cat = None
+                err_msg = None
                 try:
                     target_url = f"{api_url}/api/service/conversations/{graph_type}"
                     req_body_bytes = json.dumps({
@@ -2412,14 +2425,18 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
                     ctx = ssl.create_default_context()
                     req = Request(url=target_url, data=req_body_bytes, headers=hdrs, method='POST')
                     resp = urlopen(req, context=ctx, timeout=60)
+                    try:
+                        http_status = resp.getcode()
+                    except Exception:
+                        http_status = None
 
-                    # Fix 1: resp.read()에 전체 타임아웃 적용
-                    # 라인 단위 SSE 파싱 — TTFT(첫 토큰 시간) + 응답 종료 시간 측정
+                    # 라인 단위 SSE 파싱 — TTFT/응답 종료 시간 + 부분 응답 보존
                     full_text = ''
                     read_start = _time.time()
                     line_buffer = b''
-                    first_token_time = None     # 첫 GENERATION 이벤트 도착 시간
-                    last_token_time = None      # 마지막 GENERATION 이벤트 시간
+                    first_token_time = None
+                    last_token_time = None
+                    stopped = False
                     collected_search_results_batch = []
                     try:
                         resp.fp.raw._sock.settimeout(30)  # 소켓 레벨 30초 타임아웃
@@ -2461,11 +2478,13 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
                                     result_items = ed.get('result_items')
                                     if result_items and isinstance(result_items, list):
                                         collected_search_results_batch.extend(result_items)
-                                elif etype == 'STOP' and not full_text and ed.get('text'):
-                                    full_text = ed.get('text', '')
-                                    if first_token_time is None:
-                                        first_token_time = _time.time()
-                                    last_token_time = _time.time()
+                                elif etype == 'STOP':
+                                    stopped = True
+                                    if not full_text and ed.get('text'):
+                                        full_text = ed.get('text', '')
+                                        if first_token_time is None:
+                                            first_token_time = _time.time()
+                                        last_token_time = _time.time()
                             except json.JSONDecodeError:
                                 pass
 
@@ -2474,6 +2493,22 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
                     first_token_ms = int((first_token_time - t0) * 1000) if first_token_time else None
                     last_token_ms = int((last_token_time - t0) * 1000) if last_token_time else None
                     generation_ms = (last_token_ms - first_token_ms) if (first_token_ms is not None and last_token_ms is not None) else None
+
+                    # 응답 완료 여부 판정
+                    completed = stopped or bool(full_text)
+                    # 부분 응답 감지: 텍스트는 있지만 STOP 이벤트 못 받음
+                    is_partial = bool(full_text) and not stopped
+
+                    # attempt 성공 로그
+                    attempt_log.append({
+                        'attempt': attempt + 1,
+                        'ok': True,
+                        'durationMs': el,
+                        'httpStatus': http_status,
+                        'responseLen': len(full_text or ''),
+                        'stopped': stopped,
+                        'partial': is_partial,
+                    })
                     # ── LLM-only 평가 (정규식 평가 제거) ──
                     # 사용자 결정: 컴플라이언스 평가는 LLM만 사용. 정규식은 결과에 영향 X.
                     gpt = None
@@ -2531,9 +2566,15 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
                         "responseLength": len(full_text or ''),
                         "citationCount": len(collected_search_results_batch or []),
                         # ── 응답 시간 metric (ms) ──
-                        "firstTokenMs": first_token_ms,     # 첫 토큰 도착 시간 (TTFT)
-                        "lastTokenMs": last_token_ms,       # 마지막 토큰 시간 (응답 종료)
-                        "generationMs": generation_ms,      # 실제 생성 시간 (last - first)
+                        "firstTokenMs": first_token_ms,
+                        "lastTokenMs": last_token_ms,
+                        "generationMs": generation_ms,
+                        # ── API 호출 상태 ──
+                        "httpStatus": http_status,
+                        "completed": completed,
+                        "partialResponse": is_partial,
+                        "attempts": len(attempt_log),
+                        "attemptLog": attempt_log,
                         # compliance(정규식)은 결과에 포함 안 함 — LLM만 사용
                         "gptEval": gpt,
                         "consultationEval": consult,
@@ -2541,13 +2582,80 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
                         "searchResults": collected_search_results_batch[:5] if collected_search_results_batch else [],
                     }
                 except Exception as e:
+                    # 에러 카테고리 분류
+                    err_type = type(e).__name__
+                    err_msg = str(e)[:300]
+                    if 'TimeoutError' in err_type or '타임아웃' in err_msg or 'timeout' in err_msg.lower():
+                        err_cat = 'timeout_read' if ('read' in err_msg.lower() or '읽기' in err_msg) else 'timeout'
+                    elif 'HTTPError' in err_type:
+                        err_cat = 'http_error'
+                        try:
+                            http_status = getattr(e, 'code', None)
+                        except Exception:
+                            pass
+                    elif 'URLError' in err_type or 'ConnectionError' in err_type:
+                        err_cat = 'network_error'
+                    elif 'JSONDecodeError' in err_type:
+                        err_cat = 'parse_error'
+                    elif 'ssl' in err_msg.lower() or 'SSL' in err_type:
+                        err_cat = 'ssl_error'
+                    else:
+                        err_cat = err_type or 'unknown'
+
+                    # 부분 응답 보존: 시도 도중 받았던 텍스트
+                    partial_now = locals().get('full_text', '') or ''
+                    if partial_now and len(partial_now) > len(best_partial_text):
+                        best_partial_text = partial_now
+                        best_partial_meta = {
+                            'firstTokenMs': int((first_token_time - t0) * 1000) if locals().get('first_token_time') else None,
+                            'lastTokenMs': int((last_token_time - t0) * 1000) if locals().get('last_token_time') else None,
+                            'searchResults': locals().get('collected_search_results_batch', [])[:5],
+                        }
+
+                    el = int((_time.time() - t0) * 1000)
+                    attempt_log.append({
+                        'attempt': attempt + 1,
+                        'ok': False,
+                        'durationMs': el,
+                        'httpStatus': http_status,
+                        'errorCategory': err_cat,
+                        'error': err_msg,
+                        'partialLen': len(partial_now),
+                    })
+                    ProxyHandler._add_log(
+                        f"[배치] sid={sid} attempt={attempt+1}/{max_retries+1} 실패: {err_cat} {err_msg[:120]} (partial={len(partial_now)} chars)"
+                    )
+
                     if attempt < max_retries:
                         _time.sleep(2 ** attempt)
                         continue
-                    el = int((_time.time() - t0) * 1000)
+
+                    # 최종 실패 — 가장 좋은 부분 응답 보존 + 상세 에러 메타
+                    partial_meta = best_partial_meta or {}
+                    ft = partial_meta.get('firstTokenMs')
+                    lt = partial_meta.get('lastTokenMs')
                     return {
-                        "scenarioId": sid, "prompt": sc['prompt'], "response": "",
-                        "status": "error", "responseTime": el, "error": str(e)[:200],
+                        "scenarioId": sid,
+                        "prompt": sc['prompt'],
+                        "response": best_partial_text,
+                        "status": "error",
+                        "responseTime": el,
+                        "error": err_msg,
+                        "errorCategory": err_cat,
+                        "httpStatus": http_status,
+                        "attempts": len(attempt_log),
+                        "attemptLog": attempt_log,
+                        "completed": False,
+                        "partialResponse": bool(best_partial_text),
+                        "firstTokenMs": ft,
+                        "lastTokenMs": lt,
+                        "generationMs": (lt - ft) if (ft is not None and lt is not None) else None,
+                        "responseLength": len(best_partial_text or ''),
+                        "category": sc.get('category', ''),
+                        "subcategory": sc.get('subcategory', ''),
+                        "riskLevel": sc.get('riskLevel', ''),
+                        "source": sc.get('source', 'manual'),
+                        "searchResults": partial_meta.get('searchResults', []),
                     }
 
         # 백그라운드 스레드: 청크 기반 병렬 실행
