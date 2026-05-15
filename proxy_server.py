@@ -2414,9 +2414,13 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
                     resp = urlopen(req, context=ctx, timeout=60)
 
                     # Fix 1: resp.read()에 전체 타임아웃 적용
+                    # 라인 단위 SSE 파싱 — TTFT(첫 토큰 시간) + 응답 종료 시간 측정
                     full_text = ''
                     read_start = _time.time()
-                    raw_bytes = b''
+                    line_buffer = b''
+                    first_token_time = None     # 첫 GENERATION 이벤트 도착 시간
+                    last_token_time = None      # 마지막 GENERATION 이벤트 시간
+                    collected_search_results_batch = []
                     try:
                         resp.fp.raw._sock.settimeout(30)  # 소켓 레벨 30초 타임아웃
                     except Exception:
@@ -2427,36 +2431,49 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
                         chunk = resp.read(8192)
                         if not chunk:
                             break
-                        raw_bytes += chunk
-                    raw = raw_bytes.decode('utf-8', errors='replace')
+                        line_buffer += chunk
 
-                    collected_search_results_batch = []
-                    for line in raw.split('\n'):
-                        stripped = line.strip()
-                        if not stripped.startswith('data:'): continue
-                        json_str = stripped[5:].strip()
-                        if not json_str: continue
-                        try:
-                            ed = json.loads(json_str)
-                            etype = ed.get('type', '')
-                            if etype == 'GENERATION':
-                                full_text += ed.get('text', '')
-                            elif etype == 'KEEP_ALIVE':
-                                continue  # 연결 유지용, 무시
-                            elif etype == 'INFO':
-                                edata = ed.get('data', {})
-                                if edata.get('search_results'):
-                                    collected_search_results_batch.extend(edata['search_results'])
-                            elif etype == 'PROGRESS':
-                                result_items = ed.get('result_items')
-                                if result_items and isinstance(result_items, list):
-                                    collected_search_results_batch.extend(result_items)
-                            elif etype == 'STOP' and not full_text and ed.get('text'):
-                                full_text = ed.get('text', '')
-                        except json.JSONDecodeError:
-                            pass
+                        # 라인 단위 즉시 파싱 (스트리밍 시간 측정용)
+                        while b'\n' in line_buffer:
+                            line_bytes, line_buffer = line_buffer.split(b'\n', 1)
+                            line = line_bytes.decode('utf-8', errors='replace').strip()
+                            if not line.startswith('data:'):
+                                continue
+                            json_str = line[5:].strip()
+                            if not json_str:
+                                continue
+                            try:
+                                ed = json.loads(json_str)
+                                etype = ed.get('type', '')
+                                if etype == 'GENERATION':
+                                    now = _time.time()
+                                    if first_token_time is None:
+                                        first_token_time = now
+                                    last_token_time = now
+                                    full_text += ed.get('text', '')
+                                elif etype == 'KEEP_ALIVE':
+                                    continue
+                                elif etype == 'INFO':
+                                    edata = ed.get('data', {})
+                                    if edata.get('search_results'):
+                                        collected_search_results_batch.extend(edata['search_results'])
+                                elif etype == 'PROGRESS':
+                                    result_items = ed.get('result_items')
+                                    if result_items and isinstance(result_items, list):
+                                        collected_search_results_batch.extend(result_items)
+                                elif etype == 'STOP' and not full_text and ed.get('text'):
+                                    full_text = ed.get('text', '')
+                                    if first_token_time is None:
+                                        first_token_time = _time.time()
+                                    last_token_time = _time.time()
+                            except json.JSONDecodeError:
+                                pass
 
                     el = int((_time.time() - t0) * 1000)
+                    # 응답 시간 메트릭 (ms)
+                    first_token_ms = int((first_token_time - t0) * 1000) if first_token_time else None
+                    last_token_ms = int((last_token_time - t0) * 1000) if last_token_time else None
+                    generation_ms = (last_token_ms - first_token_ms) if (first_token_ms is not None and last_token_ms is not None) else None
                     # ── LLM-only 평가 (정규식 평가 제거) ──
                     # 사용자 결정: 컴플라이언스 평가는 LLM만 사용. 정규식은 결과에 영향 X.
                     gpt = None
@@ -2513,6 +2530,10 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
                         # ── 응답 메타 ──
                         "responseLength": len(full_text or ''),
                         "citationCount": len(collected_search_results_batch or []),
+                        # ── 응답 시간 metric (ms) ──
+                        "firstTokenMs": first_token_ms,     # 첫 토큰 도착 시간 (TTFT)
+                        "lastTokenMs": last_token_ms,       # 마지막 토큰 시간 (응답 종료)
+                        "generationMs": generation_ms,      # 실제 생성 시간 (last - first)
                         # compliance(정규식)은 결과에 포함 안 함 — LLM만 사용
                         "gptEval": gpt,
                         "consultationEval": consult,

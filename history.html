@@ -1870,10 +1870,11 @@
     html += '</div>';
 
     // ─────────────────────────────────────────────────────────────────────
-    // P1-5: 응답 메타 통계
+    // P1-5: 응답 메타 통계 (+TTFT/응답종료 시간)
     // ─────────────────────────────────────────────────────────────────────
-    var lens = [], cits = [], rts = [];
+    var lens = [], cits = [], rts = [], ftts = [], lasts = [], gens = [];
     var byGradeLen = { A:[], B:[], C:[], D:[], F:[] };
+    var byGradeFtt = { A:[], B:[], C:[], D:[], F:[] };
     for (var ri6 = 0; ri6 < results.length; ri6++) {
       var rr6 = results[ri6];
       var L = rr6.responseLength;
@@ -1882,30 +1883,80 @@
       if (rr6.citationCount != null) cits.push(rr6.citationCount);
       else if (rr6.searchResults) cits.push(rr6.searchResults.length);
       if (rr6.responseTime) rts.push(rr6.responseTime);
+      // 응답 시간 metric
+      if (rr6.firstTokenMs != null) ftts.push(rr6.firstTokenMs);
+      if (rr6.lastTokenMs != null) lasts.push(rr6.lastTokenMs);
+      if (rr6.generationMs != null) gens.push(rr6.generationMs);
       var gK = _grade(rr6);
       if (byGradeLen[gK] && L != null) byGradeLen[gK].push(L);
+      if (byGradeFtt[gK] && rr6.firstTokenMs != null) byGradeFtt[gK].push(rr6.firstTokenMs);
     }
     function _stat(arr) {
       if (!arr.length) return { avg: 0, min: 0, max: 0, median: 0, count: 0 };
       var sorted = arr.slice().sort(function(a,b){ return a-b; });
       var sum = arr.reduce(function(a,b){ return a+b; }, 0);
+      var p95 = sorted[Math.floor(sorted.length * 0.95)];
       return {
         count: arr.length,
         avg: Math.round(sum / arr.length),
         min: sorted[0],
         max: sorted[sorted.length-1],
         median: sorted[Math.floor(sorted.length/2)],
+        p95: p95,
       };
+    }
+    function _ms(n) {
+      if (n == null) return '-';
+      return n >= 1000 ? (n/1000).toFixed(1) + 's' : n + 'ms';
     }
     var lenStat = _stat(lens);
     var citStat = _stat(cits);
     var rtStat  = _stat(rts);
+    var fttStat = _stat(ftts);
+    var lastStat = _stat(lasts);
+    var genStat = _stat(gens);
     html += '<div class="batch-report-section">' +
-      '<div class="batch-report-section-title">📊 응답 메타 통계</div>';
-    if (lenStat.count === 0 && citStat.count === 0) {
+      '<div class="batch-report-section-title">📊 응답 메타 통계 + 시간 분석</div>';
+    if (lenStat.count === 0 && citStat.count === 0 && fttStat.count === 0) {
       html += '<div style="color:var(--text-dim);font-size:13px">응답 메타 데이터 없음</div>';
     } else {
-      html += '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:10px">';
+      // 응답 시간 metric 카드 (TTFT 강조)
+      if (fttStat.count > 0 || lastStat.count > 0) {
+        html += '<div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;font-weight:600">⏱ 응답 시간 분석 (n=' + Math.max(fttStat.count, lastStat.count) + ')</div>' +
+          '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:10px;margin-bottom:14px">';
+        if (fttStat.count > 0) {
+          html += '<div style="background:rgba(34,197,94,0.08);padding:10px;border-radius:8px;border:1px solid rgba(34,197,94,0.3)">' +
+            '<div style="font-size:11px;color:var(--text-dim)">🟢 첫 토큰 (TTFT)</div>' +
+            '<div style="font-size:18px;font-weight:700;margin-top:4px;color:#22c55e">' + _ms(fttStat.avg) + '</div>' +
+            '<div style="font-size:10px;color:var(--text-dim)">중앙 ' + _ms(fttStat.median) + ' · p95 ' + _ms(fttStat.p95) + ' · 범위 ' + _ms(fttStat.min) + '~' + _ms(fttStat.max) + '</div>' +
+            '</div>';
+        }
+        if (lastStat.count > 0) {
+          html += '<div style="background:rgba(56,189,248,0.08);padding:10px;border-radius:8px;border:1px solid rgba(56,189,248,0.3)">' +
+            '<div style="font-size:11px;color:var(--text-dim)">🔵 응답 종료</div>' +
+            '<div style="font-size:18px;font-weight:700;margin-top:4px;color:#38bdf8">' + _ms(lastStat.avg) + '</div>' +
+            '<div style="font-size:10px;color:var(--text-dim)">중앙 ' + _ms(lastStat.median) + ' · p95 ' + _ms(lastStat.p95) + ' · 범위 ' + _ms(lastStat.min) + '~' + _ms(lastStat.max) + '</div>' +
+            '</div>';
+        }
+        if (genStat.count > 0) {
+          html += '<div style="background:rgba(168,85,247,0.08);padding:10px;border-radius:8px;border:1px solid rgba(168,85,247,0.3)">' +
+            '<div style="font-size:11px;color:var(--text-dim)">🟣 생성 시간 (last-first)</div>' +
+            '<div style="font-size:18px;font-weight:700;margin-top:4px;color:#a855f7">' + _ms(genStat.avg) + '</div>' +
+            '<div style="font-size:10px;color:var(--text-dim)">중앙 ' + _ms(genStat.median) + ' · p95 ' + _ms(genStat.p95) + ' · 범위 ' + _ms(genStat.min) + '~' + _ms(genStat.max) + '</div>' +
+            '</div>';
+        }
+        if (rtStat.count > 0) {
+          html += '<div style="background:var(--bg);padding:10px;border-radius:8px;border:1px solid var(--border)">' +
+            '<div style="font-size:11px;color:var(--text-dim)">⚪ 총 처리 시간 (req 시작 ~ read 종료)</div>' +
+            '<div style="font-size:18px;font-weight:700;margin-top:4px">' + _ms(rtStat.avg) + '</div>' +
+            '<div style="font-size:10px;color:var(--text-dim)">중앙 ' + _ms(rtStat.median) + ' · p95 ' + _ms(rtStat.p95) + '</div>' +
+            '</div>';
+        }
+        html += '</div>';
+      }
+
+      html += '<div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;font-weight:600">📏 응답 내용 통계</div>' +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:10px">';
       // 응답 길이
       html += '<div style="background:var(--bg);padding:10px;border-radius:8px;border:1px solid var(--border)">' +
         '<div style="font-size:11px;color:var(--text-dim)">응답 길이 (chars)</div>' +
@@ -1918,13 +1969,24 @@
         '<div style="font-size:18px;font-weight:700;margin-top:4px">' + citStat.avg + '</div>' +
         '<div style="font-size:11px;color:var(--text-dim)">중앙 ' + citStat.median + ' · 범위 ' + citStat.min + '~' + citStat.max + '</div>' +
         '</div>';
-      // response time
-      html += '<div style="background:var(--bg);padding:10px;border-radius:8px;border:1px solid var(--border)">' +
-        '<div style="font-size:11px;color:var(--text-dim)">응답 시간 (ms)</div>' +
-        '<div style="font-size:18px;font-weight:700;margin-top:4px">' + rtStat.avg + '</div>' +
-        '<div style="font-size:11px;color:var(--text-dim)">중앙 ' + rtStat.median + ' · 범위 ' + rtStat.min + '~' + rtStat.max + '</div>' +
-        '</div>';
       html += '</div>';
+
+      // 등급별 TTFT (인사이트)
+      if (fttStat.count > 0) {
+        html += '<div style="margin-top:14px;font-size:11px;color:var(--text-dim);margin-bottom:6px;font-weight:600">등급별 TTFT 평균</div>';
+        var gOrder = ['A','B','C','D','F'];
+        for (var gfi = 0; gfi < gOrder.length; gfi++) {
+          var gkk = gOrder[gfi];
+          var gArr = byGradeFtt[gkk];
+          if (!gArr || !gArr.length) continue;
+          var gAvg = Math.round(gArr.reduce(function(a,b){return a+b;}, 0) / gArr.length);
+          html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:12px">' +
+            '<span style="display:inline-block;width:24px;text-align:center;font-weight:700;color:' + (gradeColorMap[gkk]||'#94a3b8') + '">' + gkk + '</span>' +
+            '<span style="color:var(--text-dim);font-size:11px">' + gArr.length + '건 평균</span>' +
+            '<span style="font-weight:600">' + _ms(gAvg) + '</span>' +
+            '</div>';
+        }
+      }
       // 등급별 평균 응답 길이 (인사이트)
       html += '<div style="margin-top:14px;font-size:11px;color:var(--text-dim);margin-bottom:6px">등급별 평균 응답 길이</div>';
       var gradeOrder = ['A','B','C','D','F'];
