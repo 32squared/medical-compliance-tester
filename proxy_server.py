@@ -2315,7 +2315,7 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
     _active_batches = {}
     _active_batches_lock = threading.Lock()
     _cancel_flags = {}
-    _MAX_CONCURRENT_BATCHES = 2
+    _MAX_CONCURRENT_BATCHES = 4
     _CHUNK_SIZE = 50
 
     def _batch_run(self, body):
