@@ -53,7 +53,7 @@ gcloud run deploy $ServiceName `
     --region $Region `
     --platform managed `
     --allow-unauthenticated `
-    --memory 2Gi --cpu 2 `
+    --memory 8Gi --cpu 2 `
     --timeout 900 `
     --min-instances 1 --max-instances 10 `
     --concurrency 10 `
