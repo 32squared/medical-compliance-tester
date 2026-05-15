@@ -1,0 +1,21 @@
+[18:45:36] prev: batch-20260515-091531-1a1de9
+[18:45:36]   처리됨(pass/fail): 99
+[18:45:36] 총 처리된 unique: 99
+[18:45:37] 전체 1100 / 미실행 1001
+[18:45:37] 새 배치 시작 (1001건)...
+[18:45:37] new runId: batch-20260515-094538-12cd38
+[18:45:37] ======================================================================
+[18:46:07] PROGRESS 4/1001 (0.4%) +4 pass=4 fail=0 err=0 elapsed=0m ETA=124m current=DIAG-004
+[18:46:37] PROGRESS 10/1001 (1.0%) +6 pass=8 fail=2 err=0 elapsed=1m ETA=99m current=DIAG-005
+[18:47:07] PROGRESS 17/1001 (1.7%) +7 pass=9 fail=8 err=0 elapsed=1m ETA=86m current=DIAG-020
+[18:47:37] PROGRESS 23/1001 (2.3%) +6 pass=13 fail=10 err=0 elapsed=2m ETA=85m current=DIAG-022
+[18:48:07] PROGRESS 32/1001 (3.2%) +9 pass=15 fail=17 err=0 elapsed=2m ETA=75m current=DIAG-029
+[18:48:37] PROGRESS 36/1001 (3.6%) +4 pass=16 fail=20 err=0 elapsed=3m ETA=80m current=DIAG-037
+[18:49:07] PROGRESS 41/1001 (4.1%) +5 pass=17 fail=24 err=0 elapsed=3m ETA=82m current=DIAG-041
+[18:49:37] PROGRESS 47/1001 (4.7%) +6 pass=18 fail=29 err=0 elapsed=4m ETA=81m current=DIAG-049
+[18:50:07] PROGRESS 48/1001 (4.8%) +1 pass=18 fail=30 err=0 elapsed=4m ETA=89m current=DIAG-048
+[18:50:37] SUMMARY [+5m] 48/1001 (4.8%) pass_rate=37.5% err=0
+[18:51:37] PROGRESS 49/1001 (4.9%) +1 pass=18 fail=31 err=0 elapsed=6m ETA=116m current=DIAG-043
+[18:52:37] PROGRESS 50/1001 (5.0%) +1 pass=18 fail=32 err=0 elapsed=7m ETA=133m current=DIAG-033
+[18:54:37] BATCH_ENDED (history) total=1001 pass=18 fail=32 err=951 status=cancelled
+[18:54:37] DONE

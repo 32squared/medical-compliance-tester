@@ -1,0 +1,106 @@
+[19:02:41] shards: 4
+[19:03:12] PROGRESS 198/951 (20.8%) pass=129 fail=69 elapsed=0m ETA=1m active=4
+[19:03:43] PROGRESS 218/951 (22.9%) pass=140 fail=78 elapsed=1m ETA=3m active=4
+[19:04:14] PROGRESS 235/951 (24.7%) pass=153 fail=82 elapsed=1m ETA=4m active=4
+[19:04:44] PROGRESS 249/951 (26.2%) pass=164 fail=85 elapsed=2m ETA=5m active=4
+[19:05:15] PROGRESS 263/951 (27.7%) pass=174 fail=89 elapsed=2m ETA=6m active=4
+[19:05:46] PROGRESS 281/951 (29.5%) pass=185 fail=96 elapsed=3m ETA=7m active=4
+[19:05:46] SUMMARY [+3m] 281/951 (29.5%) pass_rate=65.8% active=4
+[19:06:17] PROGRESS 305/951 (32.1%) pass=195 fail=110 elapsed=3m ETA=7m active=4
+[19:06:48] PROGRESS 320/951 (33.6%) pass=202 fail=118 elapsed=4m ETA=8m active=4
+[19:07:19] PROGRESS 332/951 (34.9%) pass=210 fail=122 elapsed=4m ETA=8m active=4
+[19:07:51] PROGRESS 346/951 (36.4%) pass=220 fail=126 elapsed=5m ETA=9m active=4
+[19:08:22] PROGRESS 360/951 (37.9%) pass=232 fail=128 elapsed=5m ETA=9m active=4
+[19:08:54] PROGRESS 379/951 (39.9%) pass=243 fail=136 elapsed=6m ETA=9m active=4
+[19:08:54] SUMMARY [+6m] 379/951 (39.9%) pass_rate=64.1% active=4
+[19:09:25] PROGRESS 394/951 (41.4%) pass=253 fail=141 elapsed=6m ETA=9m active=4
+[19:09:57] PROGRESS 411/951 (43.2%) pass=262 fail=149 elapsed=7m ETA=9m active=4
+[19:10:29] PROGRESS 429/951 (45.1%) pass=268 fail=161 elapsed=7m ETA=9m active=4
+[19:11:01] PROGRESS 450/951 (47.3%) pass=279 fail=171 elapsed=8m ETA=9m active=4
+[19:11:32] PROGRESS 461/951 (48.5%) pass=284 fail=177 elapsed=8m ETA=9m active=4
+[19:12:04] PROGRESS 465/951 (48.9%) pass=288 fail=177 elapsed=9m ETA=9m active=4
+[19:12:04] SUMMARY [+9m] 465/951 (48.9%) pass_rate=61.9% active=4
+[19:12:36] PROGRESS 469/951 (49.3%) pass=291 fail=178 elapsed=9m ETA=10m active=4
+[19:13:08] PROGRESS 473/951 (49.7%) pass=292 fail=181 elapsed=10m ETA=10m active=4
+[19:13:40] PROGRESS 477/951 (50.2%) pass=295 fail=182 elapsed=10m ETA=10m active=4
+[19:14:14] PROGRESS 482/951 (50.7%) pass=299 fail=183 elapsed=11m ETA=11m active=4
+[19:14:46] PROGRESS 484/951 (50.9%) pass=301 fail=183 elapsed=12m ETA=11m active=4
+[19:15:18] PROGRESS 488/951 (51.3%) pass=303 fail=185 elapsed=12m ETA=11m active=4
+[19:15:18] SUMMARY [+12m] 488/951 (51.3%) pass_rate=62.1% active=4
+[19:18:28] SUMMARY [+15m] 488/951 (51.3%) pass_rate=62.1% active=4
+[19:21:40] SUMMARY [+18m] 488/951 (51.3%) pass_rate=62.1% active=4
+[19:23:47] PROGRESS 489/951 (51.4%) pass=303 fail=186 elapsed=21m ETA=19m active=4
+[19:24:51] SUMMARY [+22m] 489/951 (51.4%) pass_rate=62.0% active=4
+[19:27:00] PROGRESS 490/951 (51.5%) pass=304 fail=186 elapsed=24m ETA=22m active=4
+[19:27:32] PROGRESS 491/951 (51.6%) pass=305 fail=186 elapsed=24m ETA=23m active=4
+[19:28:04] SUMMARY [+25m] 491/951 (51.6%) pass_rate=62.1% active=4
+[19:31:16] SUMMARY [+28m] 491/951 (51.6%) pass_rate=62.1% active=4
+[19:33:57] PROGRESS 492/951 (51.7%) pass=306 fail=186 elapsed=31m ETA=29m active=4
+[19:34:29] PROGRESS 502/951 (52.8%) pass=312 fail=190 elapsed=31m ETA=28m active=4
+[19:34:29] SUMMARY [+31m] 502/951 (52.8%) pass_rate=62.2% active=4
+[19:35:01] PROGRESS 522/951 (54.9%) pass=323 fail=199 elapsed=32m ETA=26m active=4
+[19:35:33] PROGRESS 546/951 (57.4%) pass=336 fail=210 elapsed=32m ETA=24m active=4
+[19:36:05] PROGRESS 576/951 (60.6%) pass=350 fail=226 elapsed=33m ETA=21m active=4
+[19:36:38] PROGRESS 597/951 (62.8%) pass=365 fail=232 elapsed=33m ETA=20m active=4
+[19:37:10] PROGRESS 614/951 (64.6%) pass=377 fail=237 elapsed=34m ETA=18m active=4
+[19:37:42] PROGRESS 631/951 (66.4%) pass=389 fail=242 elapsed=35m ETA=17m active=4
+[19:37:42] SUMMARY [+35m] 631/951 (66.4%) pass_rate=61.6% active=4
+[19:38:15] PROGRESS 647/951 (68.0%) pass=395 fail=252 elapsed=35m ETA=16m active=4
+[19:38:49] PROGRESS 656/951 (69.0%) pass=399 fail=257 elapsed=36m ETA=16m active=4
+[19:39:21] PROGRESS 673/951 (70.8%) pass=410 fail=263 elapsed=36m ETA=15m active=4
+[19:39:54] PROGRESS 686/951 (72.1%) pass=419 fail=267 elapsed=37m ETA=14m active=4
+[19:40:27] PROGRESS 698/951 (73.4%) pass=427 fail=271 elapsed=37m ETA=13m active=4
+[19:40:59] PROGRESS 722/951 (75.9%) pass=446 fail=276 elapsed=38m ETA=12m active=4
+[19:40:59] SUMMARY [+38m] 722/951 (75.9%) pass_rate=61.8% active=4
+[19:41:32] PROGRESS 744/951 (78.2%) pass=459 fail=285 elapsed=38m ETA=10m active=4
+[19:42:05] PROGRESS 763/951 (80.2%) pass=470 fail=293 elapsed=39m ETA=9m active=4
+[19:42:37]   shard 95837-bc5ca6 ended: pass=178 fail=59 status=completed
+[19:42:39] PROGRESS 781/951 (82.1%) pass=477 fail=304 elapsed=39m ETA=8m active=3
+[19:43:19] PROGRESS 795/951 (83.6%) pass=481 fail=314 elapsed=40m ETA=7m active=3
+[19:44:11]   95837-98cd31 err: HTTPSConnectionPool(host='medical-compliance-tester-cbtevhmzrq-du.a.run.app', port=443): Read timed 
+[19:44:22] PROGRESS 574/713 (80.5%) pass=337 fail=237 elapsed=41m ETA=10m active=2
+[19:44:22] SUMMARY [+41m] 574/713 (80.5%) pass_rate=58.7% active=2
+[19:45:09] PROGRESS 810/951 (85.2%) pass=490 fail=320 elapsed=42m ETA=7m active=3
+[19:45:55] PROGRESS 821/951 (86.3%) pass=493 fail=328 elapsed=43m ETA=6m active=3
+[19:46:30]   shard 95837-98cd31 ended: pass=151 fail=87 status=completed
+[19:46:34] PROGRESS 824/951 (86.6%) pass=494 fail=330 elapsed=43m ETA=6m active=2
+[19:47:09] PROGRESS 829/951 (87.2%) pass=496 fail=333 elapsed=44m ETA=6m active=2
+[19:47:45] PROGRESS 837/951 (88.0%) pass=499 fail=338 elapsed=45m ETA=6m active=2
+[19:47:45] SUMMARY [+45m] 837/951 (88.0%) pass_rate=59.6% active=2
+[19:48:23] PROGRESS 844/951 (88.7%) pass=503 fail=341 elapsed=45m ETA=5m active=2
+[19:48:59] PROGRESS 852/951 (89.6%) pass=507 fail=345 elapsed=46m ETA=5m active=2
+[19:49:35] PROGRESS 859/951 (90.3%) pass=510 fail=349 elapsed=46m ETA=5m active=2
+[19:50:07]   shard 95837-bb8345 ended: pass=121 fail=117 status=completed
+[19:50:08] PROGRESS 862/951 (90.6%) pass=510 fail=352 elapsed=47m ETA=4m active=1
+[19:51:10] SUMMARY [+48m] 862/951 (90.6%) pass_rate=59.2% active=1
+[19:54:13] SUMMARY [+51m] 862/951 (90.6%) pass_rate=59.2% active=1
+[19:56:17] PROGRESS 863/951 (90.7%) pass=510 fail=353 elapsed=53m ETA=5m active=1
+[19:56:48] PROGRESS 872/951 (91.7%) pass=512 fail=360 elapsed=54m ETA=4m active=1
+[19:57:19] PROGRESS 874/951 (91.9%) pass=513 fail=361 elapsed=54m ETA=4m active=1
+[19:57:19] SUMMARY [+54m] 874/951 (91.9%) pass_rate=58.7% active=1
+[19:57:49] PROGRESS 884/951 (93.0%) pass=516 fail=368 elapsed=55m ETA=4m active=1
+[19:58:20] PROGRESS 891/951 (93.7%) pass=517 fail=374 elapsed=55m ETA=3m active=1
+[19:58:51] PROGRESS 900/951 (94.6%) pass=522 fail=378 elapsed=56m ETA=3m active=1
+[19:59:22] PROGRESS 904/951 (95.1%) pass=524 fail=380 elapsed=56m ETA=2m active=1
+[19:59:52] PROGRESS 912/951 (95.9%) pass=529 fail=383 elapsed=57m ETA=2m active=1
+[20:00:23] PROGRESS 913/951 (96.0%) pass=529 fail=384 elapsed=57m ETA=2m active=1
+[20:00:23] SUMMARY [+57m] 913/951 (96.0%) pass_rate=57.9% active=1
+[20:00:54] PROGRESS 923/951 (97.1%) pass=534 fail=389 elapsed=58m ETA=1m active=1
+[20:01:25] PROGRESS 924/951 (97.2%) pass=534 fail=390 elapsed=58m ETA=1m active=1
+[20:01:56] PROGRESS 934/951 (98.2%) pass=537 fail=397 elapsed=59m ETA=1m active=1
+[20:02:27] PROGRESS 940/951 (98.8%) pass=537 fail=403 elapsed=59m ETA=0m active=1
+[20:02:58] PROGRESS 946/951 (99.5%) pass=538 fail=408 elapsed=60m ETA=0m active=1
+[20:03:29] PROGRESS 949/951 (99.8%) pass=540 fail=409 elapsed=60m ETA=0m active=1
+[20:03:29] SUMMARY [+60m] 949/951 (99.8%) pass_rate=56.9% active=1
+[20:04:00]   shard 95837-fd9494 ended: pass=90 fail=147 status=completed
+[20:04:00] PROGRESS 950/951 (99.9%) pass=540 fail=410 elapsed=61m ETA=0m active=0
+[20:04:00] ======================================================================
+[20:04:00] 전체 완료 — 61분
+[20:04:00]   처리: 950/951
+[20:04:00]   PASS: 540 (56.8%)
+[20:04:00]   FAIL: 410
+[20:04:00]     batch-20260515-095837-bb8345: 238/238 (pass=121 fail=117)
+[20:04:00]     batch-20260515-095837-bc5ca6: 237/238 (pass=178 fail=59)
+[20:04:00]     batch-20260515-095837-98cd31: 238/238 (pass=151 fail=87)
+[20:04:00]     batch-20260515-095837-fd9494: 237/237 (pass=90 fail=147)
+[20:04:00] DONE

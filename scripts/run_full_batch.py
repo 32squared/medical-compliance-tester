@@ -26,7 +26,7 @@ import requests
 
 PROD_URL = 'https://medical-compliance-tester-cbtevhmzrq-du.a.run.app'
 POLL_INTERVAL = 30        # 폴링 간격 (초)
-STALL_TIMEOUT = 180       # 진행 없으면 경고 (초)
+STALL_TIMEOUT = 900       # 진행 없으면 경고 (15분 — worst case retry 마지노선)
 LOG_EVERY = 1             # 폴링마다 로그
 SUMMARY_EVERY = 300       # 5분마다 SUMMARY 출력
 
@@ -80,7 +80,7 @@ def main():
     started_at = time.time()
     r = session.post(f"{PROD_URL}/api/test/batch",
                      json={'scenarioIds': scenario_ids}, timeout=30)
-    if r.status_code != 200:
+    if r.status_code not in (200, 202):
         log(f"[ERROR] 배치 시작 실패: HTTP {r.status_code} {r.text[:500]}")
         sys.exit(1)
     data = r.json()
