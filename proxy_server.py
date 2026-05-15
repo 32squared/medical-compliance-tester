@@ -927,6 +927,12 @@ class ProxyHandler(BaseHTTPRequestHandler):
         if self.path == '/api/history/re-evaluate':
             return self._re_evaluate_history(body)
 
+        # ── 여러 배치 결과 합쳐 단일 통합 runId 생성 ──
+        if self.path == '/api/history/merge':
+            if not self._is_admin():
+                return self._send_error(403, 'Admin 권한이 필요합니다')
+            return self._merge_history_batches(body)
+
         # ── 환경 전환 API (로그인 사용자 모두 가능) ──
         if self.path == '/api/settings/env':
             return self._switch_env(body)
@@ -2296,6 +2302,109 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
             "includeGpt": True,
             "evalType": "llm_only",
             "message": f"{gpt_re_evaluated}건 LLM 재평가 완료 (정규식 제거)"
+        })
+
+    def _merge_history_batches(self, body):
+        """POST /api/history/merge — 여러 runId 결과를 합쳐 단일 통합 runId 생성.
+
+        Body: { "runIds": [...], "label": "선택 라벨" }
+        Response: { "runId": "merged-...", "total": N, "summary": {...} }
+
+        - 각 runId의 results를 모두 가져옴
+        - scenarioId 기준 중복 제거 (한 시나리오에 여러 결과면 마지막 우선)
+        - summary 자동 재계산
+        - 새 runId로 DB 저장 (type=merged-batch)
+        """
+        try:
+            payload = json.loads(body)
+        except json.JSONDecodeError:
+            return self._send_error(400, '잘못된 JSON')
+
+        source_run_ids = payload.get('runIds') or []
+        if not source_run_ids or len(source_run_ids) < 2:
+            return self._send_error(400, '최소 2개 이상의 runId가 필요합니다')
+        label = payload.get('label', '')
+
+        # 각 runId의 results 수집
+        all_results_by_sid = {}  # scenarioId → result (마지막이 우선)
+        source_summaries = []
+        first_started = None
+        last_completed = None
+        envs = set()
+
+        for rid in source_run_ids:
+            raw = db.get_test_run(rid)
+            if not raw:
+                ProxyHandler._add_log(f"[merge] runId 누락 skip: {rid}")
+                continue
+            run = _db_run_to_proxy(raw)
+            for r in run.get('results', []):
+                sid = r.get('scenarioId')
+                if not sid:
+                    continue
+                # pass/fail은 우선, error는 보완 (이미 pass/fail 있으면 error로 덮어쓰지 않음)
+                cur = all_results_by_sid.get(sid)
+                if cur is None or (cur.get('status') == 'error' and r.get('status') in ('pass', 'fail')):
+                    all_results_by_sid[sid] = r
+            source_summaries.append({
+                'runId': rid,
+                'total': (run.get('summary') or {}).get('total', 0),
+                'status': run.get('status', ''),
+            })
+            if run.get('env'):
+                envs.add(run.get('env'))
+            started = run.get('startedAt') or ''
+            if started and (first_started is None or started < first_started):
+                first_started = started
+            completed = run.get('completedAt') or ''
+            if completed and (last_completed is None or completed > last_completed):
+                last_completed = completed
+
+        merged_results = list(all_results_by_sid.values())
+        if not merged_results:
+            return self._send_error(400, '병합할 결과가 없습니다')
+
+        # summary 재계산
+        total = len(merged_results)
+        passed = sum(1 for r in merged_results if r.get('status') == 'pass')
+        failed = sum(1 for r in merged_results if r.get('status') == 'fail')
+        errors = sum(1 for r in merged_results if r.get('status') == 'error')
+        pass_rate = round((passed / total) * 100, 1) if total else 0
+
+        # 새 runId
+        merged_run_id = f"merged-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{secrets.token_hex(3)}"
+        now = datetime.now(timezone.utc).isoformat()
+
+        merged_run = {
+            'runId': merged_run_id,
+            'type': 'merged-batch',
+            'env': (sorted(envs)[0] if envs else 'prod'),
+            'startedAt': first_started or now,
+            'completedAt': last_completed or now,
+            'status': 'completed',
+            'runBy': self._get_alias(),
+            'summary': {
+                'total': total,
+                'passed': passed,
+                'failed': failed,
+                'error': errors,
+                'passRate': pass_rate,
+            },
+            'results': merged_results,
+            'mergedFrom': source_run_ids,
+            'mergeLabel': label,
+        }
+
+        _save_run_to_db(merged_run)
+        ProxyHandler._add_log(
+            f"[merge] {len(source_run_ids)}개 runId → {merged_run_id} "
+            f"(total={total} pass={passed} fail={failed} err={errors})"
+        )
+        self._send_json(200, {
+            'runId': merged_run_id,
+            'total': total,
+            'summary': merged_run['summary'],
+            'mergedFrom': source_summaries,
         })
 
     # 서버 로그 링버퍼 (최근 500줄)
