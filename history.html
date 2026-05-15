@@ -647,10 +647,13 @@
     const runItem = historyData.find(r => (r.runId || r.id) === runId);
     if (runItem && runItem.status === 'running') {
       // running 배치: 즉시 폴링 UI 표시
-      document.getElementById('emptySelect').style.display = 'none';
+      const _es = document.getElementById('emptySelect');
+      if (_es) _es.style.display = 'none';
       const dc = document.getElementById('detailContent');
-      dc.style.display = '';
-      dc.innerHTML = '<div style="padding:20px;text-align:center;color:var(--accent)"><div style="font-size:24px;margin-bottom:8px">⏳</div><div>배치 실행 중... 결과가 도착하면 아래에 표시됩니다.</div></div><div id="runningResults"></div>';
+      if (dc) {
+        dc.style.display = '';
+        dc.innerHTML = '<div style="padding:20px;text-align:center;color:var(--accent)"><div style="font-size:24px;margin-bottom:8px">⏳</div><div>배치 실행 중... 결과가 도착하면 아래에 표시됩니다.</div></div><div id="runningResults"></div>';
+      }
       startProgressPolling(runId);
       return;
     }
@@ -672,20 +675,26 @@
   }
 
   function renderDetail(run) {
-    document.getElementById('emptySelect').style.display = 'none';
+    const _es = document.getElementById('emptySelect');
+    if (_es) _es.style.display = 'none';
     const dc = document.getElementById('detailContent');
+    if (!dc) return;  // 페이지 전환/인증 모달 중 호출 방지
     dc.style.display = 'flex';
     _lastRenderedRun = run;
 
     // Show batch toggle bar
     var toggleBar = document.getElementById('batchToggleBar');
-    toggleBar.style.display = 'flex';
+    if (toggleBar) toggleBar.style.display = 'flex';
     // Reset to individual view
     currentBatchView = 'individual';
-    document.getElementById('btnIndividual').classList.add('active');
-    document.getElementById('btnBatchReport').classList.remove('active');
-    document.getElementById('resultsArea').style.display = '';
-    document.getElementById('batchReportArea').style.display = 'none';
+    var _btnInd = document.getElementById('btnIndividual');
+    var _btnRep = document.getElementById('btnBatchReport');
+    if (_btnInd) _btnInd.classList.add('active');
+    if (_btnRep) _btnRep.classList.remove('active');
+    var _resArea = document.getElementById('resultsArea');
+    var _batArea = document.getElementById('batchReportArea');
+    if (_resArea) _resArea.style.display = '';
+    if (_batArea) _batArea.style.display = 'none';
 
     const env = (run.env || 'dev').toLowerCase();
     const isBatch = run.type === 'batch';
@@ -696,26 +705,37 @@
     const errors = s.error || 0;
     const rate = s.passRate != null ? s.passRate : (total > 0 ? Math.round((passed / total) * 100) : 0);
 
-    document.getElementById('detailRunId').textContent = run.runId || run.id || '';
-    document.getElementById('detailType').textContent = isBatch ? '배치 실행' : '단건 실행';
+    var _dRunId = document.getElementById('detailRunId');
+    if (_dRunId) _dRunId.textContent = run.runId || run.id || '';
+    var _dType = document.getElementById('detailType');
+    if (_dType) _dType.textContent = isBatch ? '배치 실행' : '단건 실행';
     const envBadge = document.getElementById('detailEnv');
-    envBadge.textContent = env.toUpperCase();
-    envBadge.className = 'run-env-badge ' + env;
-    document.getElementById('detailTimestamp').textContent = formatTimestamp(run.startedAt || run.completedAt || run.timestamp);
+    if (envBadge) {
+      envBadge.textContent = env.toUpperCase();
+      envBadge.className = 'run-env-badge ' + env;
+    }
+    var _dTs = document.getElementById('detailTimestamp');
+    if (_dTs) _dTs.textContent = formatTimestamp(run.startedAt || run.completedAt || run.timestamp);
     const runByEl = document.getElementById('detailRunBy');
     if (runByEl) {
       const who = run.runBy || run.tester || '익명';
       runByEl.textContent = '실행자: ' + who;
       runByEl.style.display = '';
     }
-    document.getElementById('scTotal').textContent = total;
-    document.getElementById('scPassed').textContent = passed;
-    document.getElementById('scFailed').textContent = failed;
-    document.getElementById('scError').textContent = errors;
-    document.getElementById('scRate').textContent = rate + '%';
+    var _scTotal = document.getElementById('scTotal');
+    var _scPassed = document.getElementById('scPassed');
+    var _scFailed = document.getElementById('scFailed');
+    var _scError = document.getElementById('scError');
+    var _scRate = document.getElementById('scRate');
+    if (_scTotal) _scTotal.textContent = total;
+    if (_scPassed) _scPassed.textContent = passed;
+    if (_scFailed) _scFailed.textContent = failed;
+    if (_scError) _scError.textContent = errors;
+    if (_scRate) _scRate.textContent = rate + '%';
 
     const rawResults = run.results || [];
     const area = document.getElementById('resultsArea');
+    if (!area) return;  // 결과 영역 없으면 종료 (페이지 전환 중)
 
     // P1-6: 세그먼트 필터
     window._currentRunResults = rawResults;
@@ -1221,8 +1241,10 @@
         if (!r.ok) throw new Error('삭제 실패');
         showToast('테스트 이력이 삭제되었습니다.', 'success');
         currentRunId = null;
-        document.getElementById('emptySelect').style.display = '';
-        document.getElementById('detailContent').style.display = 'none';
+        var _es = document.getElementById('emptySelect');
+        var _dc = document.getElementById('detailContent');
+        if (_es) _es.style.display = '';
+        if (_dc) _dc.style.display = 'none';
         loadHistory();
       })
       .catch(e => showToast(e.message, 'error'));
@@ -1518,8 +1540,10 @@
     currentBatchView = view;
     document.getElementById('btnIndividual').classList.toggle('active', view === 'individual');
     document.getElementById('btnBatchReport').classList.toggle('active', view === 'report');
-    document.getElementById('resultsArea').style.display = view === 'individual' ? '' : 'none';
-    document.getElementById('batchReportArea').style.display = view === 'report' ? '' : 'none';
+    var _ra = document.getElementById('resultsArea');
+    var _ba = document.getElementById('batchReportArea');
+    if (_ra) _ra.style.display = view === 'individual' ? '' : 'none';
+    if (_ba) _ba.style.display = view === 'report' ? '' : 'none';
     if (view === 'report' && _lastRenderedRun) {
       renderBatchReport(_lastRenderedRun);
     }
@@ -2162,7 +2186,8 @@
     document.getElementById('tabEnhancement').classList.toggle('active', tab === 'enhancement');
     var tabReward = document.getElementById('tabReward');
     if (tabReward) tabReward.classList.toggle('active', tab === 'reward');
-    document.getElementById('historyTabContent').style.display = tab === 'history' ? 'flex' : 'none';
+    var _htc = document.getElementById('historyTabContent');
+    if (_htc) _htc.style.display = tab === 'history' ? 'flex' : 'none';
     var reportEl = document.getElementById('reportTabContent');
     var enhEl = document.getElementById('enhancementTabContent');
     var rewardEl = document.getElementById('rewardTabContent');

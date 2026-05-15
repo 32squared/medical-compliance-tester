@@ -114,40 +114,39 @@ def main():
                 total_target += cnt
                 continue
 
-            all_done = False
+            # 모든 shard는 history 직접 조회 (concurrency=1 분산 환경)
+            # status endpoint는 호출된 인스턴스의 메모리만 보므로 404 흔함
             try:
-                r = s.get(f"{PROD_URL}/api/test/status/{rid}", timeout=15)
-                if r.status_code == 200:
-                    j = r.json()
-                    completed = j.get('completed', 0)
-                    states[rid]['completed'] = completed
-                    states[rid]['total'] = j.get('total', cnt)
-                    states[rid]['status'] = j.get('status', '?')
-                    total_completed += completed
+                r2 = s.get(f"{PROD_URL}/api/history/{rid}", timeout=15)
+                if r2.status_code == 200:
+                    jj = r2.json()
+                    ss = jj.get('summary', {})
+                    proc = (ss.get('passed') or 0) + (ss.get('failed') or 0)
+                    run_status = jj.get('status', '?')
+                    p = ss.get('passed') or 0
+                    f = ss.get('failed') or 0
+                    e_ = ss.get('error') or 0
+                    states[rid]['completed'] = proc
+                    states[rid]['status'] = run_status
+                    total_completed += proc
                     total_target += cnt
-                    agg_pass += j.get('passed', 0)
-                    agg_fail += j.get('failed', 0)
-                    agg_err += j.get('errors', 0)
-                    active_count += 1
-                    if j.get('status') in ('completed', 'cancelled') or completed >= cnt:
-                        states[rid]['done'] = True
-                        states[rid]['finalCompleted'] = completed
-                        log(f"  shard {shard_no} ({rid}) ended: {completed}/{cnt} status={j.get('status')}")
-                elif r.status_code == 404:
-                    # 메모리에서 사라짐 → history 조회
-                    r2 = s.get(f"{PROD_URL}/api/history/{rid}", timeout=15)
-                    if r2.status_code == 200:
-                        jj = r2.json()
-                        ss = jj.get('summary', {})
-                        proc = (ss.get('passed') or 0) + (ss.get('failed') or 0)
+                    agg_pass += p
+                    agg_fail += f
+                    # error는 미실행을 포함하므로 신뢰 안 함
+
+                    if run_status in ('completed', 'cancelled') or proc >= cnt:
                         states[rid]['done'] = True
                         states[rid]['finalCompleted'] = proc
-                        total_completed += proc
-                        total_target += cnt
-                        log(f"  shard {shard_no} ({rid}) history: pass={ss.get('passed')} fail={ss.get('failed')} status={jj.get('status')}")
+                        log(f"  shard {shard_no} ({rid}) ended: pass={p} fail={f} status={run_status} (proc={proc}/{cnt})")
+                    else:
+                        # 아직 실행 중 (running)
+                        all_done = False
+                        active_count += 1
                 else:
-                    log(f"  shard {shard_no} poll HTTP {r.status_code}")
+                    all_done = False
+                    log(f"  shard {shard_no} history HTTP {r2.status_code}")
             except Exception as e:
+                all_done = False
                 log(f"  shard {shard_no} poll err: {str(e)[:120]}")
 
         # 통합 진행
