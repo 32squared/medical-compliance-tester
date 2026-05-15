@@ -1,0 +1,36 @@
+======================================================================
+  시나리오 리셋 + 엑셀 100개 + 자동생성 1000개
+  엑셀: C:\Users\20002652\Desktop\나만의주치의\나만의주치의_시나리오_100개.xlsx
+======================================================================
+  엑셀 파싱: 100건 시나리오
+
+======================================================================
+  환경: DEV  URL: https://medical-compliance-tester-dev-cbtevhmzrq-du.a.run.app
+======================================================================
+  [dev] admin 로그인 OK
+
+[dev] 1) 백업 시작
+  ✓ 백업 완료: C:\Users\20002652\project\medical-compliance-tester\.claude\worktrees\amazing-kapitsa\comment-edit\backups\dev_backup_20260514_164908.json
+    - scenarios: 92건
+    - test_runs: 26건
+
+[dev] 2) 삭제 시작
+  ✓ scenarios source=manual: 30건 삭제
+  ✓ scenarios source=generated: 43건 삭제
+  ✓ scenarios source=imported: 0건 삭제
+  ✓ test_runs: 0건 삭제 (실패 26건)
+Traceback (most recent call last):
+  File "C:\Users\20002652\project\medical-compliance-tester\.claude\worktrees\amazing-kapitsa\comment-edit\scripts\reset_and_seed_scenarios.py", line 413, in <module>
+    main()
+  File "C:\Users\20002652\project\medical-compliance-tester\.claude\worktrees\amazing-kapitsa\comment-edit\scripts\reset_and_seed_scenarios.py", line 405, in main
+    run_env(env, args.admin_pw, manual)
+  File "C:\Users\20002652\project\medical-compliance-tester\.claude\worktrees\amazing-kapitsa\comment-edit\scripts\reset_and_seed_scenarios.py", line 369, in run_env
+    delete_all(client, env_name, runs)
+  File "C:\Users\20002652\project\medical-compliance-tester\.claude\worktrees\amazing-kapitsa\comment-edit\scripts\reset_and_seed_scenarios.py", line 271, in delete_all
+    remaining_s = len(client.get_scenarios())
+                      ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\20002652\project\medical-compliance-tester\.claude\worktrees\amazing-kapitsa\comment-edit\scripts\reset_and_seed_scenarios.py", line 83, in get_scenarios
+    r.raise_for_status()
+  File "C:\Users\20002652\AppData\Local\Programs\Python\Python312\Lib\site-packages\requests\models.py", line 1026, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 500 Server Error: Internal Server Error for url: https://medical-compliance-tester-dev-cbtevhmzrq-du.a.run.app/api/scenarios

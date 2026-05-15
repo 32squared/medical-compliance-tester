@@ -2237,8 +2237,9 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
 
         results_list = target_run.get('results', [])
 
-        if include_gpt and openai_key:
-            # 정규식 + GPT 병렬 (ThreadPoolExecutor)
+        # LLM-only 재평가 (정규식 제거)
+        # include_gpt=true와 무관하게 OpenAI 키가 있으면 LLM 평가만 실행
+        if openai_key:
             from concurrent.futures import ThreadPoolExecutor, as_completed
             def _gpt_one(idx, prompt, resp):
                 try:
@@ -2246,17 +2247,7 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
                 except Exception:
                     return idx, None
 
-            # 1) 정규식 먼저 (빠름)
-            for result in results_list:
-                response_text = result.get('response', '')
-                if not response_text:
-                    continue
-                last_compliance = _check_compliance(response_text)
-                result['compliance'] = last_compliance
-                result['guidelineVersion'] = last_compliance.get('guidelineVersion', '')
-                re_evaluated += 1
-
-            # 2) GPT 병렬 (max 5 동시)
+            # GPT 병렬 (max 5 동시)
             with ThreadPoolExecutor(max_workers=5) as executor:
                 futures = []
                 for idx, result in enumerate(results_list):
@@ -2268,52 +2259,43 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
                 for fut in as_completed(futures):
                     try:
                         idx, gpt_result = fut.result(timeout=120)
-                        if gpt_result:
+                        if gpt_result and gpt_result.get('grade'):
                             results_list[idx]['gptEval'] = gpt_result
-                            # finalScore 갱신
                             results_list[idx]['gptScore'] = gpt_result.get('score', None)
-                            results_list[idx]['finalScore'] = gpt_result.get('score', results_list[idx].get('finalScore'))
+                            results_list[idx]['finalScore'] = gpt_result.get('score', None)
                             results_list[idx]['finalSource'] = 'gpt'
+                            # status도 LLM 결과로 재설정
+                            results_list[idx]['status'] = 'pass' if gpt_result.get('passed', False) else 'fail'
                             gpt_re_evaluated += 1
+                            re_evaluated += 1
                     except Exception:
                         pass
         else:
-            # 정규식만
-            for result in results_list:
-                response_text = result.get('response', '')
-                if not response_text:
-                    continue
-                last_compliance = _check_compliance(response_text)
-                result['compliance'] = last_compliance
-                result['guidelineVersion'] = last_compliance.get('guidelineVersion', '')
-                re_evaluated += 1
+            return self._send_error(400, 'OpenAI API Key가 설정되지 않아 LLM 평가를 할 수 없습니다')
 
-        # 통과/실패 집계 갱신 (GPT 재평가했다면)
-        if include_gpt:
-            passed = sum(1 for r in results_list
-                         if (r.get('gptEval') and r['gptEval'].get('passed')) or
-                            (not r.get('gptEval') and (r.get('finalScore') or 0) >= 60))
-            failed = sum(1 for r in results_list if r.get('response') and not (
-                (r.get('gptEval') and r['gptEval'].get('passed')) or
-                (not r.get('gptEval') and (r.get('finalScore') or 0) >= 60)
-            ))
-            target_run.setdefault('summary', {})
-            target_run['summary']['passed'] = passed
-            target_run['summary']['failed'] = failed
-            total = target_run['summary'].get('total', len(results_list))
-            target_run['summary']['passRate'] = round((passed / total) * 100) if total > 0 else 0
+        # 통과/실패 집계 갱신 (LLM 재평가 결과 기반)
+        passed = sum(1 for r in results_list
+                     if r.get('gptEval') and r['gptEval'].get('passed'))
+        failed = sum(1 for r in results_list if r.get('response') and r.get('gptEval')
+                     and not r['gptEval'].get('passed'))
+        errors = sum(1 for r in results_list if not r.get('gptEval') or not r.get('response'))
+        target_run.setdefault('summary', {})
+        target_run['summary']['passed'] = passed
+        target_run['summary']['failed'] = failed
+        target_run['summary']['error'] = errors
+        total = target_run['summary'].get('total', len(results_list))
+        target_run['summary']['passRate'] = round((passed / total) * 100) if total > 0 else 0
 
         _save_run_to_db(target_run)
 
-        gl_ver = last_compliance.get('guidelineVersion', '') if last_compliance else ''
         self._send_json(200, {
             "success": True,
             "runId": run_id,
             "reEvaluated": re_evaluated,
             "gptReEvaluated": gpt_re_evaluated,
-            "includeGpt": include_gpt,
-            "guidelineVersion": gl_ver,
-            "message": f"{re_evaluated}건 정규식 재평가" + (f" + {gpt_re_evaluated}건 GPT 재평가" if include_gpt else "") + " 완료"
+            "includeGpt": True,
+            "evalType": "llm_only",
+            "message": f"{gpt_re_evaluated}건 LLM 재평가 완료 (정규식 제거)"
         })
 
     # 서버 로그 링버퍼 (최근 500줄)
@@ -2475,9 +2457,8 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
                             pass
 
                     el = int((_time.time() - t0) * 1000)
-                    comp = _check_compliance(full_text)
-
-                    # Fix 2: GPT + 문진 평가 병렬 실행
+                    # ── LLM-only 평가 (정규식 평가 제거) ──
+                    # 사용자 결정: 컴플라이언스 평가는 LLM만 사용. 정규식은 결과에 영향 X.
                     gpt = None
                     consult = None
                     if openai_key and full_text:
@@ -2487,44 +2468,55 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
                             gpt_f = eval_exec.submit(_evaluate_gpt, sc['prompt'], full_text, openai_key, gpt_model)
                             consult_f = eval_exec.submit(_evaluate_consultation, sc['prompt'], full_text, openai_key, gpt_model)
                             try:
-                                gpt = gpt_f.result(timeout=65)
-                            except Exception:
+                                gpt = gpt_f.result(timeout=120)
+                            except Exception as _e:
+                                ProxyHandler._add_log(f"[컴플라이언스] 실패 sid={sid}: {str(_e)[:120]}")
                                 gpt = None
                             try:
-                                consult = consult_f.result(timeout=65)
+                                consult = consult_f.result(timeout=120)
                             except Exception:
                                 consult = None
                             eval_exec.shutdown(wait=False, cancel_futures=True)
-                        except Exception:
-                            pass
+                        except Exception as _ex:
+                            ProxyHandler._add_log(f"[컴플라이언스] 실행기 실패 sid={sid}: {str(_ex)[:120]}")
 
-                    regex_score = comp.get('score', 100)
-                    gpt_score = gpt.get('score', 100) if gpt else None
-                    if gpt:
-                        final_score, final_passed, final_source = gpt.get('score', 100), gpt.get('passed', True), 'gpt'
+                    # LLM 평가 결과만 최종 판정에 사용
+                    if gpt and gpt.get('grade'):
+                        final_score = gpt.get('score', 0)
+                        final_passed = gpt.get('passed', False)
+                        final_source = 'gpt'
+                        # 응답 없으면 무조건 fail/error
+                        if not full_text:
+                            st = 'error'
+                        else:
+                            st = 'pass' if final_passed else 'fail'
                     else:
-                        final_score, final_passed, final_source = regex_score, regex_score >= 60, 'regex'
+                        # LLM 평가 실패 → error (정규식 fallback 안 함)
+                        final_score = None
+                        final_passed = False
+                        final_source = 'gpt_failed' if openai_key else 'no_key'
+                        st = 'error' if not full_text or not gpt else 'fail'
 
-                    st = 'fail' if not full_text else ('pass' if final_passed else 'fail')
                     return {
                         "scenarioId": sid, "prompt": sc['prompt'], "response": full_text,
                         "status": st, "responseTime": el,
                         "finalScore": final_score, "finalSource": final_source,
-                        "regexScore": regex_score, "gptScore": gpt_score,
+                        "gptScore": gpt.get('score') if gpt else None,
                         "expectedBehavior": sc.get('expectedBehavior', ''),
                         "riskLevel": sc.get('riskLevel', ''),
                         "shouldRefuse": sc.get('shouldRefuse', False),
-                        # ── 분석용 메타 (P0: 카테고리/리스크 cross-tab 지원) ──
+                        # ── 분석용 메타 ──
                         "category": sc.get('category', ''),
                         "subcategory": sc.get('subcategory', ''),
                         "tags": sc.get('tags', []),
                         "source": sc.get('source', 'manual'),
-                        # ── 응답 메타 (P1: 메타 통계) ──
+                        # ── 응답 메타 ──
                         "responseLength": len(full_text or ''),
                         "citationCount": len(collected_search_results_batch or []),
-                        "compliance": comp, "gptEval": gpt,
+                        # compliance(정규식)은 결과에 포함 안 함 — LLM만 사용
+                        "gptEval": gpt,
                         "consultationEval": consult,
-                        "guidelineVersion": comp.get('guidelineVersion', ''),
+                        "guidelineVersion": gpt.get('guidelineVersion', '') if gpt else '',
                         "searchResults": collected_search_results_batch[:5] if collected_search_results_batch else [],
                     }
                 except Exception as e:
