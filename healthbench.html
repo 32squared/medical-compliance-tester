@@ -127,7 +127,70 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <div class="page-title">🩺 HealthBench 전용 페이지</div>
       <div class="page-subtitle">OpenAI HealthBench (영문) 100건 stratified sample — multi-turn replay + rubric 평가</div>
     </div>
+    <button class="btn-secondary btn" onclick="toggleInfo()" style="margin-left:auto;padding:6px 12px;font-size:11px" id="btnToggleInfo">ℹ️ HealthBench 란?</button>
   </div>
+
+  <!-- HB 설명 카드 (접힐 수 있음) -->
+  <details class="section" id="infoSection" style="margin-bottom:14px">
+    <summary style="padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)">
+      ℹ️ HealthBench 가 무엇인가요?
+    </summary>
+    <div style="padding:14px 16px;line-height:1.7;font-size:12.5px">
+      <p style="margin-bottom:10px"><b>HealthBench</b> 는 OpenAI 가 2025년 공개한 의료 AI 응답 평가 벤치마크입니다. 5,000건의 실제와 유사한 의료 질의에 대해 의사 패널이 채점 기준 (rubric) 을 설계했고, 각 응답이 그 기준을 얼마나 충족하는지로 점수를 매깁니다.</p>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin:14px 0">
+        <div style="background:var(--bg-light);border:1px solid var(--border);border-radius:6px;padding:10px 12px">
+          <div style="font-weight:700;margin-bottom:4px;color:#0ea5e9">📂 데이터셋 출처</div>
+          <div style="font-size:11.5px;color:var(--text-dim)">
+            <code style="background:var(--bg);padding:1px 5px;border-radius:3px">openai/simple-evals</code> 의 <code style="background:var(--bg);padding:1px 5px;border-radius:3px">healthbench/2025-05-07-06-14-12_oss_eval.jsonl</code> (5,000건)<br>
+            현재 페이지는 <b>seed=42 stratified 100건</b> 만 import 됨 (theme 비율 보존).
+          </div>
+        </div>
+
+        <div style="background:var(--bg-light);border:1px solid var(--border);border-radius:6px;padding:10px 12px">
+          <div style="font-weight:700;margin-bottom:4px;color:#a855f7">🎯 7개 Theme</div>
+          <div style="font-size:11.5px;color:var(--text-dim)">
+            <b>global_health</b> 22 · <b>hedging</b> 21 · <b>communication</b> 18 · <b>context_seeking</b> 12 · <b>emergency_referrals</b> 10 · <b>health_data_tasks</b> 10 · <b>complex_responses</b> 7
+          </div>
+        </div>
+
+        <div style="background:var(--bg-light);border:1px solid var(--border);border-radius:6px;padding:10px 12px">
+          <div style="font-weight:700;margin-bottom:4px;color:#22c55e">📋 채점 방식 (Rubric)</div>
+          <div style="font-size:11.5px;color:var(--text-dim)">
+            각 시나리오는 의사가 작성한 <b>2~48개</b> (평균 12개) 채점 기준을 가집니다. GPT (gpt-4o-mini) 가 응답이 각 기준을 met / not-met 판정 → <b>가중 점수 = awarded/positive_total × 100</b>.<br>
+            <span style="color:var(--green)">음수 met = 나쁜 행동 발생 시 점수 차감</span> (예: 무면허 처방).
+          </div>
+        </div>
+
+        <div style="background:var(--bg-light);border:1px solid var(--border);border-radius:6px;padding:10px 12px">
+          <div style="font-weight:700;margin-bottom:4px;color:#eab308">🔁 Multi-turn 대화</div>
+          <div style="font-size:11.5px;color:var(--text-dim)">
+            100건 중 <b>47건</b> 이 multi-turn (3~11 turns). SKIX 는 user turn 들을 <code>conversation_strid</code> 로 순차 체이닝하며 컨텍스트 누적. <b>마지막 turn 의 응답만 rubric 채점</b>됨 (그 전 turn 은 컨텍스트 구성용).
+          </div>
+        </div>
+
+        <div style="background:var(--bg-light);border:1px solid var(--border);border-radius:6px;padding:10px 12px">
+          <div style="font-weight:700;margin-bottom:4px;color:#f97316">⚖ Axis 별 평가</div>
+          <div style="font-size:11.5px;color:var(--text-dim)">
+            각 채점 기준에는 axis 태그가 붙어있음: <b>completeness</b> (완전성) · <b>accuracy</b> (정확성) · <b>safety</b> (안전성) · <b>communication</b> (표현) · <b>context-awareness</b> (컨텍스트 인지). 리포트에서 axis 별 가중 점수 확인 가능.
+          </div>
+        </div>
+
+        <div style="background:var(--bg-light);border:1px solid var(--border);border-radius:6px;padding:10px 12px">
+          <div style="font-weight:700;margin-bottom:4px;color:#ef4444">⏱ 예상 소요</div>
+          <div style="font-size:11.5px;color:var(--text-dim)">
+            <b>single-turn (53건)</b>: 시나리오당 ~30초<br>
+            <b>multi-turn (47건)</b>: 시나리오당 5~15분 (PROD SKIX 응답 지연 포함)<br>
+            <b>전체 100건 batch</b>: max_workers=20 병렬로 약 30분~1시간
+          </div>
+        </div>
+      </div>
+
+      <div style="background:rgba(168,85,247,0.08);border-left:3px solid #a855f7;padding:10px 14px;border-radius:4px;font-size:12px">
+        <b>왜 별도 페이지?</b> HealthBench 는 영문 데이터셋이고 정량 평가 (rubric) 흐름이 일반 자문단 시나리오 (정성 평가 + 의료법) 와 분리되어 있습니다. 이 페이지는 HB 만의 워크플로 (시나리오 검토 → 일괄 batch → theme/axis 별 분석) 에 최적화되어 있고, 배치 실행은 항상 <b>Cloud Run Job</b> 으로 위임되어 service thread 와 분리됩니다.
+      </div>
+    </div>
+  </details>
 
   <!-- 1. Summary -->
   <div class="summary-grid" id="summaryGrid">
@@ -154,16 +217,17 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <!-- 3. 실행 -->
   <div class="section">
     <div class="section-title">
-      🚀 배치 실행
+      🚀 배치 실행 (Cloud Run Job)
       <div style="display:flex;gap:8px">
-        <button class="btn-secondary btn" onclick="runHealthBenchBatch('all')" id="btnRunAll">전체 100건 실행</button>
+        <button class="btn" onclick="runHealthBenchBatch('all')" id="btnRunAll">▶ 전체 100건 Job 으로 실행</button>
       </div>
     </div>
     <div class="section-body">
       <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--text-dim)">
         <span>현재 환경: <b id="envLabel">PROD</b></span>
-        <span>예상 소요: 100건 × 평균 5분 multi-turn = 8-10시간 (max_workers=20 병렬)</span>
+        <span style="font-size:11px;background:rgba(168,85,247,0.1);color:#a855f7;padding:2px 8px;border-radius:3px">🔒 항상 Cloud Run Job 으로 위임 — service thread 와 분리</span>
       </div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:6px">예상 소요: 약 30분 ~ 1시간 (max_workers=20 병렬). multi-turn 47건은 시나리오당 5-15분 응답 지연 가능.</div>
       <div id="runProgress" style="display:none;margin-top:12px;padding:10px;background:var(--bg-light);border:1px solid var(--border);border-radius:6px">
         <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:6px">
           <span><span class="spinner"></span> 실행 중: <b id="runProgressLabel">–</b></span>
@@ -338,14 +402,20 @@ async function runHealthBenchBatch(scope) {
     return;
   }
   const scenarioIds = _hbScenarios.map(s => s.id);
-  if (!confirm(`HealthBench ${scenarioIds.length}건 배치를 실행합니다. multi-turn 시나리오는 시나리오당 5-15분 소요. 계속하시겠습니까?`)) return;
+  const msg = `HealthBench ${scenarioIds.length}건 배치를 실행합니다.\n\n` +
+    `- 실행 위치: Cloud Run Job (batch-runner) — service thread 와 분리\n` +
+    `- multi-turn 시나리오는 SKIX 응답 지연 5-15분/건\n` +
+    `- 전체 예상 소요: 약 30분 ~ 1시간 (max_workers=20 병렬)\n\n` +
+    `계속하시겠습니까?`;
+  if (!confirm(msg)) return;
 
   document.getElementById('btnRunAll').disabled = true;
   document.getElementById('runProgress').style.display = 'block';
-  document.getElementById('runProgressLabel').textContent = '배치 생성 중...';
+  document.getElementById('runProgressLabel').textContent = 'Cloud Run Job 트리거 중...';
 
   try {
-    const r = await fetch('/api/test/batch', {
+    // 항상 Cloud Run Job 으로 위임 (service thread 와 분리)
+    const r = await fetch('/api/healthbench/run-batch-job', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ scenarioIds: scenarioIds, label: 'healthbench-page' }),
@@ -356,13 +426,13 @@ async function runHealthBenchBatch(scope) {
     }
     const d = await r.json();
     _activeBatchRunId = d.runId;
-    document.getElementById('runProgressLabel').textContent = _activeBatchRunId;
+    document.getElementById('runProgressLabel').textContent = `Cloud Run Job: ${_activeBatchRunId}`;
     pollBatchProgress();
-    showToast(`배치 시작: ${_activeBatchRunId}`, 'success');
+    showToast(`✓ Cloud Run Job 시작: ${_activeBatchRunId} (${d.total}건)`, 'success');
   } catch (e) {
     document.getElementById('btnRunAll').disabled = false;
     document.getElementById('runProgress').style.display = 'none';
-    showToast('배치 실행 실패: ' + e.message, 'error');
+    showToast('Job 트리거 실패: ' + e.message, 'error');
   }
 }
 
@@ -555,6 +625,15 @@ function renderReport(rep) {
   </div>`;
 
   document.getElementById('reportArea').innerHTML = html;
+}
+
+// ─────────────────────────────────────────────
+// HB 설명 토글
+// ─────────────────────────────────────────────
+function toggleInfo() {
+  const info = document.getElementById('infoSection');
+  if (!info) return;
+  info.open = !info.open;
 }
 
 // ─────────────────────────────────────────────

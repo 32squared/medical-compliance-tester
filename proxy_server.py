@@ -1537,6 +1537,10 @@ class ProxyHandler(BaseHTTPRequestHandler):
         if m_cancel:
             return self._cancel_batch(m_cancel.group(1))
 
+        # ── HealthBench 전용: 항상 Cloud Run Job 으로 위임 (service thread 와 분리) ──
+        if self.path == '/api/healthbench/run-batch-job':
+            return self._run_healthbench_batch_job(body)
+
         # ── ChatGPT 평가 API ──
         if self.path == '/api/evaluate':
             return self._evaluate_with_llm(body)
@@ -3155,6 +3159,39 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
             except Exception:
                 pass
             return self._send_error(500, f'Job 트리거 실패: {type(e).__name__}: {str(e)[:200]}')
+
+    def _run_healthbench_batch_job(self, body):
+        """POST /api/healthbench/run-batch-job — HB 시나리오는 항상 Cloud Run Job 으로 위임.
+
+        일반 /api/test/batch 는 시나리오 수 < _JOB_THRESHOLD(500) 이면 service
+        background thread 로 처리하지만, HealthBench 는 multi-turn / 긴 응답이
+        많아 항상 Job 으로 분리해 실행한다 (service thread 영향 격리).
+        """
+        try:
+            payload = json.loads(body) if body else {}
+        except json.JSONDecodeError:
+            return self._send_error(400, '잘못된 JSON')
+
+        scenario_ids = payload.get('scenarioIds') or []
+        if not scenario_ids:
+            # 명시 안 됐으면 DB 의 모든 HB-* 시나리오 사용
+            data = db.get_scenarios()
+            scenario_ids = [s['id'] for s in (data.get('scenarios') or [])
+                            if (s.get('id') or '').startswith('HB-')]
+        if not scenario_ids:
+            return self._send_error(400, '실행할 HealthBench 시나리오가 없습니다.')
+
+        # 안전 검증: 모든 ID 가 HB-* 인지
+        non_hb = [sid for sid in scenario_ids if not str(sid).startswith('HB-')]
+        if non_hb:
+            return self._send_error(400, f'HB-* 시나리오만 허용됩니다. 잘못된 ID: {non_hb[:5]}')
+
+        run_by = payload.get('runBy') or self._get_alias() or 'healthbench-page'
+        label = payload.get('label') or 'healthbench-ui'
+        ProxyHandler._add_log(
+            f"[hb-job] /api/healthbench/run-batch-job — {len(scenario_ids)}건 Job 위임 요청 runBy={run_by}"
+        )
+        return self._trigger_job_run(scenario_ids, run_by=run_by, label=label)
 
     def _batch_run(self, body):
         """POST /api/test/batch — 청크 기반 병렬 실행 (BatchExecutor 위임).
