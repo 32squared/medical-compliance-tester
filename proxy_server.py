@@ -1350,6 +1350,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
             ('run_batch',         '/api/batch',             None),
             ('manage_settings',   '/api/settings',          ['POST', 'PUT', 'DELETE']),
             ('manage_settings',   '/api/categories',        ['POST', 'PUT', 'DELETE']),
+            # HealthBench Job 트리거 — view_history 권한자만 (tester 기본 권한 포함)
+            ('view_history',      '/api/healthbench/',      None),
         ]
         for perm, prefix, methods in perm_blocks:
             if path.startswith(prefix):
@@ -3166,7 +3168,14 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
         일반 /api/test/batch 는 시나리오 수 < _JOB_THRESHOLD(500) 이면 service
         background thread 로 처리하지만, HealthBench 는 multi-turn / 긴 응답이
         많아 항상 Job 으로 분리해 실행한다 (service thread 영향 격리).
+
+        권한: admin 또는 view_history (perm_blocks 에서 가드됨) — 본 메서드에도
+        2차 가드를 두어 라우팅 변경/실수로 가드 우회되는 사고 방지.
         """
+        # 2차 인증 가드 (정책 다중화)
+        if not self._is_admin() and not self._has_permission('view_history'):
+            return self._send_error(403, 'HealthBench Job 트리거는 admin 또는 view_history 권한이 필요합니다.')
+
         try:
             payload = json.loads(body) if body else {}
         except json.JSONDecodeError:
