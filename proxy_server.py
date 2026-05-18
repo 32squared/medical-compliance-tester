@@ -119,7 +119,7 @@ def _should_exclude_phr():
 
 def _skix_post_one(query, conversation_strid, api_url, graph_type, api_key,
                    tenant_domain, api_uid, source_types,
-                   sock_timeout=30, read_timeout=90, connect_timeout=60):
+                   sock_timeout=60, read_timeout=900, connect_timeout=60):
     """단일 SKIX 호출. SSE 파싱 후 결과 dict 반환.
 
     Returns:
@@ -289,8 +289,8 @@ def _skix_replay(scenario, http_cfg):
             q, strid,
             http_cfg['api_url'], http_cfg['graph_type'], http_cfg['api_key'],
             http_cfg['tenant_domain'], http_cfg['api_uid'], http_cfg['source_types'],
-            sock_timeout=http_cfg.get('sock_timeout', 30),
-            read_timeout=http_cfg.get('read_timeout', 90),
+            sock_timeout=http_cfg.get('sock_timeout', 60),
+            read_timeout=http_cfg.get('read_timeout', 900),
             connect_timeout=http_cfg.get('connect_timeout', 60),
         )
         turn_results.append({
@@ -2374,7 +2374,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
             'api_url': api_url, 'graph_type': graph_type, 'api_key': api_key,
             'tenant_domain': tenant_domain, 'api_uid': api_uid,
             'source_types': source_types,
-            'sock_timeout': 30, 'read_timeout': 90, 'connect_timeout': 120,
+            'sock_timeout': 60, 'read_timeout': 900, 'connect_timeout': 120,
         }
 
         try:

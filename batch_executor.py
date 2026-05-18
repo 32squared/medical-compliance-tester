@@ -27,8 +27,11 @@ class BatchExecutor:
     # 이전엔 청크 50개 wave 동기화로 가장 느린 1건이 청크 전체 지연시킴).
     DEFAULT_MAX_WORKERS = 20
     DEFAULT_CHUNK_SIZE = 2000
-    DEFAULT_MAX_READ_TIME = 90  # resp.read() 전체 타임아웃 (초)
-    DEFAULT_SOCKET_TIMEOUT = 30
+    DEFAULT_MAX_READ_TIME = 900  # resp.read() 전체 타임아웃 (초). PROD SKIX 가 멀티턴/긴
+                                  # 컨텍스트에서 최대 15분+ 응답하는 경우 대응 (CLAUDE.md 참고).
+                                  # Cloud Run timeout=900s 한도 내. 이전 90s 였으나 실측에서
+                                  # HB-0B7B92FC 마지막 turn 944s 응답으로 timeout 발생.
+    DEFAULT_SOCKET_TIMEOUT = 60   # KEEP_ALIVE 이벤트 사이 간격이 30s 넘는 케이스 대응
     DEFAULT_HTTP_TIMEOUT = 60
     DEFAULT_EVAL_TIMEOUT = 120
 

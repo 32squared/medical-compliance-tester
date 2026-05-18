@@ -581,7 +581,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Apply scenarios
     if (scenariosRes.status === 'fulfilled' && scenariosRes.value.ok) {
       const data = await scenariosRes.value.json();
-      allScenarios = data.scenarios || [];
+      // HealthBench 시나리오 (HB-*) 는 전용 페이지 /healthbench 에서 관리. 여기서는 숨김.
+      const _allRaw = data.scenarios || [];
+      const _hbHidden = _allRaw.filter(s => (s.id || '').startsWith('HB-')).length;
+      allScenarios = _allRaw.filter(s => !(s.id || '').startsWith('HB-'));
+      if (_hbHidden > 0) showHealthBenchBanner(_hbHidden);
       categories = data.categories || [];
       renderCategories();
       renderList();
@@ -678,7 +682,11 @@ async function loadData() {
   try {
     const res = await fetch(`${API}/api/scenarios`);
     const data = await res.json();
-    allScenarios = data.scenarios || [];
+    // HealthBench 시나리오 (HB-*) 는 전용 페이지 /healthbench 에서 관리. 여기서는 숨김.
+    const _allRaw = data.scenarios || [];
+    const _hbHidden = _allRaw.filter(s => (s.id || '').startsWith('HB-')).length;
+    allScenarios = _allRaw.filter(s => !(s.id || '').startsWith('HB-'));
+    if (_hbHidden > 0) showHealthBenchBanner(_hbHidden);
     categories = data.categories || [];
     renderCategories();
     renderList();
@@ -688,6 +696,19 @@ async function loadData() {
   } catch (e) {
     showToast('데이터 로드 실패: ' + e.message, 'error');
   }
+}
+
+// HealthBench 시나리오가 숨겨졌음을 알리는 배너 (한 번만 표시)
+function showHealthBenchBanner(count) {
+  if (document.getElementById('hbHiddenBanner')) return;  // 이미 표시됨
+  const banner = document.createElement('div');
+  banner.id = 'hbHiddenBanner';
+  banner.style.cssText = 'background:rgba(14,165,233,0.1);border:1px solid #0ea5e9;color:#0ea5e9;padding:8px 14px;border-radius:6px;font-size:12px;display:flex;align-items:center;gap:10px;margin:8px 12px';
+  banner.innerHTML = '🩺 <span>HealthBench 시나리오 <b>' + count + '건</b>은 이 화면에서 숨겨져 있습니다. <a href="/healthbench" style="color:#0ea5e9;text-decoration:underline;font-weight:600">전용 페이지에서 관리</a></span><button onclick="this.parentElement.remove()" style="margin-left:auto;background:none;border:none;color:#0ea5e9;cursor:pointer;font-size:14px">✕</button>';
+  // 적당한 위치 — 메인 컨테이너 상단
+  const main = document.querySelector('.main-content') || document.querySelector('main') || document.body;
+  if (main.firstChild) main.insertBefore(banner, main.firstChild);
+  else main.appendChild(banner);
 }
 
 // ════════════════════════════════════════════
