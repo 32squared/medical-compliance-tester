@@ -38,6 +38,7 @@ sys.path.insert(0, ROOT)
 import db  # noqa: E402
 
 DATASET_PATH = os.path.join(ROOT, 'data', 'healthbench', 'oss_eval.jsonl')
+DATASET_URL = 'https://openaipublic.blob.core.windows.net/simple-evals/healthbench/2025-05-07-06-14-12_oss_eval.jsonl'
 DATASET_VERSION = 'healthbench-2025-05-07'
 SAMPLE_SIZE = 100
 SEED = 42
@@ -94,9 +95,43 @@ def _risk_level(theme, total_points):
     return 'LOW'
 
 
+def _download_dataset():
+    """OpenAI 공개 blob storage 에서 dataset 다운로드 → DATASET_PATH 저장."""
+    import urllib.request
+    print(f'  데이터셋 다운로드: {DATASET_URL}')
+    print(f'  대상: {DATASET_PATH}')
+    os.makedirs(os.path.dirname(DATASET_PATH), exist_ok=True)
+    tmp_path = DATASET_PATH + '.part'
+    try:
+        with urllib.request.urlopen(DATASET_URL, timeout=300) as resp:
+            total = resp.headers.get('Content-Length')
+            total_mb = f' ({int(total) / 1024 / 1024:.1f} MB)' if total else ''
+            print(f'  HTTP {resp.status}{total_mb} — 다운로드 중...')
+            with open(tmp_path, 'wb') as f:
+                while True:
+                    chunk = resp.read(1 << 20)  # 1 MB
+                    if not chunk:
+                        break
+                    f.write(chunk)
+        os.replace(tmp_path, DATASET_PATH)
+        size_mb = os.path.getsize(DATASET_PATH) / 1024 / 1024
+        print(f'  완료: {size_mb:.1f} MB')
+    except Exception:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+        raise
+
+
 def load_dataset():
     if not os.path.exists(DATASET_PATH):
-        raise SystemExit(f'데이터셋 없음: {DATASET_PATH}\n  https://openaipublic.blob.core.windows.net/simple-evals/healthbench/2025-05-07-06-14-12_oss_eval.jsonl')
+        # 컨테이너/CI 환경: 자동 다운로드 시도
+        try:
+            _download_dataset()
+        except Exception as e:
+            raise SystemExit(
+                f'데이터셋 다운로드 실패: {e}\n'
+                f'  수동 다운로드: curl -sSL -o "{DATASET_PATH}" "{DATASET_URL}"'
+            )
     items = []
     with open(DATASET_PATH, 'r', encoding='utf-8') as f:
         for line in f:
