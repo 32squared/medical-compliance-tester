@@ -8,9 +8,18 @@ settings.json
 test_history.json
 conversations.json
 
+# 분석/검증용 임시 스크립트 (Claude session 산출물)
+_*.py
+_*.txt
+_*.log
+*_state.json
+
 # 로컬 DB
 *.db
 app_*.db
 
 # 외부 데이터셋 (HealthBench 등) — 다운로드 스크립트로 재현 가능
 data/healthbench/
+
+# 보고서 PPT 산출물 (소스 .js 만 추적)
+reports/*.pptx
