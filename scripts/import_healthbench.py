@@ -291,28 +291,64 @@ def main():
     ap.add_argument('--reset', action='store_true', help='기존 HB-* 시나리오 삭제 후 재import')
     ap.add_argument('--dry-run', action='store_true', help='DB 변경 없이 분포만 출력')
     ap.add_argument('--limit', type=int, default=SAMPLE_SIZE, help='샘플 크기 (기본 100, 디버그용)')
+    ap.add_argument('--source', choices=['standard', 'hard', 'consensus'], default='standard',
+                    help='import 소스 데이터셋 (standard=5000 / hard=1000 / consensus=3671)')
+    ap.add_argument('--all', action='store_true',
+                    help='stratified sampling 안 하고 source 전체 import')
     args = ap.parse_args()
 
-    print(f'== HealthBench import (Phase A.1) ==')
-    print(f'데이터셋: {DATASET_PATH}')
+    print(f'== HealthBench import ==')
+    print(f'source: {args.source}  all={args.all}  reset={args.reset}  dry_run={args.dry_run}')
+
+    # 소스에 따라 파일 다운로드
+    if args.source == 'hard':
+        if not os.path.exists(HARD_PATH):
+            _download_one(HARD_URL, HARD_PATH)
+        src_path = HARD_PATH
+    elif args.source == 'consensus':
+        if not os.path.exists(CONSENSUS_PATH):
+            _download_one(CONSENSUS_URL, CONSENSUS_PATH)
+        src_path = CONSENSUS_PATH
+    else:
+        if not os.path.exists(DATASET_PATH):
+            _download_dataset()
+        src_path = DATASET_PATH
+
+    print(f'데이터셋: {src_path}')
     print(f'버전: {DATASET_VERSION}  /  seed={SEED}')
 
-    items = load_dataset()
+    items = []
+    with open(src_path, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                items.append(json.loads(line))
     print(f'전체 examples: {len(items)}')
 
-    # 전체 분포 검증
+    # 전체 분포
     theme_counts = Counter(_theme_of(it) for it in items)
     print('\n전체 theme 분포:')
     for t, n in theme_counts.most_common():
         if t is None:
             continue
-        target = STRATIFIED_QUOTA.get(t, 0)
-        print(f'  {t:25s}  pool={n:5d}  -> sample={target}')
+        print(f'  {t:25s}  pool={n:5d}')
 
-    sampled = stratified_sample(items, seed=SEED)
-    print(f'\n샘플 합계: {len(sampled)}')
+    # 샘플링 vs 전체
+    if args.all:
+        sampled = items
+        print(f'\n--all 모드: 전체 {len(items)}건 import (stratified sampling 미적용)')
+    elif args.source == 'standard':
+        sampled = stratified_sample(items, seed=SEED)
+        print(f'\n샘플 합계: {len(sampled)}')
+    else:
+        # hard/consensus 에서 stratified sample 필요한 경우 — quota 동적 계산
+        # 단순화: --all 권장. 그래도 작은 sample 원하면 limit 만 적용 (theme 비율 무시)
+        rng = random.Random(SEED)
+        sampled_count = min(args.limit, len(items))
+        sampled = rng.sample(items, sampled_count)
+        print(f'\n--limit 적용: {len(sampled)}건 (random sample, theme 비율 미보존)')
 
-    # Hard / Consensus subset ID set 로드 (자동 다운로드)
+    # Hard / Consensus subset ID set 로드
     try:
         hard_ids, cons_ids = load_subset_ids()
         print(f'Hard subset: {len(hard_ids)}건, Consensus subset: {len(cons_ids)}건')
