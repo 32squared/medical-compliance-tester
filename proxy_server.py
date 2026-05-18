@@ -1958,6 +1958,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
             '/rlhf_manager.html': 'rlhf_manager.html',
             '/arena': 'chat_arena.html',
             '/chat_arena.html': 'chat_arena.html',
+            '/healthbench': 'healthbench.html',
+            '/healthbench.html': 'healthbench.html',
             '/demo_report.html': os.path.join('reports', 'demo_report.html'),
         }
         # 권한 기반 페이지 접근 가드 (admin은 항상 통과, advisor/tester는 permissions 체크)
@@ -1978,6 +1980,9 @@ class ProxyHandler(BaseHTTPRequestHandler):
             '/rlhf_manager.html':      'manage_rlhf',
             '/arena':                  'use_arena',
             '/chat_arena.html':        'use_arena',
+            # HealthBench: view_history (운영 결과 확인) 또는 run_batch (실행) 중 하나로 통과
+            '/healthbench':            ['view_history', 'run_batch'],
+            '/healthbench.html':       ['view_history', 'run_batch'],
             # '/settings'는 의도적으로 제외 — admin 로그인 진입점이므로 누구나 페이지는 봐야 함
         }
         if path in file_map and not self._is_admin():
