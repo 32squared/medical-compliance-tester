@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>HB 시나리오 상세 - 나만의 주치의</title>
+<style>
+:root {
+  --bg: #0a0e1a; --surface: #131826; --surface2: #1a2030; --bg-light: #0f1320;
+  --border: #2a3245; --text: #e2e8f0; --text-dim: #94a3b8; --accent: #0ea5e9;
+  --accent-dim: rgba(14,165,233,0.15); --green: #22c55e; --red: #ef4444;
+  --yellow: #eab308; --orange: #f97316; --purple: #a855f7;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 13px; }
+
+/* Nav */
+.top-nav { display: flex; align-items: center; gap: 12px; padding: 12px 20px; background: var(--surface); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.nav-btn { padding: 6px 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text-dim); text-decoration: none; font-size: 12px; font-weight: 600; }
+.nav-btn:hover { background: var(--bg-light); color: var(--text); }
+.nav-btn.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+
+/* Layout */
+.container { padding: 16px 20px; max-width: 1400px; margin: 0 auto; }
+.breadcrumb { font-size: 12px; color: var(--text-dim); margin-bottom: 12px; }
+.breadcrumb a { color: var(--accent); text-decoration: none; }
+.breadcrumb a:hover { text-decoration: underline; }
+
+.section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; }
+.section-title { padding: 9px 14px; font-size: 12.5px; font-weight: 700; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+.section-body { padding: 12px 14px; }
+
+/* Score summary */
+.score-banner { display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: center; padding: 16px 18px; }
+.big-score { font-size: 48px; font-weight: 800; line-height: 1; }
+.score-label { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+
+/* Status badge */
+.status-badge { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+.status-pass { background: rgba(34,197,94,0.15); color: var(--green); }
+.status-fail { background: rgba(239,68,68,0.15); color: var(--red); }
+.status-error { background: rgba(234,179,8,0.15); color: var(--yellow); }
+
+/* Meta cards */
+.meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+.meta-card { background: var(--bg-light); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; font-size: 12px; }
+.meta-card-label { font-size: 10px; color: var(--text-dim); margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.3px; }
+.meta-card-value { font-size: 13px; font-weight: 600; }
+
+/* Turn cards */
+.turn-card { background: var(--bg-light); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 10px; overflow: hidden; }
+.turn-card.last { border: 2px solid var(--accent); }
+.turn-header { padding: 8px 12px; background: var(--surface2); display: flex; align-items: center; gap: 10px; font-size: 11px; color: var(--text-dim); flex-wrap: wrap; }
+.turn-idx { font-weight: 700; color: var(--text); font-size: 12px; }
+.turn-meta { display: inline-flex; gap: 4px; align-items: center; padding: 1px 6px; background: var(--bg); border-radius: 3px; font-size: 10px; }
+.turn-body { padding: 10px 12px; }
+.turn-msg { padding: 8px 12px; border-radius: 5px; margin-bottom: 6px; font-size: 12.5px; white-space: pre-wrap; line-height: 1.6; }
+.turn-user { background: var(--surface); border-left: 3px solid var(--purple); }
+.turn-asst { background: var(--bg); border-left: 3px solid var(--accent); }
+.turn-asst.ref { border-left-color: var(--text-dim); opacity: 0.7; }
+.role-label { font-size: 10px; color: var(--text-dim); margin-bottom: 3px; font-weight: 600; text-transform: uppercase; }
+
+/* Rubric items */
+.rubric-item { padding: 9px 12px; margin: 6px 0; background: var(--bg-light); border-left: 3px solid var(--text-dim); border-radius: 4px; }
+.rubric-item.met-pos { border-left-color: var(--green); }
+.rubric-item.met-neg { border-left-color: var(--red); }
+.rubric-item.miss-pos { border-left-color: var(--text-dim); opacity: 0.85; }
+.rubric-item.avoid-neg { border-left-color: var(--green); opacity: 0.9; }
+.rubric-line1 { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 4px; }
+.rubric-badge { padding: 2px 7px; border-radius: 3px; font-size: 10px; font-weight: 700; }
+.rubric-pts { font-size: 11px; font-weight: 700; }
+.rubric-tags { font-size: 9px; color: var(--text-dim); }
+.rubric-tag { display: inline-block; padding: 1px 5px; margin-right: 3px; background: var(--bg); border-radius: 3px; }
+.rubric-crit { font-size: 12.5px; line-height: 1.5; }
+.rubric-expl { font-size: 11px; color: var(--text-dim); margin-top: 4px; font-style: italic; }
+
+/* Tab */
+.tabs { display: flex; gap: 4px; padding: 0 14px; border-bottom: 1px solid var(--border); }
+.tab { padding: 8px 14px; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--text-dim); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* Login gate */
+.login-gate { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 100; align-items: center; justify-content: center; }
+.login-gate.show { display: flex; }
+.login-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; width: 360px; }
+.toast { position: fixed; bottom: 20px; right: 20px; padding: 10px 14px; border-radius: 8px; background: var(--surface2); border: 1px solid var(--border); z-index: 200; font-size: 12px; }
+.toast.error { border-color: var(--red); color: var(--red); }
+</style>
+</head>
+<body>
+
+<div class="top-nav">
+  <h1 style="font-size:16px;font-weight:700">🩺 HealthBench 시나리오 상세</h1>
+  <a href="/" class="nav-btn">채팅 테스터</a>
+  <a href="/manager" class="nav-btn">시나리오 관리</a>
+  <a href="/history" class="nav-btn">테스트 이력</a>
+  <a href="/healthbench" class="nav-btn active">🩺 HealthBench</a>
+  <a href="/settings" class="nav-btn">⚙ 설정</a>
+  <span id="userBadge" style="margin-left:auto;font-size:11px;color:var(--text-dim)"></span>
+</div>
+
+<div class="login-gate" id="loginGate">
+  <div class="login-box">
+    <h2 style="font-size:16px;margin-bottom:12px">🔒 Admin 인증 필요</h2>
+    <input type="password" id="adminPw" placeholder="admin 비밀번호" style="width:100%;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-bottom:10px">
+    <button class="nav-btn" onclick="adminLogin()" style="width:100%;background:var(--accent);color:white;border-color:var(--accent)">로그인</button>
+    <div id="loginErr" style="margin-top:8px;color:var(--red);font-size:12px"></div>
+  </div>
+</div>
+
+<div class="container" id="mainContent" style="display:none">
+  <div class="breadcrumb">
+    <a href="/healthbench">🩺 HealthBench</a> /
+    <span id="bcRun">run</span> /
+    <span id="bcScenario" style="color:var(--text);font-family:monospace">scenario</span>
+  </div>
+
+  <!-- 1. 점수 배너 -->
+  <div class="section">
+    <div class="score-banner">
+      <div>
+        <div class="big-score" id="bigScore">–</div>
+        <div class="score-label" id="bigScoreLabel">rubric 점수 (0-100)</div>
+      </div>
+      <div>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
+          <span id="scenarioIdBig" style="font-size:14px;font-family:monospace;font-weight:700">HB-XXXXXXXX</span>
+          <span class="status-badge" id="statusBadge">–</span>
+          <span style="font-size:11px;color:var(--text-dim)" id="themeBadge">theme</span>
+        </div>
+        <div id="rubricMetSummary" style="font-size:12px;color:var(--text-dim)">루브릭 met –/– · 가중 점수 –</div>
+        <div id="runIdMeta" style="font-size:11px;color:var(--text-dim);margin-top:4px;font-family:monospace">runId: –</div>
+      </div>
+      <div style="text-align:right">
+        <a href="/healthbench" class="nav-btn" style="font-size:11px">← HealthBench</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. 시나리오 메타 -->
+  <div class="section">
+    <div class="section-title">📋 시나리오 메타</div>
+    <div class="section-body">
+      <div class="meta-grid" id="metaGrid"></div>
+    </div>
+  </div>
+
+  <!-- 3. Multi-turn 대화 (실행 결과) -->
+  <div class="section">
+    <div class="section-title">🔁 Multi-turn 대화 (실행 결과)
+      <span id="turnSummary" style="font-size:11px;color:var(--text-dim);font-weight:400;margin-left:auto"></span>
+    </div>
+    <div class="section-body">
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px">
+        HealthBench 의 user 메시지를 conversation_strid 로 체이닝하며 SKIX 호출. 마지막 turn 의 응답이 rubric 평가 대상.
+      </div>
+      <div id="turnList"></div>
+    </div>
+  </div>
+
+  <!-- 4. Rubric 평가 상세 -->
+  <div class="section">
+    <div class="section-title">🩺 Rubric 평가 상세
+      <span id="rubricSummary" style="font-size:11px;color:var(--text-dim);font-weight:400;margin-left:auto"></span>
+    </div>
+    <div class="section-body">
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px">
+        각 채점 기준의 met/not-met + 영향. <span style="color:var(--green)">✅ MET</span> = 양수 항목 충족, <span style="color:var(--red)">❌ MET (negative)</span> = 음수 항목 발생 (벌점), <span style="color:var(--text-dim)">⚪ MISSED</span> = 양수 항목 놓침, <span style="color:var(--green)">✓ AVOIDED</span> = 음수 항목 회피 (좋음).
+      </div>
+      <div id="rubricList"></div>
+    </div>
+  </div>
+
+  <!-- 5. 기타 평가 (GPT 컴플라이언스 / 문진) -->
+  <div class="section">
+    <div class="section-title">📊 기타 평가</div>
+    <div class="section-body">
+      <div id="otherEvals" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px"></div>
+    </div>
+  </div>
+
+  <!-- 6. 시나리오 원본 turns (HealthBench reference assistant 포함) -->
+  <div class="section">
+    <div class="section-title">📖 시나리오 원본 (HealthBench 데이터셋)
+      <span style="font-size:10px;color:var(--text-dim);font-weight:400;margin-left:auto">참고용 — reference assistant 응답은 SKIX 가 아닌 OpenAI 가 사전 생성</span>
+    </div>
+    <div class="section-body" id="referenceTurns"></div>
+  </div>
+
+  <!-- 7. 시나리오 JSON 원본 (펼침) -->
+  <details class="section">
+    <summary style="padding:9px 14px;font-size:12.5px;font-weight:700;cursor:pointer;border-bottom:1px solid var(--border)">📦 시나리오 raw JSON</summary>
+    <pre id="rawJson" style="padding:14px;font-size:11px;color:var(--text-dim);overflow:auto;max-height:400px;font-family:monospace;background:var(--bg-light);margin:0"></pre>
+  </details>
+</div>
+
+<script>
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function scoreColor(v) {
+  if (v == null) return '#94a3b8';
+  if (v >= 75) return '#22c55e';
+  if (v >= 50) return '#0ea5e9';
+  if (v >= 25) return '#eab308';
+  return '#ef4444';
+}
+function getParams() {
+  const u = new URL(window.location.href);
+  return {
+    runId: u.searchParams.get('run') || u.searchParams.get('runId') || '',
+    scenarioId: u.searchParams.get('id') || u.searchParams.get('scenarioId') || '',
+  };
+}
+
+async function checkAuth() {
+  try {
+    const r = await fetch('/api/auth/status');
+    const d = await r.json();
+    if (d.isAdmin || (d.tester && (d.tester.role === 'admin' || (d.tester.permissions || []).includes('view_history')))) {
+      document.getElementById('mainContent').style.display = 'block';
+      document.getElementById('userBadge').textContent = d.isAdmin ? '👑 admin' : (d.tester ? `👤 ${d.tester.alias || ''}` : '');
+      return true;
+    }
+    document.getElementById('loginGate').classList.add('show');
+    return false;
+  } catch (e) {
+    document.getElementById('loginGate').classList.add('show');
+    return false;
+  }
+}
+
+async function adminLogin() {
+  const pw = document.getElementById('adminPw').value;
+  const err = document.getElementById('loginErr');
+  err.textContent = '';
+  try {
+    const r = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw }),
+    });
+    if (r.ok) {
+      document.getElementById('loginGate').classList.remove('show');
+      document.getElementById('mainContent').style.display = 'block';
+      load();
+    } else {
+      const d = await r.json().catch(() => ({}));
+      err.textContent = d.error || '인증 실패';
+    }
+  } catch (e) {
+    err.textContent = String(e.message || e);
+  }
+}
+
+async function load() {
+  const { runId, scenarioId } = getParams();
+  if (!scenarioId) {
+    document.getElementById('mainContent').innerHTML = '<div style="color:var(--red);padding:20px">scenarioId 파라미터가 없습니다. URL 형식: <code>/healthbench/scenario?id=HB-XXXX&run=run-XXX</code></div>';
+    return;
+  }
+
+  document.getElementById('bcScenario').textContent = scenarioId;
+  document.getElementById('scenarioIdBig').textContent = scenarioId;
+  if (runId) document.getElementById('bcRun').innerHTML = `<a href="/healthbench">${escapeHtml(runId.substring(0, 24))}...</a>`;
+
+  // backend 합쳐서 가져오기 (run_id 없으면 scenario 만)
+  const url = runId
+    ? `/api/healthbench/scenario/${encodeURIComponent(runId)}/${encodeURIComponent(scenarioId)}`
+    : `/api/healthbench/scenario/_/${encodeURIComponent(scenarioId)}`;  // run 없는 경우 placeholder
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+    render(data);
+  } catch (e) {
+    document.getElementById('mainContent').innerHTML = '<div style="color:var(--red);padding:20px">데이터 로드 실패: ' + escapeHtml(e.message) + '</div>';
+  }
+}
+
+function render(data) {
+  const scenario = data.scenario || {};
+  const run = data.run || null;
+  const result = data.result || null;
+
+  // ── 점수 배너 ──
+  const rubric = (result && result.rubricEval) || null;
+  const score = rubric ? rubric.score : null;
+  const bigScore = document.getElementById('bigScore');
+  bigScore.textContent = (score != null) ? score : '–';
+  bigScore.style.color = scoreColor(score);
+  document.getElementById('rubricMetSummary').innerHTML = rubric
+    ? `루브릭 met <b>${rubric.metCount}/${rubric.totalCount}</b> · 가중 점수 <b>${rubric.awardedPoints}/${rubric.totalPoints} pts</b> · 모델 ${escapeHtml(rubric.model || '–')}`
+    : '<span style="color:var(--text-dim)">아직 실행 결과 없음 — 시나리오 메타만 표시</span>';
+  document.getElementById('themeBadge').textContent = scenario.subcategory || '';
+  document.getElementById('runIdMeta').textContent = run ? `runId: ${run.runId}  ·  ${run.startedAt || ''}` : '실행 결과 없음';
+
+  // status badge
+  const status = result ? result.status : null;
+  const sb = document.getElementById('statusBadge');
+  if (status === 'pass') { sb.className = 'status-badge status-pass'; sb.textContent = '✓ PASS'; }
+  else if (status === 'fail') { sb.className = 'status-badge status-fail'; sb.textContent = '✗ FAIL'; }
+  else if (status === 'error') { sb.className = 'status-badge status-error'; sb.textContent = '⚠ ERROR'; }
+  else { sb.className = 'status-badge'; sb.style.background = 'var(--bg-light)'; sb.style.color = 'var(--text-dim)'; sb.textContent = '–'; }
+
+  // ── 메타 그리드 ──
+  const turns = scenario.turns || [];
+  const rubricList = scenario.rubric || [];
+  const tags = scenario.tags || [];
+  const gen = scenario.generationInfo || {};
+  const meta = [
+    ['Theme', scenario.subcategory || '–'],
+    ['Turns', `${turns.length}개 (user ${turns.filter(t => t.role === 'user').length})`],
+    ['Rubric items', `${rubricList.length}개 (총 ${rubricList.reduce((s, r) => s + Math.max(0, r.points || 0), 0)} pts)`],
+    ['Risk Level', scenario.riskLevel || '–'],
+    ['Source', scenario.source || '–'],
+    ['응답 길이', result ? `${result.responseLength || 0}자` : '–'],
+    ['응답 시간', result ? `${(result.responseTime || 0)} ms` : '–'],
+    ['turns 실행', result ? `${result.turnsExecuted || 0} / ${result.turnsTotal || turns.length}` : '–'],
+  ];
+  const metaGrid = document.getElementById('metaGrid');
+  metaGrid.innerHTML = meta.map(([k, v]) => `<div class="meta-card"><div class="meta-card-label">${escapeHtml(k)}</div><div class="meta-card-value">${escapeHtml(String(v))}</div></div>`).join('');
+
+  // ── Multi-turn 대화 (실행 결과) ──
+  const turnResults = (result && result.turnResults) || [];
+  const turnSummary = document.getElementById('turnSummary');
+  turnSummary.textContent = turnResults.length > 0 ? `${turnResults.length} turns 실행됨` : '실행 결과 없음';
+  const turnList = document.getElementById('turnList');
+  if (turnResults.length === 0) {
+    turnList.innerHTML = '<div style="color:var(--text-dim);padding:10px;text-align:center">아직 실행되지 않았습니다 (runId 없거나 result 미존재).</div>';
+  } else {
+    turnList.innerHTML = turnResults.map((t, i) => {
+      const isLast = i === turnResults.length - 1;
+      const elapsed = t.elapsed_ms != null ? t.elapsed_ms + 'ms' : '–';
+      const ttft = t.first_token_ms != null ? `TTFT ${t.first_token_ms}ms` : '';
+      const http = t.http_status ? `HTTP ${t.http_status}` : '';
+      const strid = t.conversation_strid ? `strid=${t.conversation_strid.substring(0, 14)}…` : '';
+      const errSpan = t.error ? `<span class="turn-meta" style="background:rgba(239,68,68,0.15);color:var(--red)">⚠ ${escapeHtml(t.error.substring(0, 80))}</span>` : '';
+      const stoppedSpan = (t.stopped === false && t.response) ? '<span class="turn-meta" style="background:rgba(234,179,8,0.15);color:var(--yellow)">미완 (STOP 못받음)</span>' : '';
+      const lastMark = isLast ? '<span class="turn-meta" style="background:var(--accent-dim);color:var(--accent);font-weight:700">⭐ 평가 대상</span>' : '';
+      return `<div class="turn-card${isLast ? ' last' : ''}">
+        <div class="turn-header">
+          <span class="turn-idx">Turn ${i + 1}</span>
+          ${lastMark}
+          <span class="turn-meta">${elapsed}</span>
+          ${ttft ? `<span class="turn-meta">${ttft}</span>` : ''}
+          ${http ? `<span class="turn-meta">${http}</span>` : ''}
+          ${strid ? `<span class="turn-meta" style="font-family:monospace">${strid}</span>` : ''}
+          ${stoppedSpan} ${errSpan}
+        </div>
+        <div class="turn-body">
+          <div class="role-label">👤 USER</div>
+          <div class="turn-msg turn-user">${escapeHtml(t.query || '')}</div>
+          <div class="role-label">🤖 SKIX</div>
+          <div class="turn-msg turn-asst">${escapeHtml(t.response || '(응답 없음)')}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Rubric 평가 ──
+  const rubricItems = rubric ? (rubric.items || []) : [];
+  const rubricSummary = document.getElementById('rubricSummary');
+  if (rubric) {
+    rubricSummary.textContent = `${rubric.metCount}/${rubric.totalCount} met · ${rubric.awardedPoints}/${rubric.totalPoints} pts · score ${rubric.score}`;
+  } else {
+    rubricSummary.textContent = '평가 데이터 없음';
+  }
+  // 점수 영향도 큰 순 정렬
+  const sortedItems = rubricItems.slice().sort((a, b) => Math.abs(b.points || 0) - Math.abs(a.points || 0));
+  const rubricListEl = document.getElementById('rubricList');
+  if (sortedItems.length === 0) {
+    if (rubricList.length > 0) {
+      // 시나리오 rubric 정의는 있는데 실행 결과는 없음 — 정의 표시
+      rubricListEl.innerHTML = '<div style="color:var(--text-dim);font-size:11px;margin-bottom:8px">실행 결과 없음 — 시나리오의 rubric 정의만 표시</div>' +
+        rubricList.map((r, i) => {
+          const pts = r.points || 0;
+          const ptsColor = pts > 0 ? 'var(--green)' : pts < 0 ? 'var(--red)' : 'var(--text-dim)';
+          const tagChips = (r.tags || []).map(t => `<span class="rubric-tag">${escapeHtml(t)}</span>`).join('');
+          return `<div class="rubric-item">
+            <div class="rubric-line1">
+              <span class="rubric-pts" style="color:${ptsColor}">${pts > 0 ? '+' : ''}${pts}pt</span>
+              <span class="rubric-tags">${tagChips}</span>
+            </div>
+            <div class="rubric-crit">${escapeHtml(r.criterion || '')}</div>
+          </div>`;
+        }).join('');
+    } else {
+      rubricListEl.innerHTML = '<div style="color:var(--text-dim);text-align:center;padding:10px">루브릭 정의 없음</div>';
+    }
+  } else {
+    rubricListEl.innerHTML = sortedItems.map(it => {
+      const pts = it.points || 0;
+      const met = !!it.met;
+      let cls, badge, badgeBg;
+      if (met && pts > 0) { cls = 'met-pos'; badge = '✅ MET'; badgeBg = 'rgba(34,197,94,0.15)'; }
+      else if (met && pts < 0) { cls = 'met-neg'; badge = '❌ MET (negative)'; badgeBg = 'rgba(239,68,68,0.18)'; }
+      else if (!met && pts > 0) { cls = 'miss-pos'; badge = '⚪ MISSED'; badgeBg = 'rgba(148,163,184,0.12)'; }
+      else { cls = 'avoid-neg'; badge = '✓ AVOIDED'; badgeBg = 'rgba(34,197,94,0.1)'; }
+      const ptsColor = pts > 0 ? 'var(--green)' : pts < 0 ? 'var(--red)' : 'var(--text-dim)';
+      const tagChips = (it.tags || []).map(t => `<span class="rubric-tag">${escapeHtml(t)}</span>`).join('');
+      return `<div class="rubric-item ${cls}">
+        <div class="rubric-line1">
+          <span class="rubric-badge" style="background:${badgeBg}">${badge}</span>
+          <span class="rubric-pts" style="color:${ptsColor}">${pts > 0 ? '+' : ''}${pts}pt</span>
+          <span class="rubric-tags">${tagChips}</span>
+        </div>
+        <div class="rubric-crit">${escapeHtml(it.criterion || '')}</div>
+        ${it.explanation ? `<div class="rubric-expl">— ${escapeHtml(it.explanation)}</div>` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  // ── 기타 평가 ──
+  const other = document.getElementById('otherEvals');
+  const cards = [];
+  const gpt = result ? result.gptEval : null;
+  if (gpt && gpt.grade) {
+    const gradeColors = { A: '#22c55e', B: '#0ea5e9', C: '#eab308', D: '#f97316', F: '#ef4444' };
+    const c = gradeColors[gpt.grade] || '#94a3b8';
+    cards.push(`<div class="meta-card">
+      <div class="meta-card-label">🤖 컴플라이언스 (GPT)</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+        <span style="font-size:20px;font-weight:800;color:${c};background:${c}22;padding:2px 8px;border-radius:5px">${gpt.grade}</span>
+        <span style="font-size:13px">${gpt.score != null ? gpt.score + '점' : ''}</span>
+        <span style="font-size:11px;color:${gpt.passed ? 'var(--green)' : 'var(--red)'}">${gpt.passed ? 'PASS' : 'FAIL'}</span>
+      </div>
+      ${gpt.summary ? `<div style="font-size:11px;color:var(--text-dim);margin-top:6px">${escapeHtml(gpt.summary.substring(0, 200))}</div>` : ''}
+    </div>`);
+  }
+  const consult = result ? result.consultationEval : null;
+  if (consult && consult.totalScore != null) {
+    cards.push(`<div class="meta-card">
+      <div class="meta-card-label">🩺 문진 품질</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+        <span style="font-size:20px;font-weight:800">${escapeHtml(consult.grade || '?')}</span>
+        <span style="font-size:13px">${consult.totalScore}점</span>
+      </div>
+      ${consult.summary ? `<div style="font-size:11px;color:var(--text-dim);margin-top:6px">${escapeHtml(consult.summary.substring(0, 200))}</div>` : ''}
+    </div>`);
+  }
+  if (cards.length === 0) {
+    other.innerHTML = '<div style="color:var(--text-dim);font-size:12px">기타 평가 데이터 없음</div>';
+  } else {
+    other.innerHTML = cards.join('');
+  }
+
+  // ── 시나리오 원본 turns (reference) ──
+  const refArea = document.getElementById('referenceTurns');
+  if (turns.length === 0) {
+    refArea.innerHTML = '<div style="color:var(--text-dim)">turns 없음</div>';
+  } else {
+    refArea.innerHTML = turns.map((t, i) => {
+      const role = t.role === 'user' ? '👤 USER' : '🤖 ASSISTANT (reference)';
+      const cls = t.role === 'user' ? 'turn-user' : 'turn-asst ref';
+      return `<div style="margin-bottom:8px"><div class="role-label">${role}</div><div class="turn-msg ${cls}">${escapeHtml(t.content || '')}</div></div>`;
+    }).join('');
+  }
+
+  // ── raw JSON ──
+  document.getElementById('rawJson').textContent = JSON.stringify(scenario, null, 2);
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const ok = await checkAuth();
+  if (ok) load();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && document.activeElement && document.activeElement.id === 'adminPw') adminLogin();
+});
+</script>
+
+</body>
+</html>

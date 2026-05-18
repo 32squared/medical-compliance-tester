@@ -1844,6 +1844,14 @@ class ProxyHandler(BaseHTTPRequestHandler):
         if path == '/api/history':
             return self._list_history()
 
+        # ── HealthBench 전용 API ──
+        if path == '/api/healthbench/runs':
+            return self._list_healthbench_runs()
+
+        m_hb_scenario = re.match(r'^/api/healthbench/scenario/([^/]+)/([^/]+)$', path)
+        if m_hb_scenario:
+            return self._get_healthbench_scenario_detail(m_hb_scenario.group(1), m_hb_scenario.group(2))
+
         m_hb_report = re.match(r'^/api/history/([^/]+)/healthbench-report$', path)
         if m_hb_report:
             return self._get_healthbench_report(m_hb_report.group(1))
@@ -1966,6 +1974,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
             '/chat_arena.html': 'chat_arena.html',
             '/healthbench': 'healthbench.html',
             '/healthbench.html': 'healthbench.html',
+            '/healthbench/scenario': 'hb_scenario_detail.html',
+            '/hb_scenario_detail.html': 'hb_scenario_detail.html',
             '/demo_report.html': os.path.join('reports', 'demo_report.html'),
         }
         # 권한 기반 페이지 접근 가드 (admin은 항상 통과, advisor/tester는 permissions 체크)
@@ -1989,6 +1999,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
             # HealthBench: view_history (운영 결과 확인) 또는 run_batch (실행) 중 하나로 통과
             '/healthbench':            ['view_history', 'run_batch'],
             '/healthbench.html':       ['view_history', 'run_batch'],
+            '/healthbench/scenario':   ['view_history', 'run_batch'],
+            '/hb_scenario_detail.html': ['view_history', 'run_batch'],
             # '/settings'는 의도적으로 제외 — admin 로그인 진입점이므로 누구나 페이지는 봐야 함
         }
         if path in file_map and not self._is_admin():
@@ -2705,6 +2717,98 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
     # ════════════════════════════════════════════
     # 테스트 이력 API
     # ════════════════════════════════════════════
+
+    def _list_healthbench_runs(self):
+        """GET /api/healthbench/runs — HB 시나리오 포함된 run 만 반환.
+
+        scenarioId.startswith('HB-') 인 result 가 1건이라도 있는 run 만 노출.
+        리포트 페이지의 "최근 HB 배치 이력" 에 사용.
+        """
+        test_runs = db.get_test_runs(limit=300)
+        runs = []
+        for r in test_runs:
+            pr = _db_run_to_proxy(r)
+            results = pr.get('results') or []
+            if not isinstance(results, list):
+                continue
+            # HB 시나리오 개수 + HB 결과만의 mini-summary
+            hb_results = [res for res in results
+                          if (res.get('scenarioId') or '').startswith('HB-')]
+            if not hb_results:
+                continue
+            hb_passed = sum(1 for x in hb_results if x.get('status') == 'pass')
+            hb_failed = sum(1 for x in hb_results if x.get('status') == 'fail')
+            hb_errors = sum(1 for x in hb_results if x.get('status') == 'error')
+            hb_total = len(hb_results)
+            hb_pass_rate = round((hb_passed / hb_total) * 100, 1) if hb_total > 0 else 0.0
+            # HB rubricScore 평균
+            scores = [x.get('rubricEval', {}).get('score') for x in hb_results
+                      if (x.get('rubricEval') or {}).get('score') is not None]
+            avg_score = round(sum(scores) / len(scores), 2) if scores else None
+            runs.append({
+                "runId": pr["runId"],
+                "type": pr["type"],
+                "env": pr["env"],
+                "startedAt": pr["startedAt"],
+                "completedAt": pr["completedAt"],
+                "runBy": pr.get("runBy", ""),
+                "status": pr.get("status", "completed"),
+                "summary": pr["summary"],
+                # ── HB 전용 추가 메타 ──
+                "hbSummary": {
+                    "hbTotal": hb_total,
+                    "hbPassed": hb_passed,
+                    "hbFailed": hb_failed,
+                    "hbErrors": hb_errors,
+                    "hbPassRate": hb_pass_rate,
+                    "avgRubricScore": avg_score,
+                },
+            })
+        self._send_json(200, {"runs": runs})
+
+    def _get_healthbench_scenario_detail(self, run_id, scenario_id):
+        """GET /api/healthbench/scenario/<runId>/<scenarioId> — 시나리오 + run 결과 합쳐 반환.
+
+        상세 페이지에서 단일 fetch 로 모든 데이터 받도록 함:
+        - 시나리오 (turns, rubric, tags, generationInfo 등 전체)
+        - 해당 run 에서의 result entry (turnResults, rubricEval, gptEval 등)
+
+        run_id 가 '_' 또는 비어있으면 시나리오 메타만 반환 (실행 결과 없는 경우).
+        """
+        # 1. 시나리오 자체
+        scenario = db.get_scenario(scenario_id)
+        if not scenario:
+            return self._send_error(404, f'시나리오 없음: {scenario_id}')
+        if not (scenario_id or '').startswith('HB-'):
+            return self._send_error(400, 'HB-* 시나리오만 지원합니다.')
+
+        # 2. run 결과 (선택)
+        result_entry = None
+        run_summary = None
+        if run_id and run_id != '_':
+            r = db.get_test_run(run_id)
+            if not r:
+                return self._send_error(404, f'이력 없음: {run_id}')
+            run = _db_run_to_proxy(r)
+            run_summary = {
+                'runId': run.get('runId'),
+                'env': run.get('env'),
+                'startedAt': run.get('startedAt'),
+                'completedAt': run.get('completedAt'),
+                'status': run.get('status'),
+                'type': run.get('type'),
+                'summary': run.get('summary'),
+            }
+            for res in (run.get('results') or []):
+                if res.get('scenarioId') == scenario_id:
+                    result_entry = res
+                    break
+
+        self._send_json(200, {
+            'scenario': scenario,
+            'run': run_summary,
+            'result': result_entry,
+        })
 
     def _list_history(self):
         """GET /api/history — 이력 목록 (summary만)"""

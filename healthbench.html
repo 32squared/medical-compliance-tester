@@ -464,14 +464,11 @@ async function pollBatchProgress() {
 // ─────────────────────────────────────────────
 async function loadRecentRuns() {
   try {
-    const r = await fetch('/api/history');
+    // HB 시나리오 포함된 run 만 backend 가 필터링해서 반환
+    const r = await fetch('/api/healthbench/runs');
     const d = await r.json();
     const runs = d.runs || [];
-    // HB 시나리오가 포함된 run 만 필터 — runId 검색 또는 summary에 정보 없으니
-    // 일단 최근 30건 표시 (전체 history endpoint 가 HB 분리 안 함)
-    // TODO: 별도 /api/healthbench/runs endpoint 가 있으면 더 정확
-    const recent = runs.slice(0, 30);
-    renderRunList(recent);
+    renderRunList(runs.slice(0, 30));
     document.getElementById('scRecentRuns').textContent = runs.length;
   } catch (e) {
     showToast('이력 로드 실패: ' + e.message, 'error');
@@ -481,24 +478,32 @@ async function loadRecentRuns() {
 function renderRunList(runs) {
   const list = document.getElementById('runList');
   if (runs.length === 0) {
-    list.innerHTML = '<div style="color:var(--text-dim);font-size:12px">아직 실행 이력이 없습니다. 위 "전체 100건 실행" 버튼으로 첫 배치를 실행하세요.</div>';
+    list.innerHTML = '<div style="color:var(--text-dim);font-size:12px">아직 HealthBench 배치 이력이 없습니다. 위 "전체 100건 Job 으로 실행" 버튼으로 첫 배치를 실행하세요.</div>';
     return;
   }
   list.innerHTML = runs.map(r => {
-    const s = r.summary || {};
-    const total = s.total || 0;
-    const passed = s.passed || 0;
-    const rate = s.passRate != null ? s.passRate : (total > 0 ? Math.round((passed / total) * 100) : 0);
+    // hbSummary 가 있으면 HB 전용 메타 사용, 없으면 전체 summary
+    const hb = r.hbSummary || null;
+    const total = hb ? hb.hbTotal : (r.summary?.total || 0);
+    const passed = hb ? hb.hbPassed : (r.summary?.passed || 0);
+    const failed = hb ? hb.hbFailed : (r.summary?.failed || 0);
+    const errors = hb ? hb.hbErrors : (r.summary?.error || 0);
+    const rate = hb ? hb.hbPassRate : (r.summary?.passRate ?? 0);
+    const avgScore = hb ? hb.avgRubricScore : null;
     const rateClass = rate >= 75 ? 'high' : rate >= 50 ? 'mid' : 'low';
     const date = (r.startedAt || '').replace('T', ' ').substring(0, 16);
     const env = (r.env || '').toUpperCase();
     const status = r.status === 'running' ? '🔄 진행중' : (r.status === 'cancelled' ? '⏸ 중단' : '✓');
+    const avgPart = avgScore != null
+      ? `<span style="font-size:11px;color:${avgScore >= 50 ? 'var(--accent)' : 'var(--text-dim)'};font-weight:600">평균 ${avgScore}점</span>`
+      : '';
     return `<div class="run-item" data-runid="${escapeHtml(r.runId)}" onclick="selectRun('${escapeHtml(r.runId)}')">
       <span class="run-rate ${rateClass}">${rate}%</span>
+      ${avgPart}
       <span style="color:var(--text-dim);font-size:11px">${escapeHtml(env)}</span>
       <span style="font-family:monospace;font-size:11px">${escapeHtml(r.runId)}</span>
       <span style="font-size:11px;color:var(--text-dim)">${escapeHtml(date)}</span>
-      <span style="font-size:11px;color:var(--text-dim)">${total}건 (✓${passed} ✗${s.failed || 0} ⚠${s.error || 0})</span>
+      <span style="font-size:11px;color:var(--text-dim)">HB ${total}건 (✓${passed} ✗${failed} ⚠${errors})</span>
       <span style="font-size:11px;margin-left:auto">${status}</span>
     </div>`;
   }).join('');
@@ -608,8 +613,10 @@ function renderReport(rep) {
   const sRows = sorted.map(sc => {
     const turnTxt = sc.turnsExecuted ? (sc.turnsExecuted > 1 ? sc.turnsExecuted + ' turns' : 'single') : '–';
     const errTxt = sc.rubricError ? `<span style="color:var(--red);font-size:10px">⚠ ${escapeHtml(sc.rubricError.substring(0, 60))}</span>` : '';
-    return `<tr>
-      <td style="font-family:monospace;font-size:11px">${escapeHtml(sc.id)}</td>
+    // 시나리오 ID 클릭 시 상세 페이지로 이동 (run_id 포함)
+    const detailUrl = `/healthbench/scenario?id=${encodeURIComponent(sc.id)}&run=${encodeURIComponent(_selectedRunId || '')}`;
+    return `<tr style="cursor:pointer" onclick="window.location.href='${detailUrl}'" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <td style="font-family:monospace;font-size:11px;color:var(--accent);text-decoration:underline">${escapeHtml(sc.id)}</td>
       <td style="color:var(--text-dim)">${escapeHtml(sc.theme || '')}</td>
       <td style="text-align:right;color:${scoreColor(sc.rubricScore)};font-weight:700">${sc.rubricScore ?? '–'}</td>
       <td style="text-align:right;color:var(--text-dim);font-size:11px">${sc.metCount ?? '–'}/${sc.totalCount ?? '–'}</td>
