@@ -7,3 +7,11 @@ reports/live_*.html
 settings.json
 test_history.json
 conversations.json
+# 분석/검증용 임시 스크립트 (Claude session 산출물)
+_*.py
+_*.txt
+_*.log
+*_state.json
+app.db
+# 보고서 PPT 산출물 (소스 .js 만 추적)
+reports/*.pptx
