@@ -196,9 +196,35 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <div class="summary-grid" id="summaryGrid">
     <div class="summary-card"><div class="sc-value" id="scTotalScenarios">–</div><div class="sc-label">HB 시나리오</div></div>
     <div class="summary-card"><div class="sc-value" id="scMultiTurn">–</div><div class="sc-label">Multi-turn</div></div>
+    <div class="summary-card"><div class="sc-value" id="scHard" style="color:#ef4444">–</div><div class="sc-label">Hard subset</div></div>
+    <div class="summary-card"><div class="sc-value" id="scConsensus" style="color:#a855f7">–</div><div class="sc-label">Consensus</div></div>
     <div class="summary-card"><div class="sc-value" id="scTotalRubric">–</div><div class="sc-label">루브릭 항목</div></div>
-    <div class="summary-card"><div class="sc-value" id="scRecentRuns">–</div><div class="sc-label">HB 배치 이력</div></div>
     <div class="summary-card"><div class="sc-value" id="scLastAvgScore" style="color:var(--accent)">–</div><div class="sc-label">최근 평균</div></div>
+  </div>
+
+  <!-- Subset 선택 토글 -->
+  <div class="section" style="margin-bottom:14px">
+    <div class="section-title">
+      🎯 Subset 선택
+      <span style="font-size:11px;color:var(--text-dim);font-weight:400">테스트할 시나리오 그룹</span>
+    </div>
+    <div class="section-body" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="btn-secondary btn subset-btn active" data-subset="all" onclick="switchSubset('all')" style="padding:6px 14px;font-size:12px">
+        전체 (<span id="cntAll">–</span>건)
+      </button>
+      <button class="btn-secondary btn subset-btn" data-subset="hard" onclick="switchSubset('hard')" style="padding:6px 14px;font-size:12px">
+        🔴 Hard (<span id="cntHard">–</span>건)
+      </button>
+      <button class="btn-secondary btn subset-btn" data-subset="consensus" onclick="switchSubset('consensus')" style="padding:6px 14px;font-size:12px">
+        🟣 Consensus (<span id="cntCons">–</span>건)
+      </button>
+      <button class="btn-secondary btn subset-btn" data-subset="both" onclick="switchSubset('both')" style="padding:6px 14px;font-size:12px">
+        🔁 Hard ∩ Consensus (<span id="cntBoth">–</span>건)
+      </button>
+      <span style="margin-left:auto;font-size:11px;color:var(--text-dim)" id="subsetInfo">
+        Standard 5,000건 中 Hard 1,000 / Consensus 3,671 — 같은 시나리오의 subset 라벨
+      </span>
+    </div>
   </div>
 
   <!-- 2. 시나리오 (theme별 그룹) -->
@@ -353,26 +379,77 @@ async function loadScenarios() {
   }
 }
 
+// 현재 선택된 subset (all | hard | consensus | both)
+let _currentSubset = 'all';
+
+function hasSubset(s, name) {
+  return (s.tags || []).includes('subset:' + name);
+}
+function isInSubset(s, subset) {
+  if (subset === 'all') return true;
+  if (subset === 'hard') return hasSubset(s, 'hard');
+  if (subset === 'consensus') return hasSubset(s, 'consensus');
+  if (subset === 'both') return hasSubset(s, 'hard') && hasSubset(s, 'consensus');
+  return true;
+}
+function filteredScenarios() {
+  return _hbScenarios.filter(s => isInSubset(s, _currentSubset));
+}
+
+function switchSubset(subset) {
+  _currentSubset = subset;
+  document.querySelectorAll('.subset-btn').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('data-subset') === subset);
+  });
+  renderThemeGrid();
+  // 배치 실행 버튼 라벨 업데이트
+  const filtered = filteredScenarios();
+  const btn = document.getElementById('btnRunAll');
+  if (btn) {
+    const subsetLabel = subset === 'all' ? '전체' : subset === 'hard' ? 'Hard' : subset === 'consensus' ? 'Consensus' : 'Hard ∩ Consensus';
+    btn.textContent = `▶ ${subsetLabel} ${filtered.length}건 Job 으로 실행`;
+    btn.disabled = filtered.length === 0;
+  }
+}
+
 function renderScenarioSummary() {
   const total = _hbScenarios.length;
   const multi = _hbScenarios.filter(s => (s.turns || []).length > 1).length;
   const rubricTotal = _hbScenarios.reduce((acc, s) => acc + (s.rubric || []).length, 0);
+  const hard = _hbScenarios.filter(s => hasSubset(s, 'hard')).length;
+  const cons = _hbScenarios.filter(s => hasSubset(s, 'consensus')).length;
+  const both = _hbScenarios.filter(s => hasSubset(s, 'hard') && hasSubset(s, 'consensus')).length;
   document.getElementById('scTotalScenarios').textContent = total;
   document.getElementById('scMultiTurn').textContent = multi;
+  document.getElementById('scHard').textContent = hard;
+  document.getElementById('scConsensus').textContent = cons;
   document.getElementById('scTotalRubric').textContent = rubricTotal;
+  // subset 카운트 (토글 버튼)
+  const elAll = document.getElementById('cntAll');
+  const elHard = document.getElementById('cntHard');
+  const elCons = document.getElementById('cntCons');
+  const elBoth = document.getElementById('cntBoth');
+  if (elAll) elAll.textContent = total;
+  if (elHard) elHard.textContent = hard;
+  if (elCons) elCons.textContent = cons;
+  if (elBoth) elBoth.textContent = both;
+  // 초기 버튼 라벨 동기화
+  const btn = document.getElementById('btnRunAll');
+  if (btn) btn.textContent = `▶ 전체 ${total}건 Job 으로 실행`;
 }
 
 function renderThemeGrid() {
   const grid = document.getElementById('themeGrid');
+  const scope = filteredScenarios();
   const byTheme = {};
-  for (const s of _hbScenarios) {
+  for (const s of scope) {
     const t = s.subcategory || 'unknown';
     if (!byTheme[t]) byTheme[t] = [];
     byTheme[t].push(s);
   }
   const themes = Object.keys(byTheme).sort((a, b) => byTheme[b].length - byTheme[a].length);
   if (themes.length === 0) {
-    grid.innerHTML = '<div style="color:var(--text-dim)">HB-* 시나리오가 없습니다. (import 필요)</div>';
+    grid.innerHTML = '<div style="color:var(--text-dim)">선택한 subset 에 시나리오가 없습니다.</div>';
     return;
   }
   grid.innerHTML = themes.map(t => {
@@ -380,11 +457,18 @@ function renderThemeGrid() {
     const idList = items.slice(0, 6).map(s => s.id).join(', ');
     const more = items.length > 6 ? ` ... +${items.length - 6}` : '';
     const multiCount = items.filter(s => (s.turns || []).length > 1).length;
+    // subset 배지
+    const hardCount = items.filter(s => hasSubset(s, 'hard')).length;
+    const consCount = items.filter(s => hasSubset(s, 'consensus')).length;
+    const badges = [];
+    if (hardCount > 0) badges.push(`<span style="font-size:10px;background:rgba(239,68,68,0.12);color:#ef4444;padding:1px 6px;border-radius:3px">Hard ${hardCount}</span>`);
+    if (consCount > 0) badges.push(`<span style="font-size:10px;background:rgba(168,85,247,0.12);color:#a855f7;padding:1px 6px;border-radius:3px">Cons ${consCount}</span>`);
     return `<div class="theme-card">
       <div class="theme-card-header">
         <span class="theme-name">${escapeHtml(t)}</span>
         <span class="theme-count">${items.length}건${multiCount ? ` (multi-turn ${multiCount})` : ''}</span>
       </div>
+      ${badges.length ? '<div style="display:flex;gap:4px;margin-bottom:4px">' + badges.join('') + '</div>' : ''}
       <div class="theme-ids">${escapeHtml(idList)}${more}</div>
     </div>`;
   }).join('');
@@ -397,15 +481,20 @@ let _activeBatchRunId = null;
 let _batchPollTimer = null;
 
 async function runHealthBenchBatch(scope) {
-  if (_hbScenarios.length === 0) {
-    showToast('실행할 시나리오가 없습니다', 'error');
+  const subsetScenarios = filteredScenarios();
+  if (subsetScenarios.length === 0) {
+    showToast('선택한 subset 에 실행할 시나리오가 없습니다', 'error');
     return;
   }
-  const scenarioIds = _hbScenarios.map(s => s.id);
-  const msg = `HealthBench ${scenarioIds.length}건 배치를 실행합니다.\n\n` +
+  const scenarioIds = subsetScenarios.map(s => s.id);
+  const subsetLabel = _currentSubset === 'all' ? '전체'
+    : _currentSubset === 'hard' ? 'Hard subset'
+    : _currentSubset === 'consensus' ? 'Consensus subset'
+    : 'Hard ∩ Consensus subset';
+  const msg = `HealthBench ${subsetLabel} ${scenarioIds.length}건 배치를 실행합니다.\n\n` +
     `- 실행 위치: Cloud Run Job (batch-runner) — service thread 와 분리\n` +
     `- multi-turn 시나리오는 SKIX 응답 지연 5-15분/건\n` +
-    `- 전체 예상 소요: 약 30분 ~ 1시간 (max_workers=20 병렬)\n\n` +
+    `- 전체 예상 소요: 약 ${Math.ceil(scenarioIds.length / 20 * 5)}~${Math.ceil(scenarioIds.length / 20 * 15)}분 (max_workers=20 병렬)\n\n` +
     `계속하시겠습니까?`;
   if (!confirm(msg)) return;
 
@@ -418,7 +507,10 @@ async function runHealthBenchBatch(scope) {
     const r = await fetch('/api/healthbench/run-batch-job', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scenarioIds: scenarioIds, label: 'healthbench-page' }),
+      body: JSON.stringify({
+        scenarioIds: scenarioIds,
+        label: `healthbench-${_currentSubset}`,
+      }),
     });
     if (!r.ok) {
       const d = await r.json().catch(() => ({}));

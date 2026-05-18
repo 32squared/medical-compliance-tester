@@ -39,6 +39,11 @@ import db  # noqa: E402
 
 DATASET_PATH = os.path.join(ROOT, 'data', 'healthbench', 'oss_eval.jsonl')
 DATASET_URL = 'https://openaipublic.blob.core.windows.net/simple-evals/healthbench/2025-05-07-06-14-12_oss_eval.jsonl'
+# Hard / Consensus subsets — Standard 의 부분집합. prompt_id 매칭으로 subset 태그 부여.
+HARD_PATH = os.path.join(ROOT, 'data', 'healthbench', 'hard.jsonl')
+HARD_URL = 'https://openaipublic.blob.core.windows.net/simple-evals/healthbench/hard_2025-05-08-21-00-10.jsonl'
+CONSENSUS_PATH = os.path.join(ROOT, 'data', 'healthbench', 'consensus.jsonl')
+CONSENSUS_URL = 'https://openaipublic.blob.core.windows.net/simple-evals/healthbench/consensus_2025-05-09-20-00-46.jsonl'
 DATASET_VERSION = 'healthbench-2025-05-07'
 SAMPLE_SIZE = 100
 SEED = 42
@@ -122,6 +127,26 @@ def _download_dataset():
         raise
 
 
+def _download_one(url, path):
+    """generic 다운로드 helper — DATASET_URL 외 hard/consensus 도 사용."""
+    import urllib.request
+    print(f'  다운로드: {url}')
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + '.part'
+    try:
+        with urllib.request.urlopen(url, timeout=300) as resp:
+            with open(tmp, 'wb') as f:
+                while True:
+                    chunk = resp.read(1 << 20)
+                    if not chunk: break
+                    f.write(chunk)
+        os.replace(tmp, path)
+        print(f'  완료: {os.path.getsize(path) / 1024 / 1024:.1f} MB')
+    except Exception:
+        if os.path.exists(tmp): os.remove(tmp)
+        raise
+
+
 def load_dataset():
     if not os.path.exists(DATASET_PATH):
         # 컨테이너/CI 환경: 자동 다운로드 시도
@@ -140,6 +165,21 @@ def load_dataset():
                 continue
             items.append(json.loads(line))
     return items
+
+
+def load_subset_ids():
+    """Hard / Consensus 데이터셋의 prompt_id 집합 반환. 없으면 자동 다운로드."""
+    for path, url in [(HARD_PATH, HARD_URL), (CONSENSUS_PATH, CONSENSUS_URL)]:
+        if not os.path.exists(path):
+            _download_one(url, path)
+
+    def _load_ids(path):
+        ids = set()
+        with open(path, 'r', encoding='utf-8') as f:
+            for line in f:
+                ids.add(json.loads(line).get('prompt_id'))
+        return ids
+    return _load_ids(HARD_PATH), _load_ids(CONSENSUS_PATH)
 
 
 def stratified_sample(items, seed=SEED):
@@ -168,8 +208,12 @@ def stratified_sample(items, seed=SEED):
     return sampled
 
 
-def to_scenario(example):
-    """HealthBench 예제 → scenarios 테이블 row 데이터"""
+def to_scenario(example, hard_ids=None, cons_ids=None):
+    """HealthBench 예제 → scenarios 테이블 row 데이터.
+
+    hard_ids / cons_ids 가 제공되면 prompt_id 가 그 set 에 속하는지 보고
+    tags 에 'subset:hard' / 'subset:consensus' 추가.
+    """
     pid = example.get('prompt_id', '')
     prompt_msgs = example.get('prompt') or []
     rubrics = example.get('rubrics') or []
@@ -183,7 +227,12 @@ def to_scenario(example):
         last_user = last_user[:4990] + '…[trunc]'
 
     n_turns = len(prompt_msgs)
-    tags = sorted(set(phys_cats + [
+    subset_tags = []
+    if hard_ids and pid in hard_ids:
+        subset_tags.append('subset:hard')
+    if cons_ids and pid in cons_ids:
+        subset_tags.append('subset:consensus')
+    tags = sorted(set(phys_cats + subset_tags + [
         f'theme:{theme}',
         f'turns:{n_turns}',
         'healthbench',
@@ -263,7 +312,26 @@ def main():
     sampled = stratified_sample(items, seed=SEED)
     print(f'\n샘플 합계: {len(sampled)}')
 
-    scenarios = [to_scenario(ex) for ex in sampled]
+    # Hard / Consensus subset ID set 로드 (자동 다운로드)
+    try:
+        hard_ids, cons_ids = load_subset_ids()
+        print(f'Hard subset: {len(hard_ids)}건, Consensus subset: {len(cons_ids)}건')
+    except Exception as e:
+        print(f'subset ID 로드 실패 (계속 진행, subset 태그 없음): {e}')
+        hard_ids, cons_ids = set(), set()
+
+    scenarios = [to_scenario(ex, hard_ids, cons_ids) for ex in sampled]
+
+    # subset 분포 출력
+    n_hard = sum(1 for s in scenarios if 'subset:hard' in s['tags'])
+    n_cons = sum(1 for s in scenarios if 'subset:consensus' in s['tags'])
+    n_both = sum(1 for s in scenarios if 'subset:hard' in s['tags'] and 'subset:consensus' in s['tags'])
+    n_neither = sum(1 for s in scenarios if 'subset:hard' not in s['tags'] and 'subset:consensus' not in s['tags'])
+    print(f'\n샘플 subset 분포:')
+    print(f'  Hard:       {n_hard}건')
+    print(f'  Consensus:  {n_cons}건')
+    print(f'  둘 다:      {n_both}건')
+    print(f'  둘 다 아님: {n_neither}건')
 
     # 샘플 통계
     samp_theme = Counter(s['subcategory'] for s in scenarios)
