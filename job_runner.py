@@ -13,7 +13,7 @@ job_runner.py — Cloud Run Job 진입점.
   JOB_PAYLOAD_ID    : DB에 저장된 payload id (큰 batch — env 32KB 한계 회피)
   RUN_BY            : 실행자 alias
   LABEL             : 라벨 (선택)
-  FLUSH_EVERY       : DB 점진 저장 간격 (기본 50)
+  FLUSH_EVERY       : DB 점진 저장 간격 (기본 5 — 실시간 UI polling 위해)
 """
 
 import json
@@ -130,7 +130,7 @@ def main():
 
     run_by = os.environ.get('RUN_BY', 'job-runner').strip()
     label = os.environ.get('LABEL', '').strip()
-    flush_every = int(os.environ.get('FLUSH_EVERY', '50'))
+    flush_every = int(os.environ.get('FLUSH_EVERY', '5'))
 
     scenario_ids, _payload = _load_scenario_ids()
     if not scenario_ids:

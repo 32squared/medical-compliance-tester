@@ -1292,11 +1292,43 @@ class ProxyHandler(BaseHTTPRequestHandler):
         m_batch = re.match(r'^/api/test/status/([^/]+)$', path)
         if m_batch:
             run_id = m_batch.group(1)
+            # 1) Service in-memory _batch_status 우선 (실행 중인 같은 instance)
             with ProxyHandler._batch_lock:
                 status = dict(ProxyHandler._batch_status.get(run_id, {}))
             if status:
                 return self._send_json(200, status)
-            return self._send_error(404, '배치 실행을 찾을 수 없습니다')
+            # 2) Job batch 또는 다른 instance에서 실행 중 — DB lightweight progress 조회
+            try:
+                prog = db.get_test_run_progress(run_id)
+            except Exception as _e:
+                ProxyHandler._add_log(f"[status] progress 조회 실패 {run_id}: {str(_e)[:120]}")
+                prog = None
+            if not prog:
+                return self._send_error(404, '배치 실행을 찾을 수 없습니다')
+            total = prog.get('total', 0) or 0
+            completed = prog.get('completed', 0) or 0
+            passed = prog.get('passed', 0) or 0
+            failed = prog.get('failed', 0) or 0
+            # error = total - passed - failed (점진 저장이라 정확)
+            error = max(0, completed - passed - failed)
+            db_status = prog.get('status', '')
+            if db_status in ('completed',):
+                ui_status = 'done'
+            elif db_status == 'cancelled':
+                ui_status = 'cancelled'
+            else:
+                ui_status = 'running'
+            return self._send_json(200, {
+                'runId': run_id,
+                'status': ui_status,
+                'total': total,
+                'completed': completed,
+                'current': '',
+                'passed': passed,
+                'failed': failed,
+                'errors': error,
+                'type': 'job-batch' if run_id.startswith('job-') else 'batch',
+            })
 
         # ── 실시간 로그 API (Admin 전용) ──
         if path == '/api/logs/stream':

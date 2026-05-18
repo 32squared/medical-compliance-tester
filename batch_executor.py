@@ -22,8 +22,11 @@ from urllib.request import Request, urlopen
 class BatchExecutor:
     """SKIX 호출 + LLM 평가 batch 실행기."""
 
-    DEFAULT_MAX_WORKERS = 10
-    DEFAULT_CHUNK_SIZE = 50
+    # Phase 4+ 튜닝: max_workers 10→20, chunk_size 50→2000 (사실상 청크 끊기 — 모든 시나리오를
+    # ThreadPoolExecutor 에 한꺼번에 submit 하고 concurrent.futures 가 worker 큐로 관리.
+    # 이전엔 청크 50개 wave 동기화로 가장 느린 1건이 청크 전체 지연시킴).
+    DEFAULT_MAX_WORKERS = 20
+    DEFAULT_CHUNK_SIZE = 2000
     DEFAULT_MAX_READ_TIME = 90  # resp.read() 전체 타임아웃 (초)
     DEFAULT_SOCKET_TIMEOUT = 30
     DEFAULT_HTTP_TIMEOUT = 60
@@ -325,7 +328,7 @@ class BatchExecutor:
         max_workers=None,
         chunk_size=None,
         cancel_check=None,
-        inter_submit_delay=0.2,
+        inter_submit_delay=0,
     ):
         """
         scenarios_map: dict {sid: scenario_dict} — 미리 로드된 시나리오 맵

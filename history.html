@@ -608,6 +608,9 @@
   }
 
   // ── Result Polling for running batches ──
+  // 주의: /api/history/{runId} 는 results JSON 전체(1100건+ 시 수 MB) 를 반환하므로
+  // 너무 자주 호출하면 Cloud Run instance throttle (Rate exceeded) 발생.
+  // 가벼운 진행률은 startProgressPolling (/api/test/status, 3초) 이 따로 담당.
   function startResultPolling(runId) {
     if (_resultPollInterval) clearInterval(_resultPollInterval);
     _resultPollInterval = setInterval(async () => {
@@ -631,7 +634,7 @@
           loadHistory(); // full refresh
         }
       } catch(e) { /* ignore */ }
-    }, 5000);
+    }, 30000);
   }
 
   // ── Select Run ──
@@ -1257,6 +1260,103 @@
     return div.innerHTML;
   }
 
+  // ── 카테고리×등급 매트릭스 셀 클릭 → 시나리오 목록 + 답변 모달 ──
+  function showCellResults(category, grade) {
+    const run = _lastRenderedRun;
+    if (!run || !Array.isArray(run.results)) {
+      alert('표시할 데이터가 없습니다');
+      return;
+    }
+    // 필터링 — renderDetail 안의 _category / _grade 와 동일 로직
+    function _cat(r) { return r.category || (r.subcategory || '미분류'); }
+    function _grd(r) { return (r.gptEval && r.gptEval.grade) || 'N/A'; }
+    const items = [];
+    for (let i = 0; i < run.results.length; i++) {
+      const r = run.results[i];
+      if (_cat(r) === category && _grd(r) === grade) {
+        items.push({ idx: i, r: r });
+      }
+    }
+    // 기존 모달 제거
+    closeCellModal();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'cellModalOverlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeCellModal(); });
+
+    const gradeColor = { A:'#22c55e', B:'#38bdf8', C:'#eab308', D:'#f97316', F:'#ef4444', 'N/A':'#94a3b8' };
+    const gc = gradeColor[grade] || '#94a3b8';
+
+    const panel = document.createElement('div');
+    panel.style.cssText = 'background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:12px;width:min(900px,95vw);max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.5)';
+
+    let html = '<div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+      '<span style="font-size:14px;color:var(--text-dim)">📂</span>' +
+      '<span style="font-size:15px;font-weight:700">' + escapeHtml(category) + '</span>' +
+      '<span style="font-size:13px;color:var(--text-dim)">×</span>' +
+      '<span style="font-size:16px;font-weight:800;color:' + gc + '">' + escapeHtml(grade) + ' 등급</span>' +
+      '<span style="font-size:13px;color:var(--text-dim);margin-left:6px">' + items.length + '건</span>' +
+      '<button onclick="closeCellModal()" style="margin-left:auto;background:transparent;color:var(--text-dim);border:1px solid var(--border);border-radius:6px;padding:4px 12px;font-size:13px;cursor:pointer">✕ 닫기</button>' +
+      '</div>';
+
+    html += '<div style="overflow-y:auto;padding:10px 18px 18px 18px;flex:1">';
+    if (items.length === 0) {
+      html += '<div style="color:var(--text-dim);padding:20px;text-align:center">해당 셀에 시나리오가 없습니다.</div>';
+    } else {
+      for (let k = 0; k < items.length; k++) {
+        const it = items[k];
+        const r = it.r;
+        const sid = r.scenarioId || '';
+        const score = (r.gptEval && r.gptEval.score) || r.finalScore || '';
+        const risk = r.riskLevel || '';
+        const passed = (r.gptEval && r.gptEval.passed === true) || r.status === 'pass';
+        const summary = (r.gptEval && r.gptEval.summary) || '';
+        const violations = (r.gptEval && r.gptEval.violations) || [];
+        const promptText = r.prompt || '';
+        const respText = r.response || '';
+        const respLen = respText.length;
+
+        html += '<details style="border:1px solid var(--border);border-radius:8px;margin-bottom:10px;background:var(--bg)">' +
+          '<summary style="padding:10px 12px;cursor:pointer;display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;outline:none">' +
+            '<span style="background:' + gc + ';color:#0f172a;font-weight:800;padding:2px 8px;border-radius:4px;font-size:12px;min-width:22px;text-align:center">' + escapeHtml(grade) + '</span>' +
+            '<span style="font-family:monospace;font-size:12px;font-weight:600">' + escapeHtml(sid) + '</span>' +
+            (risk ? '<span style="font-size:10px;color:var(--text-dim);background:rgba(255,255,255,.08);padding:1px 6px;border-radius:4px">' + escapeHtml(risk) + '</span>' : '') +
+            (score !== '' ? '<span style="font-size:11px;color:var(--text-dim)">score ' + score + '</span>' : '') +
+            (passed ? '<span style="color:#22c55e;font-size:11px;font-weight:700">✓ pass</span>' : '<span style="color:#ef4444;font-size:11px;font-weight:700">✗ fail</span>') +
+            '<span style="flex:1;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(promptText.substring(0, 80)) + (promptText.length > 80 ? '…' : '') + '</span>' +
+          '</summary>' +
+          '<div style="padding:0 14px 14px 14px;border-top:1px solid var(--border);background:var(--surface)">' +
+            '<div style="font-size:11px;color:var(--text-dim);margin:10px 0 4px 0;text-transform:uppercase;letter-spacing:.5px">질문</div>' +
+            '<div style="font-size:13px;background:var(--bg);padding:8px 10px;border-radius:6px;white-space:pre-wrap;line-height:1.5">' + escapeHtml(promptText) + '</div>' +
+            '<div style="font-size:11px;color:var(--text-dim);margin:12px 0 4px 0;text-transform:uppercase;letter-spacing:.5px">AI 응답 <span style="color:var(--text-dim);text-transform:none;letter-spacing:0">(' + respLen + ' chars)</span></div>' +
+            '<div style="font-size:13px;background:var(--bg);padding:10px 12px;border-radius:6px;white-space:pre-wrap;line-height:1.55;max-height:380px;overflow-y:auto">' + escapeHtml(respText || '(응답 없음)') + '</div>' +
+            (summary ? '<div style="font-size:11px;color:var(--text-dim);margin:12px 0 4px 0;text-transform:uppercase;letter-spacing:.5px">LLM 평가 요약</div><div style="font-size:12px;background:var(--bg);padding:8px 10px;border-radius:6px;color:var(--text);line-height:1.5">' + escapeHtml(summary) + '</div>' : '') +
+            (violations.length > 0 ? '<div style="font-size:11px;color:var(--text-dim);margin:12px 0 4px 0;text-transform:uppercase;letter-spacing:.5px">감지된 위반 (' + violations.length + ')</div><div style="font-size:12px;background:var(--bg);padding:8px 10px;border-radius:6px;line-height:1.6">' +
+              violations.map(v => '· <b style="color:#ef4444">' + escapeHtml(v.type || v.law || '?') + '</b>' + (v.severity ? ' [' + escapeHtml(v.severity) + ']' : '') + (v.description ? ' — ' + escapeHtml(v.description) : '')).join('<br>') + '</div>' : '') +
+          '</div>' +
+        '</details>';
+      }
+    }
+    html += '</div>';
+    panel.innerHTML = html;
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+
+    // ESC 닫기
+    const onKey = (e) => { if (e.key === 'Escape') closeCellModal(); };
+    overlay._onKey = onKey;
+    document.addEventListener('keydown', onKey);
+  }
+
+  function closeCellModal() {
+    const el = document.getElementById('cellModalOverlay');
+    if (el) {
+      if (el._onKey) document.removeEventListener('keydown', el._onKey);
+      el.remove();
+    }
+  }
+
   // ── 테스터 로그인 공통 로직 ──
   async function initTesterAndAuth() {
     try {
@@ -1830,6 +1930,19 @@
         '<th style="padding:6px 8px">전체</th>' +
         '<th style="padding:6px 8px">통과율</th>' +
         '</tr></thead><tbody>';
+      // 등급 셀 클릭 가능 헬퍼 — count > 0 일 때만 cursor + onclick.
+      // JSON.stringify 결과의 double quote 가 HTML attribute 를 깨뜨리지 않도록 &quot; 로 escape.
+      function _attrJs(s) {
+        return JSON.stringify(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      }
+      function _cell(cat, grade, count, color) {
+        if (count > 0) {
+          return '<td onclick="showCellResults(' + _attrJs(cat) + ',' + _attrJs(grade) + ')" ' +
+                 'style="padding:6px 4px;text-align:center;cursor:pointer;color:' + (color || '') + ';font-weight:600;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px" ' +
+                 'title="' + escapeHtml(cat) + ' / ' + escapeHtml(grade) + ' 등급 ' + count + '건 보기">' + count + '</td>';
+        }
+        return '<td style="padding:6px 4px;text-align:center;color:var(--text-dim);opacity:.5">' + count + '</td>';
+      }
       for (var cki = 0; cki < catKeys.length; cki++) {
         var ck = catKeys[cki];
         var ct = catTotalMap[ck];
@@ -1838,17 +1951,18 @@
         var cprCol = cpr >= 80 ? '#22c55e' : cpr >= 60 ? '#eab308' : '#ef4444';
         html += '<tr style="border-bottom:1px solid var(--border)">' +
           '<td style="padding:6px 8px;font-weight:600">' + escapeHtml(ck) + '</td>' +
-          '<td style="padding:6px 4px;text-align:center">' + (catGradeMap[ck].A || 0) + '</td>' +
-          '<td style="padding:6px 4px;text-align:center">' + (catGradeMap[ck].B || 0) + '</td>' +
-          '<td style="padding:6px 4px;text-align:center">' + (catGradeMap[ck].C || 0) + '</td>' +
-          '<td style="padding:6px 4px;text-align:center">' + (catGradeMap[ck].D || 0) + '</td>' +
-          '<td style="padding:6px 4px;text-align:center">' + (catGradeMap[ck].F || 0) + '</td>' +
-          '<td style="padding:6px 4px;text-align:center;color:var(--text-dim)">' + (catGradeMap[ck]['N/A'] || 0) + '</td>' +
+          _cell(ck, 'A', catGradeMap[ck].A || 0, '#22c55e') +
+          _cell(ck, 'B', catGradeMap[ck].B || 0, '#38bdf8') +
+          _cell(ck, 'C', catGradeMap[ck].C || 0, '#eab308') +
+          _cell(ck, 'D', catGradeMap[ck].D || 0, '#f97316') +
+          _cell(ck, 'F', catGradeMap[ck].F || 0, '#ef4444') +
+          _cell(ck, 'N/A', catGradeMap[ck]['N/A'] || 0, 'var(--text-dim)') +
           '<td style="padding:6px 8px;text-align:center;font-weight:600">' + ct + '</td>' +
           '<td style="padding:6px 8px;text-align:center;color:' + cprCol + ';font-weight:700">' + cpr + '%</td>' +
           '</tr>';
       }
-      html += '</tbody></table></div>';
+      html += '</tbody></table></div>' +
+        '<div style="font-size:11px;color:var(--text-dim);margin-top:6px">💡 숫자(밑줄)를 클릭하면 해당 카테고리×등급 시나리오 목록과 답변을 확인할 수 있습니다.</div>';
     }
     html += '</div>';
 

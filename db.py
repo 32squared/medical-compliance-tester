@@ -1861,6 +1861,41 @@ def get_test_run(run_id):
         return d
 
 
+def get_test_run_progress(run_id):
+    """Lightweight progress for batch polling — results JSON 전체를 fetch 하지 않고
+    array length 만 SQL 레벨에서 계산 (1100건+ batch polling 비용 절감).
+    반환: dict {total, passed, failed, status, runAt, completed} 또는 None.
+    """
+    ph = _p()
+    with get_conn() as (conn, cur):
+        if DATABASE_URL and HAS_POSTGRES:
+            cur.execute(
+                f"SELECT total, passed, failed, status, run_at, "
+                f"COALESCE(jsonb_array_length(results_json::jsonb), 0) AS completed "
+                f"FROM test_runs WHERE id = {ph}",
+                (run_id,),
+            )
+        else:
+            cur.execute(
+                f"SELECT total, passed, failed, status, run_at, "
+                f"COALESCE(json_array_length(results_json), 0) AS completed "
+                f"FROM test_runs WHERE id = {ph}",
+                (run_id,),
+            )
+        row = cur.fetchone()
+        if not row:
+            return None
+        d = _row_to_dict(row)
+        return {
+            'total': d.get('total', 0) or 0,
+            'passed': d.get('passed', 0) or 0,
+            'failed': d.get('failed', 0) or 0,
+            'status': d.get('status', ''),
+            'runAt': d.get('run_at', ''),
+            'completed': d.get('completed', 0) or 0,
+        }
+
+
 def save_test_run(data):
     run_id = data.get('id') or f"run-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}-{secrets.token_hex(2)}"
     now = _now()
