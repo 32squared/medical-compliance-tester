@@ -15,4 +15,6 @@ conversations.json
 app.db
 *.db
 reports/
+backups/
+data/
 *.md

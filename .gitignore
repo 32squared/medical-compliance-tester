@@ -7,3 +7,10 @@ reports/live_*.html
 settings.json
 test_history.json
 conversations.json
+
+# 로컬 DB
+*.db
+app_*.db
+
+# 외부 데이터셋 (HealthBench 등) — 다운로드 스크립트로 재현 가능
+data/healthbench/
