@@ -372,12 +372,16 @@
       <div class="batch-toggle-bar" id="batchToggleBar" style="display:none">
         <button class="batch-toggle-btn active" id="btnIndividual" onclick="switchBatchView('individual')">📋 개별 결과 보기</button>
         <button class="batch-toggle-btn" id="btnBatchReport" onclick="switchBatchView('report')">📊 리포트 보기</button>
+        <button class="batch-toggle-btn" id="btnHealthbenchReport" onclick="switchBatchView('healthbench')" style="display:none">🩺 HealthBench 리포트</button>
       </div>
       <div class="results-area" id="resultsArea">
         <!-- Populated by JS -->
       </div>
       <div class="batch-report" id="batchReportArea" style="display:none">
         <!-- Populated by JS: batch-level report -->
+      </div>
+      <div class="batch-report" id="healthbenchReportArea" style="display:none">
+        <!-- Populated by JS: HealthBench rubric/theme/axis report -->
       </div>
     </div>
     </div><!-- /historyTabContent -->
@@ -689,12 +693,22 @@
     currentBatchView = 'individual';
     var _btnInd = document.getElementById('btnIndividual');
     var _btnRep = document.getElementById('btnBatchReport');
+    var _btnHb  = document.getElementById('btnHealthbenchReport');
     if (_btnInd) _btnInd.classList.add('active');
     if (_btnRep) _btnRep.classList.remove('active');
+    if (_btnHb)  _btnHb.classList.remove('active');
     var _resArea = document.getElementById('resultsArea');
     var _batArea = document.getElementById('batchReportArea');
+    var _hbArea  = document.getElementById('healthbenchReportArea');
     if (_resArea) _resArea.style.display = '';
     if (_batArea) _batArea.style.display = 'none';
+    if (_hbArea)  _hbArea.style.display = 'none';
+
+    // HealthBench 시나리오 (HB-*) 가 1건이라도 있으면 토글 노출
+    var _hbCount = (run.results || []).filter(function(r){
+      return (r.scenarioId || '').indexOf('HB-') === 0;
+    }).length;
+    if (_btnHb) _btnHb.style.display = _hbCount > 0 ? '' : 'none';
 
     const env = (run.env || 'dev').toLowerCase();
     const isBatch = run.type === 'batch';
@@ -827,8 +841,10 @@
       const gradeColors = { A: '#22c55e', B: '#38bdf8', C: '#eab308', D: '#f97316', F: '#ef4444' };
 
       // Determine finalSource
-      const finalSource = (gptEval && gptEval.grade) ? 'gpt' : 'regex';
-      const sourceIndicator = finalSource === 'gpt' ? '\uD83E\uDD16 컴플라이언스 기준' : '\uD83D\uDCCB 정규식 (참고)';
+      const hasRubric = r.rubricEval && r.rubricEval.score != null;
+      const finalSource = hasRubric ? 'rubric' : ((gptEval && gptEval.grade) ? 'gpt' : 'regex');
+      const sourceIndicator = finalSource === 'rubric' ? '🩺 HealthBench 루브릭'
+        : finalSource === 'gpt' ? '\uD83E\uDD16 컴플라이언스 기준' : '\uD83D\uDCCB 정규식 (참고)';
 
       // 의료법 검수 표시
       let complianceHtml = '';
@@ -881,9 +897,14 @@
           '</div></div>';
       }
 
-      // Header score display: GPT-first
+      // Header score display: rubric > GPT > regex
       let headerScore = '';
-      if (finalSource === 'gpt') {
+      if (finalSource === 'rubric') {
+        const rscore = r.rubricEval.score;
+        const rcolor = rscore >= 75 ? '#22c55e' : rscore >= 50 ? '#38bdf8' : rscore >= 25 ? '#eab308' : '#ef4444';
+        headerScore = '<span style="font-size:13px;font-weight:700;color:' + rcolor + '">🩺 ' + rscore + '점</span>' +
+          '<span style="font-size:11px;color:var(--text-dim)">(' + (r.rubricEval.metCount != null ? r.rubricEval.metCount : '-') + '/' + (r.rubricEval.totalCount != null ? r.rubricEval.totalCount : '-') + ')</span>';
+      } else if (finalSource === 'gpt') {
         const gc = gradeColors[gptEval.grade] || '#94a3b8';
         headerScore = '<span style="font-size:13px;font-weight:700;color:' + gc + '">' + gptEval.grade + ' ' + (gptEval.score != null ? gptEval.score + '점' : '') + '</span>';
         if (compliance && compliance.score != null) {
@@ -935,8 +956,102 @@
         '</div>';
       }
 
-      // Order: GPT first if available, then compliance as reference
-      const detailSections = (finalSource === 'gpt' ? (gptHtml + complianceHtml) : (complianceHtml + gptHtml)) + consultHtml;
+      // ── Rubric 평가 표시 (HealthBench 등) ──
+      let rubricHtml = '';
+      const re = r.rubricEval;
+      if (re && (re.score != null || re.error)) {
+        const _scoreColor = (v) => {
+          if (v == null) return 'var(--text-dim)';
+          if (v >= 75) return '#22c55e';
+          if (v >= 50) return '#38bdf8';
+          if (v >= 25) return '#eab308';
+          return '#ef4444';
+        };
+        const reColor = _scoreColor(re.score);
+        const reItems = re.items || [];
+        // 점수 영향도 큰 순 (절댓값) 으로 정렬
+        const sortedItems = reItems.slice().sort((a, b) => Math.abs(b.points || 0) - Math.abs(a.points || 0));
+        const itemsList = sortedItems.map(it => {
+          const pts = it.points || 0;
+          const met = !!it.met;
+          const ptsColor = pts > 0 ? '#22c55e' : pts < 0 ? '#ef4444' : 'var(--text-dim)';
+          // 양수 met = 좋음, 음수 met = 나쁨, 양수 not-met = 놓침, 음수 not-met = 회피
+          let badge, badgeBg;
+          if (met && pts > 0) { badge = '✅ MET'; badgeBg = 'rgba(34,197,94,0.15)'; }
+          else if (met && pts < 0) { badge = '❌ MET (negative)'; badgeBg = 'rgba(239,68,68,0.18)'; }
+          else if (!met && pts > 0) { badge = '⚪ MISSED'; badgeBg = 'rgba(148,163,184,0.12)'; }
+          else { badge = '✓ AVOIDED'; badgeBg = 'rgba(34,197,94,0.1)'; }
+          const tagChips = (it.tags || []).map(t =>
+            '<span style="display:inline-block;padding:0 6px;margin:0 2px;font-size:10px;color:var(--text-dim);background:var(--bg);border-radius:3px">' + escapeHtml(t) + '</span>'
+          ).join('');
+          return '<div style="padding:6px 8px;margin:3px 0;background:var(--surface2);border-left:3px solid ' + ptsColor + ';border-radius:4px">' +
+            '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+              '<span style="font-size:11px;padding:2px 6px;background:' + badgeBg + ';border-radius:3px;font-weight:600">' + badge + '</span>' +
+              '<span style="color:' + ptsColor + ';font-weight:600;font-size:13px">' + (pts > 0 ? '+' : '') + pts + 'pt</span>' +
+              tagChips +
+            '</div>' +
+            '<div style="font-size:13px;margin-top:4px">' + escapeHtml(it.criterion || '') + '</div>' +
+            (it.explanation ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;font-style:italic">— ' + escapeHtml(it.explanation) + '</div>' : '') +
+            '</div>';
+        }).join('');
+
+        const errLine = re.error
+          ? '<div style="color:var(--red);font-size:12px;margin-top:4px">⚠ 평가 오류: ' + escapeHtml(re.error) + '</div>'
+          : '';
+        rubricHtml = '<div class="result-section">' +
+          '<div class="result-section-title" style="color:#0ea5e9">🩺 HealthBench 루브릭 평가</div>' +
+          '<div class="result-section-body">' +
+            '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">' +
+              '<span style="font-size:24px;font-weight:800;color:' + reColor + ';background:' + reColor + '22;padding:2px 10px;border-radius:6px">' + (re.score != null ? re.score : '–') + '점</span>' +
+              '<span style="font-size:13px">met <b>' + (re.metCount != null ? re.metCount : '–') + '</b>/' + (re.totalCount != null ? re.totalCount : '–') + '</span>' +
+              '<span style="font-size:13px;color:var(--text-dim)">awarded ' + (re.awardedPoints != null ? re.awardedPoints : '–') + ' / ' + (re.totalPoints != null ? re.totalPoints : '–') + ' pts</span>' +
+              (re.model ? '<span style="font-size:11px;color:var(--text-dim);margin-left:auto">' + escapeHtml(re.model) + '</span>' : '') +
+            '</div>' +
+            errLine +
+            (itemsList ? '<div style="max-height:300px;overflow:auto;padding:4px">' + itemsList + '</div>' : '') +
+          '</div></div>';
+      }
+
+      // ── Multi-turn 응답 표시 (turnResults) ──
+      let multiturnHtml = '';
+      const tResults = r.turnResults || [];
+      if (tResults.length > 1) {
+        const turnsBody = tResults.map((t, ti) => {
+          const isLast = ti === tResults.length - 1;
+          const turnHeader = '<div style="display:flex;gap:8px;align-items:center;font-size:12px;color:var(--text-dim);margin-bottom:4px">' +
+            '<span style="font-weight:600;color:var(--text)">Turn ' + (ti + 1) + '</span>' +
+            (isLast ? '<span style="color:#0ea5e9;font-size:10px;background:rgba(14,165,233,0.15);padding:1px 6px;border-radius:3px">평가 대상</span>' : '') +
+            (t.elapsed_ms ? '<span>' + t.elapsed_ms + 'ms</span>' : '') +
+            (t.http_status ? '<span>HTTP ' + t.http_status + '</span>' : '') +
+            (t.first_token_ms ? '<span>TTFT ' + t.first_token_ms + 'ms</span>' : '') +
+            (t.stopped === false && t.response ? '<span style="color:var(--yellow)">⚠ 미완</span>' : '') +
+            (t.error ? '<span style="color:var(--red)">⚠ ' + escapeHtml(t.error.substring(0, 80)) + '</span>' : '') +
+            '</div>';
+          return '<div style="padding:8px;margin:6px 0;background:var(--surface2);border-radius:6px;border:1px solid var(--border)">' +
+            turnHeader +
+            '<div style="font-size:12px;color:var(--text-dim);margin-bottom:3px"><b>USER:</b></div>' +
+            '<div style="font-size:13px;white-space:pre-wrap;padding:4px 8px;background:var(--bg);border-radius:4px;margin-bottom:6px">' + escapeHtml(t.query || '') + '</div>' +
+            '<div style="font-size:12px;color:var(--text-dim);margin-bottom:3px"><b>SKIX:</b></div>' +
+            '<div style="font-size:13px;white-space:pre-wrap;padding:4px 8px;background:var(--bg);border-radius:4px">' + escapeHtml((t.response || '').substring(0, 1500)) + ((t.response || '').length > 1500 ? '...' : '') + '</div>' +
+            '</div>';
+        }).join('');
+        multiturnHtml = '<div class="result-section">' +
+          '<div class="result-section-title" style="color:#a855f7">🔁 Multi-turn 대화 (' + tResults.length + ' turns)</div>' +
+          '<div class="result-section-body">' +
+            '<div style="font-size:12px;color:var(--text-dim);margin-bottom:6px">SKIX 가 conversation_strid 로 컨텍스트를 누적하며 user turn 만 순차 호출. 마지막 turn 의 응답이 평가 대상.</div>' +
+            turnsBody +
+          '</div></div>';
+      }
+
+      // Order: rubric (HB) → multi-turn → GPT/compliance → consultation
+      let detailSections;
+      if (finalSource === 'rubric') {
+        detailSections = rubricHtml + multiturnHtml + gptHtml + complianceHtml + consultHtml;
+      } else if (finalSource === 'gpt') {
+        detailSections = gptHtml + complianceHtml + consultHtml + multiturnHtml + rubricHtml;
+      } else {
+        detailSections = complianceHtml + gptHtml + consultHtml + multiturnHtml + rubricHtml;
+      }
 
       return '<div class="result-card" id="result-' + idx + '">' +
         '<div class="result-card-header" onclick="toggleResult(' + idx + ')">' +
@@ -1494,7 +1609,9 @@
               for (const r of results) {
                 const stIcon = r.status === 'pass' ? '✅' : r.status === 'fail' ? '❌' : '⚠️';
                 const stColor = r.status === 'pass' ? 'var(--green)' : r.status === 'fail' ? 'var(--red)' : 'var(--yellow)';
-                const srcLabel = r.finalSource === 'gpt' ? '🤖 컴플라이언스' : '📋 정규식 (참고)';
+                const srcLabel = r.finalSource === 'rubric' ? '🩺 HealthBench 루브릭'
+                  : r.finalSource === 'gpt' ? '🤖 컴플라이언스'
+                  : '📋 정규식 (참고)';
                 html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid var(--border);font-size:12px">' +
                   '<span>' + stIcon + '</span>' +
                   '<span style="font-weight:600;min-width:90px">' + escapeHtml(r.scenarioId) + '</span>' +
@@ -1538,15 +1655,198 @@
 
   function switchBatchView(view) {
     currentBatchView = view;
-    document.getElementById('btnIndividual').classList.toggle('active', view === 'individual');
-    document.getElementById('btnBatchReport').classList.toggle('active', view === 'report');
+    var _bI = document.getElementById('btnIndividual');
+    var _bR = document.getElementById('btnBatchReport');
+    var _bH = document.getElementById('btnHealthbenchReport');
+    if (_bI) _bI.classList.toggle('active', view === 'individual');
+    if (_bR) _bR.classList.toggle('active', view === 'report');
+    if (_bH) _bH.classList.toggle('active', view === 'healthbench');
     var _ra = document.getElementById('resultsArea');
     var _ba = document.getElementById('batchReportArea');
+    var _ha = document.getElementById('healthbenchReportArea');
     if (_ra) _ra.style.display = view === 'individual' ? '' : 'none';
     if (_ba) _ba.style.display = view === 'report' ? '' : 'none';
+    if (_ha) _ha.style.display = view === 'healthbench' ? '' : 'none';
     if (view === 'report' && _lastRenderedRun) {
       renderBatchReport(_lastRenderedRun);
     }
+    if (view === 'healthbench' && _lastRenderedRun) {
+      renderHealthbenchReport(_lastRenderedRun);
+    }
+  }
+
+  // ── HealthBench 리포트 (rubric/theme/axis) ──
+  async function renderHealthbenchReport(run) {
+    var area = document.getElementById('healthbenchReportArea');
+    if (!area) return;
+    var runId = run.runId || run.id || '';
+    if (!runId) {
+      area.innerHTML = '<div style="padding:24px;color:var(--text-dim)">runId 없음</div>';
+      return;
+    }
+    area.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-dim)">⏳ HealthBench 리포트 집계 중...</div>';
+
+    try {
+      var res = await fetch('/api/history/' + encodeURIComponent(runId) + '/healthbench-report');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      var rep = await res.json();
+      renderHealthbenchReportContent(area, rep);
+    } catch (e) {
+      area.innerHTML = '<div style="padding:24px;color:var(--red)">리포트 로드 실패: ' + escapeHtml(String(e.message || e)) + '</div>';
+    }
+  }
+
+  function renderHealthbenchReportContent(area, rep) {
+    var s = rep.summary || {};
+    var byTheme = rep.byTheme || [];
+    var byAxis = rep.byAxis || [];
+    var byLevel = rep.byLevel || [];
+    var scenarios = rep.scenarios || [];
+
+    function _fmt(v, suffix) {
+      if (v === null || v === undefined) return '–';
+      return v + (suffix || '');
+    }
+    function _pct(v) {
+      if (v === null || v === undefined) return '–';
+      return Math.round(v * 1000) / 10 + '%';
+    }
+    function _scoreColor(v) {
+      if (v === null || v === undefined) return 'var(--text-dim)';
+      if (v >= 75) return 'var(--green)';
+      if (v >= 50) return 'var(--accent)';
+      if (v >= 25) return 'var(--yellow)';
+      return 'var(--red)';
+    }
+    function _bar(value, max, color) {
+      var pct = max > 0 ? Math.round((value / max) * 100) : 0;
+      return '<div style="background:var(--bg);border-radius:3px;overflow:hidden;height:8px;width:100%">' +
+        '<div style="height:8px;background:' + color + ';width:' + pct + '%"></div></div>';
+    }
+
+    var html = '';
+
+    // 1) summary
+    html += '<div class="batch-report-section">' +
+      '<div class="batch-report-section-title">🩺 HealthBench 요약</div>' +
+      '<div class="batch-summary-cards">' +
+        '<div class="batch-summary-card"><div class="bsc-value" style="color:var(--text)">' + _fmt(s.hbScenarios) + '</div><div class="bsc-label">HB 시나리오</div></div>' +
+        '<div class="batch-summary-card"><div class="bsc-value" style="color:' + _scoreColor(s.avgRubricScore) + ';font-size:32px">' + _fmt(s.avgRubricScore) + '</div><div class="bsc-label">평균 점수</div></div>' +
+        '<div class="batch-summary-card"><div class="bsc-value" style="color:var(--accent)">' + _pct(s.passRate) + '</div><div class="bsc-label">통과율 (≥50)</div></div>' +
+        '<div class="batch-summary-card"><div class="bsc-value" style="color:var(--text)">' + _fmt(s.metRubricItems) + ' / ' + _fmt(s.totalRubricItems) + '</div><div class="bsc-label">루브릭 met</div></div>' +
+        '<div class="batch-summary-card"><div class="bsc-value" style="color:' + _scoreColor(s.overallWeightedScore) + '">' + _fmt(s.overallWeightedScore) + '</div><div class="bsc-label">가중 점수</div></div>' +
+        (s.rubricSkipped ? '<div class="batch-summary-card"><div class="bsc-value" style="color:var(--yellow)">' + s.rubricSkipped + '</div><div class="bsc-label">스킵</div></div>' : '') +
+      '</div></div>';
+
+    // 2) by_theme
+    if (byTheme.length) {
+      var maxThemeCount = 0;
+      for (var i = 0; i < byTheme.length; i++) if ((byTheme[i].count || 0) > maxThemeCount) maxThemeCount = byTheme[i].count;
+      var themeRows = byTheme.map(function (t) {
+        return '<tr>' +
+          '<td style="padding:6px 8px;font-weight:600">' + escapeHtml(t.theme || '') + '</td>' +
+          '<td style="padding:6px 8px;text-align:right;color:var(--text-dim)">' + t.count + '건</td>' +
+          '<td style="padding:6px 8px;text-align:right;color:' + _scoreColor(t.avgScore) + ';font-weight:600">' + _fmt(t.avgScore) + '</td>' +
+          '<td style="padding:6px 8px;text-align:right">' + _pct(t.passRate) + '</td>' +
+          '<td style="padding:6px 8px;width:30%">' + _bar(t.count, maxThemeCount, 'var(--accent)') + '</td>' +
+          '</tr>';
+      }).join('');
+      html += '<div class="batch-report-section">' +
+        '<div class="batch-report-section-title">📊 Theme별 점수</div>' +
+        '<table style="width:100%;border-collapse:collapse;font-size:12px">' +
+          '<thead><tr style="background:var(--bg);color:var(--text-dim)">' +
+            '<th style="padding:6px 8px;text-align:left">Theme</th>' +
+            '<th style="padding:6px 8px;text-align:right">건수</th>' +
+            '<th style="padding:6px 8px;text-align:right">평균</th>' +
+            '<th style="padding:6px 8px;text-align:right">통과율</th>' +
+            '<th style="padding:6px 8px;text-align:right">분포</th>' +
+          '</tr></thead><tbody>' + themeRows + '</tbody></table>' +
+        '</div>';
+    }
+
+    // 3) by_axis
+    if (byAxis.length) {
+      var axisRows = byAxis.map(function (a) {
+        return '<tr>' +
+          '<td style="padding:6px 8px;font-weight:600">' + escapeHtml(a.axis || '') + '</td>' +
+          '<td style="padding:6px 8px;text-align:right">' + a.items + '개</td>' +
+          '<td style="padding:6px 8px;text-align:right">' + a.met + ' / ' + a.items + '</td>' +
+          '<td style="padding:6px 8px;text-align:right">' + _pct(a.metRate) + '</td>' +
+          '<td style="padding:6px 8px;text-align:right;color:' + _scoreColor(a.weightedScore) + ';font-weight:600">' + _fmt(a.weightedScore) + '</td>' +
+          '<td style="padding:6px 8px;text-align:right;color:var(--text-dim)">' + _fmt(a.ptsAwarded) + ' / ' + _fmt(a.ptsPossible) + '</td>' +
+          '</tr>';
+      }).join('');
+      html += '<div class="batch-report-section">' +
+        '<div class="batch-report-section-title">🎯 Axis별 점수 (rubric tag)</div>' +
+        '<table style="width:100%;border-collapse:collapse;font-size:12px">' +
+          '<thead><tr style="background:var(--bg);color:var(--text-dim)">' +
+            '<th style="padding:6px 8px;text-align:left">Axis</th>' +
+            '<th style="padding:6px 8px;text-align:right">항목수</th>' +
+            '<th style="padding:6px 8px;text-align:right">met</th>' +
+            '<th style="padding:6px 8px;text-align:right">met율</th>' +
+            '<th style="padding:6px 8px;text-align:right">가중점수</th>' +
+            '<th style="padding:6px 8px;text-align:right">pts</th>' +
+          '</tr></thead><tbody>' + axisRows + '</tbody></table>' +
+        '</div>';
+    }
+
+    // 4) by_level (level:example / level:cluster)
+    if (byLevel.length) {
+      var levelChips = byLevel.map(function (l) {
+        return '<span style="display:inline-block;padding:4px 10px;margin:2px;background:var(--bg);border:1px solid var(--border);border-radius:12px;font-size:11px">' +
+          '<b>' + escapeHtml(l.level) + '</b>: ' + l.met + '/' + l.items + ' (' + _pct(l.metRate) + ')</span>';
+      }).join('');
+      html += '<div class="batch-report-section">' +
+        '<div class="batch-report-section-title">📐 Level별 집계</div>' +
+        '<div style="line-height:2">' + levelChips + '</div>' +
+        '</div>';
+    }
+
+    // 5) scenarios (정렬: 점수 낮은 순)
+    var sortedScenarios = scenarios.slice().sort(function (a, b) {
+      var sa = a.rubricScore == null ? -1 : a.rubricScore;
+      var sb = b.rubricScore == null ? -1 : b.rubricScore;
+      return sa - sb;
+    });
+    var scenRows = sortedScenarios.map(function (sc) {
+      var turnTxt = sc.turnsExecuted ? (sc.turnsExecuted > 1 ? sc.turnsExecuted + ' turns' : 'single') : '–';
+      var errTxt = sc.rubricError ? '<span style="color:var(--red);font-size:10px">⚠ ' + escapeHtml(sc.rubricError.substring(0, 60)) + '</span>' : '';
+      return '<tr>' +
+        '<td style="padding:6px 8px;font-family:monospace;font-size:11px">' + escapeHtml(sc.id) + '</td>' +
+        '<td style="padding:6px 8px;color:var(--text-dim)">' + escapeHtml(sc.theme || '') + '</td>' +
+        '<td style="padding:6px 8px;text-align:right;color:' + _scoreColor(sc.rubricScore) + ';font-weight:600">' + _fmt(sc.rubricScore) + '</td>' +
+        '<td style="padding:6px 8px;text-align:right;font-size:11px;color:var(--text-dim)">' + _fmt(sc.metCount) + '/' + _fmt(sc.totalCount) + '</td>' +
+        '<td style="padding:6px 8px;text-align:right;font-size:11px;color:var(--text-dim)">' + _fmt(sc.awardedPoints) + '/' + _fmt(sc.totalPoints) + '</td>' +
+        '<td style="padding:6px 8px;text-align:right;font-size:11px;color:var(--text-dim)">' + turnTxt + '</td>' +
+        '<td style="padding:6px 8px;text-align:right;font-size:11px;color:var(--text-dim)">' + _fmt(sc.responseLength) + '자</td>' +
+        '<td style="padding:6px 8px">' + errTxt + '</td>' +
+        '</tr>';
+    }).join('');
+    html += '<div class="batch-report-section">' +
+      '<div class="batch-report-section-title">📋 시나리오별 점수 (낮은 순)</div>' +
+      '<div style="max-height:400px;overflow:auto;border:1px solid var(--border);border-radius:6px">' +
+        '<table style="width:100%;border-collapse:collapse;font-size:12px">' +
+          '<thead><tr style="background:var(--bg);color:var(--text-dim);position:sticky;top:0">' +
+            '<th style="padding:6px 8px;text-align:left">ID</th>' +
+            '<th style="padding:6px 8px;text-align:left">Theme</th>' +
+            '<th style="padding:6px 8px;text-align:right">점수</th>' +
+            '<th style="padding:6px 8px;text-align:right">met</th>' +
+            '<th style="padding:6px 8px;text-align:right">pts</th>' +
+            '<th style="padding:6px 8px;text-align:right">turns</th>' +
+            '<th style="padding:6px 8px;text-align:right">응답길이</th>' +
+            '<th style="padding:6px 8px;text-align:left">오류</th>' +
+          '</tr></thead><tbody>' + scenRows + '</tbody></table>' +
+        '</div></div>';
+
+    // 6) raw JSON download
+    var jsonStr = JSON.stringify(rep, null, 2);
+    html += '<div class="batch-report-section">' +
+      '<div class="batch-report-section-title">💾 데이터 내보내기</div>' +
+      '<button class="btn-small" onclick="(function(){var b=new Blob([' + JSON.stringify(jsonStr) + '],{type:\'application/json\'});var u=URL.createObjectURL(b);var a=document.createElement(\'a\');a.href=u;a.download=\'healthbench-report-' + escapeHtml(s.runId || 'run') + '.json\';a.click();URL.revokeObjectURL(u);})()" style="padding:6px 14px;font-size:12px">📥 JSON 다운로드</button>' +
+      ' <span style="font-size:11px;color:var(--text-dim);margin-left:8px">전체 리포트를 JSON 파일로 저장</span>' +
+      '</div>';
+
+    area.innerHTML = html;
   }
 
   function renderBatchReport(run) {
