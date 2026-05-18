@@ -1976,6 +1976,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
             '/healthbench.html': 'healthbench.html',
             '/healthbench/scenario': 'hb_scenario_detail.html',
             '/hb_scenario_detail.html': 'hb_scenario_detail.html',
+            '/healthbench/about': 'hb_about.html',
+            '/hb_about.html': 'hb_about.html',
             '/demo_report.html': os.path.join('reports', 'demo_report.html'),
         }
         # 권한 기반 페이지 접근 가드 (admin은 항상 통과, advisor/tester는 permissions 체크)
@@ -2001,6 +2003,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
             '/healthbench.html':       ['view_history', 'run_batch'],
             '/healthbench/scenario':   ['view_history', 'run_batch'],
             '/hb_scenario_detail.html': ['view_history', 'run_batch'],
+            '/healthbench/about':      ['view_history', 'run_batch'],
+            '/hb_about.html':          ['view_history', 'run_batch'],
             # '/settings'는 의도적으로 제외 — admin 로그인 진입점이므로 누구나 페이지는 봐야 함
         }
         if path in file_map and not self._is_admin():
