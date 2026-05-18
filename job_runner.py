@@ -27,7 +27,10 @@ from datetime import datetime, timezone
 import db
 from batch_executor import BatchExecutor, build_skix_config
 # proxy_server 의 모듈 레벨 함수만 가져온다. ProxyHandler 인스턴스는 사용하지 않는다.
-from proxy_server import _save_run_to_db, _evaluate_gpt, _evaluate_consultation
+from proxy_server import (
+    _save_run_to_db, _evaluate_gpt, _evaluate_consultation,
+    _evaluate_rubric, _skix_replay,
+)
 
 try:
     sys.stdout.reconfigure(line_buffering=True)
@@ -179,6 +182,8 @@ def main():
         skix_config=skix_cfg,
         evaluate_gpt_fn=_evaluate_gpt,
         evaluate_consultation_fn=_evaluate_consultation,
+        evaluate_rubric_fn=_evaluate_rubric,
+        skix_replay_fn=_skix_replay,
         log_fn=_job_log,
     )
 
