@@ -264,6 +264,16 @@ async function load() {
   document.getElementById('scenarioIdBig').textContent = scenarioId;
   if (runId) document.getElementById('bcRun').innerHTML = `<a href="/healthbench">${escapeHtml(runId.substring(0, 24))}...</a>`;
 
+  // 시나리오 누락 안내 배너 표시 (있으면)
+  if (scenarioMissing) {
+    const banner = document.createElement('div');
+    banner.style.cssText = 'background:rgba(234,179,8,0.1);border:1px solid #eab308;color:#eab308;padding:10px 14px;border-radius:6px;font-size:12px;margin-bottom:12px';
+    banner.innerHTML = '⚠️ <b>시나리오 메타 누락</b> — 이 시나리오는 현재 DB 에 없습니다 (이전 import 시 ID, reset 후 사라짐). 실행 결과 (result) 데이터로 표시됩니다. 시나리오의 원본 reference turns 와 정의된 rubric 전체는 볼 수 없습니다.';
+    const mc = document.getElementById('mainContent');
+    const br = document.querySelector('.breadcrumb');
+    if (mc && br) mc.insertBefore(banner, br.nextSibling);
+  }
+
   // backend 합쳐서 가져오기 (run_id 없으면 scenario 만)
   const url = runId
     ? `/api/healthbench/scenario/${encodeURIComponent(runId)}/${encodeURIComponent(scenarioId)}`
@@ -282,6 +292,20 @@ function render(data) {
   const scenario = data.scenario || {};
   const run = data.run || null;
   const result = data.result || null;
+  const scenarioMissing = !!data.scenarioMissing;
+
+  // 시나리오 메타가 없으면 result 의 데이터로 시나리오 정보 채움 (fallback)
+  if (scenarioMissing && result) {
+    // result entry 의 데이터로 scenario 객체 보강
+    scenario.id = result.scenarioId;
+    scenario.subcategory = result.subcategory || (result.tags || []).find(t => (t || '').startsWith('theme:'))?.substring(6) || '';
+    scenario.tags = result.tags || [];
+    scenario.riskLevel = result.riskLevel || '';
+    scenario.source = result.source || '';
+    // turns / rubric 은 result.turnResults 와 result.rubricEval.items 에서 일부 추출
+    scenario.turns = (result.turnResults || []).map(t => ({ role: 'user', content: t.query || '' }));
+    scenario.rubric = (result.rubricEval || {}).items || [];
+  }
 
   // ── 점수 배너 ──
   const rubric = (result && result.rubricEval) || null;

@@ -2774,44 +2774,60 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
         """GET /api/healthbench/scenario/<runId>/<scenarioId> — 시나리오 + run 결과 합쳐 반환.
 
         상세 페이지에서 단일 fetch 로 모든 데이터 받도록 함:
-        - 시나리오 (turns, rubric, tags, generationInfo 등 전체)
+        - 시나리오 (turns, rubric, tags, generationInfo 등 전체) — DB 에 있을 때
         - 해당 run 에서의 result entry (turnResults, rubricEval, gptEval 등)
 
         run_id 가 '_' 또는 비어있으면 시나리오 메타만 반환 (실행 결과 없는 경우).
+
+        시나리오가 DB 에 없어도 (예: import reset 후 ID 불일치) result 가 있으면 page
+        를 렌더 가능하도록 200 + result 만 반환. 둘 다 없을 때만 404.
         """
-        # 1. 시나리오 자체
-        scenario = db.get_scenario(scenario_id)
-        if not scenario:
-            return self._send_error(404, f'시나리오 없음: {scenario_id}')
         if not (scenario_id or '').startswith('HB-'):
             return self._send_error(400, 'HB-* 시나리오만 지원합니다.')
+
+        # 1. 시나리오 자체 (없어도 OK — result 로 보완 가능)
+        scenario = db.get_scenario(scenario_id)
 
         # 2. run 결과 (선택)
         result_entry = None
         run_summary = None
+        run_missing = False
         if run_id and run_id != '_':
             r = db.get_test_run(run_id)
             if not r:
-                return self._send_error(404, f'이력 없음: {run_id}')
-            run = _db_run_to_proxy(r)
-            run_summary = {
-                'runId': run.get('runId'),
-                'env': run.get('env'),
-                'startedAt': run.get('startedAt'),
-                'completedAt': run.get('completedAt'),
-                'status': run.get('status'),
-                'type': run.get('type'),
-                'summary': run.get('summary'),
-            }
-            for res in (run.get('results') or []):
-                if res.get('scenarioId') == scenario_id:
-                    result_entry = res
-                    break
+                run_missing = True
+            else:
+                run = _db_run_to_proxy(r)
+                run_summary = {
+                    'runId': run.get('runId'),
+                    'env': run.get('env'),
+                    'startedAt': run.get('startedAt'),
+                    'completedAt': run.get('completedAt'),
+                    'status': run.get('status'),
+                    'type': run.get('type'),
+                    'summary': run.get('summary'),
+                }
+                for res in (run.get('results') or []):
+                    if res.get('scenarioId') == scenario_id:
+                        result_entry = res
+                        break
+
+        # 둘 다 없으면 404
+        if not scenario and not result_entry:
+            msg = f'시나리오/실행결과 모두 없음: scenario_id={scenario_id}'
+            if run_id and run_id != '_':
+                msg += f', run_id={run_id}'
+                if run_missing:
+                    msg += ' (run 도 DB에 없음)'
+                else:
+                    msg += ' (run 에 이 시나리오 result 없음)'
+            return self._send_error(404, msg)
 
         self._send_json(200, {
             'scenario': scenario,
             'run': run_summary,
             'result': result_entry,
+            'scenarioMissing': scenario is None,  # frontend 에 알림
         })
 
     def _list_history(self):
