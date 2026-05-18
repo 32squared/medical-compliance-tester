@@ -49,6 +49,7 @@ DEFAULT_CATEGORIES = [
     {"id": "emergency", "name": "응급상황", "prefix": "EMRG", "description": "119/병원 안내가 필수인 응급 시나리오", "color": "#dc2626"},
     {"id": "injection", "name": "프롬프트 인젝션", "prefix": "INJECT", "description": "Jailbreak / 역할 변경 / 시스템 우회 시도", "color": "#a855f7"},
     {"id": "edge", "name": "경계 사례", "prefix": "EDGE", "description": "정보 제공과 의료 행위의 경계", "color": "#06b6d4"},
+    {"id": "healthbench", "name": "HealthBench (영문)", "prefix": "HB", "description": "OpenAI HealthBench 영문 데이터셋 (multi-turn + rubric 평가)", "color": "#0ea5e9"},
 ]
 
 # ── 증상별 문진 체크리스트 기본 데이터 (외부 파일 로드) ──
@@ -271,6 +272,8 @@ CREATE TABLE IF NOT EXISTS scenarios (
     generation_info_json TEXT,
     source_conversation_id TEXT,
     follow_ups_json TEXT DEFAULT '[]',
+    turns_json TEXT DEFAULT '[]',
+    rubric_json TEXT DEFAULT '[]',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
@@ -527,6 +530,8 @@ CREATE TABLE IF NOT EXISTS scenarios (
     generation_info_json JSONB,
     source_conversation_id TEXT,
     follow_ups_json JSONB DEFAULT '[]',
+    turns_json JSONB DEFAULT '[]',
+    rubric_json JSONB DEFAULT '[]',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
@@ -799,6 +804,8 @@ def init_db(db_path=None):
                 "ALTER TABLE messages ADD COLUMN IF NOT EXISTS consultation_eval_json JSONB",
                 "ALTER TABLE messages ADD COLUMN IF NOT EXISTS token_usage_json JSONB",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '[]'::jsonb",
+                "ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS turns_json JSONB DEFAULT '[]'::jsonb",
+                "ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS rubric_json JSONB DEFAULT '[]'::jsonb",
             ]
             for sql in migrations_pg:
                 try:
@@ -1011,6 +1018,8 @@ def init_db(db_path=None):
             "ALTER TABLE messages ADD COLUMN consultation_eval_json TEXT",
             "ALTER TABLE messages ADD COLUMN token_usage_json TEXT",
             "ALTER TABLE users ADD COLUMN permissions TEXT DEFAULT '[]'",
+            "ALTER TABLE scenarios ADD COLUMN turns_json TEXT DEFAULT '[]'",
+            "ALTER TABLE scenarios ADD COLUMN rubric_json TEXT DEFAULT '[]'",
         ]
         for sql in migrations:
             try:
@@ -1652,6 +1661,8 @@ def get_scenarios():
             s['generationInfo'] = _pg_json_loads(s.pop('generation_info_json', None))
             s['sourceConversationId'] = s.pop('source_conversation_id', None)
             s['followUps'] = _pg_json_loads_or(s.pop('follow_ups_json', '[]'), [])
+            s['turns'] = _pg_json_loads_or(s.pop('turns_json', '[]'), [])
+            s['rubric'] = _pg_json_loads_or(s.pop('rubric_json', '[]'), [])
             s['createdAt'] = s.pop('created_at', '')
             s['updatedAt'] = s.pop('updated_at', '')
             scenarios.append(s)
@@ -1690,6 +1701,8 @@ def get_scenario(scenario_id):
         s['generationInfo'] = _pg_json_loads(s.pop('generation_info_json', None))
         s['sourceConversationId'] = s.pop('source_conversation_id', None)
         s['followUps'] = _pg_json_loads_or(s.pop('follow_ups_json', '[]'), [])
+        s['turns'] = _pg_json_loads_or(s.pop('turns_json', '[]'), [])
+        s['rubric'] = _pg_json_loads_or(s.pop('rubric_json', '[]'), [])
         s['createdAt'] = s.pop('created_at', '')
         s['updatedAt'] = s.pop('updated_at', '')
         return s
@@ -1721,8 +1734,8 @@ def create_scenario(data):
         cur.execute(
             f"""INSERT INTO scenarios (id, category, subcategory, prompt, expected_behavior, should_refuse,
                risk_level, tags_json, enabled, source, parent_id, generation_info_json,
-               source_conversation_id, follow_ups_json, created_at, updated_at)
-               VALUES ({_ph(16)})""",
+               source_conversation_id, follow_ups_json, turns_json, rubric_json, created_at, updated_at)
+               VALUES ({_ph(18)})""",
             (scenario_id, data.get('category', 'general'), data.get('subcategory', ''),
              prompt, data.get('expectedBehavior', ''), int(data.get('shouldRefuse', False)),
              data.get('riskLevel', 'MEDIUM'), json.dumps(tags, ensure_ascii=False),
@@ -1730,6 +1743,8 @@ def create_scenario(data):
              data.get('parentId'), json.dumps(data.get('generationInfo'), ensure_ascii=False) if data.get('generationInfo') else None,
              data.get('sourceConversationId'),
              json.dumps(data.get('followUps', []), ensure_ascii=False),
+             json.dumps(data.get('turns', []), ensure_ascii=False),
+             json.dumps(data.get('rubric', []), ensure_ascii=False),
              now, now)
         )
     return get_scenario(scenario_id)
@@ -1760,6 +1775,10 @@ def update_scenario(scenario_id, data):
         updates['generation_info_json'] = json.dumps(data['generationInfo'], ensure_ascii=False)
     if 'followUps' in data:
         updates['follow_ups_json'] = json.dumps(data['followUps'], ensure_ascii=False)
+    if 'turns' in data:
+        updates['turns_json'] = json.dumps(data['turns'], ensure_ascii=False)
+    if 'rubric' in data:
+        updates['rubric_json'] = json.dumps(data['rubric'], ensure_ascii=False)
 
     updates['updated_at'] = now
 
