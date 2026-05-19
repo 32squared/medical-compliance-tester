@@ -754,21 +754,6 @@ children.push(p([
   txt('SKIX 의 Hard subset 점수 (23.67) 는 GPT-4o-mini 수준. accuracy + completeness 보강으로 GPT-4o (~38) 까지 격차 ~15점 좁힐 수 있을 것 — 두 axis 가 현재 약점에 집중되어 있어 ROI 큼.'),
 ], { spacing: { after: 200 } }));
 
-// 11. 다음 작업
-children.push(h2('11. 권장 다음 작업'));
-const nextActions = [
-  '0점 시나리오 178건의 음수 항목 카탈로그화 — completeness 음수 항목을 일반 패턴으로 분류 (예: "follow-up 권유 누락", "specific drug list 누락" 등)',
-  'Theme × Axis 매트릭스 기반 prompt 개선 — complex_responses 와 context_seeking 의 instruction_following 부분',
-  'SKIX guideline 보강 — 가장 자주 met 되는 음수 항목 (omission) 을 negative list 로 작성',
-  'Phase 3 확장 (선택) — Consensus 3,671건 import + batch 실행 후 본 분석과 cross-check',
-];
-nextActions.forEach((item, i) => {
-  children.push(new Paragraph({
-    numbering: { reference: 'numbered-list', level: 0 },
-    children: [new TextRun({ text: item, size: 22 })],
-  }));
-});
-
 // 푸터
 children.push(p(''));
 children.push(new Paragraph({
