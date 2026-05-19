@@ -84,6 +84,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .login-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; width: 360px; }
 .toast { position: fixed; bottom: 20px; right: 20px; padding: 10px 14px; border-radius: 8px; background: var(--surface2); border: 1px solid var(--border); z-index: 200; font-size: 12px; }
 .toast.error { border-color: var(--red); color: var(--red); }
+
+/* embed 모드 (모달 iframe 안에서 사용) — nav 숨김 + padding 축소 */
+body.embed .top-nav { display: none; }
+body.embed .container { padding: 12px 16px 40px; }
+body.embed .breadcrumb { display: none; }
+
+/* 빈 데이터 안내 */
+.empty-note { color: var(--text-dim); font-size: 11.5px; padding: 8px 12px; background: var(--bg-light); border-radius: 4px; font-style: italic; }
+.field-missing { color: var(--text-dim); font-style: italic; font-size: 11px; }
 </style>
 </head>
 <body>
@@ -210,7 +219,16 @@ function getParams() {
   return {
     runId: u.searchParams.get('run') || u.searchParams.get('runId') || '',
     scenarioId: u.searchParams.get('id') || u.searchParams.get('scenarioId') || '',
+    embed: u.searchParams.get('embed') === '1',
   };
+}
+
+// 빈 / null 값 안내 문자열
+function NA(v, label) {
+  if (v == null || v === '' || (Array.isArray(v) && v.length === 0)) {
+    return '<span class="field-missing">(' + (label || '데이터 없음') + ')</span>';
+  }
+  return escapeHtml(String(v));
 }
 
 async function checkAuth() {
@@ -313,11 +331,27 @@ function render(data) {
   const bigScore = document.getElementById('bigScore');
   bigScore.textContent = (score != null) ? score : '–';
   bigScore.style.color = scoreColor(score);
-  document.getElementById('rubricMetSummary').innerHTML = rubric
-    ? `루브릭 met <b>${rubric.metCount}/${rubric.totalCount}</b> · 가중 점수 <b>${rubric.awardedPoints}/${rubric.totalPoints} pts</b> · 모델 ${escapeHtml(rubric.model || '–')}`
-    : '<span style="color:var(--text-dim)">아직 실행 결과 없음 — 시나리오 메타만 표시</span>';
-  document.getElementById('themeBadge').textContent = scenario.subcategory || '';
-  document.getElementById('runIdMeta').textContent = run ? `runId: ${run.runId}  ·  ${run.startedAt || ''}` : '실행 결과 없음';
+  let metSummary;
+  if (rubric) {
+    const metCount = rubric.metCount ?? '?';
+    const totalCount = rubric.totalCount ?? '?';
+    const awarded = rubric.awardedPoints ?? '?';
+    const totalPts = rubric.totalPoints ?? '?';
+    const model = rubric.model || '(model 정보 없음)';
+    metSummary = `루브릭 met <b>${metCount}/${totalCount}</b> · 가중 점수 <b>${awarded}/${totalPts} pts</b> · 모델 ${escapeHtml(model)}`;
+    if (rubric.error) {
+      metSummary += `<br><span style="color:var(--red);font-size:11px">⚠ rubric 평가 오류: ${escapeHtml(rubric.error)}</span>`;
+    }
+  } else if (result) {
+    metSummary = '<span style="color:var(--yellow)">⚠ rubric 평가 결과가 없습니다 (rubric 미실행 / 응답 없음 / 평가 오류)</span>';
+  } else {
+    metSummary = '<span style="color:var(--text-dim)">아직 실행 결과 없음 — 시나리오 메타만 표시</span>';
+  }
+  document.getElementById('rubricMetSummary').innerHTML = metSummary;
+  document.getElementById('themeBadge').textContent = scenario.subcategory || '(theme 정보 없음)';
+  document.getElementById('runIdMeta').textContent = run
+    ? `runId: ${run.runId}  ·  ${run.startedAt || ''}  ·  status: ${run.status || '?'}`
+    : '실행 결과 없음 (run 미지정)';
 
   // status badge
   const status = result ? result.status : null;
@@ -348,10 +382,25 @@ function render(data) {
   // ── Multi-turn 대화 (실행 결과) ──
   const turnResults = (result && result.turnResults) || [];
   const turnSummary = document.getElementById('turnSummary');
-  turnSummary.textContent = turnResults.length > 0 ? `${turnResults.length} turns 실행됨` : '실행 결과 없음';
+  if (!result) {
+    turnSummary.textContent = '실행 결과 없음';
+  } else if (turnResults.length === 0) {
+    turnSummary.innerHTML = '<span style="color:var(--yellow)">⚠ turnResults 누락</span>';
+  } else {
+    turnSummary.textContent = `${turnResults.length} turns 실행됨`;
+  }
   const turnList = document.getElementById('turnList');
   if (turnResults.length === 0) {
-    turnList.innerHTML = '<div style="color:var(--text-dim);padding:10px;text-align:center">아직 실행되지 않았습니다 (runId 없거나 result 미존재).</div>';
+    let msg;
+    if (!result) {
+      msg = '아직 실행되지 않았습니다 (runId 없거나 result 미존재).';
+    } else if (result.response) {
+      // 응답은 있는데 turnResults 가 없는 경우 (구 버전 batch 결과)
+      msg = `<b>turnResults 가 없습니다</b> (구 batch 결과 또는 단일 호출 모드). 응답 텍스트는 다음과 같습니다:<br><div class="turn-msg turn-asst" style="margin-top:8px;max-height:300px;overflow-y:auto">${escapeHtml(result.response)}</div>`;
+    } else {
+      msg = '실행 결과에 응답이 없습니다 (error 또는 timeout).';
+    }
+    turnList.innerHTML = '<div class="empty-note">' + msg + '</div>';
   } else {
     turnList.innerHTML = turnResults.map((t, i) => {
       const isLast = i === turnResults.length - 1;
@@ -486,6 +535,9 @@ function render(data) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+  // embed 모드 (모달 iframe 안에서 호출됨 — nav/breadcrumb 숨김)
+  const p = getParams();
+  if (p.embed) document.body.classList.add('embed');
   const ok = await checkAuth();
   if (ok) load();
 });

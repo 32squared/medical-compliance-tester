@@ -111,6 +111,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .toast { position: fixed; bottom: 20px; right: 20px; padding: 10px 14px; border-radius: 8px; background: var(--surface2); border: 1px solid var(--border); z-index: 200; max-width: 400px; font-size: 12px; }
 .toast.success { border-color: var(--green); }
 .toast.error { border-color: var(--red); color: var(--red); }
+
+/* 시나리오 상세 모달 */
+.detail-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 90; align-items: center; justify-content: center; padding: 20px; }
+.detail-modal-overlay.show { display: flex; }
+.detail-modal-box { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; width: 96%; max-width: 1280px; height: 92vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.5); overflow: hidden; }
+.detail-modal-header { padding: 10px 14px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.detail-modal-title { font-size: 13px; font-weight: 700; }
+.detail-modal-close { margin-left: auto; padding: 4px 12px; background: var(--bg-light); border: 1px solid var(--border); color: var(--text); border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: 600; }
+.detail-modal-close:hover { background: var(--red); color: white; border-color: var(--red); }
+.detail-modal-body { flex: 1; overflow: hidden; position: relative; }
+.detail-modal-body iframe { width: 100%; height: 100%; border: none; background: var(--bg); }
+.detail-modal-open-new { padding: 4px 12px; background: var(--accent-dim); border: 1px solid var(--accent); color: var(--accent); border-radius: 5px; cursor: pointer; font-size: 11px; font-weight: 600; text-decoration: none; }
+.detail-modal-open-new:hover { background: var(--accent); color: white; }
 </style>
 </head>
 <body>
@@ -131,6 +144,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <a href="/criteria" class="nav-btn">문진 평가 기준</a>
   <a href="/settings" class="nav-btn">⚙ 설정</a>
   <span id="userBadge" style="margin-left:auto;font-size:11px;color:var(--text-dim)"></span>
+</div>
+
+<!-- 시나리오 상세 모달 -->
+<div class="detail-modal-overlay" id="detailModal" onclick="if(event.target===this)closeScenarioModal()">
+  <div class="detail-modal-box">
+    <div class="detail-modal-header">
+      <span class="detail-modal-title">🩺 시나리오 상세</span>
+      <span id="detailModalSid" style="font-family:monospace;font-size:11px;color:var(--accent)"></span>
+      <a id="detailModalNewTab" class="detail-modal-open-new" target="_blank" rel="noopener" href="#">↗ 새 탭에서 열기</a>
+      <button class="detail-modal-close" onclick="closeScenarioModal()">✕ 닫기 (ESC)</button>
+    </div>
+    <div class="detail-modal-body">
+      <iframe id="detailModalFrame" src="about:blank" title="시나리오 상세"></iframe>
+    </div>
+  </div>
 </div>
 
 <!-- Login gate (admin 만) -->
@@ -579,11 +607,31 @@ function renderScenarioList(theme, items) {
   area.style.display = 'block';
 }
 
-// 시나리오 ID 클릭 → 상세 페이지 (run_id 없이도 동작)
+// 시나리오 ID 클릭 → 모달로 표시 (iframe embed 모드)
 function openScenarioDetail(scenarioId) {
   const runQuery = _selectedRunId ? `&run=${encodeURIComponent(_selectedRunId)}` : '';
-  window.location.href = `/healthbench/scenario?id=${encodeURIComponent(scenarioId)}${runQuery}`;
+  const embedUrl = `/healthbench/scenario?id=${encodeURIComponent(scenarioId)}${runQuery}&embed=1`;
+  const newTabUrl = `/healthbench/scenario?id=${encodeURIComponent(scenarioId)}${runQuery}`;
+  document.getElementById('detailModalSid').textContent = scenarioId;
+  document.getElementById('detailModalNewTab').href = newTabUrl;
+  document.getElementById('detailModalFrame').src = embedUrl;
+  document.getElementById('detailModal').classList.add('show');
+  document.body.style.overflow = 'hidden';  // 배경 스크롤 막기
 }
+
+function closeScenarioModal() {
+  document.getElementById('detailModal').classList.remove('show');
+  document.getElementById('detailModalFrame').src = 'about:blank';  // iframe 정리 (메모리 해제)
+  document.body.style.overflow = '';
+}
+
+// ESC 키 닫기
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const modal = document.getElementById('detailModal');
+    if (modal && modal.classList.contains('show')) closeScenarioModal();
+  }
+});
 
 // ─────────────────────────────────────────────
 // 배치 실행
@@ -816,9 +864,8 @@ function renderReport(rep) {
   const sRows = sorted.map(sc => {
     const turnTxt = sc.turnsExecuted ? (sc.turnsExecuted > 1 ? sc.turnsExecuted + ' turns' : 'single') : '–';
     const errTxt = sc.rubricError ? `<span style="color:var(--red);font-size:10px">⚠ ${escapeHtml(sc.rubricError.substring(0, 60))}</span>` : '';
-    // 시나리오 ID 클릭 시 상세 페이지로 이동 (run_id 포함)
-    const detailUrl = `/healthbench/scenario?id=${encodeURIComponent(sc.id)}&run=${encodeURIComponent(_selectedRunId || '')}`;
-    return `<tr style="cursor:pointer" onclick="window.location.href='${detailUrl}'" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+    // 시나리오 ID 클릭 시 모달 (iframe embed) 열기
+    return `<tr style="cursor:pointer" onclick="openScenarioDetail('${escapeHtml(sc.id)}')" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
       <td style="font-family:monospace;font-size:11px;color:var(--accent);text-decoration:underline">${escapeHtml(sc.id)}</td>
       <td style="color:var(--text-dim)">${escapeHtml(sc.theme || '')}</td>
       <td style="text-align:right;color:${scoreColor(sc.rubricScore)};font-weight:700">${sc.rubricScore ?? '–'}</td>
