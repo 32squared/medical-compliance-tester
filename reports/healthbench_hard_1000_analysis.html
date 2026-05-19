@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>HealthBench Hard 1,000건 분석 보고서</title>
+<style>
+:root {
+  --primary: #0ea5e9;
+  --accent: #6366f1;
+  --green: #22c55e;
+  --yellow: #eab308;
+  --orange: #f97316;
+  --red: #ef4444;
+  --purple: #a855f7;
+  --bg: #ffffff;
+  --surface: #f8fafc;
+  --surface2: #f1f5f9;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --text-dim: #64748b;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.7; }
+
+.page { max-width: 1024px; margin: 0 auto; padding: 32px 28px 60px; }
+
+/* Header */
+.report-header { border-bottom: 4px solid var(--primary); padding-bottom: 18px; margin-bottom: 28px; }
+.report-title { font-size: 30px; font-weight: 800; color: var(--text); margin-bottom: 6px; }
+.report-subtitle { font-size: 14px; color: var(--text-dim); }
+.report-meta { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; font-size: 12px; color: var(--text-dim); }
+.report-meta span { padding: 3px 9px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; }
+.report-meta b { color: var(--text); }
+
+/* Section */
+h2 { font-size: 20px; font-weight: 700; margin: 32px 0 14px; padding-bottom: 8px; border-bottom: 2px solid var(--border); display: flex; align-items: center; gap: 8px; }
+h3 { font-size: 16px; font-weight: 700; margin: 18px 0 8px; color: var(--accent); }
+p { margin-bottom: 10px; }
+ul, ol { margin: 8px 0 12px 24px; }
+li { margin-bottom: 4px; }
+code { background: var(--surface2); padding: 1px 6px; border-radius: 3px; font-size: 12px; color: var(--accent); font-family: 'Menlo', 'Consolas', monospace; }
+
+/* TL;DR box */
+.tldr { background: linear-gradient(135deg, #eff6ff 0%, #ede9fe 100%); border: 1px solid var(--primary); border-left: 6px solid var(--primary); border-radius: 8px; padding: 16px 22px; margin: 18px 0 28px; }
+.tldr-title { font-size: 13px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+.tldr-content { font-size: 14.5px; color: var(--text); line-height: 1.75; }
+.tldr-content b { color: var(--accent); }
+
+/* KPI cards */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 12px; margin: 14px 0 20px; }
+.kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; text-align: center; }
+.kpi-value { font-size: 28px; font-weight: 800; line-height: 1.1; }
+.kpi-label { font-size: 11px; color: var(--text-dim); margin-top: 6px; text-transform: uppercase; letter-spacing: 0.3px; }
+.kpi-card.green .kpi-value { color: var(--green); }
+.kpi-card.yellow .kpi-value { color: var(--yellow); }
+.kpi-card.red .kpi-value { color: var(--red); }
+.kpi-card.blue .kpi-value { color: var(--primary); }
+.kpi-card.purple .kpi-value { color: var(--purple); }
+
+/* Table */
+table { width: 100%; border-collapse: collapse; margin: 10px 0 18px; font-size: 13px; }
+th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { background: var(--surface); font-weight: 700; font-size: 11.5px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.3px; }
+tr:hover td { background: var(--surface); }
+td.num { text-align: right; font-variant-numeric: tabular-nums; }
+td.center { text-align: center; }
+
+/* Bar chart */
+.bar-row { display: flex; align-items: center; gap: 10px; margin: 5px 0; font-size: 12.5px; }
+.bar-label { min-width: 170px; text-align: right; color: var(--text-dim); }
+.bar-track { flex: 1; height: 22px; background: var(--surface2); border-radius: 3px; overflow: hidden; position: relative; }
+.bar-fill { height: 100%; display: flex; align-items: center; padding-left: 8px; color: white; font-weight: 700; font-size: 11px; }
+.bar-value { min-width: 60px; font-weight: 700; }
+
+/* Heatmap */
+.heatmap { display: grid; gap: 2px; margin: 14px 0 20px; font-size: 12px; }
+.heatmap-row { display: grid; gap: 2px; }
+.heatmap-cell { padding: 8px 10px; border-radius: 3px; text-align: center; font-variant-numeric: tabular-nums; font-weight: 600; }
+.heatmap-label-y { display: flex; align-items: center; padding: 8px 10px; font-weight: 600; background: var(--surface); border-radius: 3px; }
+.heatmap-label-x { padding: 6px 4px; text-align: center; font-size: 11px; color: var(--text-dim); font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
+.hm-empty { background: var(--surface2); color: var(--text-dim); }
+
+/* Callout */
+.callout { padding: 12px 16px; border-radius: 6px; margin: 12px 0; border-left: 4px solid; }
+.callout-warn { background: #fef3c7; border-color: var(--yellow); color: #78350f; }
+.callout-red { background: #fee2e2; border-color: var(--red); color: #7f1d1d; }
+.callout-info { background: #dbeafe; border-color: var(--primary); color: #1e3a8a; }
+.callout-green { background: #d1fae5; border-color: var(--green); color: #064e3b; }
+
+/* Priority badges */
+.prio { display: inline-block; padding: 2px 10px; border-radius: 4px; font-weight: 700; font-size: 11px; }
+.prio-red { background: var(--red); color: white; }
+.prio-yellow { background: var(--yellow); color: #78350f; }
+.prio-green { background: var(--green); color: white; }
+
+/* Tags */
+.tag { display: inline-block; padding: 2px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 3px; font-size: 11px; font-family: monospace; color: var(--text-dim); }
+
+/* Print */
+@media print {
+  body { font-size: 11.5pt; }
+  .page { padding: 0; max-width: none; }
+  h2 { page-break-after: avoid; }
+  .kpi-card, .callout, table, .heatmap { page-break-inside: avoid; }
+  .report-header { border-color: #000; }
+  .tldr { background: #f5f5f5 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .bar-fill, .heatmap-cell, .kpi-value { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
+/* Toggle "open in new window" hint */
+.print-hint { position: fixed; top: 12px; right: 12px; padding: 6px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; font-size: 11px; color: var(--text-dim); cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+.print-hint:hover { background: var(--surface2); }
+@media print { .print-hint { display: none; } }
+</style>
+</head>
+<body>
+
+<div class="print-hint" onclick="window.print()">🖨 인쇄 / PDF 저장</div>
+
+<div class="page">
+
+<!-- Header -->
+<header class="report-header">
+  <div class="report-title">🩺 HealthBench Hard 1,000건 분석 보고서</div>
+  <div class="report-subtitle">SKIX 의료 응답 평가 결과 — 약점 패턴 식별 및 개선 우선순위 도출</div>
+  <div class="report-meta">
+    <span><b>run_id</b>: job-20260518-191745-3b1b90</span>
+    <span><b>시점</b>: 2026-05-18</span>
+    <span><b>환경</b>: PROD</span>
+    <span><b>데이터셋</b>: HealthBench Hard subset (1,000건)</span>
+    <span><b>모델</b>: gpt-4o-mini (rubric grader)</span>
+  </div>
+</header>
+
+<!-- TL;DR -->
+<div class="tldr">
+  <div class="tldr-title">📌 한 줄 요약</div>
+  <div class="tldr-content">
+    <b>SKIX 의 Hard subset 평균 점수는 23.67점 (≈ GPT-4o-mini 수준)</b>. 가장 큰 약점은 <b>accuracy</b> (메타 rubric, 70회 × −350pt 손실) 와 <b>context_seeking × instruction_following (−46.8%)</b>. 0점 시나리오 315건 중 83% 가 음수 페널티에 의한 점수 clamp 로 발생. 단순한 시나리오에서만 만점이 나오며 (100점 32건의 평균 rubric 4.7개), 복합 응답에서는 일관된 만점 불가.
+  </div>
+</div>
+
+<!-- 1. 핵심 지표 -->
+<h2>1. 핵심 지표</h2>
+<div class="kpi-grid">
+  <div class="kpi-card yellow"><div class="kpi-value">23.67</div><div class="kpi-label">평균 점수</div></div>
+  <div class="kpi-card"><div class="kpi-value">17.14</div><div class="kpi-label">Median</div></div>
+  <div class="kpi-card red"><div class="kpi-value">15.7%</div><div class="kpi-label">통과율 (≥50)</div></div>
+  <div class="kpi-card blue"><div class="kpi-value">1,000</div><div class="kpi-label">시나리오</div></div>
+  <div class="kpi-card purple"><div class="kpi-value">997</div><div class="kpi-label">평가 완료</div></div>
+  <div class="kpi-card"><div class="kpi-value">~17분</div><div class="kpi-label">실행 소요</div></div>
+</div>
+
+<div class="callout callout-info">
+  <b>Hard subset의 본질</b>: HealthBench Hard 는 모델이 풀기 어려운 시나리오만 모은 부분집합 (5,000건 중 1,000건). 점수가 전반적으로 낮은 게 정상 — OpenAI 의 reference 모델들도 Hard 에서 평균 30–50점.
+</div>
+
+<!-- 2. 점수 분포 -->
+<h2>2. 점수 분포</h2>
+<h3>2.1 Score Bucket</h3>
+<div>
+  <div class="bar-row">
+    <span class="bar-label">75–100 (우수)</span>
+    <div class="bar-track"><div class="bar-fill" style="width:5.3%;background:var(--green)">5.3%</div></div>
+    <span class="bar-value">53건</span>
+  </div>
+  <div class="bar-row">
+    <span class="bar-label">50–74 (통과)</span>
+    <div class="bar-track"><div class="bar-fill" style="width:10.4%;background:var(--primary)">10.4%</div></div>
+    <span class="bar-value">104건</span>
+  </div>
+  <div class="bar-row">
+    <span class="bar-label">25–49 (미흡)</span>
+    <div class="bar-track"><div class="bar-fill" style="width:24.5%;background:var(--yellow)">24.5%</div></div>
+    <span class="bar-value">245건</span>
+  </div>
+  <div class="bar-row">
+    <span class="bar-label">0–24 (심각)</span>
+    <div class="bar-track"><div class="bar-fill" style="width:59.5%;background:var(--red)">59.5%</div></div>
+    <span class="bar-value">595건</span>
+  </div>
+  <div class="bar-row">
+    <span class="bar-label">no-score</span>
+    <div class="bar-track"><div class="bar-fill" style="width:0.3%;background:var(--text-dim)"></div></div>
+    <span class="bar-value">3건</span>
+  </div>
+</div>
+
+<h3>2.2 10점 단위 Histogram</h3>
+<div>
+  <div class="bar-row"><span class="bar-label">0–9</span><div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--red)">416</div></div></div>
+  <div class="bar-row"><span class="bar-label">10–19</span><div class="bar-track"><div class="bar-fill" style="width:26.6%;background:var(--red)">111</div></div></div>
+  <div class="bar-row"><span class="bar-label">20–29</span><div class="bar-track"><div class="bar-fill" style="width:30.5%;background:var(--orange)">127</div></div></div>
+  <div class="bar-row"><span class="bar-label">30–39</span><div class="bar-track"><div class="bar-fill" style="width:25.9%;background:var(--orange)">108</div></div></div>
+  <div class="bar-row"><span class="bar-label">40–49</span><div class="bar-track"><div class="bar-fill" style="width:18.7%;background:var(--yellow)">78</div></div></div>
+  <div class="bar-row"><span class="bar-label">50–59</span><div class="bar-track"><div class="bar-fill" style="width:14.4%;background:var(--yellow)">60</div></div></div>
+  <div class="bar-row"><span class="bar-label">60–69</span><div class="bar-track"><div class="bar-fill" style="width:9.1%;background:var(--primary)">38</div></div></div>
+  <div class="bar-row"><span class="bar-label">70–79</span><div class="bar-track"><div class="bar-fill" style="width:3.8%;background:var(--primary)">16</div></div></div>
+  <div class="bar-row"><span class="bar-label">80–89</span><div class="bar-track"><div class="bar-fill" style="width:2.2%;background:var(--green)">9</div></div></div>
+  <div class="bar-row"><span class="bar-label">90–99</span><div class="bar-track"><div class="bar-fill" style="width:0.5%;background:var(--green)">2</div></div></div>
+  <div class="bar-row"><span class="bar-label">100</span><div class="bar-track"><div class="bar-fill" style="width:7.7%;background:var(--green)">32</div></div></div>
+</div>
+
+<div class="callout callout-red">
+  <b>가장 큰 신호</b>: 0–9점 시나리오가 416건 (41.6%). 절반 가까이가 0점 근처에 몰림. 즉 SKIX 가 <b>음수 페널티 rubric 항목을 회피하지 못하거나 핵심 항목을 놓침</b>.
+</div>
+
+<!-- 3. Theme 별 평균 -->
+<h2>3. Theme별 평균 점수</h2>
+<table>
+  <thead><tr><th>Theme</th><th class="num">n</th><th class="num">평균</th><th class="num">통과율 (≥50)</th><th>강·약</th></tr></thead>
+  <tbody>
+    <tr><td><b>hedging</b></td><td class="num">167</td><td class="num" style="color:var(--green);font-weight:700">34.56</td><td class="num">24.6%</td><td>🟢 상대적 강점 — 안전 표현·의사 상담 권유</td></tr>
+    <tr><td>health_data_tasks</td><td class="num">114</td><td class="num">27.57</td><td class="num">21.1%</td><td>—</td></tr>
+    <tr><td>context_seeking</td><td class="num">178</td><td class="num">26.37</td><td class="num">19.7%</td><td>—</td></tr>
+    <tr><td>emergency_referrals</td><td class="num">66</td><td class="num">22.19</td><td class="num">10.6%</td><td>—</td></tr>
+    <tr><td>global_health</td><td class="num">279</td><td class="num">20.71</td><td class="num">12.5%</td><td>—</td></tr>
+    <tr><td><b>communication</b></td><td class="num">111</td><td class="num" style="color:var(--orange);font-weight:700">15.48</td><td class="num">7.2%</td><td>🟡 약함 — 전문용어 풀이·표현</td></tr>
+    <tr><td><b>complex_responses</b></td><td class="num">82</td><td class="num" style="color:var(--red);font-weight:700">12.55</td><td class="num">8.5%</td><td>🔴 가장 약함 — 복합·구조화 응답</td></tr>
+  </tbody>
+</table>
+
+<!-- 4. Axis 별 가중점수 -->
+<h2>4. Axis별 가중점수</h2>
+<table>
+  <thead><tr><th>Axis</th><th class="num">items</th><th class="num">met / total</th><th class="num">awarded / possible</th><th class="num">가중점수</th></tr></thead>
+  <tbody>
+    <tr><td><b>communication_quality</b></td><td class="num">709</td><td class="num">266</td><td class="num">1,042 / 2,174</td><td class="num" style="color:var(--green);font-weight:700">47.93</td></tr>
+    <tr><td>instruction_following</td><td class="num">541</td><td class="num">224</td><td class="num">863 / 1,981</td><td class="num">43.56</td></tr>
+    <tr><td>context_awareness</td><td class="num">2,436</td><td class="num">895</td><td class="num">4,026 / 11,371</td><td class="num">35.41</td></tr>
+    <tr><td>completeness</td><td class="num">4,615</td><td class="num">1,670</td><td class="num">6,762 / 20,742</td><td class="num">32.60</td></tr>
+    <tr><td><b>accuracy</b></td><td class="num">3,505</td><td class="num">872</td><td class="num">4,627 / 15,166</td><td class="num" style="color:var(--red);font-weight:700">30.51</td></tr>
+  </tbody>
+</table>
+
+<div class="callout callout-warn">
+  <b>관찰</b>: <b>accuracy</b> (의학적 정확성) 가 가장 약함. <b>completeness</b> (완전성) 도 낮음 — 핵심 정보 일부 누락. 표현(communication_quality) + 지시 따르기 (instruction_following) 는 상대적으로 양호.
+</div>
+
+<!-- 5. Theme × Axis Heatmap -->
+<h2>5. Theme × Axis 가중점수 Heatmap</h2>
+<p>각 셀의 값은 <code>(awarded / possible) × 100</code>. <b>음수</b> 는 음수 rubric 항목 met 이 양수보다 큰 경우 (점수 차감).</p>
+
+<div class="heatmap" style="grid-template-columns: 190px repeat(5, 1fr);">
+  <!-- header -->
+  <div class="heatmap-label-x">Theme \ Axis</div>
+  <div class="heatmap-label-x">accuracy</div>
+  <div class="heatmap-label-x">communication</div>
+  <div class="heatmap-label-x">completeness</div>
+  <div class="heatmap-label-x">context_aware</div>
+  <div class="heatmap-label-x">instruction_follow</div>
+
+  <!-- rows -->
+  <div class="heatmap-label-y">hedging</div>
+  <div class="heatmap-cell" style="background:#22c55e;color:white">45.1%</div>
+  <div class="heatmap-cell" style="background:#fef3c7">21.6%</div>
+  <div class="heatmap-cell" style="background:#fef3c7">17.8%</div>
+  <div class="heatmap-cell" style="background:#fef3c7">19.3%</div>
+  <div class="heatmap-cell" style="background:#fee2e2">1.4%</div>
+
+  <div class="heatmap-label-y">health_data_tasks</div>
+  <div class="heatmap-cell" style="background:#fee2e2">12.5%</div>
+  <div class="heatmap-cell" style="background:#fed7aa">25.0%</div>
+  <div class="heatmap-cell" style="background:#fed7aa">20.1%</div>
+  <div class="heatmap-cell" style="background:#fef3c7">15.0%</div>
+  <div class="heatmap-cell" style="background:#fde68a">38.0%</div>
+
+  <div class="heatmap-label-y">context_seeking</div>
+  <div class="heatmap-cell" style="background:#fde68a">35.4%</div>
+  <div class="heatmap-cell" style="background:#fecaca">-7.7%</div>
+  <div class="heatmap-cell" style="background:#fed7aa">19.7%</div>
+  <div class="heatmap-cell" style="background:#fef3c7">16.0%</div>
+  <div class="heatmap-cell" style="background:#dc2626;color:white;font-weight:800">-46.8%</div>
+
+  <div class="heatmap-label-y">emergency_referrals</div>
+  <div class="heatmap-cell" style="background:#fed7aa">25.0%</div>
+  <div class="heatmap-cell" style="background:#86efac">48.6%</div>
+  <div class="heatmap-cell" style="background:#fee2e2">12.0%</div>
+  <div class="heatmap-cell" style="background:#fef3c7">17.4%</div>
+  <div class="heatmap-cell" style="background:#fee2e2">0.0%</div>
+
+  <div class="heatmap-label-y">global_health</div>
+  <div class="heatmap-cell" style="background:#fef3c7">16.7%</div>
+  <div class="heatmap-cell" style="background:#22c55e;color:white;font-weight:800">67.4%</div>
+  <div class="heatmap-cell" style="background:#fee2e2">2.3%</div>
+  <div class="heatmap-cell" style="background:#fed7aa">28.6%</div>
+  <div class="heatmap-cell" style="background:#fef3c7">16.5%</div>
+
+  <div class="heatmap-label-y">communication</div>
+  <div class="heatmap-cell" style="background:#fee2e2">13.6%</div>
+  <div class="heatmap-cell" style="background:#fde68a">37.2%</div>
+  <div class="heatmap-cell" style="background:#fecaca;font-weight:700">-12.6%</div>
+  <div class="heatmap-cell" style="background:#fee2e2">11.6%</div>
+  <div class="heatmap-cell" style="background:#fee2e2">0.0%</div>
+
+  <div class="heatmap-label-y">complex_responses</div>
+  <div class="heatmap-cell" style="background:#fee2e2">10.3%</div>
+  <div class="heatmap-cell" style="background:#fee2e2">3.1%</div>
+  <div class="heatmap-cell" style="background:#fecaca;font-weight:700">-19.4%</div>
+  <div class="heatmap-cell" style="background:#fed7aa">19.3%</div>
+  <div class="heatmap-cell" style="background:#fca5a5;color:white;font-weight:700">-23.0%</div>
+</div>
+
+<div class="callout callout-red">
+  <b>가장 큰 약점 (heatmap red zone)</b>:
+  <ul style="margin-top:6px">
+    <li><b>context_seeking × instruction_following = −46.8%</b>: 추가 정보를 물어야 할 상황에서 지시 안 따름</li>
+    <li><b>complex_responses</b>: completeness −19.4% + instruction_following −23.0% — 복합 응답 처리 능력 부족</li>
+    <li><b>communication × completeness = −12.6%</b>: 응답 구조 짤 때 핵심 정보 누락</li>
+  </ul>
+</div>
+<div class="callout callout-green">
+  <b>강점</b>:
+  <ul style="margin-top:6px">
+    <li><b>global_health × communication_quality = 67.4%</b>: 일반 건강 질의에 친화적 설명</li>
+    <li><b>emergency_referrals × communication_quality = 48.6%</b>: 응급 상황 안내 표현 양호</li>
+    <li><b>hedging × accuracy = 45.1%</b>: 불확실성 표현·안전 권유는 정확</li>
+  </ul>
+</div>
+
+<!-- 6. 손실 점수 가장 큰 양수 항목 -->
+<h2>6. 가장 자주 놓친 양수 Rubric (손실 점수 TOP 10)</h2>
+<table>
+  <thead><tr><th class="center">횟수</th><th class="center">점수</th><th class="num">손실</th><th>Axis</th><th>Criterion 요약</th></tr></thead>
+  <tbody>
+    <tr><td class="center"><b>70</b></td><td class="center">+5</td><td class="num" style="color:var(--red);font-weight:700">350</td><td><span class="tag">accuracy</span></td><td>"response must be entirely factually accurate" (메타 rubric — 모든 문장 정확)</td></tr>
+    <tr><td class="center">45</td><td class="center">+5</td><td class="num">225</td><td><span class="tag">communication_quality</span></td><td>"core question 을 명확히 일찍 답변"</td></tr>
+    <tr><td class="center">45</td><td class="center">+5</td><td class="num">225</td><td><span class="tag">context_awareness</span></td><td>비전문가 사용자 컨텍스트 처리</td></tr>
+    <tr><td class="center">37</td><td class="center">+5</td><td class="num">185</td><td><span class="tag">accuracy</span></td><td>보건의료 전문가 사용자 컨텍스트 정확성</td></tr>
+    <tr><td class="center">28</td><td class="center">+5</td><td class="num">140</td><td><span class="tag">communication_quality</span></td><td>전문가 대상 응답 표현</td></tr>
+    <tr><td class="center">26</td><td class="center">+5</td><td class="num">130</td><td><span class="tag">instruction_following</span></td><td>"누락된 정보가 있을 때 정확/안전 위해 task 거부"</td></tr>
+    <tr><td class="center">23</td><td class="center">+5</td><td class="num">115</td><td><span class="tag">instruction_following</span></td><td>요청된 형식/길이/범위 정확히 준수</td></tr>
+    <tr><td class="center">22</td><td class="center">+5</td><td class="num">110</td><td><span class="tag">accuracy</span></td><td>"factually correct + relevant" 메타 기준</td></tr>
+    <tr><td class="center">19</td><td class="center">+5</td><td class="num">95</td><td><span class="tag">context_awareness</span></td><td>"follow up 질문으로 컨텍스트 보강"</td></tr>
+    <tr><td class="center">16</td><td class="center">+5</td><td class="num">80</td><td><span class="tag">communication_quality</span></td><td>의사 검토 기준 — "응답은 다소 simple 해야"</td></tr>
+  </tbody>
+</table>
+
+<div class="callout callout-warn">
+  <b>핵심 약점</b>: SKIX 가 자주 놓치는 항목은 <b>accuracy 메타 rubric</b> + <b>communication_quality (core question 우선 답변)</b>. 이는 모든 응답에 공통 적용되는 기준이므로 prompt 수준의 보강이 효과적.
+</div>
+
+<!-- 7. 0점 시나리오 분석 -->
+<h2>7. 0점 시나리오 315건 원인 분석</h2>
+<div class="kpi-grid">
+  <div class="kpi-card red">
+    <div class="kpi-value">178</div>
+    <div class="kpi-label">음수 met + 양수 met<br>(clamp)</div>
+  </div>
+  <div class="kpi-card red">
+    <div class="kpi-value">85</div>
+    <div class="kpi-label">음수 met only<br>(양수 0 met)</div>
+  </div>
+  <div class="kpi-card yellow">
+    <div class="kpi-value">52</div>
+    <div class="kpi-label">모두 missed<br>(음수 없음, 양수 전무)</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">0</div>
+    <div class="kpi-label">혼합</div>
+  </div>
+</div>
+
+<div class="callout callout-info">
+  <b>시사점</b>: 0점 시나리오의 <b>83% (263건)</b> 가 음수 페널티에 의한 발생. 좋은 답변 일부를 하더라도 음수 항목 1–2개가 발동되면 score 가 0으로 clamp 됨. SKIX 가 <b>무엇을 절대 빠뜨리면 안 되는지</b> 명확한 가이드 필요.
+</div>
+
+<!-- 8. 100점 시나리오 -->
+<h2>8. 100점 시나리오 32건 — 만점의 함정</h2>
+<table>
+  <thead><tr><th>Theme</th><th class="num">100점 건수</th><th class="num">전체</th><th class="num">100점 비율</th></tr></thead>
+  <tbody>
+    <tr><td>hedging</td><td class="num"><b>10</b></td><td class="num">167</td><td class="num">6.0%</td></tr>
+    <tr><td>health_data_tasks</td><td class="num">8</td><td class="num">115</td><td class="num">7.0%</td></tr>
+    <tr><td>context_seeking</td><td class="num">5</td><td class="num">179</td><td class="num">2.8%</td></tr>
+    <tr><td>global_health</td><td class="num">5</td><td class="num">280</td><td class="num">1.8%</td></tr>
+    <tr><td>communication</td><td class="num">2</td><td class="num">111</td><td class="num">1.8%</td></tr>
+    <tr><td>emergency_referrals</td><td class="num">1</td><td class="num">66</td><td class="num">1.5%</td></tr>
+    <tr><td>complex_responses</td><td class="num">1</td><td class="num">82</td><td class="num">1.2%</td></tr>
+  </tbody>
+</table>
+
+<div class="callout callout-warn">
+  <b>주의</b>: 100점 시나리오 32건의 <b>평균 rubric items = 4.7개</b> (전체 평균 11.8). 즉 <b>채점 기준이 적은 단순 시나리오</b>에서만 만점 가능. 복합·구조화 응답에서는 일관된 만점 어려움.
+</div>
+
+<!-- 9. 개선 우선순위 -->
+<h2>9. SKIX 개선 우선순위 (근거 기반)</h2>
+<table>
+  <thead><tr><th class="center">우선</th><th>영역</th><th>근거</th><th>권장 액션</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="center"><span class="prio prio-red">1</span></td>
+      <td><b>context_seeking × instruction_following</b></td>
+      <td>가중점수 <b>−46.8%</b> (음수, 가장 심함)</td>
+      <td>"추가 정보 요청" 시나리오에서 형식·범위 지시 명확히 따르도록 prompt 보강</td>
+    </tr>
+    <tr>
+      <td class="center"><span class="prio prio-red">2</span></td>
+      <td><b>complex_responses 전반</b></td>
+      <td>5개 중 3 axis 음수 (completeness −19.4 / instruction_following −23.0)</td>
+      <td>복잡한 multi-part 응답을 구조화·단계화하는 prompt template 추가</td>
+    </tr>
+    <tr>
+      <td class="center"><span class="prio prio-red">3</span></td>
+      <td><b>accuracy 메타 rubric</b></td>
+      <td>70회 × −350pt 손실 (가장 자주 놓침)</td>
+      <td>의학적 사실 확인 단계 강화 — 인용 / source-based response</td>
+    </tr>
+    <tr>
+      <td class="center"><span class="prio prio-yellow">4</span></td>
+      <td>communication × completeness 음수</td>
+      <td>−12.6% (응답 구조 짤 때 정보 누락)</td>
+      <td>"core question 빠르고 명확히 답변" — 질문 요약 + 핵심 답변 우선</td>
+    </tr>
+    <tr>
+      <td class="center"><span class="prio prio-yellow">5</span></td>
+      <td>음수 페널티 회피</td>
+      <td>0점 시나리오의 83%</td>
+      <td>자주 발생하는 음수 항목 카탈로그화 → SKIX guideline 에 "이것은 빠뜨리면 안 됨" 명시</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- 10. 비교 reference -->
+<h2>10. 외부 모델 비교 (HealthBench 논문)</h2>
+<table>
+  <thead><tr><th>모델</th><th class="num">Hard subset 점수</th><th>차이</th></tr></thead>
+  <tbody>
+    <tr><td>o1</td><td class="num">~52</td><td>+28</td></tr>
+    <tr><td>Claude 3.5 Sonnet</td><td class="num">~40–50</td><td>+16–26</td></tr>
+    <tr><td>GPT-4o</td><td class="num">~38</td><td>+14</td></tr>
+    <tr><td><b>SKIX (본 평가)</b></td><td class="num" style="color:var(--accent);font-weight:700"><b>23.67</b></td><td>—</td></tr>
+    <tr><td>GPT-4o-mini</td><td class="num">~24</td><td>≈ SKIX</td></tr>
+  </tbody>
+</table>
+
+<div class="callout callout-info">
+  <b>해석</b>: SKIX 의 Hard subset 점수 (23.67) 는 GPT-4o-mini 수준. <b>accuracy + completeness 보강</b>으로 GPT-4o (~38) 까지 격차 ~15점 좁힐 수 있을 것 — 두 axis 가 현재 약점에 집중되어 있어 ROI 큼.
+</div>
+
+<!-- 11. 다음 작업 -->
+<h2>11. 권장 다음 작업</h2>
+<ol>
+  <li><b>0점 시나리오 178건의 음수 항목 카탈로그화</b> — completeness 음수 항목을 일반 패턴으로 분류 (예: "follow-up 권유 누락", "specific drug list 누락" 등)</li>
+  <li><b>Theme × Axis 매트릭스 기반 prompt 개선</b> — complex_responses 와 context_seeking 의 instruction_following 부분</li>
+  <li><b>SKIX guideline 보강</b> — 가장 자주 met 되는 음수 항목 (omission) 을 negative list 로 작성</li>
+  <li><b>Phase 3 확장 (선택)</b> — Consensus 3,671건 import + batch 실행 후 본 분석과 cross-check</li>
+</ol>
+
+<footer style="margin-top:48px;padding-top:16px;border-top:1px solid var(--border);font-size:11px;color:var(--text-dim);text-align:center">
+  생성: 본 보고서는 <code>scripts/analyze_run_scores.py</code> + <code>scripts/analyze_hb_failures.py</code> 의 출력에서 자동 정리.<br>
+  데이터 보존: <code>test_runs</code> 테이블의 <code>job-20260518-191745-3b1b90</code> run.<br>
+  <span style="opacity:0.7">© 의료 컴플라이언스 테스트 도구 — 2026</span>
+</footer>
+
+</div>
+
+</body>
+</html>
