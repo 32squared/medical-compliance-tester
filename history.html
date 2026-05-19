@@ -540,24 +540,52 @@
     return y + '.' + mo + '.' + da + ' ' + h + ':' + mi;
   }
 
+  // HB run ID set (history 필터링용)
+  let _hbRunIds = new Set();
+  // 필터 상태: 'all' | 'hb' | 'normal'
+  let _runFilter = (typeof localStorage !== 'undefined' && localStorage.getItem('historyRunFilter')) || 'all';
+
   // ── Load History ──
   function loadHistory() {
-    fetch('/api/history')
-      .then(r => r.json())
-      .then(data => {
-        historyData = Array.isArray(data) ? data : (data.runs || []);
-        renderRunList();
-      })
-      .catch(() => {
-        historyData = [];
-        renderRunList();
-      });
+    // /api/history (전체) + /api/healthbench/runs (HB 만) 병렬 로드
+    Promise.all([
+      fetch('/api/history').then(r => r.ok ? r.json() : { runs: [] }).catch(() => ({ runs: [] })),
+      fetch('/api/healthbench/runs').then(r => r.ok ? r.json() : { runs: [] }).catch(() => ({ runs: [] })),
+    ]).then(([all, hb]) => {
+      historyData = Array.isArray(all) ? all : (all.runs || []);
+      _hbRunIds = new Set((hb.runs || []).map(r => r.runId || r.id).filter(Boolean));
+      renderRunList();
+    });
+  }
+
+  function setRunFilter(f) {
+    _runFilter = f;
+    try { localStorage.setItem('historyRunFilter', f); } catch (e) { /* ignore */ }
+    document.querySelectorAll('.history-filter-btn').forEach(b => {
+      b.classList.toggle('active', b.getAttribute('data-filter') === f);
+    });
+    renderRunList();
   }
 
   function renderRunList() {
     const list = document.getElementById('runList');
+
+    // 필터 토글 바 (목록 위에)
+    const totalAll = historyData.length;
+    const totalHb = historyData.filter(r => _hbRunIds.has(r.runId || r.id)).length;
+    const totalNormal = totalAll - totalHb;
+    const filterBar =
+      '<div style="display:flex;gap:4px;padding:8px 8px 6px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:1">' +
+        '<button class="history-filter-btn' + (_runFilter==='all' ? ' active' : '') + '" data-filter="all" onclick="setRunFilter(\'all\')" ' +
+          'style="flex:1;padding:4px 6px;font-size:10.5px;background:' + (_runFilter==='all' ? 'var(--accent-dim)' : 'var(--bg)') + ';color:' + (_runFilter==='all' ? 'var(--accent)' : 'var(--text-dim)') + ';border:1px solid ' + (_runFilter==='all' ? 'var(--accent)' : 'var(--border)') + ';border-radius:4px;cursor:pointer;font-weight:600">전체 ' + totalAll + '</button>' +
+        '<button class="history-filter-btn' + (_runFilter==='hb' ? ' active' : '') + '" data-filter="hb" onclick="setRunFilter(\'hb\')" ' +
+          'style="flex:1;padding:4px 6px;font-size:10.5px;background:' + (_runFilter==='hb' ? 'rgba(14,165,233,0.2)' : 'var(--bg)') + ';color:' + (_runFilter==='hb' ? '#0ea5e9' : 'var(--text-dim)') + ';border:1px solid ' + (_runFilter==='hb' ? '#0ea5e9' : 'var(--border)') + ';border-radius:4px;cursor:pointer;font-weight:600">🩺 HB ' + totalHb + '</button>' +
+        '<button class="history-filter-btn' + (_runFilter==='normal' ? ' active' : '') + '" data-filter="normal" onclick="setRunFilter(\'normal\')" ' +
+          'style="flex:1;padding:4px 6px;font-size:10.5px;background:' + (_runFilter==='normal' ? 'var(--surface2)' : 'var(--bg)') + ';color:' + (_runFilter==='normal' ? 'var(--text)' : 'var(--text-dim)') + ';border:1px solid ' + (_runFilter==='normal' ? 'var(--text)' : 'var(--border)') + ';border-radius:4px;cursor:pointer;font-weight:600">일반 ' + totalNormal + '</button>' +
+      '</div>';
+
     if (historyData.length === 0) {
-      list.innerHTML =
+      list.innerHTML = filterBar +
         '<div class="empty-state" style="padding:30px 16px">' +
           '<div class="empty-icon" style="font-size:36px">&#128202;</div>' +
           '<div class="empty-title" style="font-size:13px">아직 테스트 이력이 없습니다</div>' +
@@ -566,7 +594,20 @@
       return;
     }
 
-    list.innerHTML = historyData.map(run => {
+    // 필터 적용
+    let displayed = historyData;
+    if (_runFilter === 'hb') displayed = historyData.filter(r => _hbRunIds.has(r.runId || r.id));
+    else if (_runFilter === 'normal') displayed = historyData.filter(r => !_hbRunIds.has(r.runId || r.id));
+
+    if (displayed.length === 0) {
+      list.innerHTML = filterBar +
+        '<div class="empty-state" style="padding:20px 16px">' +
+          '<div class="empty-title" style="font-size:12px;color:var(--text-dim)">현재 필터에 일치하는 batch 가 없습니다</div>' +
+        '</div>';
+      return;
+    }
+
+    list.innerHTML = filterBar + displayed.map(run => {
       const s = run.summary || {};
       const total = s.total || 0;
       const passed = s.passed || 0;
@@ -588,11 +629,13 @@
 
       const runByName = run.runBy || run.tester || '';
       const runByBadge = runByName ? '<span style="font-size:10px;color:var(--text-dim);background:rgba(255,255,255,.08);padding:1px 6px;border-radius:4px;margin-left:4px">👤 ' + escapeHtml(runByName) + '</span>' : '';
+      const hbBadge = _hbRunIds.has(rid) ? '<span style="font-size:10px;color:#0ea5e9;background:rgba(14,165,233,0.15);padding:1px 6px;border-radius:4px;margin-left:4px;font-weight:600" title="HealthBench batch">🩺 HB</span>' : '';
 
       return '<div class="run-item' + (isActive ? ' active' : '') + (isRunning ? ' running' : '') + '" onclick="selectRun(\'' + rid + '\')" data-runid="' + rid + '">' +
         '<div class="run-item-top">' +
           '<span class="run-type-icon">' + (isBatch ? '&#128230;' : '&#9654;') + '</span>' +
           '<span class="run-env-badge ' + env + '">' + env.toUpperCase() + '</span>' +
+          hbBadge +
           runByBadge +
           '<span class="run-timestamp">' + formatTimestamp(run.startedAt || run.timestamp) + '</span>' +
           statusBadge +

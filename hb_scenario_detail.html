@@ -93,6 +93,22 @@ body.embed .breadcrumb { display: none; }
 /* 빈 데이터 안내 */
 .empty-note { color: var(--text-dim); font-size: 11.5px; padding: 8px 12px; background: var(--bg-light); border-radius: 4px; font-style: italic; }
 .field-missing { color: var(--text-dim); font-style: italic; font-size: 11px; }
+
+/* SKIX vs HealthBench reference 비교 UI */
+.compare-pair { background: var(--bg-light); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; margin-bottom: 10px; }
+.compare-pair.last-turn { border-color: var(--accent); }
+.compare-pair-header { font-size: 11px; color: var(--text-dim); margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+.compare-pair-header b { color: var(--text); font-size: 12px; }
+.compare-user { padding: 6px 10px; background: var(--surface); border-left: 3px solid var(--purple); border-radius: 4px; margin-bottom: 8px; font-size: 12.5px; white-space: pre-wrap; line-height: 1.5; }
+.compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 900px) { .compare-grid { grid-template-columns: 1fr; } }
+.compare-col { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 8px 10px; }
+.compare-col-label { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 3px; margin-bottom: 5px; display: inline-block; }
+.compare-col-label.skix { background: var(--accent-dim); color: var(--accent); }
+.compare-col-label.ref { background: rgba(168,85,247,0.15); color: var(--purple); }
+.compare-col-label.empty { background: var(--surface2); color: var(--text-dim); }
+.compare-body { font-size: 12.5px; white-space: pre-wrap; line-height: 1.55; max-height: 280px; overflow-y: auto; }
+.compare-meta { font-size: 10px; color: var(--text-dim); margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--border); }
 </style>
 </head>
 <body>
@@ -187,10 +203,10 @@ body.embed .breadcrumb { display: none; }
     </div>
   </div>
 
-  <!-- 6. 시나리오 원본 turns (HealthBench reference assistant 포함) -->
+  <!-- 6. SKIX 응답 vs HealthBench reference 비교 -->
   <div class="section">
-    <div class="section-title">📖 시나리오 원본 (HealthBench 데이터셋)
-      <span style="font-size:10px;color:var(--text-dim);font-weight:400;margin-left:auto">참고용 — reference assistant 응답은 SKIX 가 아닌 OpenAI 가 사전 생성</span>
+    <div class="section-title">⚖ SKIX 응답 vs HealthBench reference 비교
+      <span style="font-size:10px;color:var(--text-dim);font-weight:400;margin-left:auto">실행 결과와 OpenAI 사전 생성 reference assistant 응답을 나란히 표시</span>
     </div>
     <div class="section-body" id="referenceTurns"></div>
   </div>
@@ -538,16 +554,95 @@ function render(data) {
     other.innerHTML = cards.join('');
   }
 
-  // ── 시나리오 원본 turns (reference) ──
+  // ── SKIX 응답 vs HealthBench reference 비교 ──
+  // 시나리오 원본 turns 는 [user, asst_ref, user, asst_ref, ..., user] 형식 (마지막은 user)
+  // SKIX 실행 결과는 turnResults — user turn 마다 SKIX 응답 (assistant)
+  // → user turn 별로 짝지어 표시
   const refArea = document.getElementById('referenceTurns');
-  if (turns.length === 0) {
-    refArea.innerHTML = '<div style="color:var(--text-dim)">turns 없음</div>';
+  if (turns.length === 0 && turnResults.length === 0) {
+    refArea.innerHTML = '<div class="empty-note">turns 정보가 없습니다.</div>';
   } else {
-    refArea.innerHTML = turns.map((t, i) => {
-      const role = t.role === 'user' ? '👤 USER' : '🤖 ASSISTANT (reference)';
-      const cls = t.role === 'user' ? 'turn-user' : 'turn-asst ref';
-      return `<div style="margin-bottom:8px"><div class="role-label">${role}</div><div class="turn-msg ${cls}">${escapeHtml(t.content || '')}</div></div>`;
-    }).join('');
+    // user turn 별 pair 구성
+    const userIndices = [];
+    for (let i = 0; i < turns.length; i++) {
+      if (turns[i].role === 'user') userIndices.push(i);
+    }
+    // 만약 turns 없고 turnResults 만 있으면 turnResults 의 query 로 user turn 구성
+    if (userIndices.length === 0 && turnResults.length > 0) {
+      // turnResults 만 있는 경우 (scenarioMissing fallback 시)
+      refArea.innerHTML = turnResults.map((t, i) => {
+        const isLast = i === turnResults.length - 1;
+        return `<div class="compare-pair${isLast ? ' last-turn' : ''}">
+          <div class="compare-pair-header">
+            <b>Turn ${i + 1}</b>
+            ${isLast ? '<span style="color:var(--accent);font-size:10px">⭐ 평가 대상</span>' : ''}
+            <span style="margin-left:auto;color:var(--text-dim);font-size:10px">SKIX 만 표시 — HealthBench reference 데이터 없음</span>
+          </div>
+          <div class="compare-user"><span style="font-size:10px;color:var(--purple);font-weight:600">USER</span><br>${escapeHtml(t.query || '')}</div>
+          <div class="compare-grid">
+            <div class="compare-col">
+              <span class="compare-col-label skix">🤖 SKIX 응답</span>
+              <div class="compare-body">${escapeHtml(t.response || '(응답 없음)')}</div>
+              <div class="compare-meta">${t.elapsed_ms != null ? t.elapsed_ms + 'ms' : ''}${t.http_status ? ' · HTTP ' + t.http_status : ''}${t.error ? ' · ⚠ ' + escapeHtml(t.error.substring(0, 60)) : ''}</div>
+            </div>
+            <div class="compare-col">
+              <span class="compare-col-label empty">📖 HealthBench reference</span>
+              <div class="compare-body" style="color:var(--text-dim);font-style:italic">(시나리오 원본 turns 가 없어 표시 불가)</div>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    } else {
+      // 정상 — turns 의 user turn 과 turnResults pair 짝짓기
+      refArea.innerHTML = userIndices.map((userIdx, pairIdx) => {
+        const userTurn = turns[userIdx];
+        // 다음 assistant turn (reference)
+        const refAssistant = (userIdx + 1 < turns.length && turns[userIdx + 1].role === 'assistant') ? turns[userIdx + 1] : null;
+        // SKIX 실행 결과
+        const skixTurn = turnResults[pairIdx] || null;
+        const isLast = pairIdx === userIndices.length - 1;
+
+        const skixCol = skixTurn ? `
+          <div class="compare-col">
+            <span class="compare-col-label skix">🤖 SKIX 응답</span>
+            <div class="compare-body">${escapeHtml(skixTurn.response || '(응답 없음)')}</div>
+            <div class="compare-meta">${skixTurn.elapsed_ms != null ? skixTurn.elapsed_ms + 'ms' : ''}${skixTurn.http_status ? ' · HTTP ' + skixTurn.http_status : ''}${skixTurn.error ? ' · ⚠ ' + escapeHtml(skixTurn.error.substring(0, 60)) : ''}</div>
+          </div>
+        ` : `
+          <div class="compare-col">
+            <span class="compare-col-label empty">🤖 SKIX 응답</span>
+            <div class="compare-body" style="color:var(--text-dim);font-style:italic">(실행 결과 없음 — 미실행 또는 result entry 누락)</div>
+          </div>
+        `;
+
+        const refCol = refAssistant ? `
+          <div class="compare-col">
+            <span class="compare-col-label ref">📖 HealthBench reference</span>
+            <div class="compare-body">${escapeHtml(refAssistant.content || '')}</div>
+            <div class="compare-meta">OpenAI 가 사전 생성한 reference assistant 응답 (채점에는 사용 안 함)</div>
+          </div>
+        ` : (isLast ? `
+          <div class="compare-col">
+            <span class="compare-col-label empty">📖 HealthBench reference</span>
+            <div class="compare-body" style="color:var(--text-dim);font-style:italic">(마지막 user turn — reference 없음. 이 user 질문에 대한 응답이 채점 대상)</div>
+          </div>
+        ` : `
+          <div class="compare-col">
+            <span class="compare-col-label empty">📖 HealthBench reference</span>
+            <div class="compare-body" style="color:var(--text-dim);font-style:italic">(reference 없음)</div>
+          </div>
+        `);
+
+        return `<div class="compare-pair${isLast ? ' last-turn' : ''}">
+          <div class="compare-pair-header">
+            <b>Turn ${pairIdx + 1}</b>
+            ${isLast ? '<span style="color:var(--accent);font-size:10px">⭐ 평가 대상 (마지막 user turn)</span>' : ''}
+          </div>
+          <div class="compare-user"><span style="font-size:10px;color:var(--purple);font-weight:600">USER</span><br>${escapeHtml(userTurn.content || '')}</div>
+          <div class="compare-grid">${skixCol}${refCol}</div>
+        </div>`;
+      }).join('');
+    }
   }
 
   // ── raw JSON ──
