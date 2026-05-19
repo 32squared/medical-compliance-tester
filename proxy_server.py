@@ -2792,6 +2792,7 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
         result_entry = None
         run_summary = None
         run_missing = False
+        result_from_fallback = False  # 지정 run 외 다른 run 에서 찾은 경우 표시
         if run_id and run_id != '_':
             r = db.get_test_run(run_id)
             if not r:
@@ -2812,6 +2813,45 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
                         result_entry = res
                         break
 
+        # 지정 run 에 result 없으면 → 모든 run 에서 자동 검색 (최근 우선)
+        if not result_entry:
+            try:
+                all_runs = db.get_test_runs(limit=300)
+                for rr in all_runs:
+                    rrid = rr.get('id')
+                    if run_id and rrid == run_id:
+                        continue  # 이미 검사함
+                    results_raw = rr.get('results') or rr.get('results_json')
+                    if isinstance(results_raw, str):
+                        try:
+                            results_list = json.loads(results_raw)
+                        except Exception:
+                            results_list = []
+                    elif isinstance(results_raw, list):
+                        results_list = results_raw
+                    else:
+                        results_list = []
+                    for res in results_list:
+                        if res.get('scenarioId') == scenario_id:
+                            result_entry = res
+                            # run_summary 도 그 run 으로 교체 (사용자 안내용)
+                            rr_proxy = _db_run_to_proxy(rr)
+                            run_summary = {
+                                'runId': rr_proxy.get('runId'),
+                                'env': rr_proxy.get('env'),
+                                'startedAt': rr_proxy.get('startedAt'),
+                                'completedAt': rr_proxy.get('completedAt'),
+                                'status': rr_proxy.get('status'),
+                                'type': rr_proxy.get('type'),
+                                'summary': rr_proxy.get('summary'),
+                            }
+                            result_from_fallback = True
+                            break
+                    if result_entry:
+                        break
+            except Exception as e:
+                ProxyHandler._add_log(f"[hb-scenario] fallback 검색 실패: {str(e)[:200]}")
+
         # 둘 다 없으면 404
         if not scenario and not result_entry:
             msg = f'시나리오/실행결과 모두 없음: scenario_id={scenario_id}'
@@ -2827,7 +2867,9 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
             'scenario': scenario,
             'run': run_summary,
             'result': result_entry,
-            'scenarioMissing': scenario is None,  # frontend 에 알림
+            'scenarioMissing': scenario is None,
+            'resultFromFallback': result_from_fallback,  # 지정 run 외에서 찾은 경우
+            'requestedRunId': run_id if run_id and run_id != '_' else None,
         })
 
     def _list_history(self):

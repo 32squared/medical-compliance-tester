@@ -292,6 +292,20 @@ async function load() {
     if (mc && br) mc.insertBefore(banner, br.nextSibling);
   }
 
+  // 지정 run 외에서 result 를 찾은 경우 안내
+  const resultFromFallback = data.resultFromFallback;
+  const requestedRunId = data.requestedRunId;
+  if (resultFromFallback && data.run) {
+    const banner = document.createElement('div');
+    banner.style.cssText = 'background:var(--accent-dim);border:1px solid var(--accent);color:var(--accent);padding:10px 14px;border-radius:6px;font-size:12px;margin-bottom:12px';
+    const reqRun = requestedRunId ? escapeHtml(requestedRunId.substring(0, 30)) + '…' : '(없음)';
+    const foundRun = escapeHtml((data.run.runId || '').substring(0, 30)) + '…';
+    banner.innerHTML = `ℹ️ <b>다른 run 의 결과 표시</b> — 선택한 run (<code>${reqRun}</code>) 에 이 시나리오 result 가 없어서 가장 최근 다른 run (<code>${foundRun}</code>) 의 결과를 표시합니다.`;
+    const mc = document.getElementById('mainContent');
+    const br = document.querySelector('.breadcrumb');
+    if (mc && br) mc.insertBefore(banner, br.nextSibling);
+  }
+
   // backend 합쳐서 가져오기 (run_id 없으면 scenario 만)
   const url = runId
     ? `/api/healthbench/scenario/${encodeURIComponent(runId)}/${encodeURIComponent(scenarioId)}`
