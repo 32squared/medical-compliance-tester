@@ -21,5 +21,8 @@ app_*.db
 # 외부 데이터셋 (HealthBench 등) — 다운로드 스크립트로 재현 가능
 data/healthbench/
 
+# DB dump / 분석용 임시 JSON (대용량, 재생성 가능)
+data/*.json
+
 # 보고서 PPT 산출물 (소스 .js 만 추적)
 reports/*.pptx
