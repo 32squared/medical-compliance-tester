@@ -127,13 +127,14 @@ python scripts/cleanup_old_batches.py --pattern 'live-verify-' --delete
 
 ## 8. 데이터 확장 로드맵
 
-| Phase | 시점 | 규모 | 비용 (OpenAI) | 소요 시간 |
+| Phase | 상태 | 규모 | 비용 (OpenAI) | 소요 시간 |
 |---|---|---|---|---|
-| Phase 1 (완료) | 이번 주 | 100건 stratified | ~$0.50 | 30분 |
-| Phase 2 (현재) | 이번 주 | **Hard 1,000건** | ~$5 | 2-3시간 |
-| Phase 3 | 1-2주 후 | Consensus 3,671건 | ~$18 | 6-8시간 |
-| Phase 4 | 3-4주 후 | Standard 5,000건 (4 batch 분할) | ~$25 | 16-20시간 누적 |
+| Phase 1 | ✓ 완료 | 100건 stratified | ~$0.50 | 30분 |
+| Phase 2 | ✓ **완료 (실행 1회)** | **Hard 1,000건** | ~$5 | ~17분 (실측) |
+| Phase 3 | 보류 | Consensus 3,671건 | ~$18 | 6-8시간 |
+| Phase 4 | 보류 | Standard 5,000건 (4 batch 분할) | ~$25 | 16-20시간 누적 |
 
+Phase 3/4 는 진행 결정 시 단계적 import + batch.
 Phase 4 는 단일 batch 가 아닌 1,250건 × 4 분할 + `/api/history/merge` 로 통합 리포트.
 
 ## 9. 운영 자산
