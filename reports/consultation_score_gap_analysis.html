@@ -98,13 +98,14 @@ td.center { text-align: center; }
 
 <header class="report-header">
   <div class="report-title">📊 법률 평가↑ + 문진 평가↓ 점수 격차 분석<br>및 문진 평가 기준 개선 방향</div>
-  <div class="report-subtitle">End Point 시나리오 1,100건 — 격차 원인의 정량 분석 및 평가 기준 정밀화 검토</div>
+  <div class="report-subtitle">End Point 시나리오 1,101건 — 격차 원인의 정량 분석 및 평가 기준 정밀화 검토</div>
   <div class="report-meta">
-    <span><b>대상 배치</b>: job-20260515-142828-1e71ae</span>
-    <span><b>평균 법률 점수</b>: 87.8 / 100</span>
-    <span><b>평균 문진 점수</b>: 50.5 / 100</span>
-    <span><b>격차</b>: 37.3점</span>
-    <span><b>상관</b>: r = -0.198</span>
+    <span><b>대상 배치</b>: job-20260521-000816-86071f</span>
+    <span><b>실행일</b>: 2026-05-21</span>
+    <span><b>평균 법률 점수</b>: 95.2 / 100</span>
+    <span><b>평균 문진 점수</b>: 48.1 / 100</span>
+    <span><b>격차</b>: 47.0점</span>
+    <span><b>상관</b>: r = -0.385</span>
   </div>
 </header>
 
@@ -114,12 +115,13 @@ td.center { text-align: center; }
 <div class="tldr">
   <div class="tldr-title">📌 Executive Summary</div>
   <div class="tldr-content">
-    End Point 응답의 법률 점수(87.8)와 문진 점수(50.5) 사이에 37점 격차가 관찰되었습니다.
+    End Point 응답의 법률 점수(95.2)와 문진 점수(48.1) 사이에 47점 격차가 관찰되었습니다.
     데이터 분석 결과 <b>이 격차는 두 평가 기준의 본질적 충돌보다는 응답 길이·환자 정보 수집 패턴의 영향</b>이 더 크게 나타납니다 —
-    응답의 <b>19.3%(212건)가 300자 미만의 짧은 응답</b>이며 이 구간의 문진 점수는 평균 <b>19.7점</b>인 반면,
-    1,000~1,499자 응답은 <b>법률 86.0 + 문진 58.8 동시 달성</b>으로 두 기준이 양립 가능한 구간이 존재합니다.
+    응답의 <b>17.7%(195건)가 300자 미만의 짧은 응답</b>이며 이 구간의 문진 점수는 평균 <b>19.9점</b>인 반면,
+    1,000~1,499자 응답은 <b>법률 94.3 + 문진 59.5 동시 달성</b>으로 두 기준이 양립 가능한 구간이 존재합니다.
+    또한 <b>법률↓+문진↑ 케이스가 0건(0.00%)</b>으로, 두 기준이 구조적으로 충돌하지 않음을 직접적으로 보여줍니다.
     <br><br>
-    응급/CRITICAL 시나리오에서 짧은 응답 비율이 <b>61.2%</b>로 높게 나타나는데,
+    응급/CRITICAL 시나리오에서 짧은 응답 비율이 <b>78.5%</b>로 매우 높게 나타나는데,
     <b>응급 상황에서 즉시 행동 유도(119/응급실 안내)는 의료적으로 합리적</b>이지만
     현재 문진 평가가 이를 일반 상담과 동일한 5축으로 평가하는 한계가 있습니다 —
     이 영역에 대해 <b>문진 평가 기준의 정밀화가 필요하며, 차기 평가 사이클에서 반영 예정</b>입니다.
@@ -132,37 +134,37 @@ td.center { text-align: center; }
 <h2>1. 현황 — 두 점수 사이의 격차</h2>
 
 <div class="kpi-grid">
-  <div class="kpi-card green"><div class="kpi-value">87.8</div><div class="kpi-label">법률 평균 점수 (FinalScore)</div></div>
-  <div class="kpi-card red"><div class="kpi-value">50.5</div><div class="kpi-label">문진 평균 점수 (TotalScore)</div></div>
-  <div class="kpi-card orange"><div class="kpi-value">-37.3</div><div class="kpi-label">두 점수 격차</div></div>
-  <div class="kpi-card purple"><div class="kpi-value">-0.198</div><div class="kpi-label">상관계수 (약한 음의 상관)</div></div>
+  <div class="kpi-card green"><div class="kpi-value">95.2</div><div class="kpi-label">법률 평균 점수 (FinalScore)</div></div>
+  <div class="kpi-card red"><div class="kpi-value">48.1</div><div class="kpi-label">문진 평균 점수 (TotalScore)</div></div>
+  <div class="kpi-card orange"><div class="kpi-value">-47.0</div><div class="kpi-label">두 점수 격차</div></div>
+  <div class="kpi-card purple"><div class="kpi-value">-0.385</div><div class="kpi-label">상관계수 (음의 상관)</div></div>
 </div>
 
-<p>법률 평가는 A등급 54.5%로 의료법 준수 측면이 양호하게 나타납니다. 문진 평가는 A등급 0%, F등급 22%로 환자 정보 수집·구조적 접근 측면에 개선 여지가 있습니다. 두 점수 사이에는 <b>약한 음의 상관관계(r = -0.198)</b>가 관찰됩니다.</p>
+<p>법률 평가는 A등급 <b>95.5%</b>로 의료법 준수 측면이 매우 양호한 수준입니다 (D/F 등급 0건). 문진 평가는 A등급 0%, F등급 22.1%로 환자 정보 수집·구조적 접근 측면에 개선 여지가 큽니다. 두 점수 사이에는 <b>음의 상관관계(r = -0.385)</b>가 관찰되며, 이는 응답 길이가 짧을수록 문진 점수가 낮아지는 패턴이 강하게 나타나기 때문입니다.</p>
 
 <h3>1.1 시나리오 4분면 분포</h3>
 
 <div class="quadrant-grid">
   <div class="quadrant q-good">
-    <div class="q-value" style="color:#22c55e">87건</div>
-    <div class="q-label"><b>법률↑(≥80) + 문진↑(≥70)</b><br>이상적 응답 (7.9%) — 양립 가능 증명</div>
+    <div class="q-value" style="color:#22c55e">107건</div>
+    <div class="q-label"><b>법률↑(≥80) + 문진↑(≥70)</b><br>이상적 응답 (9.7%) — 양립 가능 증명</div>
   </div>
   <div class="quadrant q-mid">
-    <div class="q-value" style="color:#eab308">786건</div>
-    <div class="q-label"><b>법률↑(≥80) + 문진↓(<70)</b><br>현재 주류 (71.6%) — 보수적 응답 패턴</div>
+    <div class="q-value" style="color:#eab308">986건</div>
+    <div class="q-label"><b>법률↑(≥80) + 문진↓(<70)</b><br>현재 주류 (89.6%) — 보수적 응답 패턴</div>
   </div>
   <div class="quadrant q-conflict">
-    <div class="q-value" style="color:#dc2626">13건</div>
-    <div class="q-label"><b>법률↓(<80) + 문진↑(≥70)</b><br>1.2% — <b>충돌 영역의 희소성</b></div>
+    <div class="q-value" style="color:#dc2626">0건</div>
+    <div class="q-label"><b>법률↓(<80) + 문진↑(≥70)</b><br>0.00% — <b>충돌 영역의 부재</b></div>
   </div>
   <div class="quadrant q-bad">
-    <div class="q-value" style="color:#94a3b8">212건</div>
-    <div class="q-label"><b>법률↓(<80) + 문진↓(<70)</b><br>둘 다 미흡 (19.3%)</div>
+    <div class="q-value" style="color:#94a3b8">7건</div>
+    <div class="q-label"><b>법률↓(<80) + 문진↓(<70)</b><br>둘 다 미흡 (0.64%)</div>
   </div>
 </div>
 
 <div class="callout callout-purple">
-  <b>🔑 핵심 관찰</b>: <b>법률↓ + 문진↑ 케이스가 13건(1.2%)에 그칩니다</b>. 만약 두 기준이 구조적으로 상충한다면 이 영역에 더 많은 케이스가 분포해야 합니다 — 즉 "문진을 충실히 수행한 결과 법률 점수가 떨어진" 케이스. 실제 분포에서 이 영역이 1% 수준에 머무는 점은 <b>두 기준이 상당 부분 양립 가능하다</b>는 시사점을 제공합니다.
+  <b>🔑 핵심 관찰</b>: <b>법률↓ + 문진↑ 케이스가 0건(0.00%)</b>으로 관찰되었습니다. 만약 두 기준이 구조적으로 상충한다면 이 영역에 일정 수의 케이스가 분포해야 합니다 — 즉 "문진을 충실히 수행한 결과 법률 점수가 떨어진" 케이스. 실제 분포에서 이 영역이 완전히 비어 있다는 점은 <b>두 기준이 양립 가능하다</b>는 점을 매우 강하게 시사합니다. 법률 점수가 평균 95.2점에 도달한 현재 상태에서도 문진 점수와의 충돌이 발생하지 않았다는 사실이 결정적 근거입니다.
 </div>
 
 <!-- ─────────────────────────────────────────────────────── -->
@@ -184,51 +186,51 @@ td.center { text-align: center; }
   <tbody>
     <tr style="background:#fee2e2">
       <td><b>0-299자</b> (매우 짧음)</td>
-      <td class="num">212</td>
-      <td class="num">19.3%</td>
-      <td class="num" style="color:#22c55e"><b>96.6</b></td>
-      <td class="num" style="color:#dc2626"><b>19.7</b></td>
-      <td class="num"><b>6.1%</b></td>
+      <td class="num">195</td>
+      <td class="num">17.7%</td>
+      <td class="num" style="color:#22c55e"><b>97.7</b></td>
+      <td class="num" style="color:#dc2626"><b>19.9</b></td>
+      <td class="num"><b>1.5%</b></td>
     </tr>
     <tr style="background:#fef3c7">
       <td>300-599자</td>
-      <td class="num">16</td>
-      <td class="num">1.5%</td>
-      <td class="num">94.1</td>
-      <td class="num">37.4</td>
-      <td class="num">56.2%</td>
+      <td class="num">109</td>
+      <td class="num">9.9%</td>
+      <td class="num">96.9</td>
+      <td class="num">21.0</td>
+      <td class="num">8.3%</td>
     </tr>
     <tr>
       <td>600-999자</td>
-      <td class="num">83</td>
-      <td class="num">7.5%</td>
-      <td class="num">83.3</td>
-      <td class="num">52.2</td>
-      <td class="num">86.7%</td>
+      <td class="num">109</td>
+      <td class="num">9.9%</td>
+      <td class="num">94.4</td>
+      <td class="num">53.8</td>
+      <td class="num">81.7%</td>
     </tr>
     <tr style="background:#d1fae5">
       <td><b>1000-1499자</b> (균형)</td>
-      <td class="num">670</td>
-      <td class="num">60.9%</td>
-      <td class="num"><b>86.0</b></td>
-      <td class="num"><b>58.8</b></td>
-      <td class="num"><b>97.9%</b></td>
+      <td class="num">652</td>
+      <td class="num">59.2%</td>
+      <td class="num"><b>94.3</b></td>
+      <td class="num"><b>59.5</b></td>
+      <td class="num"><b>94.6%</b></td>
     </tr>
     <tr style="background:#d1fae5">
       <td><b>1500-1999자</b> (이상적)</td>
-      <td class="num">116</td>
-      <td class="num">10.5%</td>
-      <td class="num"><b>85.1</b></td>
-      <td class="num"><b>59.8</b></td>
-      <td class="num"><b>98.3%</b></td>
+      <td class="num">34</td>
+      <td class="num">3.1%</td>
+      <td class="num"><b>94.3</b></td>
+      <td class="num"><b>60.9</b></td>
+      <td class="num"><b>97.1%</b></td>
     </tr>
     <tr style="background:#fef3c7">
       <td>2000자+ (지나치게 김)</td>
-      <td class="num">3</td>
-      <td class="num">0.3%</td>
-      <td class="num">67.3</td>
-      <td class="num">40.7</td>
-      <td class="num">66.7%</td>
+      <td class="num">2</td>
+      <td class="num">0.2%</td>
+      <td class="num">93.0</td>
+      <td class="num">53.5</td>
+      <td class="num">100.0%</td>
     </tr>
   </tbody>
 </table>
@@ -236,14 +238,15 @@ td.center { text-align: center; }
 <div class="fact-box">
   <b>🔍 관찰된 패턴</b>:
   <ul>
-    <li><b>0-299자 응답 212건</b>: 법률 96.6점(매우 높음) + 문진 <b>19.7점</b> + 질문 포함 <b>6.1%</b> → 핵심 정보만 간결히 전달하는 응답 패턴</li>
-    <li><b>1000-1999자 응답 786건</b>: 법률 85+ + 문진 58~60 동시 달성 → 두 기준이 양립 가능한 응답 길이 구간</li>
-    <li><b>2000자+ 응답 3건</b>: 법률 67점으로 저하 → <i>이론적 충돌 영역</i>이지만 표본 0.3%로 영향 미미</li>
+    <li><b>0-299자 응답 195건</b>: 법률 97.7점(매우 높음) + 문진 <b>19.9점</b> + 질문 포함 <b>1.5%</b> → 핵심 정보만 간결히 전달하는 응답 패턴</li>
+    <li><b>1000-1999자 응답 686건</b>: 법률 94.3 + 문진 59.5~60.9 동시 달성 → 두 기준이 양립 가능한 응답 길이 구간</li>
+    <li><b>2000자+ 응답 2건</b>: 표본 0.2%로 영향 미미. 모든 길이 구간에서 법률 93점 이상 유지</li>
+    <li>주목할 점: 법률 점수는 <b>모든 길이 구간에서 93~97점</b>으로 매우 안정적 — 길이가 길어도 법률 점수가 떨어지지 않음. 충돌 가설을 추가로 반박</li>
   </ul>
 </div>
 
 <div class="callout callout-info">
-  <b>해석</b>: 격차의 주요 원인은 <b>짧은 응답 구간(19.3%)이 문진 평균을 끌어내리는 효과</b>로 보입니다. 1000~1999자 구간 응답에서는 양쪽 점수가 모두 양호하므로, <b>응답 길이를 적정 수준으로 확보하면 두 점수가 함께 개선될 가능성</b>이 있습니다.
+  <b>해석</b>: 격차의 주요 원인은 <b>짧은 응답 구간(27.6%, 304건)이 문진 평균을 끌어내리는 효과</b>로 보입니다. 1000~1999자 구간 응답에서는 양쪽 점수가 모두 양호하므로, <b>응답 길이를 적정 수준으로 확보하면 문진 점수가 개선될 가능성</b>이 있습니다. 법률 점수는 응답 길이와 무관하게 안정적으로 유지되므로, 응답 길이 확보가 법률 점수에 부정적 영향을 줄 가능성은 낮습니다.
 </div>
 
 <!-- ─────────────────────────────────────────────────────── -->
@@ -256,68 +259,68 @@ td.center { text-align: center; }
 <table>
   <thead><tr>
     <th>환자 정보 요청 패턴</th>
-    <th class="num">전체 1,100건</th>
-    <th class="num">짧은 응답 &lt;500자 (222건)</th>
-    <th class="num">긴 응답 ≥1000자 (789건)</th>
+    <th class="num">전체 1,101건</th>
+    <th class="num">짧은 응답 &lt;500자 (301건)</th>
+    <th class="num">긴 응답 ≥1000자 (688건)</th>
   </tr></thead>
   <tbody>
     <tr>
       <td>복용 약물 확인</td>
-      <td class="num">29.7%</td>
-      <td class="num" style="color:#dc2626;font-weight:700">0.0%</td>
-      <td class="num">39.9%</td>
+      <td class="num">11.8%</td>
+      <td class="num" style="color:#dc2626;font-weight:700">1.3%</td>
+      <td class="num">16.1%</td>
     </tr>
     <tr>
       <td>기저질환 확인</td>
-      <td class="num">4.8%</td>
+      <td class="num">8.9%</td>
       <td class="num" style="color:#dc2626;font-weight:700">0.0%</td>
-      <td class="num">6.5%</td>
+      <td class="num">12.6%</td>
     </tr>
     <tr>
       <td>나이/성별 확인</td>
-      <td class="num">5.3%</td>
-      <td class="num" style="color:#dc2626;font-weight:700">0.0%</td>
-      <td class="num">6.8%</td>
+      <td class="num">6.2%</td>
+      <td class="num" style="color:#dc2626;font-weight:700">0.3%</td>
+      <td class="num">9.3%</td>
     </tr>
     <tr>
       <td>증상 위치 확인</td>
-      <td class="num">6.5%</td>
-      <td class="num" style="color:#dc2626;font-weight:700">0.0%</td>
-      <td class="num">8.6%</td>
+      <td class="num">6.4%</td>
+      <td class="num" style="color:#dc2626;font-weight:700">1.3%</td>
+      <td class="num">8.9%</td>
     </tr>
     <tr>
       <td>증상 강도 확인</td>
       <td class="num">12.3%</td>
       <td class="num" style="color:#dc2626;font-weight:700">0.0%</td>
-      <td class="num">16.2%</td>
+      <td class="num">17.4%</td>
     </tr>
     <tr>
       <td>증상 시기 확인</td>
-      <td class="num">40.5%</td>
-      <td class="num">7.7%</td>
-      <td class="num">50.4%</td>
+      <td class="num">43.9%</td>
+      <td class="num">1.0%</td>
+      <td class="num">61.8%</td>
     </tr>
     <tr>
       <td>동반 증상 확인</td>
-      <td class="num">76.5%</td>
-      <td class="num">3.6%</td>
+      <td class="num">78.2%</td>
+      <td class="num">30.2%</td>
       <td class="num">97.2%</td>
     </tr>
     <tr style="background:#fef3c7">
       <td><b>응답에 "?" 1개 이상 포함</b></td>
-      <td class="num"><b>78.7%</b></td>
-      <td class="num" style="color:#dc2626;font-weight:700">7.2%</td>
-      <td class="num">97.8%</td>
+      <td class="num"><b>67.9%</b></td>
+      <td class="num" style="color:#dc2626;font-weight:700">3.0%</td>
+      <td class="num">93.3%</td>
     </tr>
   </tbody>
 </table>
 
 <div class="fact-box">
-  <b>🔍 짧은 응답 222건에서 관찰된 특징</b>:
+  <b>🔍 짧은 응답 301건에서 관찰된 특징</b>:
   <ul>
-    <li><b>92.8%(206건)에 질문(?)이 포함되지 않음</b> — 사용자에게 추가 정보를 요청하는 빈도가 매우 낮음</li>
-    <li>복용약·기저질환·나이/성별·증상 위치·증상 강도 요청: <b>모두 0.0%</b></li>
-    <li>이런 정보 요청은 의료법 27조와 <b>충돌하지 않는 질문 행위</b>이지만 짧은 응답 구간에서 누락 빈도가 높음</li>
+    <li><b>97.0%(292건)에 질문(?)이 포함되지 않음</b> — 사용자에게 추가 정보를 요청하는 빈도가 매우 낮음</li>
+    <li>기저질환 0.0% / 증상 강도 0.0% / 나이·성별 0.3% / 복용약 1.3% / 증상 위치 1.3%</li>
+    <li>이런 정보 요청은 의료법 27조와 <b>충돌하지 않는 질문 행위</b>이지만 짧은 응답 구간에서 누락 빈도가 매우 높음</li>
   </ul>
 </div>
 
@@ -339,14 +342,14 @@ td.center { text-align: center; }
     <tr style="background:#fee2e2">
       <td><b>emergency</b></td>
       <td class="num">278</td>
-      <td class="num">158</td>
-      <td class="num" style="color:#dc2626;font-weight:700">56.8%</td>
+      <td class="num">213</td>
+      <td class="num" style="color:#dc2626;font-weight:700">76.6%</td>
     </tr>
-    <tr><td>edge</td><td class="num">75</td><td class="num">6</td><td class="num">8.0%</td></tr>
-    <tr><td>diagnosis</td><td class="num">216</td><td class="num">15</td><td class="num">6.9%</td></tr>
-    <tr><td>treatment</td><td class="num">118</td><td class="num">8</td><td class="num">6.8%</td></tr>
-    <tr><td>prescription</td><td class="num">138</td><td class="num">5</td><td class="num">3.6%</td></tr>
-    <tr><td>general</td><td class="num">169</td><td class="num">4</td><td class="num">2.4%</td></tr>
+    <tr><td>edge</td><td class="num">75</td><td class="num">9</td><td class="num">12.0%</td></tr>
+    <tr><td>treatment</td><td class="num">118</td><td class="num">13</td><td class="num">11.0%</td></tr>
+    <tr><td>diagnosis</td><td class="num">217</td><td class="num">20</td><td class="num">9.2%</td></tr>
+    <tr><td>prescription</td><td class="num">138</td><td class="num">9</td><td class="num">6.5%</td></tr>
+    <tr><td>general</td><td class="num">169</td><td class="num">6</td><td class="num">3.6%</td></tr>
   </tbody>
 </table>
 
@@ -357,17 +360,17 @@ td.center { text-align: center; }
     <tr style="background:#fee2e2">
       <td><b>CRITICAL</b></td>
       <td class="num">307</td>
-      <td class="num">188</td>
-      <td class="num" style="color:#dc2626;font-weight:700">61.2%</td>
+      <td class="num">241</td>
+      <td class="num" style="color:#dc2626;font-weight:700">78.5%</td>
     </tr>
-    <tr><td>HIGH</td><td class="num">499</td><td class="num">31</td><td class="num">6.2%</td></tr>
-    <tr><td>MEDIUM</td><td class="num">205</td><td class="num">3</td><td class="num">1.5%</td></tr>
-    <tr><td>LOW</td><td class="num">89</td><td class="num">0</td><td class="num">0.0%</td></tr>
+    <tr><td>HIGH</td><td class="num">500</td><td class="num">55</td><td class="num">11.0%</td></tr>
+    <tr><td>MEDIUM</td><td class="num">205</td><td class="num">4</td><td class="num">2.0%</td></tr>
+    <tr><td>LOW</td><td class="num">89</td><td class="num">1</td><td class="num">1.1%</td></tr>
   </tbody>
 </table>
 
 <div class="callout callout-warn">
-  <b>주요 관찰</b>: 짧은 응답 212건 중 <b>약 75%가 응급/CRITICAL 시나리오</b>에서 발생합니다. 이 영역에서 짧은 응답은 <b>의료적으로 합리적인 선택</b>입니다 — "지금 즉시 119에 연락하세요"로 간결하게 안내하는 것이 환자 안전 측면에서 더 유리하며, 긴 문진은 응급 상황에서 오히려 위험할 수 있습니다.
+  <b>주요 관찰</b>: 짧은 응답 301건 중 <b>약 71%(213건)가 응급(emergency) 카테고리</b>에서 발생합니다. 위험도 기준으로는 <b>CRITICAL 307건 중 78.5%(241건)가 짧은 응답</b>입니다. 이 영역에서 짧은 응답은 <b>의료적으로 합리적인 선택</b>입니다 — "지금 즉시 119에 연락하세요"로 간결하게 안내하는 것이 환자 안전 측면에서 더 유리하며, 긴 문진은 응급 상황에서 오히려 위험할 수 있습니다.
   <br><br>
   다만 <b>현재 문진 평가 기준은 응급 상황과 일반 상담을 동일한 5축으로 평가</b>하여, 응급 안내 위주의 짧은 응답이 문진 점수에서 낮게 평가되는 구조입니다. 이는 평가 기준의 정밀화로 보완할 수 있는 부분으로 판단됩니다.
 </div>
@@ -390,10 +393,10 @@ td.center { text-align: center; }
   <div style="border:2px solid #22c55e;border-radius:8px;padding:14px;background:#f0fdf4">
     <h3 style="color:#22c55e;margin-top:0">🅑 실제 데이터에서 관찰된 양상</h3>
     <ul style="margin:8px 0 0 18px">
-      <li>법률↓+문진↑ = <b>13건 (1.2%)</b> — 충돌 가설이 예측한 분포보다 훨씬 적음</li>
-      <li>1000-1999자 응답에서 법률 85+ + 문진 60 동시 달성 (양립 구간 존재)</li>
-      <li>이상적 응답 <b>87건(7.9%) 실재</b> — 양립 가능 사례 확인</li>
-      <li>응답 길이별 점수: 짧을수록 문진↓, 길수록 두 점수 모두↑</li>
+      <li>법률↓+문진↑ = <b>0건 (0.00%)</b> — 충돌 가설이 예측한 분포와 완전히 다름</li>
+      <li>1000-1999자 응답에서 법률 94+ + 문진 59~61 동시 달성 (양립 구간 존재)</li>
+      <li>이상적 응답 <b>107건(9.7%) 실재</b> — 양립 가능 사례 확인</li>
+      <li>법률 점수가 모든 길이 구간에서 93~97점으로 안정적 (응답 길이↑에도 저하 없음)</li>
     </ul>
   </div>
 </div>
@@ -407,13 +410,14 @@ td.center { text-align: center; }
 <!-- ─────────────────────────────────────────────────────── -->
 <h2>6. End Point의 응답 패턴 — 관찰된 경향</h2>
 
-<p>응답 길이 0-299자 212건과 응급/CRITICAL 시나리오의 분석을 종합하면 End Point의 응답 패턴은 다음 특성을 보입니다:</p>
+<p>응답 길이 0-299자 195건과 응급/CRITICAL 시나리오의 분석을 종합하면 End Point의 응답 패턴은 다음 특성을 보입니다:</p>
 
 <ol>
-  <li><b>응급 상황 → 즉시 119/응급실 안내 중심의 간결한 응답</b> (188건의 CRITICAL 케이스에서 관찰되는 의료적으로 적절한 패턴)</li>
+  <li><b>응급 상황 → 즉시 119/응급실 안내 중심의 간결한 응답</b> (241건의 CRITICAL 케이스에서 관찰되는 의료적으로 적절한 패턴)</li>
   <li><b>법률 위반 위험이 감지될 때 → 정보 제공을 자제하고 일반 안내로 마무리</b> (예: "정확한 진단은 의료진과 상담하세요" 위주 응답)</li>
-  <li><b>환자 정보 요청 단계 생략</b> — 짧은 응답에서 복용약·기저질환 등 정보 요청 빈도가 매우 낮음</li>
+  <li><b>환자 정보 요청 단계 생략</b> — 짧은 응답에서 복용약·기저질환·증상 강도 등 정보 요청 빈도가 거의 0%</li>
   <li><b>양립 표현 활용 여지</b> — "고려해보실 수 있습니다", "○○가 의심됩니다" 같은 의료법 친화적 표현의 활용 폭을 더 넓힐 수 있음</li>
+  <li><b>법률 점수는 안정화 단계 도달</b> — 모든 길이 구간에서 93~97점, 평균 95.2점. 추가 개선보다는 문진 영역 보강이 ROI 측면에서 유리</li>
 </ol>
 
 <!-- ─────────────────────────────────────────────────────── -->
@@ -479,7 +483,7 @@ td.center { text-align: center; }
   <h4 style="color:#78350f;margin:10px 0 6px 0">A. 응급/CRITICAL 시나리오의 차등 평가 (우선 검토)</h4>
   <ul>
     <li><b>관찰된 한계</b>: 현재 5축이 모든 시나리오에 동일 적용되어 응급 안내 위주의 간결한 응답이 일반 상담과 동일 기준으로 평가됨</li>
-    <li><b>데이터 근거</b>: CRITICAL 시나리오 307건 중 61.2%(188건)가 짧은 응답으로 의료적으로 합리적이지만 문진 점수가 낮게 나타남</li>
+    <li><b>데이터 근거</b>: CRITICAL 시나리오 307건 중 78.5%(241건)가 짧은 응답으로 의료적으로 합리적이지만 문진 점수가 낮게 나타남</li>
     <li><b>개선 방향</b>: 응급 시나리오는 "위험 선별 + 적절한 안내" 2축만 가중 평가 (만점 35→100으로 재정규화)</li>
   </ul>
 
@@ -521,7 +525,7 @@ td.center { text-align: center; }
       <ul>
         <li>riskLevel=CRITICAL 또는 category=emergency 시나리오는 "위험 선별 + 적절한 안내" 2축으로 재정규화 평가</li>
         <li>"즉시 119 안내" 응답이 짧아도 만점 가능하도록 보정</li>
-        <li>예상 영향: 응급 시나리오 188건의 평균 점수 약 19점 → 65점+ 상승 예상</li>
+        <li>예상 영향: 응급 시나리오 241건의 평균 점수 약 20점 → 65점+ 상승 예상</li>
       </ul>
     </li>
     <li><b>"맞춤 답변(5점)" 정의 재작성</b>
@@ -550,7 +554,7 @@ td.center { text-align: center; }
   <b>일정 및 절차</b>
   <ul>
     <li>가이드라인 변경 작업: 평가 기준 v1.0.1 → v1.1.0 마이너 버전 업그레이드</li>
-    <li>변경 적용 후 재평가: 동일 1,100건에 대해 새 기준 적용한 비교 분석 수행 예정</li>
+    <li>변경 적용 후 재평가: 동일 1,101건에 대해 새 기준 적용한 비교 분석 수행 예정</li>
     <li>검증 후 GPT 평가 프롬프트(<code>_build_consultation_prompt</code>)에 반영</li>
   </ul>
 </div>
@@ -561,15 +565,17 @@ td.center { text-align: center; }
 <h2>10. 결론</h2>
 
 <ol style="font-size:14px;line-height:1.8">
-  <li><b>법률 점수(87.8)와 문진 점수(50.5)의 37점 격차는 두 평가 기준의 본질적 충돌보다는 응답 패턴의 영향이 더 큰 것으로 보입니다</b> — 음의 상관(-0.198)은 약하고, 법률↓+문진↑ 케이스가 1.2%(13건)에 머뭅니다.</li>
+  <li><b>법률 점수(95.2)와 문진 점수(48.1)의 47점 격차는 두 평가 기준의 본질적 충돌보다는 응답 패턴의 영향이 더 큰 것으로 보입니다</b> — 음의 상관(-0.385)은 응답 길이가 짧을수록 문진이 낮아지는 경향을 반영하며, 법률↓+문진↑ 케이스가 0건(0.00%)으로 충돌 영역이 완전히 비어 있습니다.</li>
 
-  <li><b>격차의 주요 원인은 End Point의 보수적·간결한 응답 전략</b> — 응답 19.3%(212건)가 300자 미만이며 이 구간은 법률 96.6점 + 문진 19.7점 + 질문 6.1% 패턴을 보입니다.</li>
+  <li><b>격차의 주요 원인은 End Point의 보수적·간결한 응답 전략</b> — 응답 17.7%(195건)가 300자 미만이며 이 구간은 법률 97.7점 + 문진 19.9점 + 질문 1.5% 패턴을 보입니다.</li>
 
-  <li><b>응답 길이 1000~1999자 구간(786건, 71.4%)은 법률 85+ + 문진 58~60 동시 달성</b>으로 두 기준의 양립 가능성을 보여줍니다.</li>
+  <li><b>응답 길이 1000~1999자 구간(686건, 62.3%)은 법률 94+ + 문진 59~61 동시 달성</b>으로 두 기준의 양립 가능성을 보여줍니다.</li>
 
-  <li><b>환자 정보 요청(복용약·기저질환·나이/성별)은 의료법 27조와 충돌하지 않는 영역</b>이며, 이 영역의 누락 빈도는 평가 기준 충돌보다 응답 작성 패턴으로 설명하는 것이 더 자연스럽습니다.</li>
+  <li><b>환자 정보 요청(복용약·기저질환·나이/성별)은 의료법 27조와 충돌하지 않는 영역</b>이며, 이 영역의 누락 빈도(짧은 응답에서 0~1.3%)는 평가 기준 충돌보다 응답 작성 패턴으로 설명하는 것이 더 자연스럽습니다.</li>
 
-  <li><b>응급/CRITICAL 시나리오의 짧은 응답(61.2%)은 의료적으로 합리적인 패턴이지만 현재 평가 기준이 일반 상담과 동일하게 평가</b> — 평가 기준의 정밀화로 보완 가능한 영역입니다.</li>
+  <li><b>응급/CRITICAL 시나리오의 짧은 응답(78.5%)은 의료적으로 합리적인 패턴이지만 현재 평가 기준이 일반 상담과 동일하게 평가</b> — 평가 기준의 정밀화로 보완 가능한 영역입니다.</li>
+
+  <li><b>법률 점수는 평균 95.2점에 도달하여 안정화 단계</b> — A등급 95.5%, D/F 등급 0건. 추가 개선 여지가 크지 않으며 향후 개선 노력은 문진 측면에 집중하는 것이 효율적입니다.</li>
 
   <li><b>문진 평가 기준의 85점(증상 탐색·위험 선별·환자 맥락·일부 단계적 접근)은 충돌이 관찰되지 않아 현행 유지가 적절</b>합니다.</li>
 
@@ -579,7 +585,7 @@ td.center { text-align: center; }
 </ol>
 
 <footer style="margin-top:48px;padding-top:16px;border-top:1px solid var(--border);font-size:11px;color:var(--text-dim);text-align:center">
-  분석 데이터: <code>test_runs</code> 테이블의 <code>job-20260515-142828-1e71ae</code> run · 1,100건 시나리오<br>
+  분석 데이터: <code>test_runs</code> 테이블의 <code>job-20260521-000816-86071f</code> run · 1,101건 시나리오 (2026-05-21 실행)<br>
   분석 스크립트: <code>scripts/analyze_run_1100.py</code> + <code>scripts/analyze_run_1100_compliance.py</code> + 응답 길이·패턴 분석<br>
   <span style="opacity:0.7">© 의료 컴플라이언스 테스트 도구 — 2026</span>
 </footer>
