@@ -1488,6 +1488,12 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 return
             return self._issue_impersonate_token(body)
 
+        # ── End Point 검색 결과 직접 호출 (검증용) — Admin only ──
+        if self.path == '/api/admin/search-probe':
+            if not self._require_admin():
+                return
+            return self._search_probe(body)
+
         # ── 카테고리 관리 API (Admin) ──
         if self.path == '/api/categories':
             if not self._require_admin():
@@ -1991,6 +1997,9 @@ class ProxyHandler(BaseHTTPRequestHandler):
             # 법률↑+문진↓ 점수 격차 원인 분석 + 평가 기준 개선안
             '/reports/consultation-score-gap': os.path.join('reports', 'consultation_score_gap_analysis.html'),
             '/reports/consultation_score_gap_analysis.html': os.path.join('reports', 'consultation_score_gap_analysis.html'),
+            # End Point 검색 결과 직접 호출 테스트 페이지 (Admin only — 검증용)
+            '/admin/search-probe': 'search_probe.html',
+            '/search_probe.html': 'search_probe.html',
         }
         # 권한 기반 페이지 접근 가드 (admin은 항상 통과, advisor/tester는 permissions 체크)
         # value가 list면 OR 매칭 (둘 중 하나만 있으면 통과 — view_X 또는 manage_X 둘 다 허용)
@@ -2027,6 +2036,17 @@ class ProxyHandler(BaseHTTPRequestHandler):
             '/reports/consultation_score_gap_analysis.html': ['view_history', 'run_batch'],
             # '/settings'는 의도적으로 제외 — admin 로그인 진입점이므로 누구나 페이지는 봐야 함
         }
+        # Admin only 페이지 (PAGE_PERMISSIONS 와 별도) — 권한 무관 admin 만 접근
+        ADMIN_ONLY_PAGES = {'/admin/search-probe', '/search_probe.html'}
+        if path in ADMIN_ONLY_PAGES and not self._is_admin():
+            self.send_response(302)
+            self.send_header('Location', '/settings')
+            self.send_header('Content-Length', '0')
+            self.send_header('Connection', 'close')
+            self.end_headers()
+            ProxyHandler._add_log(f"[권한] admin-only 페이지 접근 차단: {path} → /settings")
+            return
+
         if path in file_map and not self._is_admin():
             # advisor 강제 차단: Arena 페이지는 use_arena 권한 무관하게 차단
             if self._is_advisor() and path in ('/arena', '/chat_arena.html'):
@@ -4225,6 +4245,83 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
             "user_id": user_id,
             "user_name": user.get('name', user_id),
             "role": user.get('role', 'tester'),
+        })
+
+    def _search_probe(self, body):
+        """POST /api/admin/search-probe — End Point 직접 호출 + search_results 검증
+
+        body: {
+          "query": str,
+          "env": "prod"|"stg"|"dev" (선택, settings.currentEnv 무시 시),
+          "sourceTypes": ["WEB","PUBMED"] (선택, settings.srcWeb/srcPubmed 무시 시),
+          "graphType": str (선택)
+        }
+        response: {
+          query, text, http_status, elapsed_ms, first_token_ms, last_token_ms,
+          stopped, error, search_results (raw), source_types, env, api_url, graph_type
+        }
+        """
+        try:
+            payload = json.loads(body) if body else {}
+        except json.JSONDecodeError:
+            return self._send_error(400, '잘못된 JSON')
+
+        query = (payload.get('query') or '').strip()
+        if not query:
+            return self._send_error(400, 'query 가 필요합니다')
+
+        from batch_executor import build_skix_config
+        settings = db.get_settings() or {}
+
+        # 옵션 override
+        if payload.get('env'):
+            settings = dict(settings)
+            settings['currentEnv'] = payload['env']
+        if isinstance(payload.get('sourceTypes'), list):
+            settings = dict(settings)
+            st = payload['sourceTypes']
+            settings['srcWeb'] = 'WEB' in st
+            settings['srcPubmed'] = 'PUBMED' in st
+        if payload.get('graphType'):
+            settings = dict(settings)
+            settings['graphType'] = payload['graphType']
+
+        cfg = build_skix_config(settings, tester_uid='search-probe')
+        if not cfg.get('api_key'):
+            return self._send_error(400, f'{cfg.get("current_env","?")} 환경에 API Key 가 설정되지 않았습니다')
+
+        ProxyHandler._add_log(f"[SearchProbe] query='{query[:50]}' env={cfg['current_env']} src={cfg['source_types']}")
+
+        result = _skix_post_one(
+            query=query,
+            conversation_strid=None,
+            api_url=cfg['api_url'],
+            graph_type=cfg['graph_type'],
+            api_key=cfg['api_key'],
+            tenant_domain=cfg['tenant_domain'],
+            api_uid=cfg['api_uid'],
+            source_types=cfg['source_types'],
+        )
+
+        # 검색 결과 + 메타 + 설정 모두 반환 (raw 검증용)
+        self._send_json(200, {
+            'query': query,
+            'text': result.get('text', ''),
+            'http_status': result.get('http_status'),
+            'elapsed_ms': result.get('elapsed_ms'),
+            'first_token_ms': result.get('first_token_ms'),
+            'last_token_ms': result.get('last_token_ms'),
+            'stopped': result.get('stopped', False),
+            'error': result.get('error'),
+            'search_results': result.get('search_results', []),
+            'citation_count': len(result.get('search_results', []) or []),
+            'config': {
+                'env': cfg.get('current_env'),
+                'api_url': cfg.get('api_url'),
+                'graph_type': cfg.get('graph_type'),
+                'source_types': cfg.get('source_types'),
+                'tenant_domain': cfg.get('tenant_domain'),
+            },
         })
 
     def _redeem_impersonate_token(self, query_string: str):
