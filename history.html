@@ -464,6 +464,17 @@
 <div class="toast-container" id="toastContainer"></div>
 
 <!-- P1-4: 배치 A/B 비교 모달 -->
+<!-- 시나리오 상세 팝업 (4분면에서 호출) -->
+<div id="scenarioPopup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:10000;align-items:center;justify-content:center" onclick="if(event.target===this)closeScenarioPopup()">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:900px;width:94%;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
+      <h3 id="scenarioPopupTitle" style="font-size:16px;color:var(--accent);margin:0">시나리오 상세</h3>
+      <button onclick="closeScenarioPopup()" style="background:none;border:none;color:var(--text-dim);font-size:22px;cursor:pointer;line-height:1">✕</button>
+    </div>
+    <div id="scenarioPopupBody"></div>
+  </div>
+</div>
+
 <div id="compareModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center">
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;max-width:1100px;width:94%;max-height:90vh;overflow-y:auto">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
@@ -1816,6 +1827,170 @@
     }
   };
 
+  // 시나리오 상세 팝업 (4분면 목록에서 호출 — 페이지 이동 없이 모달로 표시)
+  window.openScenarioPopup = function(idx) {
+    var results = window._lastBatchResults || [];
+    var r = results[idx];
+    if (!r) {
+      alert('시나리오 데이터를 찾을 수 없습니다');
+      return;
+    }
+    var popup = document.getElementById('scenarioPopup');
+    var title = document.getElementById('scenarioPopupTitle');
+    var body = document.getElementById('scenarioPopupBody');
+    if (!popup || !body) return;
+
+    var sid = r.scenarioId || '?';
+    var cat = r.category || '';
+    var sub = r.subcategory || '';
+    var risk = r.riskLevel || '';
+    var lawScore = (typeof r.finalScore === 'number') ? r.finalScore : null;
+    var lawGrade = (r.gptEval || {}).grade || '?';
+    var ce = r.consultationEval || {};
+    var consultScore = (typeof ce.totalScore === 'number') ? ce.totalScore : null;
+    var consultGrade = ce.grade || '?';
+    var rLen = r.responseLength || 0;
+
+    title.innerHTML = '🔍 ' + escapeHtml(sid) + ' <span style="font-size:12px;color:var(--text-dim);font-weight:400">— ' + escapeHtml(cat) + (sub ? ' / ' + escapeHtml(sub) : '') + '</span>';
+
+    var riskColor = risk === 'CRITICAL' ? '#dc2626' :
+                    risk === 'HIGH' ? '#f97316' :
+                    risk === 'MEDIUM' ? '#eab308' :
+                    risk === 'LOW' ? '#22c55e' : '#94a3b8';
+
+    var html = '';
+
+    // 1. 점수 요약 카드
+    var gap = (lawScore !== null && consultScore !== null) ? (lawScore - consultScore) : null;
+    var lawColor = lawScore === null ? '#94a3b8' : (lawScore >= 85 ? '#22c55e' : lawScore >= 70 ? '#0ea5e9' : lawScore >= 55 ? '#eab308' : '#ef4444');
+    var consultColor = consultScore === null ? '#94a3b8' : (consultScore >= 85 ? '#22c55e' : consultScore >= 70 ? '#0ea5e9' : consultScore >= 55 ? '#eab308' : '#ef4444');
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:14px">' +
+      '<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px;text-align:center">' +
+        '<div style="font-size:22px;font-weight:800;color:' + lawColor + '">' + (lawScore !== null ? Math.round(lawScore) : '—') + '<span style="font-size:11px;color:var(--text-dim);font-weight:400"> ' + lawGrade + '</span></div>' +
+        '<div style="font-size:10.5px;color:var(--text-dim)">법률 점수</div></div>' +
+      '<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px;text-align:center">' +
+        '<div style="font-size:22px;font-weight:800;color:' + consultColor + '">' + (consultScore !== null ? Math.round(consultScore) : '—') + '<span style="font-size:11px;color:var(--text-dim);font-weight:400"> ' + consultGrade + '</span></div>' +
+        '<div style="font-size:10.5px;color:var(--text-dim)">문진 점수</div></div>' +
+      '<div style="background:#fef3c7;border:1px solid #eab308;border-radius:6px;padding:10px;text-align:center">' +
+        '<div style="font-size:22px;font-weight:800;color:#f97316">' + (gap !== null ? (gap >= 0 ? '+' : '') + Math.round(gap) : '—') + '</div>' +
+        '<div style="font-size:10.5px;color:#78350f">두 점수 격차</div></div>' +
+      '<div style="background:var(--surface);border:1px solid ' + riskColor + ';border-radius:6px;padding:10px;text-align:center">' +
+        '<div style="font-size:13px;font-weight:800;color:' + riskColor + ';padding-top:4px">' + escapeHtml(risk || '—') + '</div>' +
+        '<div style="font-size:10.5px;color:var(--text-dim);margin-top:4px">위험도</div></div>' +
+      '<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px;text-align:center">' +
+        '<div style="font-size:22px;font-weight:800;color:var(--text)">' + rLen + '<span style="font-size:11px;color:var(--text-dim);font-weight:400"> 자</span></div>' +
+        '<div style="font-size:10.5px;color:var(--text-dim)">응답 길이</div></div>' +
+      '</div>';
+
+    // 2. 사용자 prompt
+    var prompt = r.prompt || '';
+    html += '<div style="margin-bottom:14px">' +
+      '<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px">📝 사용자 질문 (prompt)</div>' +
+      '<div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px 12px;font-size:13px;line-height:1.6;color:var(--text);white-space:pre-wrap">' + escapeHtml(prompt) + '</div>' +
+      '</div>';
+
+    // 3. AI 응답
+    var response = r.response || '';
+    html += '<div style="margin-bottom:14px">' +
+      '<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px">🤖 AI 응답 (response)</div>' +
+      '<div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px 12px;font-size:13px;line-height:1.65;color:var(--text);white-space:pre-wrap;max-height:300px;overflow-y:auto">' + escapeHtml(response) + '</div>' +
+      '</div>';
+
+    // 4. 법률 평가 (gptEval)
+    var ge = r.gptEval || {};
+    var geSummary = ge.summary || '';
+    var geViolations = ge.violations || [];
+    html += '<div style="margin-bottom:14px">' +
+      '<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px">⚖️ 법률 평가 (의료법 준수)</div>' +
+      '<div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px 12px;font-size:12.5px;line-height:1.6">';
+    if (geSummary) {
+      html += '<div style="color:var(--text);margin-bottom:8px">' + escapeHtml(geSummary) + '</div>';
+    }
+    if (geViolations.length > 0) {
+      html += '<div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;font-weight:700">위반 사항 ' + geViolations.length + '건:</div>';
+      for (var vi = 0; vi < geViolations.length; vi++) {
+        var v = geViolations[vi];
+        if (typeof v !== 'object') continue;
+        var sev = (v.severity || '').toUpperCase();
+        var sevColor = sev === 'CRITICAL' ? '#dc2626' : sev === 'HIGH' ? '#f97316' : sev === 'MEDIUM' ? '#eab308' : '#22c55e';
+        html += '<div style="padding:6px 8px;border-left:3px solid ' + sevColor + ';background:var(--surface);margin:4px 0;border-radius:3px">' +
+          '<div style="font-size:10.5px;color:' + sevColor + ';font-weight:700">' + escapeHtml(sev || '?') + ' · ' + escapeHtml(v.law || '') + ' · ' + escapeHtml(v.type || '') + '</div>' +
+          '<div style="color:var(--text);margin-top:2px;font-size:12px">' + escapeHtml(v.description || '') + '</div>' +
+          '</div>';
+      }
+    } else {
+      html += '<div style="color:#22c55e;font-size:12px">✓ 법률 위반 없음</div>';
+    }
+    html += '</div></div>';
+
+    // 5. 문진 평가 (consultationEval)
+    var ceSummary = ce.summary || '';
+    var ceAxes = ce.axes || {};
+    var ceMissing = ce.missingItems || [];
+    var axesDefs = [
+      { key: 'symptomExploration', label: '증상 탐색', max: 30, desc: '위치·양상·시기·강도·동반증상' },
+      { key: 'redFlagScreening', label: '위험 선별', max: 25, desc: '응급 징후·악화 요인·경고' },
+      { key: 'patientContext', label: '환자 맥락', max: 20, desc: '나이·기저질환·복용약·생활요인' },
+      { key: 'structuredApproach', label: '단계적 접근', max: 15, desc: '질문→정보수집→맞춤답변' },
+      { key: 'appropriateGuidance', label: '적절한 안내', max: 10, desc: '수준별 차등·진료과·방문시기' }
+    ];
+    html += '<div style="margin-bottom:14px">' +
+      '<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px">🩺 문진 평가 (5축, 만점 100)</div>' +
+      '<div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px 12px">';
+    if (ceSummary) {
+      html += '<div style="font-size:12px;color:var(--text);margin-bottom:8px">' + escapeHtml(ceSummary) + '</div>';
+    }
+    for (var ax = 0; ax < axesDefs.length; ax++) {
+      var axDef = axesDefs[ax];
+      var axData = ceAxes[axDef.key] || {};
+      var axS = (typeof axData.score === 'number') ? axData.score : 0;
+      var axPct = axDef.max > 0 ? Math.round(axS / axDef.max * 100) : 0;
+      var axColor = axPct >= 80 ? '#22c55e' : axPct >= 60 ? '#eab308' : '#ef4444';
+      html += '<div style="margin:6px 0">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;font-size:11.5px;margin-bottom:2px">' +
+          '<span style="color:var(--text);font-weight:600">' + escapeHtml(axDef.label) + '<span style="color:var(--text-dim);font-weight:400"> · ' + escapeHtml(axDef.desc) + '</span></span>' +
+          '<span style="color:' + axColor + ';font-weight:700">' + axS + ' / ' + axDef.max + '</span>' +
+        '</div>' +
+        '<div style="height:12px;background:var(--surface);border-radius:2px;overflow:hidden"><div style="width:' + axPct + '%;height:100%;background:' + axColor + '"></div></div>';
+      if (axData.details) {
+        html += '<div style="font-size:10.5px;color:var(--text-dim);margin-top:2px">' + escapeHtml(String(axData.details)) + '</div>';
+      }
+      html += '</div>';
+    }
+    if (ceMissing.length > 0) {
+      html += '<div style="margin-top:10px;padding-top:8px;border-top:1px dashed var(--border)">' +
+        '<div style="font-size:11px;font-weight:700;color:#dc2626;margin-bottom:4px">📌 누락된 문진 항목 (' + ceMissing.length + '건):</div>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:4px">';
+      for (var mi = 0; mi < Math.min(ceMissing.length, 20); mi++) {
+        var miItem = ceMissing[mi];
+        var miText = typeof miItem === 'string' ? miItem : (miItem && (miItem.name || miItem.item) ? (miItem.name || miItem.item) : '');
+        if (miText) {
+          html += '<span style="font-size:10.5px;padding:2px 8px;background:#fee2e2;color:#7f1d1d;border-radius:3px">' + escapeHtml(miText) + '</span>';
+        }
+      }
+      html += '</div></div>';
+    }
+    html += '</div></div>';
+
+    body.innerHTML = html;
+    popup.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  };
+
+  window.closeScenarioPopup = function() {
+    var popup = document.getElementById('scenarioPopup');
+    if (popup) popup.style.display = 'none';
+    document.body.style.overflow = '';
+  };
+
+  // ESC 키로 닫기
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      var popup = document.getElementById('scenarioPopup');
+      if (popup && popup.style.display !== 'none') closeScenarioPopup();
+    }
+  });
+
   function switchBatchView(view) {
     currentBatchView = view;
     var _bI = document.getElementById('btnIndividual');
@@ -2063,8 +2238,10 @@
         '<div class="batch-summary-card"><div class="bsc-value" style="color:var(--accent);font-size:32px">' + rate + '%</div><div class="bsc-label">통과율</div></div>' +
       '</div></div>';
 
-    // 1.5 법률·문진 4분면 현황 (클릭하여 시나리오 목록 펼침)
+    // 1.5 법률·문진 4분면 현황 (클릭하여 시나리오 목록 팝업)
     // 기준선: 법률 finalScore ≥80, 문진 totalScore ≥70 (B등급 이상)
+    // 팝업으로 보기 위해 results 를 전역에 저장
+    window._lastBatchResults = results;
     var quad = {
       goodGood: [],   // 법률↑ + 문진↑ (이상적)
       goodPoor: [],   // 법률↑ + 문진↓ (현재 주류 — 회피)
@@ -2072,6 +2249,8 @@
       poorPoor: []    // 둘 다 미흡
     };
     var quadEvalCount = 0;
+    var lawSum = 0, consultSum = 0;
+    var lawMin = 100, lawMax = 0, consultMin = 100, consultMax = 0;
     for (var qi = 0; qi < results.length; qi++) {
       var qr = results[qi];
       var qLaw = (typeof qr.finalScore === 'number') ? qr.finalScore : null;
@@ -2079,6 +2258,12 @@
       var qConsult = (typeof qCe.totalScore === 'number') ? qCe.totalScore : null;
       if (qLaw === null || qConsult === null) continue;
       quadEvalCount++;
+      lawSum += qLaw;
+      consultSum += qConsult;
+      if (qLaw < lawMin) lawMin = qLaw;
+      if (qLaw > lawMax) lawMax = qLaw;
+      if (qConsult < consultMin) consultMin = qConsult;
+      if (qConsult > consultMax) consultMax = qConsult;
       var entry = {
         idx: qi,
         scenarioId: qr.scenarioId || '?',
@@ -2134,7 +2319,9 @@
           '<td style="padding:5px 8px;text-align:right"><span style="color:' + consultColor + ';font-weight:700">' + Math.round(e.consult) + '</span><span style="font-size:10px;color:var(--text-dim)"> ' + e.consultGrade + '</span></td>' +
           '<td style="padding:5px 8px;text-align:right;color:var(--text-dim);font-variant-numeric:tabular-nums">' + e.responseLength + '자</td>' +
           '<td style="padding:5px 8px;text-align:center">' +
-            '<a href="#result-' + e.idx + '" style="color:var(--accent);text-decoration:none;font-size:11px" onclick="event.stopPropagation(); switchBatchView(\'individual\'); setTimeout(function(){ var el = document.querySelectorAll(\'.result-item\')[' + e.idx + ']; if (el) { el.scrollIntoView({behavior:\'smooth\', block:\'center\'}); el.style.outline=\'2px solid var(--accent)\'; setTimeout(function(){ el.style.outline=\'\'; }, 2000); } }, 100); return false;">개별 보기 →</a>' +
+            '<button onclick="openScenarioPopup(' + e.idx + ')" ' +
+              'style="background:var(--accent);color:white;border:none;border-radius:3px;padding:3px 9px;cursor:pointer;font-size:10.5px;font-weight:700">' +
+              '🔍 상세 팝업</button>' +
           '</td>' +
         '</tr>';
       }
@@ -2159,10 +2346,47 @@
     if (quadEvalCount === 0) {
       html += '<div style="color:var(--text-dim);font-size:13px">법률·문진 점수가 모두 있는 시나리오가 없습니다</div>';
     } else {
+      // ─── 점수 격차 KPI 박스 (4분면 카드 위에)
+      var lawAvg = lawSum / quadEvalCount;
+      var consultAvg = consultSum / quadEvalCount;
+      var gap = lawAvg - consultAvg;
+      var idealPct = quadEvalCount > 0 ? (quad.goodGood.length / quadEvalCount * 100) : 0;
+      var conflictPct = quadEvalCount > 0 ? (quad.poorGood.length / quadEvalCount * 100) : 0;
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:8px;margin-bottom:12px">' +
+        '<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px;text-align:center">' +
+          '<div style="font-size:22px;font-weight:800;color:#22c55e">' + lawAvg.toFixed(1) + '<span style="font-size:11px;color:var(--text-dim);font-weight:400"> / 100</span></div>' +
+          '<div style="font-size:10.5px;color:var(--text-dim);margin-top:2px">법률 평균 (GPT)</div></div>' +
+        '<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px;text-align:center">' +
+          '<div style="font-size:22px;font-weight:800;color:#a855f7">' + consultAvg.toFixed(1) + '<span style="font-size:11px;color:var(--text-dim);font-weight:400"> / 100</span></div>' +
+          '<div style="font-size:10.5px;color:var(--text-dim);margin-top:2px">문진 평균 (5축)</div></div>' +
+        '<div style="background:#fef3c7;border:1px solid #eab308;border-radius:6px;padding:10px;text-align:center">' +
+          '<div style="font-size:22px;font-weight:800;color:#f97316">−' + gap.toFixed(1) + '<span style="font-size:11px;color:var(--text-dim);font-weight:400"> 점</span></div>' +
+          '<div style="font-size:10.5px;color:#78350f;margin-top:2px;font-weight:700">두 점수 격차</div></div>' +
+        '<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px;text-align:center">' +
+          '<div style="font-size:22px;font-weight:800;color:#22c55e">' + idealPct.toFixed(1) + '%</div>' +
+          '<div style="font-size:10.5px;color:var(--text-dim);margin-top:2px">이상적 응답 (둘 다↑)</div></div>' +
+        '<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px;text-align:center">' +
+          '<div style="font-size:22px;font-weight:800;color:#dc2626">' + conflictPct.toFixed(2) + '%</div>' +
+          '<div style="font-size:10.5px;color:var(--text-dim);margin-top:2px">충돌 의심 케이스</div></div>' +
+        '</div>';
+
+      // 격차 해석
+      var gapInterpretation = '';
+      if (gap >= 30) {
+        gapInterpretation = '<b style="color:#f97316">매우 큰 격차</b> — 두 평가가 거의 반대 방향. SKIX의 응답 패턴 점검 필요';
+      } else if (gap >= 15) {
+        gapInterpretation = '<b style="color:#eab308">큰 격차</b> — 문진 보강 여지 큼, 회피 응답 패턴 가능성';
+      } else if (gap >= 5) {
+        gapInterpretation = '<b style="color:#0ea5e9">보통 격차</b> — 일부 응답에서 문진 미흡';
+      } else {
+        gapInterpretation = '<b style="color:#22c55e">양호한 격차</b> — 두 평가 균형 잡힘';
+      }
+
       html += '<div style="font-size:12px;color:var(--text-dim);margin-bottom:10px;padding:8px 10px;background:#dbeafe;border-radius:4px;border-left:3px solid var(--accent)">' +
         '<b>📖 읽는 법</b>: 각 카드의 <b>건수를 클릭</b>하면 해당 시나리오 목록이 펼쳐집니다. ' +
-        '"개별 보기 →" 링크를 클릭하면 해당 결과로 이동해 답변 내용을 확인할 수 있습니다.<br>' +
-        '<b>기준선</b>: 법률 점수(GPT finalScore) 80점, 문진 점수(consultationEval totalScore) 70점.' +
+        '시나리오 행의 <b>"상세 팝업"</b> 버튼을 누르면 페이지 이동 없이 이 화면에서 답변 + 평가 내용을 모달로 볼 수 있습니다.<br>' +
+        '<b>기준선</b>: 법률 점수(GPT finalScore) 80점, 문진 점수(consultationEval totalScore) 70점. ' +
+        '<b>격차 해석</b>: ' + gapInterpretation +
         '</div>';
       // 카드 4개 (2x2 그리드)
       html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
