@@ -320,6 +320,95 @@ function renderResults(data) {
   cfgHtml += '<span><b>params</b>: ' + escapeHtml(JSON.stringify(data.params || {})) + '</span>';
   document.getElementById('configRow').innerHTML = cfgHtml;
 
+  // ─── 자동 키 탐지 헬퍼들 ───
+  // string 타입의 가장 의미 있는 필드를 title로 추정
+  // 우선순위 키 → fallback: 가장 긴 string
+  function pickTitle(obj) {
+    if (!obj || typeof obj !== 'object') return '(제목 없음)';
+    var priorityKeys = ['title','name','summary','display_name','displayName',
+      'question','query','last_query','first_message','firstMessage',
+      'subject','headline','content_summary'];
+    for (var i = 0; i < priorityKeys.length; i++) {
+      var v = obj[priorityKeys[i]];
+      if (typeof v === 'string' && v.trim()) return v;
+    }
+    // messages[0].content 같은 중첩 시도
+    if (Array.isArray(obj.messages) && obj.messages.length > 0) {
+      var firstMsg = obj.messages[0];
+      if (firstMsg && typeof firstMsg.content === 'string' && firstMsg.content.trim()) {
+        return '[msg0] ' + firstMsg.content;
+      }
+      if (firstMsg && typeof firstMsg.query === 'string' && firstMsg.query.trim()) {
+        return '[msg0] ' + firstMsg.query;
+      }
+    }
+    // 가장 긴 string 값 찾기 (10자 이상 ~ 200자 이하)
+    var best = '', bestKey = '';
+    for (var k in obj) {
+      if (!obj.hasOwnProperty(k)) continue;
+      var val = obj[k];
+      if (typeof val === 'string' && val.length > best.length && val.length >= 10 && val.length <= 200) {
+        // 너무 긴 raw text 회피, ID-like 회피
+        if (!/^[0-9a-f-]{20,}$/i.test(val)) {
+          best = val; bestKey = k;
+        }
+      }
+    }
+    if (best) return '[' + bestKey + '] ' + best;
+    return '(제목 없음)';
+  }
+
+  function pickStrid(obj) {
+    if (!obj || typeof obj !== 'object') return '';
+    var keys = ['conversation_strid','strid','conversation_id','conversationId','id','uuid','uid'];
+    for (var i = 0; i < keys.length; i++) {
+      var v = obj[keys[i]];
+      if (v != null && (typeof v === 'string' || typeof v === 'number')) return String(v);
+    }
+    // 'strid' 또는 'id' 포함된 키 자동 탐지
+    for (var k in obj) {
+      if (!obj.hasOwnProperty(k)) continue;
+      if (/strid|_id$|^id$/i.test(k)) {
+        var v2 = obj[k];
+        if (typeof v2 === 'string' || typeof v2 === 'number') return String(v2);
+      }
+    }
+    return '';
+  }
+
+  function pickDate(obj, kind) {
+    if (!obj || typeof obj !== 'object') return '';
+    var patterns = kind === 'created'
+      ? [/^created_at$/i,/^createdAt$/i,/^create_time$/i,/^createTime$/i,/^date$/i,/created/i]
+      : [/^updated_at$/i,/^updatedAt$/i,/^update_time$/i,/^modified_at$/i,/updated/i,/modified/i];
+    for (var p = 0; p < patterns.length; p++) {
+      for (var k in obj) {
+        if (!obj.hasOwnProperty(k)) continue;
+        if (patterns[p].test(k)) {
+          var v = obj[k];
+          if (typeof v === 'string' && v) return v;
+        }
+      }
+    }
+    return '';
+  }
+
+  function pickMsgCount(obj) {
+    if (!obj || typeof obj !== 'object') return '';
+    var keys = ['message_count','messageCount','msg_count','msgCount','num_messages'];
+    for (var i = 0; i < keys.length; i++) {
+      if (typeof obj[keys[i]] === 'number') return String(obj[keys[i]]);
+    }
+    if (Array.isArray(obj.messages)) return String(obj.messages.length);
+    return '';
+  }
+
+  function summarizeKeys(obj) {
+    if (!obj || typeof obj !== 'object') return '';
+    var keys = Object.keys(obj);
+    return keys.slice(0, 12).join(', ') + (keys.length > 12 ? ' ...(+' + (keys.length-12) + ')' : '');
+  }
+
   // 파싱된 결과 카드 (배열이면)
   var parsedSection = document.getElementById('parsedSection');
   var parsedDiv = document.getElementById('parsedResults');
@@ -327,22 +416,42 @@ function renderResults(data) {
   if (arrayItems && arrayItems.length > 0) {
     parsedSection.style.display = '';
     parsedCountLbl.textContent = arrayItems.length + ' 건';
-    var ph = '';
+
+    // 모든 항목의 키 합집합 (한 번에 보여주기)
+    var allKeys = {};
+    for (var ki = 0; ki < Math.min(arrayItems.length, 20); ki++) {
+      var it0 = arrayItems[ki] || {};
+      if (typeof it0 === 'object') {
+        for (var kk in it0) {
+          if (it0.hasOwnProperty(kk)) allKeys[kk] = true;
+        }
+      }
+    }
+    var keyList = Object.keys(allKeys);
+    var keyHint = '<div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;padding:6px 8px;background:var(--bg);border-radius:3px;border-left:2px solid var(--accent)">' +
+      '<b>🔑 항목 키:</b> ' + escapeHtml(keyList.join(', ')) +
+      '</div>';
+
+    var ph = keyHint;
     for (var i = 0; i < arrayItems.length; i++) {
       var it = arrayItems[i] || {};
-      var title = it.title || it.name || it.summary || '(제목 없음)';
-      var strid = it.conversation_strid || it.strid || it.id || '';
-      var createdAt = it.created_at || it.createdAt || it.date || '';
-      var updatedAt = it.updated_at || it.updatedAt || '';
-      var msgCount = it.message_count || it.messageCount || (Array.isArray(it.messages) ? it.messages.length : '');
+      var title = pickTitle(it);
+      var strid = pickStrid(it);
+      var createdAt = pickDate(it, 'created');
+      var updatedAt = pickDate(it, 'updated');
+      var msgCount = pickMsgCount(it);
+      var rawKeys = (typeof it === 'object') ? summarizeKeys(it) : '';
+      // title 길이 제한
+      var titleDisplay = title.length > 120 ? title.substring(0, 120) + '…' : title;
       ph += '<div class="conv-card">' +
-        '<div class="cc-title">#' + (i+1) + ' · ' + escapeHtml(title) + '</div>' +
+        '<div class="cc-title">#' + (i+1) + ' · ' + escapeHtml(titleDisplay) + '</div>' +
         '<div class="cc-meta">' +
-          (createdAt ? '<span>📅 created: ' + escapeHtml(String(createdAt).substring(0,19)) + '</span>' : '') +
-          (updatedAt ? '<span>📝 updated: ' + escapeHtml(String(updatedAt).substring(0,19)) + '</span>' : '') +
-          (msgCount !== '' ? '<span>💬 msgs: ' + escapeHtml(String(msgCount)) + '</span>' : '') +
+          (createdAt ? '<span>📅 ' + escapeHtml(String(createdAt).substring(0,19)) + '</span>' : '') +
+          (updatedAt ? '<span>📝 ' + escapeHtml(String(updatedAt).substring(0,19)) + '</span>' : '') +
+          (msgCount ? '<span>💬 msgs: ' + escapeHtml(msgCount) + '</span>' : '') +
+          (rawKeys ? '<span title="' + escapeHtml(rawKeys) + '">🔑 ' + escapeHtml(rawKeys.substring(0,60)) + (rawKeys.length>60?'…':'') + '</span>' : '') +
         '</div>' +
-        (strid ? '<div class="cc-strid">strid: ' + escapeHtml(String(strid)) + '</div>' : '') +
+        (strid ? '<div class="cc-strid">strid/id: ' + escapeHtml(strid) + '</div>' : '') +
         '</div>';
     }
     parsedDiv.innerHTML = ph;
@@ -350,12 +459,23 @@ function renderResults(data) {
     // detail 모드 등 단일 객체
     parsedSection.style.display = '';
     parsedCountLbl.textContent = '1 건';
-    var title = resp.title || resp.name || resp.summary || '(제목 없음)';
-    var strid = resp.conversation_strid || resp.strid || resp.id || '';
-    parsedDiv.innerHTML = '<div class="conv-card">' +
-      '<div class="cc-title">' + escapeHtml(title) + '</div>' +
-      (strid ? '<div class="cc-strid">strid: ' + escapeHtml(String(strid)) + '</div>' : '') +
-      '<div class="cc-meta" style="margin-top:6px"><span>키: ' + Object.keys(resp).slice(0,8).join(', ') + '</span></div>' +
+    var title = pickTitle(resp);
+    var strid = pickStrid(resp);
+    var createdAt = pickDate(resp, 'created');
+    var updatedAt = pickDate(resp, 'updated');
+    var msgCount = pickMsgCount(resp);
+    var keyHint2 = '<div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;padding:6px 8px;background:var(--bg);border-radius:3px;border-left:2px solid var(--accent)">' +
+      '<b>🔑 응답 키:</b> ' + escapeHtml(summarizeKeys(resp)) +
+      '</div>';
+    var titleDisplay2 = title.length > 200 ? title.substring(0, 200) + '…' : title;
+    parsedDiv.innerHTML = keyHint2 + '<div class="conv-card">' +
+      '<div class="cc-title">' + escapeHtml(titleDisplay2) + '</div>' +
+      '<div class="cc-meta">' +
+        (createdAt ? '<span>📅 ' + escapeHtml(String(createdAt).substring(0,19)) + '</span>' : '') +
+        (updatedAt ? '<span>📝 ' + escapeHtml(String(updatedAt).substring(0,19)) + '</span>' : '') +
+        (msgCount ? '<span>💬 msgs: ' + escapeHtml(msgCount) + '</span>' : '') +
+      '</div>' +
+      (strid ? '<div class="cc-strid">strid/id: ' + escapeHtml(strid) + '</div>' : '') +
     '</div>';
   } else {
     parsedSection.style.display = 'none';
