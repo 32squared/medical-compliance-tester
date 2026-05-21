@@ -1988,6 +1988,9 @@ class ProxyHandler(BaseHTTPRequestHandler):
             # 일반 시나리오 1100건 컴플라이언스 위반 중심 보고서
             '/reports/scenario-1100-compliance': os.path.join('reports', 'scenario_1100_compliance.html'),
             '/reports/scenario_1100_compliance.html': os.path.join('reports', 'scenario_1100_compliance.html'),
+            # 법률↑+문진↓ 점수 격차 원인 분석 + 평가 기준 개선안
+            '/reports/consultation-score-gap': os.path.join('reports', 'consultation_score_gap_analysis.html'),
+            '/reports/consultation_score_gap_analysis.html': os.path.join('reports', 'consultation_score_gap_analysis.html'),
         }
         # 권한 기반 페이지 접근 가드 (admin은 항상 통과, advisor/tester는 permissions 체크)
         # value가 list면 OR 매칭 (둘 중 하나만 있으면 통과 — view_X 또는 manage_X 둘 다 허용)
@@ -2020,6 +2023,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
             '/reports/scenario_1100_analysis.html':     ['view_history', 'run_batch'],
             '/reports/scenario-1100-compliance':        ['view_history', 'run_batch'],
             '/reports/scenario_1100_compliance.html':   ['view_history', 'run_batch'],
+            '/reports/consultation-score-gap':          ['view_history', 'run_batch'],
+            '/reports/consultation_score_gap_analysis.html': ['view_history', 'run_batch'],
             # '/settings'는 의도적으로 제외 — admin 로그인 진입점이므로 누구나 페이지는 봐야 함
         }
         if path in file_map and not self._is_admin():
