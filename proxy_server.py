@@ -4248,79 +4248,145 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
         })
 
     def _search_probe(self, body):
-        """POST /api/admin/search-probe — End Point 직접 호출 + search_results 검증
+        """POST /api/admin/search-probe — SKIX data_management 검색 API 직접 호출 (검증용)
+
+        SKIX 의 대화 이력 검색·조회 API 를 admin 이 raw 로 검증.
+        대상 API (config.py CONVERSATIONS_API):
+          - GET /api/data_management/conversations              (list)
+          - GET /api/data_management/conversations/search       (search)
+          - GET /api/data_management/conversations/{strid}      (detail)
 
         body: {
-          "query": str,
-          "env": "prod"|"stg"|"dev" (선택, settings.currentEnv 무시 시),
-          "sourceTypes": ["WEB","PUBMED"] (선택, settings.srcWeb/srcPubmed 무시 시),
-          "graphType": str (선택)
+          "mode": "list"|"search"|"detail" (기본 "search"),
+          "query": str (search 일 때 검색어),
+          "strid": str (detail 일 때 conversation_strid),
+          "extraParams": {key: value} (선택, 그 외 임의 쿼리 파라미터),
+          "env": "prod"|"stg"|"dev" (선택, 현재 설정 무시)
         }
         response: {
-          query, text, http_status, elapsed_ms, first_token_ms, last_token_ms,
-          stopped, error, search_results (raw), source_types, env, api_url, graph_type
+          ok, http_status, elapsed_ms, url, method, params,
+          response (SKIX 의 JSON 응답 또는 텍스트), error,
+          config: {env, api_url, tenant_domain, api_uid_masked}
         }
         """
+        import time as _time
+        from urllib.parse import urlencode
+
         try:
             payload = json.loads(body) if body else {}
         except json.JSONDecodeError:
             return self._send_error(400, '잘못된 JSON')
 
+        mode = (payload.get('mode') or 'search').strip()
+        if mode not in ('list', 'search', 'detail'):
+            return self._send_error(400, 'mode 는 list / search / detail 중 하나여야 합니다')
+
         query = (payload.get('query') or '').strip()
-        if not query:
-            return self._send_error(400, 'query 가 필요합니다')
+        strid = (payload.get('strid') or '').strip()
+        extra = payload.get('extraParams') or {}
 
-        from batch_executor import build_skix_config
+        # 환경 설정
         settings = db.get_settings() or {}
-
-        # 옵션 override
         if payload.get('env'):
             settings = dict(settings)
             settings['currentEnv'] = payload['env']
-        if isinstance(payload.get('sourceTypes'), list):
-            settings = dict(settings)
-            st = payload['sourceTypes']
-            settings['srcWeb'] = 'WEB' in st
-            settings['srcPubmed'] = 'PUBMED' in st
-        if payload.get('graphType'):
-            settings = dict(settings)
-            settings['graphType'] = payload['graphType']
 
-        cfg = build_skix_config(settings, tester_uid='search-probe')
-        if not cfg.get('api_key'):
-            return self._send_error(400, f'{cfg.get("current_env","?")} 환경에 API Key 가 설정되지 않았습니다')
+        current_env = settings.get('currentEnv', 'dev')
+        env_defaults = {
+            'dev':  ('https://dev-skix.phnyx.ai',     'dev-skix'),
+            'stg':  ('https://staging-skix.phnyx.ai', 'staging-skix-test'),
+            'prod': ('https://skix.phnyx.ai',         'prod-skix-test'),
+        }
+        env_cfg = settings.get('environments', {}).get(current_env, {})
+        api_url = env_cfg.get('apiUrl', env_defaults.get(current_env, env_defaults['dev'])[0])
+        api_key = env_cfg.get('xApiKey', settings.get('xApiKey', ''))
+        tenant_domain = env_cfg.get('xTenantDomain', env_defaults.get(current_env, env_defaults['dev'])[1])
+        api_uid = env_cfg.get('xApiUid', settings.get('xApiUid', '')) or 'search-probe'
 
-        ProxyHandler._add_log(f"[SearchProbe] query='{query[:50]}' env={cfg['current_env']} src={cfg['source_types']}")
+        if not api_key:
+            return self._send_error(400, f'{current_env.upper()} 환경에 API Key 가 설정되지 않았습니다')
 
-        result = _skix_post_one(
-            query=query,
-            conversation_strid=None,
-            api_url=cfg['api_url'],
-            graph_type=cfg['graph_type'],
-            api_key=cfg['api_key'],
-            tenant_domain=cfg['tenant_domain'],
-            api_uid=cfg['api_uid'],
-            source_types=cfg['source_types'],
-        )
+        # path / params 결정
+        if mode == 'list':
+            skix_path = '/api/data_management/conversations'
+            params = dict(extra)
+        elif mode == 'search':
+            if not query:
+                return self._send_error(400, 'search 모드에는 query 가 필요합니다')
+            skix_path = '/api/data_management/conversations/search'
+            params = {'search_query': query}
+            params.update(extra)
+        else:  # detail
+            if not strid:
+                return self._send_error(400, 'detail 모드에는 strid 가 필요합니다')
+            skix_path = f'/api/data_management/conversations/{strid}'
+            params = dict(extra)
 
-        # 검색 결과 + 메타 + 설정 모두 반환 (raw 검증용)
+        qs = urlencode(params) if params else ''
+        full_url = f"{api_url}{skix_path}" + (f"?{qs}" if qs else "")
+
+        headers = {
+            'Accept': 'application/json',
+            'X-API-Key': api_key,
+            'X-tenant-Domain': tenant_domain,
+            'X-Api-UID': api_uid,
+        }
+
+        ProxyHandler._add_log(f"[SearchProbe] mode={mode} env={current_env} url={full_url}")
+
+        t0 = _time.time()
+        http_status = None
+        resp_data = None
+        resp_text = ''
+        err = None
+
+        try:
+            ctx = ssl.create_default_context()
+            req = Request(url=full_url, headers=headers, method='GET')
+            resp = urlopen(req, context=ctx, timeout=60)
+            http_status = resp.getcode()
+            raw = resp.read().decode('utf-8', errors='replace')
+            resp_text = raw
+            try:
+                resp_data = json.loads(raw)
+            except json.JSONDecodeError:
+                resp_data = None
+        except HTTPError as e:
+            http_status = e.code
+            try:
+                err_body = e.read().decode('utf-8', errors='replace')
+            except Exception:
+                err_body = ''
+            err = f'HTTP {e.code}: {err_body[:500]}'
+            resp_text = err_body
+        except URLError as e:
+            err = f'URL error: {e.reason}'
+        except TimeoutError as e:
+            err = f'timeout: {e}'
+        except Exception as e:
+            err = f'{type(e).__name__}: {e}'
+
+        elapsed_ms = int((_time.time() - t0) * 1000)
+
+        # api_key 마스킹
+        api_key_mask = (api_key[:6] + '...' + api_key[-4:]) if len(api_key) > 12 else '***'
+
         self._send_json(200, {
-            'query': query,
-            'text': result.get('text', ''),
-            'http_status': result.get('http_status'),
-            'elapsed_ms': result.get('elapsed_ms'),
-            'first_token_ms': result.get('first_token_ms'),
-            'last_token_ms': result.get('last_token_ms'),
-            'stopped': result.get('stopped', False),
-            'error': result.get('error'),
-            'search_results': result.get('search_results', []),
-            'citation_count': len(result.get('search_results', []) or []),
+            'ok': http_status == 200 and err is None,
+            'http_status': http_status,
+            'elapsed_ms': elapsed_ms,
+            'url': full_url,
+            'method': 'GET',
+            'mode': mode,
+            'params': params,
+            'response': resp_data if resp_data is not None else resp_text,
+            'error': err,
             'config': {
-                'env': cfg.get('current_env'),
-                'api_url': cfg.get('api_url'),
-                'graph_type': cfg.get('graph_type'),
-                'source_types': cfg.get('source_types'),
-                'tenant_domain': cfg.get('tenant_domain'),
+                'env': current_env,
+                'api_url': api_url,
+                'tenant_domain': tenant_domain,
+                'api_uid': api_uid,
+                'api_key_masked': api_key_mask,
             },
         })
 

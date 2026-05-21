@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>🔍 End Point 검색 결과 검증 도구 (Admin)</title>
+<title>🔍 SKIX 검색 API 검증 도구 (Admin)</title>
 <style>
 :root {
   --primary: #0ea5e9;
@@ -29,20 +29,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR
 
 .input-section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
 .input-section label { display: block; font-size: 12px; font-weight: 700; color: var(--text-dim); margin-bottom: 4px; }
-textarea { width: 100%; min-height: 80px; padding: 10px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; font-family: inherit; font-size: 14px; resize: vertical; }
-textarea:focus { outline: none; border-color: var(--accent); }
+textarea, input[type=text] { width: 100%; padding: 8px 10px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; font-family: inherit; font-size: 13px; }
+textarea:focus, input[type=text]:focus { outline: none; border-color: var(--accent); }
+
+.mode-tabs { display: flex; gap: 6px; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+.mode-tab { padding: 6px 14px; background: var(--bg); color: var(--text-dim); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 700; }
+.mode-tab.active { background: var(--accent); color: white; border-color: var(--accent); }
 
 .option-row { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; align-items: center; }
-.option-row select, .option-row input[type=text] { padding: 6px 10px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; font-size: 12px; }
-.checkbox-group { display: flex; gap: 12px; align-items: center; }
-.checkbox-group label { display: flex; gap: 6px; align-items: center; font-size: 12px; cursor: pointer; }
-.checkbox-group input[type=checkbox] { accent-color: var(--accent); }
+.option-row select { padding: 6px 10px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; font-size: 12px; }
+.field-group { display: flex; flex-direction: column; gap: 4px; }
+.field-group.grow { flex: 1; min-width: 200px; }
 
 .btn-run { background: var(--accent); color: white; border: none; border-radius: 6px; padding: 10px 24px; font-size: 14px; font-weight: 700; cursor: pointer; }
 .btn-run:hover { background: #7c3aed; }
 .btn-run:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 6px 12px; font-size: 12px; cursor: pointer; }
-.btn-secondary:hover { background: var(--border); }
 
 .status { padding: 10px 14px; border-radius: 6px; margin: 12px 0; font-size: 13px; }
 .status.loading { background: rgba(99, 102, 241, 0.15); border: 1px solid var(--accent); color: var(--accent); }
@@ -52,7 +53,7 @@ textarea:focus { outline: none; border-color: var(--accent); }
 .results-section { display: none; margin-top: 16px; }
 .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 16px; }
 .kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 12px; text-align: center; }
-.kpi-value { font-size: 22px; font-weight: 800; }
+.kpi-value { font-size: 20px; font-weight: 800; word-break: break-all; }
 .kpi-label { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
 
 .section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 14px; }
@@ -63,27 +64,20 @@ textarea:focus { outline: none; border-color: var(--accent); }
 .config-row span { padding: 2px 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 3px; }
 .config-row b { color: var(--text); }
 
-.response-text { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 12px; font-size: 13px; line-height: 1.7; white-space: pre-wrap; max-height: 400px; overflow-y: auto; color: var(--text); }
+.url-box { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 8px 12px; font-family: 'Menlo','Consolas',monospace; font-size: 12px; word-break: break-all; color: var(--green); margin-bottom: 8px; }
 
-.search-card { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 10px; font-size: 13px; }
-.search-card .sc-header { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; flex-wrap: wrap; }
-.search-card .sc-num { font-weight: 700; color: var(--accent); min-width: 24px; }
-.search-card .sc-title { font-weight: 700; color: var(--text); flex: 1; }
-.search-card .sc-meta { font-size: 11px; color: var(--text-dim); margin-bottom: 4px; }
-.search-card .sc-meta span { margin-right: 8px; }
-.search-card .sc-abstract { font-size: 12px; line-height: 1.55; color: var(--text-dim); margin-top: 6px; padding: 6px 8px; background: var(--surface); border-radius: 3px; max-height: 100px; overflow-y: auto; }
-.search-card .sc-link { font-size: 11px; color: var(--accent); text-decoration: none; }
-.search-card .sc-link:hover { text-decoration: underline; }
-.source-pill { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 700; }
-.source-pill.PUBMED { background: rgba(34, 197, 94, 0.2); color: var(--green); }
-.source-pill.WEB { background: rgba(14, 165, 233, 0.2); color: var(--primary); }
-.source-pill.OTHER { background: var(--surface2); color: var(--text-dim); }
+.conv-card { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 8px; font-size: 13px; }
+.conv-card .cc-title { font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.conv-card .cc-meta { font-size: 11px; color: var(--text-dim); display: flex; gap: 10px; flex-wrap: wrap; }
+.conv-card .cc-meta span { background: var(--surface2); padding: 1px 6px; border-radius: 3px; }
+.conv-card .cc-strid { font-family: monospace; font-size: 10.5px; color: var(--accent); margin-top: 4px; }
 
-.raw-json { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 12px; font-family: 'Menlo','Consolas',monospace; font-size: 11.5px; line-height: 1.5; max-height: 500px; overflow: auto; color: var(--text); white-space: pre; }
+.raw-json { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 12px; font-family: 'Menlo','Consolas',monospace; font-size: 11.5px; line-height: 1.5; max-height: 600px; overflow: auto; color: var(--text); white-space: pre; }
 details > summary { cursor: pointer; padding: 6px 0; font-size: 12px; color: var(--text-dim); }
 details > summary:hover { color: var(--accent); }
 
 .empty { padding: 20px; text-align: center; color: var(--text-dim); font-size: 13px; }
+.hint { font-size: 11px; color: var(--text-dim); margin-top: 6px; }
 </style>
 </head>
 <body>
@@ -97,18 +91,42 @@ details > summary:hover { color: var(--accent); }
   </div>
 
   <div class="header">
-    <h1>🔍 End Point 검색 결과 검증 도구</h1>
-    <div class="sub">Admin 전용 · End Point 직접 호출 + search_results 구조·인용 면수 raw 검증 (정식 사용자 기능 아님)</div>
+    <h1>🔍 SKIX 검색 API 검증 도구</h1>
+    <div class="sub">Admin 전용 · SKIX의 <code>/api/data_management/conversations/*</code> 직접 호출 + raw 응답 검증 (정식 사용자 기능 아님)</div>
   </div>
 
   <!-- 입력 영역 -->
   <div class="input-section">
-    <label>질의(Query)</label>
-    <textarea id="queryInput" placeholder="예) 고혈압 환자가 두통이 심할 때 어떻게 해야 하나요?"></textarea>
+    <!-- 모드 탭 -->
+    <div class="mode-tabs">
+      <div class="mode-tab active" data-mode="search" onclick="switchMode('search')">🔍 search</div>
+      <div class="mode-tab" data-mode="list" onclick="switchMode('list')">📋 list</div>
+      <div class="mode-tab" data-mode="detail" onclick="switchMode('detail')">📄 detail</div>
+    </div>
 
-    <div class="option-row">
-      <div>
-        <label style="display:inline">환경</label>
+    <!-- search 모드 입력 -->
+    <div id="mode-search" class="mode-input">
+      <label>검색어 (search_query)</label>
+      <textarea id="queryInput" rows="2" placeholder="예) 두통"></textarea>
+      <div class="hint">GET /api/data_management/conversations/search?search_query=...</div>
+    </div>
+
+    <!-- list 모드 입력 -->
+    <div id="mode-list" class="mode-input" style="display:none">
+      <div class="hint">GET /api/data_management/conversations — 대화 목록을 가져옵니다 (추가 파라미터는 아래 'extraParams' 참고)</div>
+    </div>
+
+    <!-- detail 모드 입력 -->
+    <div id="mode-detail" class="mode-input" style="display:none">
+      <label>conversation_strid</label>
+      <input type="text" id="stridInput" placeholder="예) abc-def-1234">
+      <div class="hint">GET /api/data_management/conversations/{strid}</div>
+    </div>
+
+    <!-- 공통 옵션 -->
+    <div class="option-row" style="margin-top:14px">
+      <div class="field-group">
+        <label style="margin-bottom:0">환경</label>
         <select id="envSelect">
           <option value="">현재 설정 사용</option>
           <option value="prod">prod</option>
@@ -116,18 +134,13 @@ details > summary:hover { color: var(--accent); }
           <option value="dev">dev</option>
         </select>
       </div>
-      <div class="checkbox-group">
-        <span style="font-size:12px;color:var(--text-dim);font-weight:700">소스:</span>
-        <label><input type="checkbox" id="srcWeb"> WEB</label>
-        <label><input type="checkbox" id="srcPubmed" checked> PUBMED</label>
+      <div class="field-group grow">
+        <label style="margin-bottom:0">추가 쿼리 파라미터 (key=value&key2=value2)</label>
+        <input type="text" id="extraParams" placeholder="예) limit=10&offset=0">
       </div>
-      <div>
-        <label style="display:inline">Graph Type</label>
-        <input type="text" id="graphType" placeholder="ORCHESTRATED_HYBRID_SEARCH" style="width:240px">
-      </div>
-      <button class="btn-run" id="btnRun" onclick="runProbe()">🚀 검색 실행</button>
+      <button class="btn-run" id="btnRun" onclick="runProbe()">🚀 호출</button>
     </div>
-    <div style="font-size:11px;color:var(--text-dim);margin-top:8px">⏱ 응답까지 평균 30초+ 소요. PROD End Point는 더 오래 걸릴 수 있습니다.</div>
+    <div class="hint" style="margin-top:8px">⌨ Ctrl+Enter 로 실행 가능</div>
   </div>
 
   <!-- 상태 표시 -->
@@ -139,33 +152,30 @@ details > summary:hover { color: var(--accent); }
     <!-- KPI -->
     <div class="kpi-grid" id="kpiGrid"></div>
 
-    <!-- 설정 메타 -->
+    <!-- 호출 URL + 설정 -->
     <div class="section">
-      <h2>⚙️ 호출 설정</h2>
+      <h2>🌐 호출 URL</h2>
+      <div class="url-box" id="urlBox"></div>
       <div class="config-row" id="configRow"></div>
     </div>
 
-    <!-- 응답 텍스트 -->
-    <div class="section">
-      <h2>🤖 End Point 응답 <small id="textLenLabel"></small></h2>
-      <div class="response-text" id="responseText"></div>
-    </div>
-
-    <!-- 검색 결과 카드 -->
-    <div class="section">
-      <h2>📚 검색 결과 (search_results) <small id="searchCountLabel"></small></h2>
-      <div id="searchResults"></div>
+    <!-- 파싱된 결과 (있으면) -->
+    <div class="section" id="parsedSection">
+      <h2>📚 응답 파싱 결과 <small id="parsedCount"></small></h2>
+      <div id="parsedResults"></div>
     </div>
 
     <!-- Raw JSON -->
-    <details>
-      <summary>📋 Raw JSON 응답 (펼치기)</summary>
+    <div class="section">
+      <h2>📋 Raw 응답</h2>
       <div class="raw-json" id="rawJson"></div>
-    </details>
+    </div>
   </div>
 </div>
 
 <script>
+var currentMode = 'search';
+
 function escapeHtml(s) {
   return String(s == null ? '' : s)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -178,31 +188,56 @@ function setStatus(type, message) {
   el.innerHTML = '<div class="status ' + type + '">' + escapeHtml(message) + '</div>';
 }
 
-async function runProbe() {
-  var query = document.getElementById('queryInput').value.trim();
-  if (!query) {
-    setStatus('error', '질의를 입력하세요');
-    return;
+function switchMode(mode) {
+  currentMode = mode;
+  document.querySelectorAll('.mode-tab').forEach(function(el) {
+    el.classList.toggle('active', el.dataset.mode === mode);
+  });
+  document.querySelectorAll('.mode-input').forEach(function(el) {
+    el.style.display = el.id === 'mode-' + mode ? '' : 'none';
+  });
+}
+
+function parseExtraParams(str) {
+  var result = {};
+  if (!str || !str.trim()) return result;
+  var pairs = str.split('&');
+  for (var i = 0; i < pairs.length; i++) {
+    var p = pairs[i];
+    var idx = p.indexOf('=');
+    if (idx > 0) {
+      var k = p.substring(0, idx).trim();
+      var v = p.substring(idx + 1).trim();
+      if (k) result[k] = v;
+    } else if (p.trim()) {
+      result[p.trim()] = '';
+    }
   }
+  return result;
+}
 
+async function runProbe() {
   var env = document.getElementById('envSelect').value;
-  var srcWeb = document.getElementById('srcWeb').checked;
-  var srcPubmed = document.getElementById('srcPubmed').checked;
-  var graphType = document.getElementById('graphType').value.trim();
+  var extraParams = parseExtraParams(document.getElementById('extraParams').value);
 
-  var sourceTypes = [];
-  if (srcWeb) sourceTypes.push('WEB');
-  if (srcPubmed) sourceTypes.push('PUBMED');
-
-  var body = { query: query };
+  var body = { mode: currentMode };
   if (env) body.env = env;
-  if (sourceTypes.length > 0) body.sourceTypes = sourceTypes;
-  if (graphType) body.graphType = graphType;
+  if (Object.keys(extraParams).length > 0) body.extraParams = extraParams;
+
+  if (currentMode === 'search') {
+    var query = document.getElementById('queryInput').value.trim();
+    if (!query) { setStatus('error', '검색어를 입력하세요'); return; }
+    body.query = query;
+  } else if (currentMode === 'detail') {
+    var strid = document.getElementById('stridInput').value.trim();
+    if (!strid) { setStatus('error', 'conversation_strid 를 입력하세요'); return; }
+    body.strid = strid;
+  }
 
   var btn = document.getElementById('btnRun');
   btn.disabled = true;
-  btn.textContent = '⏳ 호출 중... (최대 5분)';
-  setStatus('loading', '🔄 End Point 호출 중... 응답이 도착하면 결과가 표시됩니다.');
+  btn.textContent = '⏳ 호출 중...';
+  setStatus('loading', '🔄 SKIX ' + currentMode + ' API 호출 중...');
   document.getElementById('resultsSection').style.display = 'none';
 
   var startTime = Date.now();
@@ -221,16 +256,18 @@ async function runProbe() {
       return;
     }
     if (data.error) {
-      setStatus('error', 'End Point 오류: ' + data.error);
+      setStatus('error', 'SKIX 오류: ' + data.error);
+    } else if (data.ok) {
+      setStatus('success', '✓ 호출 성공 (' + elapsedSec + '초, HTTP ' + data.http_status + ')');
     } else {
-      setStatus('success', '✓ 호출 성공 (' + elapsedSec + '초 소요, 인용 ' + data.citation_count + '건)');
+      setStatus('error', '실패: HTTP ' + (data.http_status || '?'));
     }
     renderResults(data);
   } catch(e) {
     setStatus('error', '네트워크 오류: ' + e.message);
   } finally {
     btn.disabled = false;
-    btn.textContent = '🚀 검색 실행';
+    btn.textContent = '🚀 호출';
   }
 }
 
@@ -238,69 +275,98 @@ function renderResults(data) {
   document.getElementById('resultsSection').style.display = 'block';
 
   // KPI
+  var httpColor = (data.http_status === 200) ? '#22c55e' : '#ef4444';
   var kpiHtml = '';
-  kpiHtml += '<div class="kpi-card"><div class="kpi-value" style="color:#22c55e">' + (data.http_status || '?') + '</div><div class="kpi-label">HTTP Status</div></div>';
-  kpiHtml += '<div class="kpi-card"><div class="kpi-value" style="color:#0ea5e9">' + (data.citation_count || 0) + '</div><div class="kpi-label">검색 결과 수</div></div>';
-  kpiHtml += '<div class="kpi-card"><div class="kpi-value" style="color:#a855f7">' + ((data.text || '').length) + '</div><div class="kpi-label">응답 길이 (자)</div></div>';
-  kpiHtml += '<div class="kpi-card"><div class="kpi-value" style="color:#eab308">' + ((data.first_token_ms || 0) / 1000).toFixed(1) + 's</div><div class="kpi-label">TTFT (첫 토큰)</div></div>';
-  kpiHtml += '<div class="kpi-card"><div class="kpi-value" style="color:#f97316">' + ((data.elapsed_ms || 0) / 1000).toFixed(1) + 's</div><div class="kpi-label">총 응답 시간</div></div>';
-  kpiHtml += '<div class="kpi-card"><div class="kpi-value" style="color:' + (data.stopped ? '#22c55e' : '#ef4444') + '">' + (data.stopped ? '✓' : '✗') + '</div><div class="kpi-label">정상 종료</div></div>';
+  kpiHtml += '<div class="kpi-card"><div class="kpi-value" style="color:' + httpColor + '">' + (data.http_status || '?') + '</div><div class="kpi-label">HTTP Status</div></div>';
+  kpiHtml += '<div class="kpi-card"><div class="kpi-value" style="color:#0ea5e9">' + escapeHtml(data.mode || '?') + '</div><div class="kpi-label">Mode</div></div>';
+  kpiHtml += '<div class="kpi-card"><div class="kpi-value" style="color:#f97316">' + ((data.elapsed_ms || 0) / 1000).toFixed(2) + 's</div><div class="kpi-label">응답 시간</div></div>';
+
+  // 응답 본문 분석
+  var resp = data.response;
+  var itemCount = 0;
+  var arrayItems = null;
+  if (resp && typeof resp === 'object') {
+    // 일반적 형식: { items: [...] } 또는 { results: [...] } 또는 배열
+    if (Array.isArray(resp)) {
+      arrayItems = resp;
+      itemCount = resp.length;
+    } else if (Array.isArray(resp.items)) {
+      arrayItems = resp.items;
+      itemCount = resp.items.length;
+    } else if (Array.isArray(resp.results)) {
+      arrayItems = resp.results;
+      itemCount = resp.results.length;
+    } else if (Array.isArray(resp.conversations)) {
+      arrayItems = resp.conversations;
+      itemCount = resp.conversations.length;
+    } else if (Array.isArray(resp.data)) {
+      arrayItems = resp.data;
+      itemCount = resp.data.length;
+    }
+  }
+
+  kpiHtml += '<div class="kpi-card"><div class="kpi-value" style="color:#a855f7">' + (itemCount || (arrayItems ? 0 : '—')) + '</div><div class="kpi-label">결과 항목</div></div>';
   document.getElementById('kpiGrid').innerHTML = kpiHtml;
 
-  // 설정 메타
+  // URL + 설정
+  document.getElementById('urlBox').textContent = data.url || '';
   var cfg = data.config || {};
   var cfgHtml = '';
   cfgHtml += '<span><b>env</b>: ' + escapeHtml(cfg.env || '?') + '</span>';
   cfgHtml += '<span><b>api_url</b>: ' + escapeHtml(cfg.api_url || '?') + '</span>';
-  cfgHtml += '<span><b>graph_type</b>: ' + escapeHtml(cfg.graph_type || '?') + '</span>';
-  cfgHtml += '<span><b>source_types</b>: ' + escapeHtml((cfg.source_types || []).join(', ')) + '</span>';
   cfgHtml += '<span><b>tenant_domain</b>: ' + escapeHtml(cfg.tenant_domain || '?') + '</span>';
+  cfgHtml += '<span><b>api_uid</b>: ' + escapeHtml(cfg.api_uid || '?') + '</span>';
+  cfgHtml += '<span><b>api_key</b>: ' + escapeHtml(cfg.api_key_masked || '?') + '</span>';
+  cfgHtml += '<span><b>params</b>: ' + escapeHtml(JSON.stringify(data.params || {})) + '</span>';
   document.getElementById('configRow').innerHTML = cfgHtml;
 
-  // 응답 텍스트
-  document.getElementById('responseText').textContent = data.text || '(응답 없음)';
-  document.getElementById('textLenLabel').textContent = (data.text || '').length + ' 자';
-
-  // 검색 결과 카드
-  var sr = data.search_results || [];
-  document.getElementById('searchCountLabel').textContent = sr.length + ' 건';
-  var srHtml = '';
-  if (sr.length === 0) {
-    srHtml = '<div class="empty">검색 결과가 없습니다</div>';
-  } else {
-    for (var i = 0; i < sr.length; i++) {
-      var s = sr[i] || {};
-      var title = s.title || '(제목 없음)';
-      var authors = Array.isArray(s.authors) ? s.authors.join(', ') : (s.authors || '');
-      var year = s.year || s.date || '';
-      var doi = s.doi || '';
-      var url = s.url || s.pdf_url || '';
-      var srcType = (s.source_type || s.source || 'OTHER').toUpperCase();
-      var abstract = s.abstract || s.text_snapshot || '';
-      srHtml += '<div class="search-card">' +
-        '<div class="sc-header">' +
-          '<span class="sc-num">#' + (i+1) + '</span>' +
-          '<span class="sc-title">' + escapeHtml(title) + '</span>' +
-          '<span class="source-pill ' + (srcType === 'PUBMED' || srcType === 'WEB' ? srcType : 'OTHER') + '">' + escapeHtml(srcType) + '</span>' +
+  // 파싱된 결과 카드 (배열이면)
+  var parsedSection = document.getElementById('parsedSection');
+  var parsedDiv = document.getElementById('parsedResults');
+  var parsedCountLbl = document.getElementById('parsedCount');
+  if (arrayItems && arrayItems.length > 0) {
+    parsedSection.style.display = '';
+    parsedCountLbl.textContent = arrayItems.length + ' 건';
+    var ph = '';
+    for (var i = 0; i < arrayItems.length; i++) {
+      var it = arrayItems[i] || {};
+      var title = it.title || it.name || it.summary || '(제목 없음)';
+      var strid = it.conversation_strid || it.strid || it.id || '';
+      var createdAt = it.created_at || it.createdAt || it.date || '';
+      var updatedAt = it.updated_at || it.updatedAt || '';
+      var msgCount = it.message_count || it.messageCount || (Array.isArray(it.messages) ? it.messages.length : '');
+      ph += '<div class="conv-card">' +
+        '<div class="cc-title">#' + (i+1) + ' · ' + escapeHtml(title) + '</div>' +
+        '<div class="cc-meta">' +
+          (createdAt ? '<span>📅 created: ' + escapeHtml(String(createdAt).substring(0,19)) + '</span>' : '') +
+          (updatedAt ? '<span>📝 updated: ' + escapeHtml(String(updatedAt).substring(0,19)) + '</span>' : '') +
+          (msgCount !== '' ? '<span>💬 msgs: ' + escapeHtml(String(msgCount)) + '</span>' : '') +
         '</div>' +
-        '<div class="sc-meta">' +
-          (authors ? '<span>👥 ' + escapeHtml(authors.substring(0, 150)) + (authors.length > 150 ? '...' : '') + '</span>' : '') +
-          (year ? '<span>📅 ' + escapeHtml(String(year)) + '</span>' : '') +
-          (doi ? '<span>🔗 DOI: ' + escapeHtml(doi) + '</span>' : '') +
-        '</div>' +
-        (abstract ? '<div class="sc-abstract">' + escapeHtml(abstract.substring(0, 500)) + (abstract.length > 500 ? '...' : '') + '</div>' : '') +
-        (url ? '<div style="margin-top:6px"><a class="sc-link" href="' + escapeHtml(url) + '" target="_blank">🌐 ' + escapeHtml(url) + '</a></div>' : '') +
+        (strid ? '<div class="cc-strid">strid: ' + escapeHtml(String(strid)) + '</div>' : '') +
         '</div>';
     }
+    parsedDiv.innerHTML = ph;
+  } else if (resp && typeof resp === 'object' && !Array.isArray(resp)) {
+    // detail 모드 등 단일 객체
+    parsedSection.style.display = '';
+    parsedCountLbl.textContent = '1 건';
+    var title = resp.title || resp.name || resp.summary || '(제목 없음)';
+    var strid = resp.conversation_strid || resp.strid || resp.id || '';
+    parsedDiv.innerHTML = '<div class="conv-card">' +
+      '<div class="cc-title">' + escapeHtml(title) + '</div>' +
+      (strid ? '<div class="cc-strid">strid: ' + escapeHtml(String(strid)) + '</div>' : '') +
+      '<div class="cc-meta" style="margin-top:6px"><span>키: ' + Object.keys(resp).slice(0,8).join(', ') + '</span></div>' +
+    '</div>';
+  } else {
+    parsedSection.style.display = 'none';
   }
-  document.getElementById('searchResults').innerHTML = srHtml;
 
   // Raw JSON
-  document.getElementById('rawJson').textContent = JSON.stringify(data, null, 2);
+  document.getElementById('rawJson').textContent = JSON.stringify(data.response, null, 2);
 }
 
-// Enter on query → run
-document.getElementById('queryInput').addEventListener('keydown', function(e) {
+// Ctrl+Enter on any input
+document.addEventListener('keydown', function(e) {
   if (e.ctrlKey && e.key === 'Enter') runProbe();
 });
 </script>
