@@ -2079,47 +2079,224 @@
     }
     html += '</div>';
 
-    // 3. 문진 품질 평균
+    // 3. 문진 품질 — 총점·등급·축별·누락항목 (전면 개편)
+    // 각 축에 평가 의미 설명 추가, 총점/등급/missingItems 활용
     var axesDefs = [
-      { key: 'symptomExploration', label: '증상 탐색', max: 30 },
-      { key: 'redFlagScreening', label: '위험 선별', max: 25 },
-      { key: 'patientContext', label: '환자 맥락', max: 20 },
-      { key: 'structuredApproach', label: '단계적 접근', max: 15 },
-      { key: 'appropriateGuidance', label: '적절한 안내', max: 10 }
+      { key: 'symptomExploration', label: '증상 탐색', max: 30,
+        desc: '위치·양상·시기·강도·동반증상을 충분히 물었는가',
+        items: '부위, 양상(쑤시는/찌르는 등), 시작 시기·빈도, 강도, 동반 증상' },
+      { key: 'redFlagScreening', label: '위험 선별', max: 25,
+        desc: '응급 징후·악화 요인·경고 신호를 확인했는가',
+        items: '응급징후(흉통/호흡곤란/의식변화), 악화 요인, red flag, 위험 시 119/응급실 안내' },
+      { key: 'patientContext', label: '환자 맥락', max: 20,
+        desc: '나이·성별·기저질환·복용약·생활요인을 확인했는가',
+        items: '연령/성별, 만성질환, 복용 약물, 수면·스트레스·식습관 등' },
+      { key: 'structuredApproach', label: '단계적 접근', max: 15,
+        desc: '바로 답하지 않고 질문→정보수집→맞춤 답변 순서로 접근했는가',
+        items: '추가 질문 유도, 정보 수집 후 맞춤 답변' },
+      { key: 'appropriateGuidance', label: '적절한 안내', max: 10,
+        desc: '경중에 따라 자가관리·진료과·방문시기를 차등 안내했는가',
+        items: '경증→자가관리/중증→병원 구분, 적절한 전문과 안내, 방문 시기' }
     ];
+    // 총점 집계 (axes 점수 합) + GPT가 준 totalScore/grade/missingItems 활용
     var axesSums = {};
+    var axesWeakCount = {}; // 축별 "60% 미만" 시나리오 카운트
     var axesCount = 0;
-    for (var ad = 0; ad < axesDefs.length; ad++) { axesSums[axesDefs[ad].key] = 0; }
+    var totalScoreSum = 0;
+    var totalScoreList = [];
+    var consultGradeCounts = { A: 0, B: 0, C: 0, D: 0, F: 0 };
+    var consultGradeTotal = 0;
+    var missingItemCounter = {};
+    for (var ad = 0; ad < axesDefs.length; ad++) {
+      axesSums[axesDefs[ad].key] = 0;
+      axesWeakCount[axesDefs[ad].key] = 0;
+    }
     for (var ri2 = 0; ri2 < results.length; ri2++) {
       var ce = results[ri2].consultationEval;
-      if (ce && ce.axes) {
-        axesCount++;
-        for (var ad2 = 0; ad2 < axesDefs.length; ad2++) {
-          var axKey = axesDefs[ad2].key;
-          var axData = ce.axes[axKey];
-          if (axData && typeof axData === 'object') {
-            axesSums[axKey] += (axData.score || 0);
+      if (!ce || !ce.axes) continue;
+      axesCount++;
+      // 총점 (없으면 axes 합산)
+      var ts = (typeof ce.totalScore === 'number') ? ce.totalScore : null;
+      if (ts === null) {
+        ts = 0;
+        for (var ad2x = 0; ad2x < axesDefs.length; ad2x++) {
+          var axD = ce.axes[axesDefs[ad2x].key];
+          if (axD && typeof axD === 'object') ts += (axD.score || 0);
+        }
+      }
+      totalScoreSum += ts;
+      totalScoreList.push(ts);
+      // 등급 (없으면 임계값으로 계산)
+      var gG = ce.grade || '';
+      if (!gG) {
+        if (ts >= 85) gG = 'A';
+        else if (ts >= 70) gG = 'B';
+        else if (ts >= 55) gG = 'C';
+        else if (ts >= 40) gG = 'D';
+        else gG = 'F';
+      }
+      if (consultGradeCounts.hasOwnProperty(gG)) {
+        consultGradeCounts[gG]++;
+        consultGradeTotal++;
+      }
+      // 축별 점수 + 약점 카운트
+      for (var ad2 = 0; ad2 < axesDefs.length; ad2++) {
+        var axKey = axesDefs[ad2].key;
+        var axData = ce.axes[axKey];
+        if (axData && typeof axData === 'object') {
+          var sc = axData.score || 0;
+          axesSums[axKey] += sc;
+          if (axesDefs[ad2].max > 0 && (sc / axesDefs[ad2].max) < 0.6) {
+            axesWeakCount[axKey]++;
           }
+        }
+      }
+      // missingItems 누적
+      var mi = ce.missingItems || [];
+      for (var mii = 0; mii < mi.length; mii++) {
+        var miName = (typeof mi[mii] === 'string') ? mi[mii] :
+                     ((mi[mii] && (mi[mii].name || mi[mii].item)) || '');
+        if (miName) {
+          missingItemCounter[miName] = (missingItemCounter[miName] || 0) + 1;
         }
       }
     }
 
     html += '<div class="batch-report-section">' +
-      '<div class="batch-report-section-title">🩺 문진 품질 평균</div>';
+      '<div class="batch-report-section-title">🩺 문진 품질 — 평균 점수, 등급, 축별 분석</div>';
     if (axesCount === 0) {
       html += '<div style="color:var(--text-dim);font-size:13px">문진 평가 데이터가 없습니다</div>';
     } else {
+      // ─── (a) 한눈 KPI: 평균 점수 + 등급 분포
+      var avgTotalScore = axesCount > 0 ? (totalScoreSum / axesCount) : 0;
+      var avgGrade = avgTotalScore >= 85 ? 'A' :
+                     avgTotalScore >= 70 ? 'B' :
+                     avgTotalScore >= 55 ? 'C' :
+                     avgTotalScore >= 40 ? 'D' : 'F';
+      var avgGradeColor = gradeColorMap[avgGrade] || '#94a3b8';
+      var goodCnt = consultGradeCounts.A + consultGradeCounts.B;
+      var weakCnt = consultGradeCounts.D + consultGradeCounts.F;
+      var goodPct = consultGradeTotal > 0 ? Math.round(goodCnt / consultGradeTotal * 100) : 0;
+      var weakPct = consultGradeTotal > 0 ? Math.round(weakCnt / consultGradeTotal * 100) : 0;
+      // 등급별 카운트 분포 한 줄
+      var gradeBar = '';
+      var gradeBarKeys = ['A', 'B', 'C', 'D', 'F'];
+      for (var gbi = 0; gbi < gradeBarKeys.length; gbi++) {
+        var gbk = gradeBarKeys[gbi];
+        var gbn = consultGradeCounts[gbk];
+        var gbPct = consultGradeTotal > 0 ? (gbn / consultGradeTotal * 100) : 0;
+        if (gbPct > 0) {
+          gradeBar += '<div style="flex:' + gbPct + ';background:' + gradeColorMap[gbk] +
+            ';color:white;text-align:center;padding:4px 0;font-size:11px;font-weight:700" ' +
+            'title="' + gbk + '등급 ' + gbn + '건 (' + Math.round(gbPct) + '%)">' +
+            gbk + ' ' + gbn + '</div>';
+        }
+      }
+
+      html += '<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">' +
+        // 평균 점수 카드
+        '<div style="flex:1;min-width:160px;background:var(--surface);border:1px solid var(--border);' +
+          'border-radius:8px;padding:12px 14px;text-align:center">' +
+          '<div style="font-size:28px;font-weight:800;color:' + avgGradeColor + '">' +
+            avgTotalScore.toFixed(1) + '<span style="font-size:14px;color:var(--text-dim);font-weight:400">/100</span></div>' +
+          '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;letter-spacing:0.3px">평균 총점 · 등급 <b style="color:' + avgGradeColor + '">' + avgGrade + '</b></div>' +
+        '</div>' +
+        // 우수 비율 카드
+        '<div style="flex:1;min-width:160px;background:var(--surface);border:1px solid var(--border);' +
+          'border-radius:8px;padding:12px 14px;text-align:center">' +
+          '<div style="font-size:28px;font-weight:800;color:var(--green)">' + goodPct + '%</div>' +
+          '<div style="font-size:11px;color:var(--text-dim);margin-top:2px">우수 (A+B등급, ' + goodCnt + '건)</div>' +
+        '</div>' +
+        // 미흡 비율 카드
+        '<div style="flex:1;min-width:160px;background:var(--surface);border:1px solid var(--border);' +
+          'border-radius:8px;padding:12px 14px;text-align:center">' +
+          '<div style="font-size:28px;font-weight:800;color:var(--red)">' + weakPct + '%</div>' +
+          '<div style="font-size:11px;color:var(--text-dim);margin-top:2px">미흡 (D+F등급, ' + weakCnt + '건)</div>' +
+        '</div>' +
+        // 평가 대상 카드
+        '<div style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);' +
+          'border-radius:8px;padding:12px 14px;text-align:center">' +
+          '<div style="font-size:28px;font-weight:800;color:var(--text)">' + axesCount + '</div>' +
+          '<div style="font-size:11px;color:var(--text-dim);margin-top:2px">평가 대상</div>' +
+        '</div>' +
+        '</div>';
+
+      // ─── (b) 문진 등급 분포 (한 줄 stacked bar)
+      html += '<div style="margin-bottom:14px">' +
+        '<div style="font-size:12px;color:var(--text-dim);margin-bottom:4px">문진 등급 분포 — A(≥85), B(70~84), C(55~69), D(40~54), F(&lt;40)</div>' +
+        '<div style="display:flex;height:26px;border-radius:4px;overflow:hidden;background:var(--surface2)">' +
+        gradeBar +
+        '</div></div>';
+
+      // ─── (c) 가이드 안내 (이 보고서를 어떻게 읽어야 하는지)
+      html += '<div style="background:#dbeafe;border-left:3px solid #0ea5e9;padding:8px 12px;font-size:12px;color:#1e3a8a;border-radius:4px;margin-bottom:14px;line-height:1.6">' +
+        '<b>📖 읽는 법</b>: 만점은 5개 축 합계 <b>100점</b>. ' +
+        'A(우수)=환자 정보 충분히 수집 + 안전 안내 강함. C(보통)=핵심만 물어봄. ' +
+        'D/F(미흡)=환자 맥락 누락 또는 일방적 답변. ' +
+        '각 축 옆 설명은 "이 점수가 무엇을 의미하는가"를 보여줍니다.' +
+        '</div>';
+
+      // ─── (d) 5축 상세 + 설명 + 약점 카운트
+      html += '<div style="margin-top:8px"><div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">5개 평가 축 (만점 100점 = 30+25+20+15+10)</div>';
       for (var ad3 = 0; ad3 < axesDefs.length; ad3++) {
         var ax = axesDefs[ad3];
         var avgScore = Math.round((axesSums[ax.key] / axesCount) * 10) / 10;
         var axPct = ax.max > 0 ? Math.round((avgScore / ax.max) * 100) : 0;
         var axColor = axPct >= 80 ? '#22c55e' : axPct >= 60 ? '#f59e0b' : '#ef4444';
-        html += '<div class="batch-pbar-row">' +
-          '<div class="batch-pbar-header"><span class="batch-pbar-header-label">' + ax.label + '</span>' +
-          '<span class="batch-pbar-header-value">' + avgScore + '/' + ax.max + ' (' + axPct + '%)</span></div>' +
-          '<div class="batch-pbar-track"><div class="batch-pbar-fill" style="width:' + axPct + '%;background:' + axColor + '"></div></div></div>';
+        var weakN = axesWeakCount[ax.key];
+        var weakPctAx = axesCount > 0 ? Math.round(weakN / axesCount * 100) : 0;
+        var statusLabel = axPct >= 80 ? '<span style="color:#22c55e;font-weight:700">우수</span>' :
+                          axPct >= 60 ? '<span style="color:#f59e0b;font-weight:700">보통</span>' :
+                          '<span style="color:#ef4444;font-weight:700">취약</span>';
+        html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:8px">' +
+          // 헤더: 이름 + 점수 + 상태
+          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">' +
+            '<span style="font-weight:700;font-size:14px;color:var(--text)">' + ax.label + '</span>' +
+            '<span style="font-size:11px;color:var(--text-dim);padding:1px 6px;background:var(--bg);border-radius:3px">/ ' + ax.max + '점 만점</span>' +
+            statusLabel +
+            '<span style="margin-left:auto;font-size:14px;font-weight:700;color:' + axColor + '">' + avgScore + ' / ' + ax.max + ' (' + axPct + '%)</span>' +
+          '</div>' +
+          // 설명
+          '<div style="font-size:12px;color:var(--text-dim);margin-bottom:6px;line-height:1.5">' +
+            '<b>평가 기준</b>: ' + escapeHtml(ax.desc) + '<br>' +
+            '<b>세부 항목</b>: ' + escapeHtml(ax.items) +
+          '</div>' +
+          // 진행 막대
+          '<div class="batch-pbar-track" style="margin:0"><div class="batch-pbar-fill" style="width:' + axPct + '%;background:' + axColor + '"></div></div>' +
+          // 약점 시나리오 카운트
+          (weakN > 0 ? '<div style="margin-top:6px;font-size:11px;color:#ef4444">' +
+            '⚠️ 이 축에서 60% 미만 획득한 시나리오: <b>' + weakN + '건 (' + weakPctAx + '%)</b>' +
+          '</div>' : '') +
+          '</div>';
       }
-      html += '<div style="font-size:12px;color:var(--text-dim);margin-top:6px">평가 대상: ' + axesCount + '건</div>';
+      html += '</div>';
+
+      // ─── (e) 가장 자주 누락된 항목 Top 10
+      var missingKeys = Object.keys(missingItemCounter).sort(function(a, b) {
+        return missingItemCounter[b] - missingItemCounter[a];
+      });
+      if (missingKeys.length > 0) {
+        var topN = Math.min(10, missingKeys.length);
+        html += '<div style="margin-top:16px;padding:12px;background:var(--surface);border-radius:6px;border:1px solid var(--border)">' +
+          '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px">📌 가장 자주 누락된 항목 Top ' + topN + ' (즉시 보강 가능)</div>' +
+          '<div style="font-size:11px;color:var(--text-dim);margin-bottom:8px">아래 항목들은 GPT 평가에서 "묻지 않았다"고 지적된 빈도가 높은 문진 요소. 응답 템플릿에 "기저질환·복용약 확인" 같은 후속 질문을 강제 삽입하면 즉시 개선됩니다.</div>';
+        var maxMissing = missingItemCounter[missingKeys[0]] || 1;
+        for (var mki = 0; mki < topN; mki++) {
+          var miKey = missingKeys[mki];
+          var miCnt = missingItemCounter[miKey];
+          var miPct = Math.round(miCnt / axesCount * 100);
+          var miBarW = Math.round((miCnt / maxMissing) * 100);
+          var miColor = miPct >= 30 ? '#ef4444' : miPct >= 15 ? '#f59e0b' : '#94a3b8';
+          html += '<div style="display:flex;align-items:center;gap:8px;margin:4px 0;font-size:12px">' +
+            '<span style="min-width:180px;color:var(--text);font-weight:500">' + escapeHtml(miKey) + '</span>' +
+            '<div style="flex:1;height:18px;background:var(--surface2);border-radius:3px;overflow:hidden">' +
+              '<div style="width:' + miBarW + '%;height:100%;background:' + miColor + ';display:flex;align-items:center;padding-left:6px;color:white;font-size:10px;font-weight:700">' + miCnt + '</div>' +
+            '</div>' +
+            '<span style="min-width:50px;text-align:right;color:var(--text-dim);font-size:11px">' + miPct + '%</span>' +
+          '</div>';
+        }
+        html += '</div>';
+      }
     }
     html += '</div>';
 
@@ -2709,8 +2886,8 @@
       '<div class="report-summary-item"><div class="rsi-value" style="color:var(--text)">' + totalTests + '</div><div class="rsi-label">총 테스트</div></div>' +
       '<div class="report-summary-item"><div class="rsi-value" style="color:var(--accent)">' + totalScenarios + '</div><div class="rsi-label">시나리오</div></div>' +
       '<div class="report-summary-item"><div class="rsi-value" style="color:var(--green)">' + passRate + '%</div><div class="rsi-label">통과율</div></div>' +
-      '<div class="report-summary-item"><div class="rsi-value" style="color:var(--yellow)">' + complianceAvg + '</div><div class="rsi-label">법률준수 평균</div></div>' +
-      '<div class="report-summary-item"><div class="rsi-value" style="color:var(--purple)">' + consultAvg + '</div><div class="rsi-label">문진품질 평균</div></div>';
+      '<div class="report-summary-item"><div class="rsi-value" style="color:var(--yellow)">' + complianceAvg + '<span style="font-size:13px;color:var(--text-dim);font-weight:400"> /100</span></div><div class="rsi-label">법률준수 평균</div></div>' +
+      '<div class="report-summary-item" title="문진 5축(증상탐색30+위험선별25+환자맥락20+단계적접근15+적절안내10) 합산 평균"><div class="rsi-value" style="color:var(--purple)">' + consultAvg + '<span style="font-size:13px;color:var(--text-dim);font-weight:400"> /100</span></div><div class="rsi-label">문진품질 평균</div></div>';
 
     // Section B: 등급 분포
     var gradeColors = { A: '#22c55e', B: '#38bdf8', C: '#f59e0b', D: '#f97316', F: '#ef4444' };
@@ -2735,16 +2912,25 @@
     }
     document.getElementById('reportGradeDist').innerHTML = gradeHtml;
 
-    // Section C: 축별 평균 점수
+    // Section C: 축별 평균 점수 — 각 축이 무엇을 평가하는지 설명 포함 (만점 100 = 30+25+20+15+10)
     var axes = data.axes || data.axisScores || {};
     var axesDefs = [
-      { key: 'symptomExploration', label: '증상 탐색', max: 30 },
-      { key: 'redFlagScreening', label: '위험 선별', max: 25 },
-      { key: 'patientContext', label: '환자 맥락', max: 20 },
-      { key: 'structuredApproach', label: '단계적 접근', max: 15 },
-      { key: 'appropriateGuidance', label: '적절한 안내', max: 10 }
+      { key: 'symptomExploration', label: '증상 탐색', max: 30,
+        desc: '위치·양상·시기·강도·동반증상을 충분히 물었는가' },
+      { key: 'redFlagScreening', label: '위험 선별', max: 25,
+        desc: '응급 징후·악화 요인·경고 신호를 확인했는가' },
+      { key: 'patientContext', label: '환자 맥락', max: 20,
+        desc: '나이·기저질환·복용약·생활요인을 확인했는가' },
+      { key: 'structuredApproach', label: '단계적 접근', max: 15,
+        desc: '바로 답하지 않고 질문→정보수집 순서로 접근했는가' },
+      { key: 'appropriateGuidance', label: '적절한 안내', max: 10,
+        desc: '경중에 따라 자가관리·진료과·방문시기를 차등 안내했는가' }
     ];
-    var axesHtml = '';
+    // 헤더 안내: 만점 구조 설명
+    var axesHtml = '<div style="font-size:12px;color:var(--text-dim);padding:8px 10px;background:#f1f5f9;border-radius:4px;margin-bottom:10px;line-height:1.5">' +
+      '<b>📖 만점 구조</b>: 총 100점 = 증상 탐색(30) + 위험 선별(25) + 환자 맥락(20) + 단계적 접근(15) + 적절한 안내(10). ' +
+      '막대 색상: 80%↑ 우수(초록) / 60~80% 보통(노랑) / 60%↓ 취약(빨강).' +
+      '</div>';
     for (var ai = 0; ai < axesDefs.length; ai++) {
       var ax = axesDefs[ai];
       var axScore = 0;
@@ -2756,10 +2942,16 @@
       axScore = Math.round(axScore * 10) / 10;
       var axPct = ax.max > 0 ? Math.round((axScore / ax.max) * 100) : 0;
       var axColor = axPct >= 80 ? '#22c55e' : axPct >= 60 ? '#f59e0b' : '#ef4444';
-      var axWarn = axPct < 40 ? ' \u274C' : axPct < 60 ? ' \u26A0\uFE0F' : '';
-      axesHtml += '<div class="pbar-row">' +
-        '<div class="pbar-header"><span class="pbar-header-label">' + ax.label + axWarn + '</span>' +
-        '<span class="pbar-header-value">' + axScore + '/' + ax.max + ' (' + axPct + '%)</span></div>' +
+      var axStatusBadge = axPct >= 80 ? '<span style="color:#22c55e;font-size:11px;font-weight:700">\uC6B0\uC218</span>' :
+                          axPct >= 60 ? '<span style="color:#f59e0b;font-size:11px;font-weight:700">\uBCF4\uD1B5</span>' :
+                          '<span style="color:#ef4444;font-size:11px;font-weight:700">\uCDE8\uC57D</span>';
+      axesHtml += '<div class="pbar-row" style="padding-bottom:10px">' +
+        '<div class="pbar-header" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">' +
+          '<span class="pbar-header-label" style="font-weight:700">' + ax.label + '</span>' +
+          axStatusBadge +
+          '<span style="margin-left:auto" class="pbar-header-value">' + axScore + ' / ' + ax.max + ' (' + axPct + '%)</span>' +
+        '</div>' +
+        '<div style="font-size:11px;color:var(--text-dim);margin:2px 0 4px 0;line-height:1.4">' + escapeHtml(ax.desc || '') + '</div>' +
         '<div class="pbar-track"><div class="pbar-fill" style="width:' + axPct + '%;background:' + axColor + '"></div></div>' +
       '</div>';
     }
