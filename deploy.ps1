@@ -53,17 +53,16 @@ gcloud run deploy $ServiceName `
     --region $Region `
     --platform managed `
     --allow-unauthenticated `
-    --memory 8Gi --cpu 2 `
+    --memory 4Gi --cpu 1 `
     --timeout 900 `
-    --min-instances 3 --max-instances 20 `
-    --concurrency 1 `
+    --min-instances 1 --max-instances 10 `
+    --concurrency 5 `
     --execution-environment gen2 `
     --set-env-vars "DATABASE_URL=$DatabaseUrl" `
     --add-cloudsql-instances $SqlConnection `
     --vpc-connector=medical-connector `
     --vpc-egress=all-traffic `
     --cpu-boost `
-    --no-cpu-throttling `
     --clear-volumes `
     --clear-volume-mounts
 if ($LASTEXITCODE -ne 0) {
