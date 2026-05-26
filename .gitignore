@@ -26,3 +26,9 @@ data/*.json
 
 # 보고서 PPT 산출물 (소스 .js 만 추적)
 reports/*.pptx
+
+# 비용 모니터링 누적 로그 (로컬 보관, 시간 흐름 누적)
+logs/
+
+# 임시 deploy/test 로그 (다른 worktree 산출물)
+prod_deploy_*.log
