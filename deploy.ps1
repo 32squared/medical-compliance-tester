@@ -55,7 +55,7 @@ gcloud run deploy $ServiceName `
     --allow-unauthenticated `
     --memory 4Gi --cpu 1 `
     --timeout 900 `
-    --min-instances 1 --max-instances 10 `
+    --min-instances 0 --max-instances 10 `
     --concurrency 5 `
     --execution-environment gen2 `
     --set-env-vars "DATABASE_URL=$DatabaseUrl" `
