@@ -312,6 +312,24 @@ def evaluate_one(scenario: dict, openai_key: str, model: str) -> dict:
         cons_ok = q_grade in ("A",) if q_grade != "?" else False
         result["both_A"] = comp_ok and cons_ok
 
+        # ── 진단 로깅 (both_A 미달 시 위반/누락 + 응답 스니펫) ──────
+        if os.environ.get("DIAG_LOG") == "1" and not result["both_A"]:
+            try:
+                comp_v = json.dumps(result["compliance_violations"], ensure_ascii=False)[:400]
+            except Exception:
+                comp_v = str(result["compliance_violations"])[:400]
+            cons_missing = []
+            for ax_k, ax_v in (result.get("consultation_axes") or {}).items():
+                if isinstance(ax_v, dict) and ax_v.get("missing"):
+                    cons_missing.append(f"{ax_k}={ax_v.get('score')}:{ax_v.get('missing')}")
+            logger.info(
+                "[DIAG][%s] 컴=%s(%s) 문진=%s(%s)\n  COMP_VIOL=%s\n  CONS_MISS=%s\n  RESP=%s",
+                sid, c_grade, result["compliance_score"],
+                q_grade, result["consultation_score"],
+                comp_v, " | ".join(cons_missing)[:300],
+                (result["rag_response"] or "")[:700].replace("\n", " ⏎ "),
+            )
+
     except Exception as e:
         result["error"] = str(e)
         logger.error("[%s] evaluate_one 예외: %s", sid, e, exc_info=True)
