@@ -118,6 +118,7 @@
 <div class="topbar">
   <h1 style="font-size:16px;font-weight:700">&#127973; 나만의 주치의</h1>
   <a href="/" class="nav-btn">채팅 테스터</a>
+  <a href="/arena" class="nav-btn">Arena</a>
   <a href="/manager" class="nav-btn">시나리오 관리</a>
   <a href="/history" class="nav-btn">테스트 이력</a>
   <a href="/guidelines" class="nav-btn">법률 평가 기준</a>
@@ -132,6 +133,7 @@
   <div class="tabs">
     <button class="tab active" data-tab="overview" onclick="switchTab('overview')">&#128202; 개요</button>
     <button class="tab" data-tab="feedback" onclick="switchTab('feedback')">&#128203; 피드백</button>
+    <button class="tab" data-tab="comments" onclick="switchTab('comments')">&#128172; 커멘트</button>
     <button class="tab" data-tab="pairs" onclick="switchTab('pairs')">&#9878;&#65039; 선호도 쌍</button>
     <button class="tab" data-tab="export" onclick="switchTab('export')">&#128228; Export</button>
     <button class="tab" data-tab="training" onclick="switchTab('training')">&#127947;&#65039; 학습 현황</button>
@@ -181,6 +183,18 @@
           <tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:30px">로딩 중...</td></tr>
         </tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- Tab: Comments -->
+  <div class="card" id="tab-comments">
+    <h2>&#128172; 테스터 커멘트</h2>
+    <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center">
+      <button class="btn-outline" onclick="loadCommentsList()">&#128260; 새로고침</button>
+      <span id="commentsCount" style="font-size:12px;color:var(--text-dim)"></span>
+    </div>
+    <div id="commentsList" style="display:flex;flex-direction:column;gap:10px">
+      <div style="text-align:center;color:var(--text-dim);padding:30px">로딩 중...</div>
     </div>
   </div>
 
@@ -276,6 +290,7 @@
     });
 
     if (tab === 'feedback') loadFeedbackList();
+    if (tab === 'comments') loadCommentsList();
     if (tab === 'pairs') loadPairsList();
   }
 
@@ -337,7 +352,8 @@
         }
         var tagsList = [];
         if (fb.labels_json) {
-          try { tagsList = JSON.parse(fb.labels_json); } catch(ex) { /* ignore parse error */ }
+          if (Array.isArray(fb.labels_json)) { tagsList = fb.labels_json; }
+          else { try { tagsList = JSON.parse(fb.labels_json); } catch(ex) {} }
         }
         var tags = Array.isArray(tagsList) ? tagsList.map(function(t) { return '<span class="tag-chip">' + escapeHtml(t) + '</span>'; }).join('') : '';
         var dateStr = fb.created_at || '';
@@ -358,6 +374,59 @@
       tbody.innerHTML = html;
     } catch(e) {
       tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--red);padding:30px">\uB85C\uB4DC \uC2E4\uD328: ' + escapeHtml(e.message) + '</td></tr>';
+    }
+  }
+
+  // ── Load Comments List ──
+  async function loadCommentsList() {
+    var container = document.getElementById('commentsList');
+    if (!container) return;
+    container.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:30px">\uB85C\uB529 \uC911...</div>';
+
+    try {
+      var res = await fetch('/api/comments?limit=100');
+      if (!res.ok) {
+        container.innerHTML = '<div style="text-align:center;color:var(--red);padding:30px">\uB85C\uB4DC \uC2E4\uD328: ' + res.status + '</div>';
+        return;
+      }
+      var data = await res.json();
+      if (!Array.isArray(data) || data.length === 0) {
+        container.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:30px">\uCEE4\uBA58\uD2B8\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.</div>';
+        var countEl = document.getElementById('commentsCount');
+        if (countEl) countEl.textContent = '0\uAC74';
+        return;
+      }
+
+      var countEl = document.getElementById('commentsCount');
+      if (countEl) countEl.textContent = data.length + '\uAC74';
+
+      var html = '';
+      for (var i = 0; i < data.length; i++) {
+        var c = data[i];
+        var dateStr = c.created_at || '';
+        if (dateStr) {
+          try {
+            var d = new Date(dateStr);
+            dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+          } catch(ex) {}
+        }
+        var selText = c.selected_text || '';
+        var selHtml = selText ? '<div style="font-size:12px;color:var(--text-dim);background:var(--surface);padding:6px 10px;border-radius:6px;margin:6px 0;border-left:3px solid var(--yellow);max-height:60px;overflow-y:auto;line-height:1.5">\uD83D\uDCCC "' + escapeHtml(selText.substring(0, 300)) + '"</div>' : '';
+        html += '<div style="padding:14px 16px;background:var(--surface2);border-radius:10px;border:1px solid var(--border);border-left:3px solid #f59e0b">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+            '<div style="display:flex;align-items:center;gap:8px">' +
+              '<span class="tag-chip" style="background:#f59e0b22;color:#f59e0b;font-weight:700">' + escapeHtml(c.category || '\uAE30\uD0C0') + '</span>' +
+              '<span style="font-size:12px;color:var(--accent);font-weight:600">' + escapeHtml(c.user_name || '') + '</span>' +
+            '</div>' +
+            '<span style="font-size:11px;color:var(--text-dim)">' + escapeHtml(dateStr) + '</span>' +
+          '</div>' +
+          selHtml +
+          '<div style="font-size:13px;color:var(--text);line-height:1.6;white-space:pre-wrap">' + escapeHtml(c.content || '') + '</div>' +
+        '</div>';
+      }
+      container.innerHTML = html;
+    } catch(e) {
+      container.innerHTML = '<div style="text-align:center;color:var(--red);padding:30px">\uB85C\uB4DC \uC2E4\uD328: ' + escapeHtml(e.message) + '</div>';
     }
   }
 
