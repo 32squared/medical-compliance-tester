@@ -7,3 +7,24 @@ reports/live_*.html
 settings.json
 test_history.json
 conversations.json
+
+# 로컬 DB 파일 (커밋 금지 — GCS FUSE/SQLite 손상 위험)
+*.db
+app_damaged.db
+app_recovered.db
+
+# 백업 파일
+*.bak
+
+# 로컬 개발 아티팩트
+.claude/dev_logs*.json
+.claude/all_logs.json
+.claude/launch.json
+.claude/dev_chat_tester.html
+.claude/read_docx.py
+.claude/master-tmp/
+.claude/worktrees/
+
+# Node (docs 매뉴얼 생성용)
+docs/node_modules/
+node_modules/
