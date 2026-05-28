@@ -85,6 +85,7 @@
     <span class="env-chip-sm" data-env="prod" style="cursor:default">PROD</span>
   </div>
   <a href="/" class="nav-btn">채팅 테스터</a>
+  <a href="/arena" class="nav-btn">Arena</a>
   <a href="/manager" class="nav-btn">시나리오 관리</a>
   <a href="/history" class="nav-btn">테스트 이력</a>
   <a href="/guidelines" class="nav-btn">법률 평가 기준</a>
@@ -166,8 +167,24 @@
 
     <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
 
+    <!-- 엑셀 다운로드 / 업로드 -->
+    <div style="margin-top:16px;padding:14px;background:var(--surface);border-radius:10px;border:1px solid var(--border)">
+      <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:10px">📊 엑셀로 관리</div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button class="btn-save" onclick="downloadCriteriaExcel()" style="background:#22c55e;font-size:13px;padding:8px 16px">📥 현재 기준 다운로드 (.xlsx)</button>
+        <label style="padding:8px 16px;background:var(--accent);color:#0f172a;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:4px">
+          📤 엑셀 업로드
+          <input type="file" accept=".xlsx,.xls" style="display:none" onchange="uploadCriteriaExcel(this)">
+        </label>
+        <span id="uploadStatus" style="font-size:12px;color:var(--text-dim)"></span>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:var(--text-dim)">
+        💡 엑셀 형식: 시트1(평가항목) = 축Key/축이름/축최대점수/항목이름/배점/설명, 시트2(등급기준) = 등급/최소점수, 시트3(의료법경계규칙) = 규칙/분류
+      </div>
+    </div>
+
     <!-- 저장 / 초기화 -->
-    <div style="display:flex;gap:10px;justify-content:flex-end">
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:12px">
       <button class="btn-save" onclick="resetCriteriaToDefaults()" style="color:var(--orange);background:transparent;border:1px solid var(--orange)">기본값 초기화</button>
       <button class="btn-save" onclick="saveCriteria()">평가 기준 저장</button>
     </div>
@@ -345,6 +362,47 @@ async function resetCriteriaToDefaults() {
   } catch(e) {
     toast('초기화 실패: ' + e.message, 'error');
   }
+}
+
+// ── 엑셀 다운로드 / 업로드 ──
+function downloadCriteriaExcel() {
+  const a = document.createElement('a');
+  a.href = '/api/consultation-criteria/download-excel';
+  a.download = 'consultation_criteria.xlsx';
+  a.click();
+}
+
+async function uploadCriteriaExcel(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById('uploadStatus');
+  statusEl.textContent = '업로드 중...';
+  statusEl.style.color = 'var(--accent)';
+  try {
+    const buf = await file.arrayBuffer();
+    const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+    const res = await fetch('/api/consultation-criteria/upload-excel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: b64 })
+    });
+    const data = await res.json();
+    if (data.success) {
+      statusEl.textContent = '✅ ' + data.message;
+      statusEl.style.color = '#22c55e';
+      toast(data.message, 'success');
+      loadCriteria();
+    } else {
+      statusEl.textContent = '❌ ' + (data.error || '업로드 실패');
+      statusEl.style.color = '#ef4444';
+      toast(data.error || '업로드 실패', 'error');
+    }
+  } catch(e) {
+    statusEl.textContent = '❌ ' + e.message;
+    statusEl.style.color = '#ef4444';
+    toast('업로드 실패: ' + e.message, 'error');
+  }
+  input.value = '';
 }
 
 // ── 유틸 ──
