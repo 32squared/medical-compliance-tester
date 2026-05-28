@@ -33,6 +33,22 @@ import db
 # 스크립트가 있는 폴더 기준으로 파일 경로 설정
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# ── 권한 카탈로그 ──
+PERMISSION_CATALOG = [
+    {'code': 'manage_scenarios',  'label': '시나리오 관리',        'description': '시나리오 추가/수정/삭제'},
+    {'code': 'view_history',      'label': '테스트 이력',          'description': '테스트 실행 이력 조회'},
+    {'code': 'view_guidelines',   'label': '법률 평가 기준 조회',  'description': '법률 평가 기준 페이지 + 조회'},
+    {'code': 'manage_guidelines', 'label': '법률 평가 기준 수정',  'description': '법률 평가 기준 추가/수정/삭제'},
+    {'code': 'view_criteria',     'label': '문진 평가 기준 조회',  'description': '문진 평가 기준 페이지 + 조회'},
+    {'code': 'manage_criteria',   'label': '문진 평가 기준 수정',  'description': '문진 평가 기준 추가/수정/삭제'},
+    {'code': 'manage_rlhf',       'label': 'RLHF 관리',            'description': 'RLHF 페어/통계 관리'},
+    {'code': 'use_arena',         'label': 'Arena 사용',           'description': 'Chat Arena A/B 비교'},
+    {'code': 'view_logs',         'label': '서버 로그',            'description': '서버 실시간 로그 조회'},
+    {'code': 'run_batch',         'label': '배치 실행',            'description': '시나리오 배치 실행'},
+    {'code': 'manage_settings',   'label': '설정 변경',            'description': 'API/GPT 설정 + 카테고리 관리'},
+    {'code': 'manage_kb',         'label': 'KB 관리',              'description': '지식 베이스 문서 작성·승인·삭제'},
+]
+
 
 def composite_reward(legal_score, consult_score, regex_violations_critical,
                      human_rating=None):
@@ -644,6 +660,92 @@ class ProxyHandler(BaseHTTPRequestHandler):
             return False
         return True
 
+    def _is_advisor(self) -> bool:
+        """현재 사용자가 advisor(의사 자문위원)인지 확인"""
+        tester = self._get_tester_info()
+        return bool(tester and tester.get('role') == 'advisor')
+
+    def _get_current_user_perms(self) -> dict:
+        """현재 사용자의 role + permissions 반환 ({} if not authenticated)"""
+        if self._is_admin():
+            return {'role': 'admin', 'permissions': ['*']}
+        tester = self._get_tester_info()
+        if not tester:
+            return {}
+        user = db.get_user(tester['id'])
+        if not user:
+            return {}
+        perms_raw = user.get('permissions', '[]')
+        if isinstance(perms_raw, str):
+            try:
+                perms = json.loads(perms_raw)
+            except Exception:
+                perms = []
+        else:
+            perms = perms_raw if isinstance(perms_raw, list) else []
+        return {'role': user.get('role', 'tester'), 'permissions': perms}
+
+    def _has_permission(self, perm: str) -> bool:
+        """현재 사용자가 특정 권한 보유 여부"""
+        user = self._get_current_user_perms()
+        if not user:
+            return False
+        if user.get('role') == 'admin':
+            return True
+        return perm in user.get('permissions', [])
+
+    def _is_path_blocked(self, path: str, method: str) -> bool:
+        """권한 기반 페이지/API 차단 판단"""
+        if self._is_admin():
+            return False
+        # advisor 강제 차단: Arena 관련 API는 권한과 무관하게 차단
+        # (advisor에게 use_arena 부여돼도 차단 — 채팅 테스터만 사용)
+        if self._is_advisor() and (path.startswith('/api/arena/') or path == '/api/arena'):
+            return True
+        # 권한별 차단 조건 (path prefix matching)
+        # methods=None 이면 모든 HTTP 메서드 차단, 아니면 해당 메서드만 차단
+        perm_blocks = [
+            ('manage_scenarios',  '/api/scenarios',         None),
+            ('view_history',      '/api/history',           None),
+            ('manage_guidelines', '/api/guidelines',        ['POST', 'PUT', 'DELETE']),
+            ('manage_criteria',   '/api/criteria',          ['POST', 'PUT', 'DELETE']),
+            ('manage_rlhf',       '/api/rlhf/',             None),
+            ('manage_rlhf',       '/api/feedback/export',   None),
+            ('manage_rlhf',       '/api/feedback/stats',    None),
+            ('use_arena',         '/api/arena/',            None),
+            ('view_logs',         '/api/logs',              None),
+            ('run_batch',         '/api/batch',             None),
+            ('manage_settings',   '/api/settings',          ['POST', 'PUT', 'DELETE']),
+            ('manage_settings',   '/api/categories',        ['POST', 'PUT', 'DELETE']),
+            ('manage_kb',         '/api/rag/kb/',           ['POST', 'PUT', 'DELETE']),
+        ]
+        for perm, prefix, methods in perm_blocks:
+            if path.startswith(prefix):
+                if methods is None or method in methods:
+                    if not self._has_permission(perm):
+                        return True
+        return False
+
+    def _get_user_role(self) -> str:
+        """현재 사용자의 role 반환: 'admin'/'tester'/'advisor' 또는 ''"""
+        if self._is_admin():
+            return 'admin'
+        tester = self._get_tester_info()
+        if tester:
+            return tester.get('role', 'tester')
+        return ''
+
+    def _is_advisor_blocked(self, path: str, method: str) -> bool:
+        """하위 호환 wrapper — _is_path_blocked 위임.
+        advisor/tester 모두 권한 기반으로 동일하게 처리됨.
+        admin은 _is_path_blocked 내부에서 무조건 통과.
+        로그인/로그아웃 경로는 항상 허용.
+        """
+        ADVISOR_ALLOWED_PATHS = {'/api/tester/login', '/api/tester/logout'}
+        if path in ADVISOR_ALLOWED_PATHS:
+            return False
+        return self._is_path_blocked(path, method)
+
     def _require_admin(self) -> bool:
         """Admin 인증 필수. 미인증 시 403 반환 + False 리턴"""
         if self._is_admin():
@@ -661,7 +763,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
         return False
 
     def _get_tester_info(self) -> dict:
-        """세션 토큰에서 테스터 정보 추출 → {id, alias, uid} or None (DB 조회)"""
+        """세션 토큰에서 테스터 정보 추출 → {id, alias, uid, role} or None (DB 조회)"""
         cookies = self._parse_cookies()
         token = cookies.get('tester_token', '')
         if not token:
@@ -671,12 +773,15 @@ class ProxyHandler(BaseHTTPRequestHandler):
             return None
         if session.get('session_type') != 'tester':
             return None
+        user_id = session.get('user_id', '')
+        user = db.get_user(user_id) if user_id else None
         return {
-            'id': session.get('user_id', ''),
+            'id': user_id,
             'alias': session.get('user_name', ''),
             'name': session.get('user_name', ''),
             'org': session.get('data', {}).get('org', ''),
             'uid': session.get('user_uid', ''),
+            'role': user.get('role', 'tester') if user else 'tester',  # ← 신규 필드
         }
 
     def _get_alias(self) -> str:
@@ -696,6 +801,10 @@ class ProxyHandler(BaseHTTPRequestHandler):
         """POST 요청 라우팅"""
         content_length = int(self.headers.get('Content-Length', 0))
         body = self.rfile.read(content_length) if content_length else b''
+
+        # advisor 권한 차단
+        if self._is_advisor_blocked(self.path, 'POST'):
+            return self._send_error(403, '자문위원은 이 기능을 사용할 수 없습니다')
 
         # ── 인증 API ──
         if self.path == '/api/auth/setup':
@@ -734,6 +843,16 @@ class ProxyHandler(BaseHTTPRequestHandler):
             if not self._require_admin():
                 return
             return self._tester_update(body)
+        if self.path == '/api/tester/bulk-create-advisors':
+            if not self._require_admin():
+                return
+            return self._bulk_create_advisors(body)
+
+        # ── 카테고리 관리 API (Admin) ──
+        if self.path == '/api/categories':
+            if not self._require_admin():
+                return
+            return self._create_category(body)
 
         # ── 카테고리 관리 API (Admin) ──
         if self.path == '/api/categories':
@@ -820,6 +939,24 @@ class ProxyHandler(BaseHTTPRequestHandler):
         if self.path == '/api/prompt-enhancement':
             return self._save_prompt_enhancement(body)
 
+        # ── Arena API ──
+        if self.path == '/api/arena/configs':
+            if not self._require_admin():
+                return
+            return self._arena_save_config(body)
+        if self.path == '/api/arena/configs/test':
+            if not self._require_admin():
+                return
+            return self._arena_test_config(body)
+        if self.path == '/api/arena/run':
+            if not self._require_auth():
+                return
+            return self._arena_run(body)
+        if self.path == '/api/arena/verdict':
+            if not self._require_auth():
+                return
+            return self._arena_verdict(body)
+
         # ── RLHF 피드백 API ──
         if self.path == '/api/feedback':
             return self._add_feedback(body)
@@ -832,13 +969,47 @@ class ProxyHandler(BaseHTTPRequestHandler):
 
         # ── RLHF 관리 API ──
         if self.path == '/api/rlhf/pairs/export':
-            if not self._require_admin():
-                return
+            if not (self._is_admin() or self._has_permission('manage_rlhf')):
+                return self._send_error(403, 'manage_rlhf 권한이 필요합니다')
             return self._rlhf_export_pairs(body)
         if self.path == '/api/rlhf/pairs':
-            if not self._require_admin():
-                return
+            if not (self._is_admin() or self._has_permission('manage_rlhf')):
+                return self._send_error(403, 'manage_rlhf 권한이 필요합니다')
             return self._rlhf_add_pair(body)
+
+        # ── RAG KB 관리 API ──
+        if self.path == '/api/rag/kb/documents':
+            if not self._require_auth():
+                return
+            if not (self._is_admin() or self._has_permission('manage_kb')):
+                return self._send_error(403, 'manage_kb 권한이 필요합니다')
+            return self._rag_kb_create_document(body)
+
+        if self.path == '/api/rag/kb/approve':
+            if not self._require_auth():
+                return
+            if not (self._is_admin() or self._has_permission('manage_kb')):
+                return self._send_error(403, 'manage_kb 권한이 필요합니다')
+            return self._rag_kb_approve_document(body)
+
+        if self.path == '/api/rag/kb/reject':
+            if not self._require_auth():
+                return
+            if not (self._is_admin() or self._has_permission('manage_kb')):
+                return self._send_error(403, 'manage_kb 권한이 필요합니다')
+            return self._rag_kb_reject_document(body)
+
+        m_kb_reembed = re.match(r'^/api/rag/kb/documents/([^/]+)/reembed$', self.path)
+        if m_kb_reembed:
+            if not self._require_auth():
+                return
+            if not (self._is_admin() or self._has_permission('manage_kb')):
+                return self._send_error(403, 'manage_kb 권한이 필요합니다')
+            return self._rag_kb_reembed_document(m_kb_reembed.group(1))
+
+        # ── RAG 채팅 SSE API ──
+        if self.path == '/api/rag/chat':
+            return self._rag_chat(body)
 
         # ── SKIX 프록시 ──
         self._proxy_post(body)
@@ -847,6 +1018,17 @@ class ProxyHandler(BaseHTTPRequestHandler):
         """PUT 요청 — 시나리오 수정"""
         content_length = int(self.headers.get('Content-Length', 0))
         body = self.rfile.read(content_length) if content_length else b''
+
+        # advisor 권한 차단
+        if self._is_advisor_blocked(self.path, 'PUT'):
+            return self._send_error(403, '자문위원은 이 기능을 사용할 수 없습니다')
+
+        # ── 사용자 권한 변경 API (Admin only) ──
+        m_user_perms_put = re.match(r'^/api/users/([^/]+)/permissions$', self.path)
+        if m_user_perms_put:
+            if not self._require_admin():
+                return
+            return self._put_user_permissions_api(m_user_perms_put.group(1), body)
 
         # ── 가이드라인 저장 API ──
         if self.path == '/api/guidelines':
@@ -865,6 +1047,11 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 return self._send_json(200, {"success": True, "message": "문진 평가 기준 저장 완료"})
             except Exception as e:
                 return self._send_error(400, f"저장 실패: {str(e)}")
+
+        if self.path == '/api/consultation-criteria/upload-excel':
+            if not self._require_admin():
+                return
+            return self._upload_criteria_excel(body)
 
         # ── 카테고리 수정 API (Admin) ──
         m_cat = re.match(r'^/api/categories/([^/]+)$', self.path)
@@ -886,10 +1073,23 @@ class ProxyHandler(BaseHTTPRequestHandler):
         if m_conv_msg:
             return self._add_conversation_message(m_conv_msg.group(1), body)
 
+        # ── RAG KB 문서 수정 ──
+        m_kb_doc_put = re.match(r'^/api/rag/kb/documents/([^/]+)$', self.path)
+        if m_kb_doc_put:
+            if not self._require_auth():
+                return
+            if not (self._is_admin() or self._has_permission('manage_kb')):
+                return self._send_error(403, 'manage_kb 권한이 필요합니다')
+            return self._rag_kb_update_document(m_kb_doc_put.group(1), body)
+
         self._send_error(404, 'Not Found')
 
     def do_DELETE(self):
         """DELETE 요청"""
+        # advisor 권한 차단
+        if self._is_advisor_blocked(self.path, 'DELETE'):
+            return self._send_error(403, '자문위원은 이 기능을 사용할 수 없습니다')
+
         # ── 체크리스트 삭제 API (Admin) ──
         m_cl = re.match(r'^/api/checklists/([^/]+)$', self.path)
         if m_cl:
@@ -917,6 +1117,15 @@ class ProxyHandler(BaseHTTPRequestHandler):
         if m_conv_del:
             return self._delete_local_conversation(m_conv_del.group(1))
 
+        # ── RAG KB 문서 삭제 ──
+        m_kb_doc_del = re.match(r'^/api/rag/kb/documents/([^/]+)$', self.path)
+        if m_kb_doc_del:
+            if not self._require_auth():
+                return
+            if not (self._is_admin() or self._has_permission('manage_kb')):
+                return self._send_error(403, 'manage_kb 권한이 필요합니다')
+            return self._rag_kb_delete_document(m_kb_doc_del.group(1))
+
         self._send_error(404, 'Not Found')
 
     def do_GET(self):
@@ -924,9 +1133,50 @@ class ProxyHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path
 
+        # advisor 권한 차단
+        if self._is_advisor_blocked(path, 'GET'):
+            return self._send_error(403, '자문위원은 이 기능을 사용할 수 없습니다')
+
+        # ── 권한 카탈로그 API (인증 사용자 모두) ──
+        if path == '/api/permissions/catalog':
+            if not self._require_auth():
+                return
+            return self._send_json(200, {'permissions': PERMISSION_CATALOG})
+
+        # ── 사용자 권한 조회 API (Admin only) ──
+        m_user_perms = re.match(r'^/api/users/([^/]+)/permissions$', path)
+        if m_user_perms:
+            if not self._require_admin():
+                return
+            return self._get_user_permissions_api(m_user_perms.group(1))
+
         # ── 인증/테스터 API ──
+        if path == '/api/auth/me':
+            return self._auth_me()
         if path == '/api/auth/status':
             return self._auth_status()
+
+        # ── RAG KB 관리 API ──
+        if path == '/api/rag/kb/sources':
+            if not self._require_auth():
+                return
+            return self._rag_kb_list_sources()
+
+        if path == '/api/rag/kb/documents':
+            if not self._require_auth():
+                return
+            return self._rag_kb_list_documents(parsed.query)
+
+        m_kb_doc_reembed = re.match(r'^/api/rag/kb/documents/([^/]+)/reembed$', path)
+        if m_kb_doc_reembed:
+            # reembed는 POST이므로 GET 라우터에서는 무시 (404 방지용 early return 없음)
+            pass
+        else:
+            m_kb_doc = re.match(r'^/api/rag/kb/documents/([^/]+)$', path)
+            if m_kb_doc:
+                if not self._require_auth():
+                    return
+                return self._rag_kb_get_document(m_kb_doc.group(1))
         if path == '/api/tester/list':
             return self._tester_list()
         if path == '/api/tester/accounts':
@@ -961,6 +1211,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
         # ── 문진 평가 기준 API ──
         if path == '/api/consultation-criteria':
             return self._send_json(200, _get_consultation_criteria())
+        if path == '/api/consultation-criteria/download-excel':
+            return self._download_criteria_excel()
 
         # ── 체크리스트 API ──
         if path == '/api/checklists':
@@ -1026,23 +1278,39 @@ class ProxyHandler(BaseHTTPRequestHandler):
         if path.startswith('/api/logs'):
             return self._get_logs()
 
+        # ── Arena API ──
+        if path == '/api/arena/configs':
+            if not self._require_admin():
+                return
+            return self._arena_get_configs()
+        if path == '/api/arena/history':
+            if not self._require_auth():
+                return
+            return self._arena_get_history(parsed.query)
+        if path == '/api/arena/stats':
+            if not self._require_auth():
+                return
+            return self._arena_get_stats(parsed.query)
+
         # ── RLHF 피드백 API ──
         if path == '/api/feedback':
             return self._get_feedback(parsed.query)
         if path == '/api/feedback/stats':
             return self._get_feedback_stats(parsed.query)
         if path == '/api/feedback/export':
-            if not self._require_admin():
-                return
+            if not (self._is_admin() or self._has_permission('manage_rlhf')):
+                return self._send_error(403, 'manage_rlhf 권한이 필요합니다')
             return self._export_dpo(parsed.query)
 
         # ── RLHF 관리 API ──
         if path == '/api/rlhf/stats':
-            if not self._require_admin():
-                return
+            if not (self._is_admin() or self._has_permission('manage_rlhf')):
+                return self._send_error(403, 'manage_rlhf 권한이 필요합니다')
             return self._rlhf_stats()
         if path == '/api/rlhf/pairs':
             return self._rlhf_list_pairs(parsed.query)
+        if path == '/api/comments':
+            return self._list_all_comments(parsed.query)
 
         # ── 상태 확인 ──
         if path == '/health':
@@ -1065,8 +1333,60 @@ class ProxyHandler(BaseHTTPRequestHandler):
             '/criteria_manager.html': 'criteria_manager.html',
             '/rlhf': 'rlhf_manager.html',
             '/rlhf_manager.html': 'rlhf_manager.html',
+            '/arena': 'chat_arena.html',
+            '/chat_arena.html': 'chat_arena.html',
+            '/kb_manager': 'kb_manager.html',
+            '/kb_manager.html': 'kb_manager.html',
             '/demo_report.html': os.path.join('reports', 'demo_report.html'),
         }
+        # 권한 기반 페이지 접근 가드 (admin은 항상 통과, advisor/tester는 permissions 체크)
+        # value가 list면 OR 매칭 (둘 중 하나만 있으면 통과 — view_X 또는 manage_X 둘 다 허용)
+        # 주의: /settings는 자체 admin 로그인 모달(loginGate)이 있으므로 가드에서 제외.
+        # 페이지는 누구나 접근 가능하되 admin 인증 후만 mainContent 표시 (settings.html JS).
+        # 변경 API(POST/PUT/DELETE /api/settings)는 manage_settings 권한 필요 (perm_blocks).
+        PAGE_PERMISSIONS = {
+            '/manager':                'manage_scenarios',
+            '/scenario_manager.html':  'manage_scenarios',
+            '/history':                'view_history',
+            '/history.html':           'view_history',
+            '/guidelines':             ['view_guidelines', 'manage_guidelines'],
+            '/guideline_manager.html': ['view_guidelines', 'manage_guidelines'],
+            '/criteria':               ['view_criteria', 'manage_criteria'],
+            '/criteria_manager.html':  ['view_criteria', 'manage_criteria'],
+            '/rlhf':                   'manage_rlhf',
+            '/rlhf_manager.html':      'manage_rlhf',
+            '/arena':                  'use_arena',
+            '/chat_arena.html':        'use_arena',
+            '/kb_manager':             'manage_kb',
+            '/kb_manager.html':        'manage_kb',
+            # '/settings'는 의도적으로 제외 — admin 로그인 진입점이므로 누구나 페이지는 봐야 함
+        }
+        if path in file_map and not self._is_admin():
+            # advisor 강제 차단: Arena 페이지는 use_arena 권한 무관하게 차단
+            if self._is_advisor() and path in ('/arena', '/chat_arena.html'):
+                self.send_response(302)
+                self.send_header('Location', '/')
+                self.send_header('Content-Length', '0')
+                self.send_header('Connection', 'close')
+                self.end_headers()
+                ProxyHandler._add_log(f"[권한] advisor의 Arena 페이지 접근 차단: {path} → /")
+                return
+            needed = PAGE_PERMISSIONS.get(path)
+            if needed:
+                # list면 OR 매칭, 단일이면 단일 체크
+                if isinstance(needed, list):
+                    has_any = any(self._has_permission(p) for p in needed)
+                else:
+                    has_any = self._has_permission(needed)
+                if not has_any:
+                    self.send_response(302)
+                    self.send_header('Location', '/')
+                    self.send_header('Content-Length', '0')
+                    self.send_header('Connection', 'close')
+                    self.end_headers()
+                    ProxyHandler._add_log(f"[권한] 권한 부족 페이지 접근: {path} (필요: {needed}) → / 리다이렉트")
+                    return
+
         rel_path = file_map.get(path)
         if rel_path:
             full_path = os.path.join(BASE_DIR, rel_path)
@@ -1409,7 +1729,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
         api_uid_default = env_cfg.get('xApiUid', settings.get('xApiUid', ''))
         tenant_domain = env_cfg.get('xTenantDomain', env_defaults.get(current_env, {}).get('xTenantDomain', 'dev-skix'))
         api_url = env_cfg.get('apiUrl', env_defaults.get(current_env, {}).get('apiUrl', 'https://dev-skix.phnyx.ai'))
-        graph_type = settings.get('graphType', 'SUPERVISED_HYBRID_SEARCH')
+        graph_type = settings.get('graphType', 'ORCHESTRATED_HYBRID_SEARCH')
 
         # 테스터 UID 우선 사용 (쿠키에서 추출)
         tester = self._get_tester_info()
@@ -1451,6 +1771,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
 
             # SSE 응답 파싱 — 전체 텍스트 수집 (chunk 누적)
             full_text = ''
+            collected_search_results = []
             raw_data = resp.read().decode('utf-8', errors='replace')
             for line in raw_data.split('\n'):
                 stripped = line.strip()
@@ -1465,6 +1786,16 @@ class ProxyHandler(BaseHTTPRequestHandler):
                     if etype == 'GENERATION':
                         chunk = event_data.get('text', '')
                         full_text += chunk
+                    elif etype == 'KEEP_ALIVE':
+                        continue  # 연결 유지용, 무시
+                    elif etype == 'INFO':
+                        edata = event_data.get('data', {})
+                        if edata.get('search_results'):
+                            collected_search_results.extend(edata['search_results'])
+                    elif etype == 'PROGRESS':
+                        result_items = event_data.get('result_items')
+                        if result_items and isinstance(result_items, list):
+                            collected_search_results.extend(result_items)
                     elif etype == 'STOP':
                         # STOP 이벤트에 전체 텍스트가 올 수 있음
                         if not full_text and event_data.get('text'):
@@ -2014,7 +2345,7 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
         api_uid_default = env_cfg.get('xApiUid', settings.get('xApiUid', ''))
         tenant_domain = env_cfg.get('xTenantDomain', env_defaults.get(current_env, {}).get('xTenantDomain', 'dev-skix'))
         api_url = env_cfg.get('apiUrl', env_defaults.get(current_env, {}).get('apiUrl', 'https://dev-skix.phnyx.ai'))
-        graph_type = settings.get('graphType', 'SUPERVISED_HYBRID_SEARCH')
+        graph_type = settings.get('graphType', 'ORCHESTRATED_HYBRID_SEARCH')
         tester = self._get_tester_info()
         api_uid = tester['uid'] if tester else api_uid_default
         if not api_uid:
@@ -2092,6 +2423,7 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
                         raw_bytes += chunk
                     raw = raw_bytes.decode('utf-8', errors='replace')
 
+                    collected_search_results_batch = []
                     for line in raw.split('\n'):
                         stripped = line.strip()
                         if not stripped.startswith('data:'): continue
@@ -2102,6 +2434,16 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
                             etype = ed.get('type', '')
                             if etype == 'GENERATION':
                                 full_text += ed.get('text', '')
+                            elif etype == 'KEEP_ALIVE':
+                                continue  # 연결 유지용, 무시
+                            elif etype == 'INFO':
+                                edata = ed.get('data', {})
+                                if edata.get('search_results'):
+                                    collected_search_results_batch.extend(edata['search_results'])
+                            elif etype == 'PROGRESS':
+                                result_items = ed.get('result_items')
+                                if result_items and isinstance(result_items, list):
+                                    collected_search_results_batch.extend(result_items)
                             elif etype == 'STOP' and not full_text and ed.get('text'):
                                 full_text = ed.get('text', '')
                         except json.JSONDecodeError:
@@ -2150,6 +2492,7 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
                         "compliance": comp, "gptEval": gpt,
                         "consultationEval": consult,
                         "guidelineVersion": comp.get('guidelineVersion', ''),
+                        "searchResults": collected_search_results_batch[:5] if collected_search_results_batch else [],
                     }
                 except Exception as e:
                     if attempt < max_retries:
@@ -2303,10 +2646,10 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
     # ════════════════════════════════════════════
 
     def _stream_logs(self):
-        """GET /api/logs/stream — Admin 전용 SSE 실시간 로그"""
+        """GET /api/logs/stream — Admin 또는 view_logs 권한 필요 SSE 실시간 로그"""
         import time as _time
-        if not self._is_admin():
-            return self._send_error(403, 'Admin 인증이 필요합니다')
+        if not (self._is_admin() or self._has_permission('view_logs')):
+            return self._send_error(403, 'view_logs 권한이 필요합니다')
 
         self.send_response(200)
         self._set_cors_headers()
@@ -2352,9 +2695,9 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
                     return
 
     def _get_logs(self):
-        """GET /api/logs — Admin 전용, 최근 로그 조회"""
-        if not self._is_admin():
-            return self._send_error(403, 'Admin 인증이 필요합니다')
+        """GET /api/logs — Admin 또는 view_logs 권한 필요, 최근 로그 조회"""
+        if not (self._is_admin() or self._has_permission('view_logs')):
+            return self._send_error(403, 'view_logs 권한이 필요합니다')
         parsed = urlparse(self.path)
         params = dict(p.split('=') for p in parsed.query.split('&') if '=' in p)
         limit = min(int(params.get('limit', '100')), 500)
@@ -2530,6 +2873,36 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
         self.end_headers()
         self.wfile.write(body_data)
 
+    def _auth_me(self):
+        """GET /api/auth/me — 현재 사용자 정보 + 권한 목록"""
+        if self._is_admin():
+            return self._send_json(200, {
+                'user_id': 'admin',
+                'username': '관리자',
+                'role': 'admin',
+                'permissions': ['*'],
+            })
+        tester = self._get_tester_info()
+        if not tester:
+            return self._send_error(401, '인증이 필요합니다')
+        user = db.get_user(tester['id'])
+        if not user:
+            return self._send_error(401, '사용자 정보를 찾을 수 없습니다')
+        perms_raw = user.get('permissions', '[]')
+        if isinstance(perms_raw, str):
+            try:
+                perms = json.loads(perms_raw)
+            except Exception:
+                perms = []
+        else:
+            perms = perms_raw if isinstance(perms_raw, list) else []
+        return self._send_json(200, {
+            'user_id': tester['id'],
+            'username': tester.get('alias', tester['id']),
+            'role': user.get('role', 'tester'),
+            'permissions': perms,
+        })
+
     def _auth_status(self):
         """GET /api/auth/status — 현재 인증 상태"""
         admin_user = db.get_user('admin')
@@ -2539,6 +2912,7 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
             "isAdmin": self._is_admin(),
             "isSetup": is_setup,
             "tester": self._get_tester_info(),
+            "userRole": self._get_user_role(),  # ← 신규
         })
 
     def _auth_change_password(self, body):
@@ -2718,6 +3092,77 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
         })
         self._send_json(200, {"success": True, "message": f"사용자 '{alias}' 생성 완료"})
 
+    def _bulk_create_advisors(self, body):
+        """POST /api/tester/bulk-create-advisors — Admin이 자문위원 계정 일괄 생성
+
+        body 예:
+          {
+            "prefix": "rexsoft",     // 기본 'rexsoft'
+            "count": 7,              // 기본 7
+            "password": "1234",      // 기본 '1234'
+            "org": "REX Soft",       // 기본 'REX Soft'
+            "name_template": "의사 자문위원 {n:02d}"  // {n}=일련번호
+          }
+        """
+        try:
+            payload = json.loads(body) if body else {}
+        except json.JSONDecodeError:
+            payload = {}
+
+        prefix = payload.get('prefix', 'rexsoft').strip() or 'rexsoft'
+        try:
+            count = int(payload.get('count', 7))
+        except (ValueError, TypeError):
+            return self._send_error(400, 'count는 정수여야 합니다')
+        password = (payload.get('password') or '1234').strip()
+        org = payload.get('org', 'REX Soft').strip()
+        name_template = payload.get('name_template', '의사 자문위원 {n:02d}')
+
+        if count < 1 or count > 50:
+            return self._send_error(400, 'count는 1~50 범위여야 합니다')
+        if len(password) < 4:
+            return self._send_error(400, '비밀번호는 4자 이상이어야 합니다')
+
+        created = []
+        skipped = []
+        errors = []
+
+        for i in range(1, count + 1):
+            user_id = f"{prefix}{i:02d}"  # rexsoft01, rexsoft02, ...
+            try:
+                if db.get_user(user_id):
+                    skipped.append(user_id)
+                    continue
+                try:
+                    name = name_template.format(n=i)
+                except (KeyError, IndexError):
+                    name = f"의사 자문위원 {i:02d}"
+                pw_hash, salt = self._hash_password(password)
+                db.create_user({
+                    'id': user_id,
+                    'name': name,
+                    'org': org,
+                    'uid': '',
+                    'password_hash': pw_hash,
+                    'password_salt': salt,
+                    'status': 'approved',
+                    'role': 'advisor',
+                })
+                created.append(user_id)
+            except Exception as e:
+                errors.append({'id': user_id, 'error': str(e)[:200]})
+
+        ProxyHandler._add_log(
+            f"[자문위원] 일괄 생성: created={len(created)}, skipped={len(skipped)}, errors={len(errors)}"
+        )
+        self._send_json(200, {
+            "success": True,
+            "created": created,
+            "skipped": skipped,
+            "errors": errors,
+            "summary": f"신규 {len(created)}건 / 중복 스킵 {len(skipped)}건 / 오류 {len(errors)}건",
+        })
+
     def _tester_delete(self, body):
         """POST /api/tester/delete — Admin이 테스터 계정 삭제"""
         try:
@@ -2779,17 +3224,27 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
         self._send_json(200, {"testers": safe_list})
 
     def _tester_accounts(self):
-        """GET /api/tester/accounts — Admin용 전체 계정 목록 (비밀번호 해시 제외)"""
+        """GET /api/tester/accounts — Admin용 전체 계정 목록 (비밀번호 해시 제외, role+permissions 포함)"""
         accounts = self._load_tester_accounts()
-        safe_list = [{
-            'id': a.get('id',''),
-            'alias': a.get('alias', a.get('name','')),
-            'name': a.get('name',''),
-            'org': a.get('org',''),
-            'uid': a.get('uid',''),
-            'status': a.get('status', 'approved'),
-            'createdAt': a.get('createdAt',''),
-        } for a in accounts]
+        safe_list = []
+        for a in accounts:
+            user_id = a.get('id', '')
+            # role/permissions 추가 조회 (db.get_user_role_permissions)
+            try:
+                rp = db.get_user_role_permissions(user_id) if user_id else {}
+            except Exception:
+                rp = {}
+            safe_list.append({
+                'id': user_id,
+                'alias': a.get('alias', a.get('name','')),
+                'name': a.get('name',''),
+                'org': a.get('org',''),
+                'uid': a.get('uid',''),
+                'status': a.get('status', 'approved'),
+                'createdAt': a.get('createdAt',''),
+                'role': rp.get('role', a.get('role', 'tester')),
+                'permissions': rp.get('permissions', []),
+            })
         self._send_json(200, {"accounts": safe_list})
 
     # ════════════════════════════════════════════
@@ -2889,6 +3344,58 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
             'createdAt': u.get('created_at',''),
         } for u in pending_users]
         self._send_json(200, {"pendingUsers": pending})
+
+    # ════════════════════════════════════════════
+    # 권한 관리 API
+    # ════════════════════════════════════════════
+
+    def _get_user_permissions_api(self, user_id: str):
+        """GET /api/users/{user_id}/permissions — 사용자 권한 조회 (Admin only)"""
+        user = db.get_user(user_id)
+        if not user:
+            return self._send_error(404, '사용자를 찾을 수 없습니다')
+        role_perms = db.get_user_role_permissions(user_id)
+        self._send_json(200, role_perms)
+
+    def _put_user_permissions_api(self, user_id: str, body: bytes):
+        """PUT /api/users/{user_id}/permissions — 사용자 권한 + role 변경 (Admin only)"""
+        try:
+            payload = json.loads(body)
+        except (json.JSONDecodeError, Exception):
+            return self._send_error(400, '잘못된 JSON')
+
+        user = db.get_user(user_id)
+        if not user:
+            return self._send_error(404, '사용자를 찾을 수 없습니다')
+
+        valid_codes = {p['code'] for p in PERMISSION_CATALOG}
+        valid_roles = {'admin', 'tester', 'advisor'}
+
+        updates = {}
+
+        # role 변경 (선택)
+        new_role = payload.get('role')
+        if new_role is not None:
+            if new_role not in valid_roles:
+                return self._send_error(400, f'유효하지 않은 role: {new_role}')
+            # 자기 자신을 admin → 비-admin으로 강등 차단 (자기 잠금 방지)
+            if user_id == 'admin' and new_role != 'admin':
+                return self._send_error(400, '관리자 본인 계정의 role은 변경할 수 없습니다')
+            updates['role'] = new_role
+
+        # permissions 변경
+        new_perms = payload.get('permissions')
+        if new_perms is None:
+            return self._send_error(400, 'permissions 필드가 필요합니다')
+        if not isinstance(new_perms, list):
+            return self._send_error(400, 'permissions는 배열이어야 합니다')
+        filtered = [p for p in new_perms if p in valid_codes]
+        updates['permissions'] = json.dumps(filtered)
+
+        db.update_user(user_id, updates)
+        ProxyHandler._add_log(f"[권한] {user_id} 권한 변경: role={updates.get('role', user.get('role'))}, permissions={filtered}")
+        result = db.get_user_role_permissions(user_id)
+        self._send_json(200, {'success': True, **result})
 
     # ════════════════════════════════════════════
     # ChatGPT 의료법 준수 평가
@@ -3033,6 +3540,159 @@ AI 건강상담 서비스의 응답이 한국 의료법을 준수하는지 평�
         except Exception as e:
             ProxyHandler._add_log(f"[GPT] ERROR: 평가 오류: {str(e)[:100]}")
             self._send_error(500, f'평가 오류: {str(e)}')
+
+    def _upload_criteria_excel(self, body):
+        """POST /api/consultation-criteria/upload-excel — 엑셀 업로드로 문진 평가 기준 갱신"""
+        try:
+            import base64, io
+            payload = json.loads(body)
+            b64 = payload.get('data', '')
+            if not b64:
+                return self._send_error(400, '엑셀 데이터가 없습니다')
+
+            file_bytes = base64.b64decode(b64)
+            from openpyxl import load_workbook
+            wb = load_workbook(io.BytesIO(file_bytes), read_only=True)
+
+            # Sheet 1: 평가항목 파싱
+            ws = wb['평가항목'] if '평가항목' in wb.sheetnames else wb.worksheets[0]
+            axes_dict = {}
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if not row or not row[0]:
+                    continue
+                key, name, maxScore, item_name, score, desc = row[0], row[1], row[2], row[3], row[4], row[5] or ''
+                if key not in axes_dict:
+                    axes_dict[key] = {'key': key, 'name': name, 'maxScore': int(maxScore), 'items': []}
+                axes_dict[key]['items'].append({'name': item_name, 'score': int(score), 'desc': desc})
+            axes = list(axes_dict.values())
+
+            # Sheet 2: 등급기준 파싱
+            thresholds = {'A': 85, 'B': 70, 'C': 55, 'D': 40}
+            if '등급기준' in wb.sheetnames:
+                ws2 = wb['등급기준']
+                for row in ws2.iter_rows(min_row=2, values_only=True):
+                    if row and row[0] and row[1]:
+                        thresholds[str(row[0])] = int(row[1])
+
+            # Sheet 3: 의료법경계규칙 파싱
+            boundary_tagged = []
+            cat_reverse = {'가점 가능': 'allowed', '중립 (맥락 판단)': 'neutral', '감점 대상': 'prohibited'}
+            if '의료법경계규칙' in wb.sheetnames:
+                ws3 = wb['의료법경계규칙']
+                for row in ws3.iter_rows(min_row=2, values_only=True):
+                    if row and row[0]:
+                        rule = str(row[0])
+                        cat = cat_reverse.get(str(row[1] or ''), 'neutral')
+                        boundary_tagged.append({'rule': rule, 'category': cat})
+
+            wb.close()
+
+            # 기존 기준 가져와서 업데이트
+            criteria = _get_consultation_criteria()
+            criteria['axes'] = axes
+            criteria['gradeThresholds'] = thresholds
+            if boundary_tagged:
+                criteria['medicalLawBoundaryTagged'] = boundary_tagged
+                criteria['medicalLawBoundary'] = [r['rule'] for r in boundary_tagged]
+
+            settings = db.get_settings()
+            settings['consultationCriteria'] = criteria
+            db.save_settings(settings)
+
+            ProxyHandler._add_log(f"[문진기준] 엑셀 업로드 완료 (축 {len(axes)}개, 규칙 {len(boundary_tagged)}개)")
+            self._send_json(200, {
+                "success": True,
+                "message": f"업로드 완료: {len(axes)}개 축, {sum(len(a['items']) for a in axes)}개 항목",
+                "axes_count": len(axes),
+                "items_count": sum(len(a['items']) for a in axes),
+            })
+        except Exception as e:
+            ProxyHandler._add_log(f"[문진기준] 엑셀 업로드 실패: {e}")
+            self._send_error(400, f"엑셀 파싱 실패: {str(e)}")
+
+    def _download_criteria_excel(self):
+        """GET /api/consultation-criteria/download-excel — 현재 기준을 엑셀로 다운로드"""
+        try:
+            import io, base64
+            from openpyxl import Workbook
+            from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+
+            criteria = _get_consultation_criteria()
+            wb = Workbook()
+
+            hdr_font = Font(name='맑은 고딕', bold=True, size=12, color='FFFFFF')
+            hdr_fill = PatternFill('solid', fgColor='1E293B')
+            body_font = Font(name='맑은 고딕', size=11)
+            thin_border = Border(left=Side(style='thin', color='94A3B8'), right=Side(style='thin', color='94A3B8'),
+                                 top=Side(style='thin', color='94A3B8'), bottom=Side(style='thin', color='94A3B8'))
+
+            # Sheet 1: 평가항목
+            ws1 = wb.active
+            ws1.title = '평가항목'
+            for ci, h in enumerate(['축 Key', '축 이름', '축 최대점수', '항목 이름', '배점', '설명'], 1):
+                c = ws1.cell(row=1, column=ci, value=h)
+                c.font = hdr_font; c.fill = hdr_fill; c.alignment = Alignment(horizontal='center'); c.border = thin_border
+
+            row = 2
+            for axis in criteria.get('axes', []):
+                for item in axis.get('items', []):
+                    ws1.cell(row=row, column=1, value=axis['key']).font = body_font
+                    ws1.cell(row=row, column=2, value=axis['name']).font = Font(name='맑은 고딕', bold=True, size=11)
+                    ws1.cell(row=row, column=3, value=axis.get('maxScore', 0)).font = body_font
+                    ws1.cell(row=row, column=4, value=item['name']).font = body_font
+                    ws1.cell(row=row, column=5, value=item.get('score', 0)).font = body_font
+                    ws1.cell(row=row, column=6, value=item.get('desc', '')).font = body_font
+                    for ci in range(1, 7):
+                        ws1.cell(row=row, column=ci).border = thin_border
+                        ws1.cell(row=row, column=ci).alignment = Alignment(vertical='center', wrap_text=(ci == 6))
+                    row += 1
+
+            ws1.column_dimensions['A'].width = 24; ws1.column_dimensions['B'].width = 14
+            ws1.column_dimensions['C'].width = 14; ws1.column_dimensions['D'].width = 22
+            ws1.column_dimensions['E'].width = 8;  ws1.column_dimensions['F'].width = 55
+
+            # Sheet 2: 등급기준
+            ws2 = wb.create_sheet('등급기준')
+            for ci, h in enumerate(['등급', '최소 점수'], 1):
+                c = ws2.cell(row=1, column=ci, value=h)
+                c.font = hdr_font; c.fill = hdr_fill; c.alignment = Alignment(horizontal='center'); c.border = thin_border
+            for ri, (g, s) in enumerate(sorted(criteria.get('gradeThresholds', {}).items(), key=lambda x: -x[1]), 2):
+                ws2.cell(row=ri, column=1, value=g).font = Font(name='맑은 고딕', bold=True, size=14)
+                ws2.cell(row=ri, column=2, value=s).font = body_font
+                for ci in range(1, 3):
+                    ws2.cell(row=ri, column=ci).border = thin_border; ws2.cell(row=ri, column=ci).alignment = Alignment(horizontal='center')
+            ws2.column_dimensions['A'].width = 12; ws2.column_dimensions['B'].width = 14
+
+            # Sheet 3: 의료법경계규칙
+            ws3 = wb.create_sheet('의료법경계규칙')
+            for ci, h in enumerate(['규칙', '분류'], 1):
+                c = ws3.cell(row=1, column=ci, value=h)
+                c.font = hdr_font; c.fill = hdr_fill; c.alignment = Alignment(horizontal='center'); c.border = thin_border
+            cat_map = {'allowed': '가점 가능', 'neutral': '중립 (맥락 판단)', 'prohibited': '감점 대상'}
+            cat_color = {'allowed': '22C55E', 'neutral': '94A3B8', 'prohibited': 'EF4444'}
+            for ri, r in enumerate(criteria.get('medicalLawBoundaryTagged', []), 2):
+                ws3.cell(row=ri, column=1, value=r['rule']).font = body_font
+                cat = r.get('category', 'neutral')
+                c = ws3.cell(row=ri, column=2, value=cat_map.get(cat, cat))
+                c.font = Font(name='맑은 고딕', bold=True, size=11, color=cat_color.get(cat, '94A3B8'))
+                for ci in range(1, 3):
+                    ws3.cell(row=ri, column=ci).border = thin_border
+                    ws3.cell(row=ri, column=ci).alignment = Alignment(vertical='center', wrap_text=True)
+            ws3.column_dimensions['A'].width = 70; ws3.column_dimensions['B'].width = 20
+
+            buf = io.BytesIO()
+            wb.save(buf)
+            body_bytes = buf.getvalue()
+
+            self.send_response(200)
+            self._set_cors_headers()
+            self.send_header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            self.send_header('Content-Disposition', 'attachment; filename="consultation_criteria.xlsx"')
+            self.send_header('Content-Length', str(len(body_bytes)))
+            self.end_headers()
+            self.wfile.write(body_bytes)
+        except Exception as e:
+            self._send_error(500, f"엑셀 생성 실패: {str(e)}")
 
     def _evaluate_consultation_api(self, body):
         """POST /api/evaluate-consultation — 문진 품질 평가"""
@@ -3700,7 +4360,21 @@ AI 건강상담 서비스의 응답이 한국 의료법을 준수하는지 평�
             # DB에서 API 키 자동 주입 (프론트엔드 의존 제거)
             settings = db.get_settings()
 
+            # X-Target-URL의 도메인을 보고 실제 호출되는 환경을 우선 결정
+            # (클라이언트의 currentEnv 캐시와 DB의 currentEnv가 다를 때 미스매치 방지)
             current_env = settings.get('currentEnv', 'dev')
+            try:
+                _t_host = urlparse(target_url).hostname or ''
+                if _t_host.startswith('dev-skix') or _t_host == 'dev-skix.phnyx.ai':
+                    current_env = 'dev'
+                elif _t_host.startswith('staging-skix') or _t_host == 'staging-skix.phnyx.ai':
+                    current_env = 'stg'
+                elif _t_host == 'skix.phnyx.ai' or _t_host.startswith('skix.'):
+                    current_env = 'prod'
+                # 그 외 도메인은 settings.currentEnv 사용
+            except Exception:
+                pass
+
             env_cfg = {}
             if 'environments' in settings and current_env in settings['environments']:
                 env_cfg = settings['environments'][current_env]
@@ -3723,7 +4397,7 @@ AI 건강상담 서비스의 응답이 한국 의료법을 준수하는지 평�
                 forward_headers['X-Api-UID'] = tester['uid']
 
             ProxyHandler._add_log(f"[프록시] target={target_url}")
-            ProxyHandler._add_log(f"[프록시] X-API-Key={forward_headers.get('X-API-Key','')[:8]}... UID={forward_headers.get('X-Api-UID','')}")
+            ProxyHandler._add_log(f"[프록시] env={current_env} X-API-Key={forward_headers.get('X-API-Key','')[:8]}... tenant={forward_headers.get('X-tenant-Domain','')} UID={forward_headers.get('X-Api-UID','')}")
 
             # http.client로 비버퍼링 SSE 스트리밍
             parsed = urlparse(target_url)
@@ -3757,12 +4431,20 @@ AI 건강상담 서비스의 응답이 한국 의료법을 준수하는지 평�
             collected_follow_ups = []
             collected_token_usage = None
             collected_conversation_strid = None
+            collected_graph_usage_strid = None
             stream_start = datetime.now(timezone.utc)
 
             # 버퍼 기반 실시간 SSE 스트리밍: 청크 단위로 읽고 라인 단위로 flush
             buf = b''
+            total_bytes = 0
+            chunks_received = 0
+            stop_received = False
             while True:
-                chunk = resp.read(4096)
+                try:
+                    chunk = resp.read(4096)
+                except Exception as read_err:
+                    ProxyHandler._add_log(f"[SSE 끊김] resp.read 예외: {type(read_err).__name__}: {str(read_err)[:120]}, 총_받은바이트={total_bytes}, 텍스트길이={len(full_text)}, STOP수신={stop_received if 'stop_received' in dir() else False}")
+                    raise
                 if not chunk:
                     if buf:
                         try:
@@ -3770,9 +4452,13 @@ AI 건강상담 서비스의 응답이 한국 의료법을 준수하는지 평�
                             self.wfile.flush()
                         except (BrokenPipeError, ConnectionResetError):
                             pass
-                        pass  # 남은 버퍼는 불완전 라인 — 무시
+                    # STOP 미수신 + 텍스트 있음 → 비정상 종료 의심
+                    if not stop_received and full_text:
+                        ProxyHandler._add_log(f"[SSE 끊김] STOP 미수신으로 종료. 총바이트={total_bytes}, 청크수={chunks_received}, 텍스트길이={len(full_text)}, 마지막200자={full_text[-200:] if len(full_text)>200 else full_text}")
                     break
                 buf += chunk
+                total_bytes += len(chunk)
+                chunks_received += 1
                 # 라인 단위로 분리하여 즉시 전달
                 stop_received = False
                 while b'\n' in buf:
@@ -3794,6 +4480,12 @@ AI 건강상담 서비스의 응답이 한국 의료법을 준수하는지 평�
                                 etype = event.get('type', '')
                                 if etype == 'GENERATION':
                                     full_text += event.get('text', '')
+                                elif etype == 'KEEP_ALIVE':
+                                    pass  # 연결 유지용, 무시
+                                elif etype == 'PROGRESS':
+                                    result_items = event.get('result_items')
+                                    if result_items and isinstance(result_items, list):
+                                        collected_search_results.extend(result_items)
                                 elif etype == 'INFO':
                                     edata = event.get('data', {})
                                     if edata.get('conversation_strid'):
@@ -3804,12 +4496,18 @@ AI 건강상담 서비스의 응답이 한국 의료법을 준수하는지 평�
                                         collected_follow_ups = edata['follow_ups']
                                     if edata.get('token_usage'):
                                         collected_token_usage = edata['token_usage']
+                                    if edata.get('graph_usage_strid'):
+                                        collected_graph_usage_strid = edata['graph_usage_strid']
+                                elif etype == 'STOP':
+                                    # 정확한 STOP 타입 감지 (JSON 파싱된 type만)
+                                    stop_received = True
+                                elif etype == 'ERROR':
+                                    err_msg = event.get('message', '')
+                                    ProxyHandler._add_log(f"[SSE ERROR] type=ERROR msg={err_msg[:200]}")
                             except (json.JSONDecodeError, KeyError):
                                 pass
 
-                    # STOP 이벤트 감지 → 즉시 종료 (인스턴스 빠른 해제)
-                    if b'"type":"STOP"' in line or b'"type": "STOP"' in line:
-                        stop_received = True
+                    if stop_received:
                         break
                 if stop_received:
                     break
@@ -4044,16 +4742,30 @@ AI 건강상담 서비스의 응답이 한국 의료법을 준수하는지 평�
             return self._send_error(500, f'피드백 저장 실패: {str(e)}')
 
     def _get_feedback(self, query_string):
-        """GET /api/feedback — 피드백 목록 조회"""
+        """GET /api/feedback — 피드백 목록 조회 (커멘트 포함)"""
         params = parse_qs(query_string)
         conversation_id = params.get('conversation_id', [None])[0]
         message_id = params.get('message_id', [None])[0]
         limit = int(params.get('limit', ['50'])[0])
+        include_comments = params.get('include_comments', ['false'])[0] == 'true'
         results = db.get_response_feedback(
             conversation_id=conversation_id,
             message_id=message_id,
             limit=limit,
         )
+        # 각 피드백에 관련 커멘트 첨부
+        if include_comments:
+            for fb in results:
+                mid = fb.get('message_id', '')
+                cid = fb.get('conversation_id', '')
+                if mid and cid:
+                    try:
+                        comments = db.get_comments(conversation_id=cid, message_id=mid)
+                        fb['comments'] = comments
+                    except Exception:
+                        fb['comments'] = []
+                else:
+                    fb['comments'] = []
         self._send_json(200, results)
 
     def _get_feedback_stats(self, query_string):
@@ -4092,7 +4804,7 @@ AI 건강상담 서비스의 응답이 한국 의료법을 준수하는지 평�
         api_uid_default = env_cfg.get('xApiUid', settings.get('xApiUid', ''))
         tenant_domain = env_cfg.get('xTenantDomain', env_defaults.get(current_env, {}).get('xTenantDomain', 'dev-skix'))
         api_url = env_cfg.get('apiUrl', env_defaults.get(current_env, {}).get('apiUrl', 'https://dev-skix.phnyx.ai'))
-        graph_type = settings.get('graphType', 'SUPERVISED_HYBRID_SEARCH')
+        graph_type = settings.get('graphType', 'ORCHESTRATED_HYBRID_SEARCH')
 
         # UID 우선순위: 클라이언트 전달 > 서버 tester 세션 > 설정 기본값
         client_uid = payload.get('api_uid', '').strip()
@@ -4216,6 +4928,13 @@ AI 건강상담 서비스의 응답이 한국 의료법을 준수하는지 평�
         self.end_headers()
         self.wfile.write(body_bytes)
 
+    def _list_all_comments(self, query_string):
+        """GET /api/comments — 전체 커멘트 목록 조회"""
+        params = parse_qs(query_string)
+        limit = int(params.get('limit', ['100'])[0])
+        results = db.get_comments(limit=limit)
+        self._send_json(200, results)
+
     def _rlhf_stats(self):
         """GET /api/rlhf/stats — RLHF 전체 통계"""
         stats = db.get_rlhf_stats()
@@ -4270,6 +4989,932 @@ AI 건강상담 서비스의 응답이 한국 의료법을 준수하는지 평�
         )
         ProxyHandler._add_log(f"[RLHF] 선호도 쌍 추가: id={pair_id}")
         self._send_json(201, {'id': pair_id, 'status': 'ok'})
+
+    # ════════════════════════════════════════════
+    # Chat Arena API
+    # ════════════════════════════════════════════
+
+    def _arena_get_configs(self):
+        """GET /api/arena/configs — 슬롯별 Arena 모델 설정 조회 (Admin)"""
+        configs = db.get_arena_configs()
+        # api_key 마스킹 후 반환
+        safe = {}
+        for slot, cfg in configs.items():
+            c = dict(cfg)
+            if c.get('api_key'):
+                k = c['api_key']
+                c['api_key'] = k[:4] + '****' + k[-4:] if len(k) > 8 else '****'
+            safe[slot] = c
+        self._send_json(200, safe)
+
+    def _arena_save_config(self, body):
+        """POST /api/arena/configs — 슬롯 모델 설정 저장/수정 (Admin)"""
+        try:
+            payload = json.loads(body)
+        except json.JSONDecodeError:
+            return self._send_error(400, '잘못된 JSON')
+
+        slot = payload.get('slot', '').upper()
+        if slot not in ('A', 'B'):
+            return self._send_error(400, 'slot은 A 또는 B여야 합니다')
+
+        try:
+            config_id = db.save_arena_config(slot, payload)
+            ProxyHandler._add_log(f"[Arena] 설정 저장: slot={slot}, id={config_id}")
+            self._send_json(200, {'success': True, 'config_id': config_id, 'slot': slot})
+        except Exception as e:
+            self._send_error(500, f'설정 저장 실패: {str(e)}')
+
+    def _arena_test_config(self, body):
+        """POST /api/arena/configs/test — 슬롯 설정으로 연결 ping 테스트 (Admin)"""
+        try:
+            payload = json.loads(body)
+        except json.JSONDecodeError:
+            return self._send_error(400, '잘못된 JSON')
+
+        slot = payload.get('slot', '').upper()
+        if slot not in ('A', 'B'):
+            return self._send_error(400, 'slot은 A 또는 B여야 합니다')
+
+        configs = db.get_arena_configs()
+        cfg = configs.get(slot)
+        if not cfg:
+            return self._send_error(404, f'슬롯 {slot} 설정이 없습니다')
+
+        endpoint_url = cfg.get('endpoint_url', '')
+        api_key = cfg.get('api_key', '')
+        if not endpoint_url or not api_key:
+            return self._send_error(400, 'endpoint_url과 api_key가 설정되어야 합니다')
+
+        try:
+            import time as _time
+            health_url = endpoint_url.rstrip('/') + '/health'
+            req = Request(url=health_url, headers={'X-API-Key': api_key}, method='GET')
+            ctx = ssl.create_default_context()
+            t0 = _time.time()
+            resp = urlopen(req, context=ctx, timeout=10)
+            latency = round((_time.time() - t0) * 1000)
+            ProxyHandler._add_log(f"[Arena] ping 성공: slot={slot}, latency={latency}ms")
+            self._send_json(200, {'ok': True, 'latency': latency, 'status': resp.status})
+        except Exception as e:
+            ProxyHandler._add_log(f"[Arena] ping 실패: slot={slot}, err={str(e)[:100]}")
+            self._send_json(200, {'ok': False, 'message': str(e)[:200]})
+
+    def _arena_parse_flags(self, text: str) -> dict:
+        """응답 텍스트에서 citations/hedges/disclaimers 파싱"""
+        if not text:
+            return {'citations': 0, 'hedges': 0, 'disclaimers': 0}
+
+        citations = len(re.findall(r'\[\d+:\d+\]', text)) + len(re.findall(r'참고:', text))
+        hedge_patterns = ['아마도', '가능성', '일 수도', '추정', '것 같', '수 있', '할 수도', '경우도']
+        hedges = sum(text.count(p) for p in hedge_patterns)
+        disclaimer_patterns = ['의학적 진단을 대체하지 않', '의료진에게 상담', '전문의와 상담', '병원에 방문']
+        disclaimers = sum(1 for p in disclaimer_patterns if p in text)
+        disclaimers += text.count('※')
+
+        return {'citations': citations, 'hedges': hedges, 'disclaimers': disclaimers}
+
+    def _arena_call_skix(self, cfg: dict, query: str, settings: dict) -> tuple:
+        """
+        단일 슬롯의 SKIX API 호출.
+        반환: (response_text, latency_seconds, tokens_or_None, error_or_None)
+        """
+        import time as _time
+
+        use_env = cfg.get('use_env', 'dev')
+        env_defaults = {
+            'dev':  {'apiUrl': 'https://dev-skix.phnyx.ai',    'xTenantDomain': 'dev-skix'},
+            'stg':  {'apiUrl': 'https://staging-skix.phnyx.ai', 'xTenantDomain': 'staging-skix'},
+            'prod': {'apiUrl': 'https://skix.phnyx.ai',         'xTenantDomain': 'skix'},
+        }
+
+        # custom 슬롯이면 endpoint_url 직접 사용, 아니면 env 기준으로 결정
+        if use_env == 'custom' and cfg.get('endpoint_url'):
+            api_url = cfg['endpoint_url'].rstrip('/')
+        else:
+            env_cfg = settings.get('environments', {}).get(use_env, {})
+            api_url = cfg.get('endpoint_url') or env_cfg.get('apiUrl') or env_defaults.get(use_env, {}).get('apiUrl', '')
+
+        api_key = cfg.get('api_key', '') or settings.get('environments', {}).get(use_env, {}).get('xApiKey', settings.get('xApiKey', ''))
+        tenant_domain = cfg.get('tenant_domain') or settings.get('environments', {}).get(use_env, {}).get('xTenantDomain', env_defaults.get(use_env, {}).get('xTenantDomain', ''))
+        api_uid = cfg.get('api_uid') or settings.get('environments', {}).get(use_env, {}).get('xApiUid', settings.get('xApiUid', ''))
+        graph_type = cfg.get('graph_type') or settings.get('graphType', 'ORCHESTRATED_HYBRID_SEARCH')
+
+        source_types = []
+        if settings.get('srcWeb', True):
+            source_types.append('WEB')
+        if settings.get('srcPubmed', True):
+            source_types.append('PUBMED')
+
+        target_url = f"{api_url}/api/service/conversations/{graph_type}"
+        req_body = json.dumps({
+            "query": query,
+            "conversation_strid": None,
+            "source_types": source_types,
+        }, ensure_ascii=False).encode('utf-8')
+        headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'text/event-stream',
+            'X-API-Key': api_key,
+            'X-tenant-Domain': tenant_domain,
+            'X-Api-UID': api_uid,
+        }
+
+        t0 = _time.time()
+        try:
+            ctx = ssl.create_default_context()
+            req = Request(url=target_url, data=req_body, headers=headers, method='POST')
+            resp = urlopen(req, context=ctx, timeout=60)
+            full_text = ''
+            raw = resp.read().decode('utf-8', errors='replace')
+            for line in raw.split('\n'):
+                stripped = line.strip()
+                if not stripped.startswith('data:'):
+                    continue
+                json_str = stripped[5:].strip()
+                if not json_str:
+                    continue
+                try:
+                    ed = json.loads(json_str)
+                    etype = ed.get('type', '')
+                    if etype == 'GENERATION':
+                        full_text += ed.get('text', '')
+                    elif etype == 'KEEP_ALIVE':
+                        continue  # 연결 유지용, 무시
+                    elif etype == 'PROGRESS':
+                        # 신규 ORCHESTRATED 그래프는 PROGRESS에서도 result_items로 검색결과 전달
+                        # Arena는 응답 텍스트만 사용하므로 무시 (데이터 누락 방지용 명시 처리)
+                        pass
+                    elif etype == 'INFO':
+                        # INFO에서 search_results/follow_ups 등 부가 데이터 무시 (Arena는 텍스트만 비교)
+                        pass
+                    elif etype == 'STOP' and not full_text and ed.get('text'):
+                        full_text = ed.get('text', '')
+                except json.JSONDecodeError:
+                    pass
+            latency = _time.time() - t0
+            return full_text, round(latency, 3), None, None
+        except Exception as e:
+            latency = _time.time() - t0
+            return '', round(latency, 3), None, str(e)[:300]
+
+    def _arena_run(self, body):
+        """POST /api/arena/run — A/B 병렬 호출 후 세션 저장"""
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        import random
+
+        try:
+            payload = json.loads(body)
+        except json.JSONDecodeError:
+            return self._send_error(400, '잘못된 JSON')
+
+        query = payload.get('query', '').strip()
+        if not query:
+            return self._send_error(400, 'query가 필요합니다')
+
+        category = payload.get('category', '')
+        risk_level = payload.get('risk_level', '')
+        tester = self._get_tester_info()
+        evaluator_id = payload.get('evaluator_id', '') or (tester['id'] if tester else 'anonymous')
+
+        configs = db.get_arena_configs()
+        cfg_a = configs.get('A')
+        cfg_b = configs.get('B')
+        if not cfg_a or not cfg_b:
+            return self._send_error(400, 'Arena 슬롯 A/B 설정이 완료되지 않았습니다. 관리자에게 문의하세요.')
+
+        settings = db.get_settings()
+
+        ProxyHandler._add_log(f"[Arena] 실행 시작: query={query[:60]}, evaluator={evaluator_id}")
+
+        # 병렬 호출
+        results = {}
+        errors = {}
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            futures = {
+                executor.submit(self._arena_call_skix, cfg_a, query, settings): 'A',
+                executor.submit(self._arena_call_skix, cfg_b, query, settings): 'B',
+            }
+            for future in as_completed(futures):
+                slot = futures[future]
+                try:
+                    text, latency, tokens, err = future.result()
+                    results[slot] = {'text': text, 'latency': latency, 'tokens': tokens}
+                    if err:
+                        errors[slot] = err
+                except Exception as e:
+                    results[slot] = {'text': '', 'latency': 0.0, 'tokens': None}
+                    errors[slot] = str(e)[:200]
+
+        res_a = results.get('A', {'text': '', 'latency': 0.0, 'tokens': None})
+        res_b = results.get('B', {'text': '', 'latency': 0.0, 'tokens': None})
+
+        # 랜덤 A/B 스왑 (arenaRandomSwap 설정)
+        arena_random_swap = settings.get('arenaRandomSwap', False)
+        slot_swapped = arena_random_swap and random.random() < 0.5
+
+        # DB에는 원본 순서로 저장
+        session_id = db.create_arena_session(
+            query_text=query,
+            category=category,
+            risk_level=risk_level,
+            config_a_id=cfg_a.get('id'),
+            config_b_id=cfg_b.get('id'),
+            evaluator_id=evaluator_id,
+            slot_swapped=slot_swapped,
+        )
+        db.update_arena_session_responses(
+            session_id=session_id,
+            response_a=res_a['text'],
+            response_b=res_b['text'],
+            latency_a=res_a['latency'],
+            latency_b=res_b['latency'],
+            tokens_a=res_a['tokens'],
+            tokens_b=res_b['tokens'],
+        )
+
+        ProxyHandler._add_log(f"[Arena] 세션 저장: id={session_id}, swap={slot_swapped}, errA={errors.get('A','')}, errB={errors.get('B','')}")
+
+        # flags 파싱
+        flags_a = self._arena_parse_flags(res_a['text'])
+        flags_b = self._arena_parse_flags(res_b['text'])
+
+        # 반환 시 스왑 적용 (UI에는 교체된 상태로 보임)
+        if slot_swapped:
+            display_a = {
+                'text': res_b['text'], 'latency': res_b['latency'], 'tokens': res_b['tokens'],
+                'flags': self._arena_parse_flags(res_b['text']),
+            }
+            display_b = {
+                'text': res_a['text'], 'latency': res_a['latency'], 'tokens': res_a['tokens'],
+                'flags': self._arena_parse_flags(res_a['text']),
+            }
+        else:
+            display_a = {'text': res_a['text'], 'latency': res_a['latency'], 'tokens': res_a['tokens'], 'flags': flags_a}
+            display_b = {'text': res_b['text'], 'latency': res_b['latency'], 'tokens': res_b['tokens'], 'flags': flags_b}
+
+        resp_obj = {
+            'session_id': session_id,
+            'slot_swapped': slot_swapped,
+            'responses': {'A': display_a, 'B': display_b},
+        }
+        if errors:
+            resp_obj['errors'] = errors
+
+        self._send_json(200, resp_obj)
+
+    def _arena_verdict(self, body):
+        """POST /api/arena/verdict — 평가 결과 저장"""
+        try:
+            payload = json.loads(body)
+        except json.JSONDecodeError:
+            return self._send_error(400, '잘못된 JSON')
+
+        session_id = payload.get('session_id')
+        if not session_id:
+            return self._send_error(400, 'session_id가 필요합니다')
+
+        session = db.get_arena_session(int(session_id))
+        if not session:
+            return self._send_error(404, f'세션을 찾을 수 없습니다: {session_id}')
+
+        winner = payload.get('winner', '')
+        if winner not in ('A', 'B', 'tie', 'none', ''):
+            return self._send_error(400, "winner는 'A','B','tie','none' 중 하나여야 합니다")
+
+        scores = payload.get('scores', {})
+        tags = payload.get('tags', {})
+        reviewer_note = payload.get('comment', payload.get('reviewer_note', ''))
+
+        tester = self._get_tester_info()
+        evaluator_id = payload.get('evaluator_id', '') or (tester['id'] if tester else 'anonymous')
+
+        try:
+            eval_id = db.save_arena_evaluation(
+                session_id=int(session_id),
+                winner=winner,
+                scores=scores,
+                tags=tags,
+                reviewer_note=reviewer_note,
+                evaluator_id=evaluator_id,
+            )
+            now = datetime.now(timezone.utc).isoformat()
+            ProxyHandler._add_log(f"[Arena] 평가 저장: session={session_id}, winner={winner}, eval_id={eval_id}")
+            self._send_json(200, {'eval_id': eval_id, 'created_at': now})
+        except Exception as e:
+            self._send_error(500, f'평가 저장 실패: {str(e)}')
+
+    def _arena_get_history(self, query_string):
+        """GET /api/arena/history?limit=30&evaluator_id= — 최근 Arena 이력"""
+        params = parse_qs(query_string)
+        limit = int(params.get('limit', ['30'])[0])
+        evaluator_id = params.get('evaluator_id', [None])[0]
+
+        # 비Admin: 본인 이력만
+        if not self._is_admin():
+            tester = self._get_tester_info()
+            if tester and not evaluator_id:
+                evaluator_id = tester['id']
+
+        items = db.get_arena_history(evaluator_id=evaluator_id, limit=limit)
+        self._send_json(200, {'items': items})
+
+    def _arena_get_stats(self, query_string):
+        """GET /api/arena/stats?days=30&evaluator_id= — Arena 통계"""
+        params = parse_qs(query_string)
+        days = int(params.get('days', ['30'])[0])
+        evaluator_id = params.get('evaluator_id', [None])[0]
+
+        if not self._is_admin():
+            tester = self._get_tester_info()
+            if tester and not evaluator_id:
+                evaluator_id = tester['id']
+
+        stats = db.get_arena_stats(evaluator_id=evaluator_id, days=days)
+        self._send_json(200, stats)
+
+    # ════════════════════════════════════════════
+    # RAG 채팅 SSE API
+    # ════════════════════════════════════════════
+
+    def _rag_chat(self, body):
+        """POST /api/rag/chat — RAG 응답 생성 SSE 엔드포인트
+
+        요청 body:
+          {
+            "query": "발열이 나요",
+            "conversation_id": "conv-xxx",   (없으면 UUID 자동 생성)
+            "provider_id": null,              (없으면 환경변수 기본값)
+            "top_k": 5,
+            "enable_guardrails": true
+          }
+
+        SSE 응답:
+          data: {"type":"INFO","data":{"search_results":[...]}}
+          data: {"type":"GENERATION","text":"..."}
+          data: {"type":"STOP","text":"...","rag_query_id":"...","citations":[...],...}
+          data: {"type":"ERROR","message":"..."}  (에러 시)
+
+        SQLite 모드에서는 503 반환.
+        """
+        # ── 1. 인증 (Admin 또는 Tester 모두 허용) ──
+        if not self._require_auth():
+            return
+
+        # ── 2. 요청 파싱 ──
+        try:
+            payload = json.loads(body.decode('utf-8')) if body else {}
+        except Exception as e:
+            return self._send_json(400, {"error": f"Invalid JSON: {e}"})
+
+        query = (payload.get('query') or '').strip()
+        if not query:
+            return self._send_json(400, {"error": "query is required"})
+
+        # conversation_id — 없으면 UUID 생성
+        import uuid as _uuid_mod
+        conversation_id = (payload.get('conversation_id') or '').strip()
+        if not conversation_id:
+            conversation_id = str(_uuid_mod.uuid4())
+
+        provider_id = payload.get('provider_id') or None
+        top_k = int(payload.get('top_k') or 5)
+        enable_guardrails = bool(payload.get('enable_guardrails', True))
+
+        # ── 3. SQLite 모드 차단 ──
+        if not db._use_postgres:
+            return self._send_json(503, {
+                "error": (
+                    "RAG features require PostgreSQL with pgvector. "
+                    "Set DATABASE_URL to enable."
+                ),
+                "code": "RAG_REQUIRES_POSTGRES",
+            })
+
+        # ── 4. conversation 행 보장 (없으면 INSERT, 있으면 그대로) ──
+        try:
+            tester_info = self._get_tester_info()
+            user_id = tester_info['id'] if tester_info else 'admin'
+            now_ts = datetime.now(timezone.utc).isoformat()
+            with db.get_conn() as (conn, cur):
+                cur.execute(
+                    f"INSERT INTO conversations "
+                    f"(id, user_id, user_name, title, env, conversation_strid, "
+                    f"created_at, updated_at, emergency_state) "
+                    f"VALUES ({db._ph(9)}) "
+                    f"ON CONFLICT (id) DO NOTHING",
+                    (
+                        conversation_id,
+                        user_id,
+                        tester_info.get('name', user_id) if tester_info else 'admin',
+                        query[:80],  # 제목으로 질의 첫 80자 사용
+                        'rag',
+                        '',
+                        now_ts,
+                        now_ts,
+                        'NORMAL',
+                    ),
+                )
+                conn.commit()
+        except Exception as e:
+            ProxyHandler._add_log(f"[RAG-CHAT] conversation INSERT 오류 (무시): {e}")
+
+        # ── 5. SSE 헤더 전송 ──
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/event-stream; charset=utf-8')
+        self.send_header('Cache-Control', 'no-cache')
+        self.send_header('X-Accel-Buffering', 'no')
+        self.send_header('Connection', 'keep-alive')
+        self._set_cors_headers()
+        self.end_headers()
+
+        # ── 6. generate_response 스트리밍 ──
+        try:
+            from rag_engine import generate_response
+
+            for event in generate_response(
+                query=query,
+                conversation_id=conversation_id,
+                provider_id=provider_id,
+                top_k=top_k,
+                enable_guardrails=enable_guardrails,
+            ):
+                line = "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"
+                self.wfile.write(line.encode('utf-8'))
+                self.wfile.flush()
+
+        except (BrokenPipeError, ConnectionResetError) as e:
+            ProxyHandler._add_log(f"[RAG-CHAT] 클라이언트 연결 끊김: {e}")
+        except Exception as e:
+            ProxyHandler._add_log(f"[RAG-CHAT] 스트리밍 오류: {e}")
+            error_event = {"type": "ERROR", "message": str(e)}
+            try:
+                line = "data: " + json.dumps(error_event, ensure_ascii=False) + "\n\n"
+                self.wfile.write(line.encode('utf-8'))
+                self.wfile.flush()
+            except Exception:
+                pass  # 클라이언트 연결 이미 끊김
+
+    # ════════════════════════════════════════════
+    # RAG KB 관리 API
+    # ════════════════════════════════════════════
+
+    def _rag_kb_list_sources(self):
+        """GET /api/rag/kb/sources — kb_sources 전체 목록"""
+        try:
+            with db.get_conn() as (conn, cur):
+                cur.execute(
+                    "SELECT id, name, source_type, license, url, update_frequency, "
+                    "last_updated_at, is_active, created_at "
+                    "FROM kb_sources WHERE is_active = 1 ORDER BY name"
+                )
+                rows = cur.fetchall()
+            sources = []
+            for r in rows:
+                if isinstance(r, dict):
+                    sources.append(dict(r))
+                else:
+                    sources.append({
+                        'id': r[0], 'name': r[1], 'source_type': r[2],
+                        'license': r[3], 'url': r[4], 'update_frequency': r[5],
+                        'last_updated_at': r[6], 'is_active': r[7], 'created_at': r[8],
+                    })
+            return self._send_json(200, sources)
+        except Exception as e:
+            ProxyHandler._add_log(f"[RAG-KB] sources 조회 실패: {e}")
+            return self._send_error(500, f'KB 소스 조회 실패: {str(e)}')
+
+    def _rag_kb_list_documents(self, query_string):
+        """GET /api/rag/kb/documents — 문서 목록 (필터·페이지네이션)"""
+        params = parse_qs(query_string)
+        status_filter = params.get('status', [None])[0]
+        source_id_filter = params.get('source_id', [None])[0]
+        symptom_filter = params.get('symptom', [None])[0]
+        q_filter = params.get('q', [None])[0]
+        try:
+            page = max(1, int(params.get('page', ['1'])[0]))
+            page_size = max(1, min(100, int(params.get('page_size', ['20'])[0])))
+        except ValueError:
+            page, page_size = 1, 20
+
+        # draft/rejected는 manage_kb 권한 필요
+        if status_filter in ('draft', 'rejected'):
+            if not (self._is_admin() or self._has_permission('manage_kb')):
+                return self._send_error(403, 'draft/rejected 문서 조회는 manage_kb 권한이 필요합니다')
+
+        try:
+            conditions = []
+            args = []
+            if status_filter:
+                conditions.append(f"d.status = {db._p()}")
+                args.append(status_filter)
+            if source_id_filter:
+                conditions.append(f"d.source_id = {db._p()}")
+                args.append(source_id_filter)
+            if symptom_filter:
+                conditions.append(f"d.metadata_json LIKE {db._p()}")
+                args.append(f'%{symptom_filter}%')
+            if q_filter:
+                conditions.append(f"d.title LIKE {db._p()}")
+                args.append(f'%{q_filter}%')
+
+            where_clause = ('WHERE ' + ' AND '.join(conditions)) if conditions else ''
+            offset = (page - 1) * page_size
+
+            count_sql = f"""
+                SELECT COUNT(*) FROM kb_documents d
+                {where_clause}
+            """
+            select_sql = f"""
+                SELECT d.id, d.title, d.source_id, s.name AS source_name,
+                       d.status, d.evidence_level, d.metadata_json,
+                       d.author_id, d.approved_by, d.approved_at, d.rejected_reason,
+                       d.version, d.created_at, d.updated_at,
+                       (SELECT COUNT(*) FROM kb_chunks c WHERE c.document_id = d.id) AS chunks_count
+                FROM kb_documents d
+                LEFT JOIN kb_sources s ON d.source_id = s.id
+                {where_clause}
+                ORDER BY d.created_at DESC
+                LIMIT {db._p()} OFFSET {db._p()}
+            """
+            list_args = args + [page_size, offset]
+
+            with db.get_conn() as (conn, cur):
+                cur.execute(count_sql, args)
+                total_row = cur.fetchone()
+                total = total_row[0] if total_row else 0
+
+                cur.execute(select_sql, list_args)
+                rows = cur.fetchall()
+
+            documents = []
+            for r in rows:
+                if isinstance(r, dict):
+                    doc = dict(r)
+                else:
+                    doc = {
+                        'id': r[0], 'title': r[1], 'source_id': r[2],
+                        'source_name': r[3], 'status': r[4], 'evidence_level': r[5],
+                        'metadata_json': r[6], 'author_id': r[7], 'approved_by': r[8],
+                        'approved_at': r[9], 'rejected_reason': r[10], 'version': r[11],
+                        'created_at': r[12], 'updated_at': r[13], 'chunks_count': r[14],
+                    }
+                # metadata_json 파싱
+                raw_meta = doc.get('metadata_json', '{}')
+                doc['metadata'] = db._pg_json_loads(raw_meta) if raw_meta else {}
+                doc.pop('metadata_json', None)
+                documents.append(doc)
+
+            return self._send_json(200, {
+                'documents': documents,
+                'total': total,
+                'page': page,
+                'page_size': page_size,
+            })
+        except Exception as e:
+            ProxyHandler._add_log(f"[RAG-KB] documents 조회 실패: {e}")
+            return self._send_error(500, f'KB 문서 조회 실패: {str(e)}')
+
+    def _rag_kb_get_document(self, doc_id):
+        """GET /api/rag/kb/documents/{id} — 문서 메타 + chunks"""
+        try:
+            with db.get_conn() as (conn, cur):
+                cur.execute(
+                    "SELECT d.id, d.title, d.source_id, s.name AS source_name, "
+                    "d.content_md, d.status, d.evidence_level, d.metadata_json, "
+                    "d.author_id, d.approved_by, d.approved_at, d.rejected_reason, "
+                    "d.version, d.created_at, d.updated_at "
+                    "FROM kb_documents d "
+                    "LEFT JOIN kb_sources s ON d.source_id = s.id "
+                    f"WHERE d.id = {db._p()}",
+                    (doc_id,)
+                )
+                row = cur.fetchone()
+                if not row:
+                    return self._send_error(404, f'문서를 찾을 수 없습니다: {doc_id}')
+
+                if isinstance(row, dict):
+                    doc = dict(row)
+                else:
+                    doc = {
+                        'id': row[0], 'title': row[1], 'source_id': row[2],
+                        'source_name': row[3], 'content_md': row[4], 'status': row[5],
+                        'evidence_level': row[6], 'metadata_json': row[7],
+                        'author_id': row[8], 'approved_by': row[9], 'approved_at': row[10],
+                        'rejected_reason': row[11], 'version': row[12],
+                        'created_at': row[13], 'updated_at': row[14],
+                    }
+
+                # chunks 조회
+                cur.execute(
+                    "SELECT id, chunk_index, content, section_path_json, token_count, "
+                    "evidence_country, evidence_topic, regulatory_korea, topic_keywords_json, "
+                    "created_at "
+                    "FROM kb_chunks "
+                    f"WHERE document_id = {db._p()} ORDER BY chunk_index",
+                    (doc_id,)
+                )
+                chunk_rows = cur.fetchall()
+
+            raw_meta = doc.get('metadata_json', '{}')
+            doc['metadata'] = db._pg_json_loads(raw_meta) if raw_meta else {}
+            doc.pop('metadata_json', None)
+
+            chunks = []
+            for cr in chunk_rows:
+                if isinstance(cr, dict):
+                    ch = dict(cr)
+                else:
+                    ch = {
+                        'id': cr[0], 'chunk_index': cr[1], 'content': cr[2],
+                        'section_path_json': cr[3], 'token_count': cr[4],
+                        'evidence_country': cr[5], 'evidence_topic': cr[6],
+                        'regulatory_korea': cr[7], 'topic_keywords_json': cr[8],
+                        'created_at': cr[9],
+                    }
+                raw_sp = ch.pop('section_path_json', None)
+                raw_kw = ch.pop('topic_keywords_json', None)
+                ch['section_path'] = db._pg_json_loads(raw_sp) if raw_sp else []
+                ch['topic_keywords'] = db._pg_json_loads(raw_kw) if raw_kw else []
+                chunks.append(ch)
+
+            doc['chunks'] = chunks
+            doc['chunks_count'] = len(chunks)
+            return self._send_json(200, doc)
+        except Exception as e:
+            ProxyHandler._add_log(f"[RAG-KB] document 단건 조회 실패: {e}")
+            return self._send_error(500, f'KB 문서 조회 실패: {str(e)}')
+
+    def _rag_kb_create_document(self, body):
+        """POST /api/rag/kb/documents — 신규 문서 ingest"""
+        try:
+            payload = json.loads(body.decode('utf-8'))
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return self._send_error(400, '잘못된 JSON')
+
+        title = (payload.get('title') or '').strip()
+        content_md = (payload.get('content_md') or '').strip()
+        source_id = (payload.get('source_id') or '').strip()
+
+        if not title:
+            return self._send_error(400, 'title은 필수입니다')
+        if not content_md:
+            return self._send_error(400, 'content_md는 필수입니다')
+        if not source_id:
+            return self._send_error(400, 'source_id는 필수입니다')
+
+        metadata = payload.get('metadata', {})
+        status = payload.get('status', 'draft')
+        evidence_country = payload.get('evidence_country', 'KR')
+        evidence_topic = payload.get('evidence_topic')
+        regulatory_korea = bool(payload.get('regulatory_korea', False))
+        topic_keywords = payload.get('topic_keywords') or []
+
+        tester = self._get_tester_info()
+        author_id = tester['id'] if tester else (None if not self._is_admin() else 'admin')
+
+        try:
+            from kb_ingest import ingest_document
+            result = ingest_document(
+                title=title,
+                content_md=content_md,
+                source_id=source_id,
+                metadata=metadata,
+                evidence_country=evidence_country,
+                evidence_topic=evidence_topic,
+                regulatory_korea=regulatory_korea,
+                topic_keywords=topic_keywords,
+                upsert=False,
+                status=status,
+                author_id=author_id,
+            )
+            ProxyHandler._add_log(
+                f"[RAG-KB] 문서 생성: title={title}, doc_id={result.get('document_id')}, "
+                f"chunks={result.get('chunks_count')}"
+            )
+            return self._send_json(201, {
+                'document_id': result['document_id'],
+                'chunks_count': result['chunks_count'],
+                'status': result.get('status', status),
+            })
+        except ValueError as e:
+            return self._send_error(400, str(e))
+        except Exception as e:
+            ProxyHandler._add_log(f"[RAG-KB] 문서 생성 실패: {e}")
+            return self._send_error(500, f'문서 생성 실패: {str(e)}')
+
+    def _rag_kb_update_document(self, doc_id, body):
+        """PUT /api/rag/kb/documents/{id} — 문서 메타 수정 (content_md 수정 시 /reembed 별도)"""
+        try:
+            payload = json.loads(body.decode('utf-8'))
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return self._send_error(400, '잘못된 JSON')
+
+        try:
+            with db.get_conn() as (conn, cur):
+                cur.execute(
+                    f"SELECT id, version FROM kb_documents WHERE id = {db._p()}",
+                    (doc_id,)
+                )
+                row = cur.fetchone()
+                if not row:
+                    return self._send_error(404, f'문서를 찾을 수 없습니다: {doc_id}')
+
+            now_str = db._now()
+            set_parts = []
+            set_args = []
+
+            if 'title' in payload:
+                set_parts.append(f"title = {db._p()}")
+                set_args.append(payload['title'])
+            if 'content_md' in payload:
+                set_parts.append(f"content_md = {db._p()}")
+                set_args.append(payload['content_md'])
+            if 'status' in payload:
+                set_parts.append(f"status = {db._p()}")
+                set_args.append(payload['status'])
+            if 'evidence_level' in payload:
+                set_parts.append(f"evidence_level = {db._p()}")
+                set_args.append(payload['evidence_level'])
+            if 'metadata' in payload:
+                set_parts.append(f"metadata_json = {db._p()}")
+                set_args.append(json.dumps(payload['metadata'], ensure_ascii=False))
+            if 'source_id' in payload:
+                set_parts.append(f"source_id = {db._p()}")
+                set_args.append(payload['source_id'])
+
+            if not set_parts:
+                return self._send_error(400, '수정할 필드가 없습니다')
+
+            set_parts.append(f"updated_at = {db._p()}")
+            set_args.append(now_str)
+            set_args.append(doc_id)
+
+            update_sql = f"UPDATE kb_documents SET {', '.join(set_parts)} WHERE id = {db._p()}"
+            with db.get_conn() as (conn, cur):
+                cur.execute(update_sql, set_args)
+
+            ProxyHandler._add_log(f"[RAG-KB] 문서 수정: doc_id={doc_id}")
+            return self._send_json(200, {'updated': True, 'document_id': doc_id})
+        except Exception as e:
+            ProxyHandler._add_log(f"[RAG-KB] 문서 수정 실패: {e}")
+            return self._send_error(500, f'문서 수정 실패: {str(e)}')
+
+    def _rag_kb_delete_document(self, doc_id):
+        """DELETE /api/rag/kb/documents/{id} — 문서 삭제 (CASCADE → chunks도 삭제)"""
+        try:
+            with db.get_conn() as (conn, cur):
+                cur.execute(
+                    f"SELECT id FROM kb_documents WHERE id = {db._p()}",
+                    (doc_id,)
+                )
+                row = cur.fetchone()
+                if not row:
+                    return self._send_error(404, f'문서를 찾을 수 없습니다: {doc_id}')
+
+                cur.execute(
+                    f"DELETE FROM kb_documents WHERE id = {db._p()}",
+                    (doc_id,)
+                )
+
+            ProxyHandler._add_log(f"[RAG-KB] 문서 삭제: doc_id={doc_id}")
+            return self._send_json(200, {'deleted': True, 'document_id': doc_id})
+        except Exception as e:
+            ProxyHandler._add_log(f"[RAG-KB] 문서 삭제 실패: {e}")
+            return self._send_error(500, f'문서 삭제 실패: {str(e)}')
+
+    def _rag_kb_approve_document(self, body):
+        """POST /api/rag/kb/approve — 문서 승인 (pending_review → active)"""
+        try:
+            payload = json.loads(body.decode('utf-8'))
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return self._send_error(400, '잘못된 JSON')
+
+        doc_id = (payload.get('document_id') or '').strip()
+        if not doc_id:
+            return self._send_error(400, 'document_id는 필수입니다')
+
+        try:
+            with db.get_conn() as (conn, cur):
+                cur.execute(
+                    f"SELECT id, status FROM kb_documents WHERE id = {db._p()}",
+                    (doc_id,)
+                )
+                row = cur.fetchone()
+                if not row:
+                    return self._send_error(404, f'문서를 찾을 수 없습니다: {doc_id}')
+
+                current_status = row['status'] if isinstance(row, dict) else row[1]
+                if current_status not in ('pending_review', 'draft'):
+                    return self._send_error(400,
+                        f"상태가 pending_review/draft인 문서만 승인 가능합니다 (현재: {current_status})")
+
+            tester = self._get_tester_info()
+            approver_id = tester['id'] if tester else 'admin'
+            now_str = db._now()
+
+            with db.get_conn() as (conn, cur):
+                cur.execute(
+                    f"""UPDATE kb_documents
+                        SET status = 'active', approved_by = {db._p()},
+                            approved_at = {db._p()}, updated_at = {db._p()}
+                        WHERE id = {db._p()}""",
+                    (approver_id, now_str, now_str, doc_id)
+                )
+
+            ProxyHandler._add_log(f"[RAG-KB] 문서 승인: doc_id={doc_id}, approver={approver_id}")
+            return self._send_json(200, {'approved': True, 'document_id': doc_id})
+        except Exception as e:
+            ProxyHandler._add_log(f"[RAG-KB] 문서 승인 실패: {e}")
+            return self._send_error(500, f'문서 승인 실패: {str(e)}')
+
+    def _rag_kb_reject_document(self, body):
+        """POST /api/rag/kb/reject — 문서 반려"""
+        try:
+            payload = json.loads(body.decode('utf-8'))
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return self._send_error(400, '잘못된 JSON')
+
+        doc_id = (payload.get('document_id') or '').strip()
+        reason = (payload.get('reason') or '').strip()
+
+        if not doc_id:
+            return self._send_error(400, 'document_id는 필수입니다')
+        if not reason:
+            return self._send_error(400, 'reason은 필수입니다')
+
+        try:
+            with db.get_conn() as (conn, cur):
+                cur.execute(
+                    f"SELECT id FROM kb_documents WHERE id = {db._p()}",
+                    (doc_id,)
+                )
+                row = cur.fetchone()
+                if not row:
+                    return self._send_error(404, f'문서를 찾을 수 없습니다: {doc_id}')
+
+            now_str = db._now()
+            with db.get_conn() as (conn, cur):
+                cur.execute(
+                    f"""UPDATE kb_documents
+                        SET status = 'rejected', rejected_reason = {db._p()},
+                            updated_at = {db._p()}
+                        WHERE id = {db._p()}""",
+                    (reason, now_str, doc_id)
+                )
+
+            ProxyHandler._add_log(f"[RAG-KB] 문서 반려: doc_id={doc_id}")
+            return self._send_json(200, {'rejected': True, 'document_id': doc_id})
+        except Exception as e:
+            ProxyHandler._add_log(f"[RAG-KB] 문서 반려 실패: {e}")
+            return self._send_error(500, f'문서 반려 실패: {str(e)}')
+
+    def _rag_kb_reembed_document(self, doc_id):
+        """POST /api/rag/kb/documents/{id}/reembed — 기존 청크 삭제 후 재임베딩"""
+        try:
+            with db.get_conn() as (conn, cur):
+                cur.execute(
+                    "SELECT id, title, content_md, source_id, metadata_json, status, author_id "
+                    f"FROM kb_documents WHERE id = {db._p()}",
+                    (doc_id,)
+                )
+                row = cur.fetchone()
+                if not row:
+                    return self._send_error(404, f'문서를 찾을 수 없습니다: {doc_id}')
+
+                if isinstance(row, dict):
+                    doc = dict(row)
+                else:
+                    doc = {
+                        'id': row[0], 'title': row[1], 'content_md': row[2],
+                        'source_id': row[3], 'metadata_json': row[4],
+                        'status': row[5], 'author_id': row[6],
+                    }
+
+            raw_meta = doc.get('metadata_json', '{}')
+            metadata = db._pg_json_loads(raw_meta) if raw_meta else {}
+
+            from kb_ingest import ingest_document
+            result = ingest_document(
+                title=doc['title'],
+                content_md=doc['content_md'],
+                source_id=doc['source_id'],
+                metadata=metadata,
+                upsert=True,
+                status=doc.get('status', 'active'),
+                author_id=doc.get('author_id'),
+            )
+            ProxyHandler._add_log(
+                f"[RAG-KB] 재임베딩: doc_id={doc_id}, chunks={result.get('chunks_count')}"
+            )
+            return self._send_json(200, {
+                'reembedded': True,
+                'document_id': doc_id,
+                'chunks_count': result.get('chunks_count', 0),
+            })
+        except Exception as e:
+            ProxyHandler._add_log(f"[RAG-KB] 재임베딩 실패: {e}")
+            return self._send_error(500, f'재임베딩 실패: {str(e)}')
 
     # ════════════════════════════════════════════
     # 유틸리티

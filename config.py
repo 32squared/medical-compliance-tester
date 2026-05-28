@@ -40,7 +40,7 @@ API_CONFIG = {
 
     # ─── 엔드포인트 ───
     # POST /api/service/conversations/{graph_type}
-    "graph_type": "SUPERVISED_HYBRID_SEARCH",
+    "graph_type": "ORCHESTRATED_HYBRID_SEARCH",
     "endpoint_template": "/api/service/conversations/{graph_type}",
 
     # ─── 요청 본문 기본값 ───
@@ -230,7 +230,23 @@ def get_guideline_version():
         return "legacy"
 
 # ============================================================
-# 5. 심각도 점수
+# 5. RAG 임베딩 설정 (Phase 1+)
+# ============================================================
+
+# 기본 임베딩 프로바이더 ('openai' | 'bge_m3')
+# embedding_providers 테이블(T1 완료 후)에서 동적으로 조회.
+# 테이블 미존재 시 이 환경변수 값이 폴백으로 사용됨.
+EMBEDDING_PROVIDER_DEFAULT = os.environ.get(
+    "RAG_EMBEDDING_PROVIDER_DEFAULT", "openai"
+)
+
+# Phase 1 기본 임베딩 모델
+EMBEDDING_MODEL_DEFAULT = os.environ.get(
+    "RAG_EMBEDDING_MODEL", "text-embedding-3-small"
+)
+
+# ============================================================
+# 6. 심각도 점수
 # ============================================================
 SEVERITY_SCORES = {
     "CRITICAL": 100,
