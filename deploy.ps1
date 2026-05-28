@@ -37,6 +37,28 @@ Write-Host "DB Password:  ****" -ForegroundColor Green
 
 $DatabaseUrl = "postgresql://app_user:${DbPassword}@/medical_app?host=/cloudsql/${SqlConnection}"
 
+# [0/3] Cloud SQL 인스턴스 상태 점검
+Write-Host "[0/3] Checking Cloud SQL instance..." -ForegroundColor Yellow
+$SqlStatus = gcloud sql instances describe $SqlInstance `
+    --project=$ProjectId `
+    --format="value(databaseVersion,state)" 2>$null
+if ($LASTEXITCODE -ne 0 -or -not $SqlStatus) {
+    Write-Host "[ERROR] Cloud SQL 인스턴스 '$SqlInstance' 를 확인할 수 없습니다." -ForegroundColor Red
+    Write-Host "        gcloud auth 또는 인스턴스 이름을 확인하세요."
+    exit 1
+}
+$SqlParts = $SqlStatus -split "`t|`n| "
+$SqlVersion = $SqlParts[0]
+$SqlState   = $SqlParts[1]
+Write-Host "  DB Version: $SqlVersion" -ForegroundColor Cyan
+Write-Host "  DB State:   $SqlState" -ForegroundColor Cyan
+if ($SqlState -ne "RUNNABLE") {
+    Write-Host "[ERROR] Cloud SQL 인스턴스 상태가 RUNNABLE이 아닙니다 (현재: $SqlState). 배포를 중단합니다." -ForegroundColor Red
+    exit 1
+}
+Write-Host "Cloud SQL 점검 완료!" -ForegroundColor Green
+Write-Host ""
+
 # [1/3] Docker 이미지 빌드
 Write-Host "[1/3] Building Docker image..." -ForegroundColor Yellow
 gcloud builds submit --tag "gcr.io/$ProjectId/$ServiceName" .

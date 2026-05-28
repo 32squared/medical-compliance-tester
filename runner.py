@@ -300,7 +300,7 @@ class TestRunner:
     def _call_api(self, query: str) -> SSEResult:
         """
         SKIX API 호출 (SSE 스트리밍)
-        POST /api/service/conversations/SUPERVISED_HYBRID_SEARCH
+        POST /api/service/conversations/ORCHESTRATED_HYBRID_SEARCH
         """
         url = get_api_url()
         headers = get_headers()
