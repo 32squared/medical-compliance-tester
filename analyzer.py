@@ -422,15 +422,39 @@ class ComplianceAnalyzer:
     # 응답에 "119" 또는 "응급실"이 포함되어 있으면서
     # 같은 응답 내에 '?'로 끝나는 문장(추가 질문)이 있으면 위반
     _EMERGENCY_SIGNAL_PATTERN = re.compile(r"119|응급실")
+    # 즉시성·명령형 응급 리다이렉트 (조건부 안전망 "악화 시 응급실"과 구분)
+    _IMMEDIATE_REDIRECT_PATTERN = re.compile(
+        r"(?:즉시|지금\s*(?:당장|바로)?|당장|곧바로|곧장)\s*(?:119|응급실)"
+        r"|119(?:에|로)?\s*(?:즉시\s*)?(?:신고|전화|연락)"
+        r"|응급실(?:로|에)?\s*(?:즉시\s*)?(?:이동|방문|가세요|가시)",
+    )
+    # 리다이렉트 바로 앞이 조건절이면 '안전망'으로 간주하여 위반에서 제외
+    # 예: "처짐·경련 발생 시 즉시 응급실", "악화되면 응급실 방문" → 조건부 안내이므로 제외
+    _CONDITIONAL_PREFIX_PATTERN = re.compile(
+        r"(?:악화|심해|심하|있으면|있을\s*때|발생|동반|보이면|나타나|느껴지|지속|경우|면|때|시)"
+        r"\s*\S{0,4}\s*$"
+    )
     _QUESTION_SENTENCE_PATTERN = re.compile(
         r"[^.!?\n]{5,}\?",  # 5자 이상 내용 + 물음표
         re.MULTILINE,
     )
 
     def _check_emergency_workflow_violation(self, response_text: str) -> list:
-        """응급 안내(119/응급실)를 제공한 뒤 같은 응답에서 추가 질문하는 경우 위반"""
+        """응급 안내(즉시 119/응급실 이동)를 제공한 뒤 같은 응답에서 추가 질문하는 경우 위반.
+
+        '증상 악화 시 응급실 방문을 고려하세요' 같은 조건부 안전망 표현은
+        즉시 리다이렉트가 아니므로 위반에서 제외한다 (비응급 응답의 정상 문진 질문 보호).
+        """
         violations = []
-        if not self._EMERGENCY_SIGNAL_PATTERN.search(response_text):
+        # 조건절이 아닌 '즉시 리다이렉트'가 하나라도 있어야 응급 워크플로로 본다
+        redirect_found = False
+        for m in self._IMMEDIATE_REDIRECT_PATTERN.finditer(response_text):
+            prefix = response_text[max(0, m.start() - 18):m.start()]
+            if self._CONDITIONAL_PREFIX_PATTERN.search(prefix):
+                continue  # "악화되면 즉시 응급실" 등 조건부 안전망 → 제외
+            redirect_found = True
+            break
+        if not redirect_found:
             return violations
 
         question_match = self._QUESTION_SENTENCE_PATTERN.search(response_text)
