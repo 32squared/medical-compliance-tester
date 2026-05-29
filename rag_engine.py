@@ -475,6 +475,66 @@ def rrf_fusion(
 
 
 # ════════════════════════════════════════════════════════════
+#  Step C.5: Source Priority 가중 reranker (스펙 §5.3)
+# ════════════════════════════════════════════════════════════
+_EVIDENCE_LEVEL_SCORE = {"A": 1.0, "B": 0.75, "C": 0.5, "D": 0.25, "F": 0.1}
+
+
+def _weighted_rerank(
+    fused: List[dict],
+    dense_results: List[dict],
+    sparse_results: List[dict],
+) -> List[dict]:
+    """
+    스펙 §5.3 Hybrid 가중식으로 base score 재계산:
+      0.30*keyword + 0.25*vector + 0.20*source_priority + 0.10*freshness
+      + 0.10*domain_match + 0.05*evidence_level
+      − jurisdiction_mismatch_penalty − low_authority_penalty
+
+    keyword = sparse 순위 정규화, vector = cosine_score.
+    source_priority는 chunk.source_priority(없으면 source_priority_for),
+    freshness는 revised_at 미색인이라 중립(0.5), domain은 topic_alignment_score.
+    red_flag/country boost는 이 base score 위에 곱해진다(이후 단계).
+    """
+    try:
+        from retrieval_router import source_priority_for
+    except Exception:
+        def source_priority_for(_sid):
+            return 3
+    s_rank = {r["chunk_id"]: i for i, r in enumerate(sparse_results)}
+    n_s = max(len(sparse_results), 1)
+    for c in fused:
+        cid = c.get("chunk_id")
+        vec = float(c.get("cosine_score") or 0.0)
+        vec = min(max(vec, 0.0), 1.0)
+        kw = (1.0 - s_rank[cid] / n_s) if cid in s_rank else 0.0
+        sp = c.get("source_priority")
+        if sp is None:
+            sp = source_priority_for(c.get("source_id", ""))
+        try:
+            sp = int(sp)
+        except Exception:
+            sp = 3
+        sp_score = max(0.0, (7 - sp) / 6.0)             # 1→1.0 … 6→0.17
+        fresh = 0.5                                       # revised_at 미색인 → 중립
+        dom = float(c.get("topic_alignment_score") or 0.5)
+        dom = min(max(dom, 0.0), 1.0)
+        evl = _EVIDENCE_LEVEL_SCORE.get((c.get("evidence_level") or "").upper(), 0.5)
+        penalty = 0.0
+        juris = c.get("evidence_country") or "KR"
+        if juris and juris != "KR":
+            penalty += 0.10                               # jurisdiction_mismatch
+        if sp > 4:
+            penalty += 0.10                               # low_authority
+        final = (0.30 * kw + 0.25 * vec + 0.20 * sp_score
+                 + 0.10 * fresh + 0.10 * dom + 0.05 * evl) - penalty
+        c["weighted_base"] = round(final, 5)
+        c["score"] = c["weighted_base"]
+    fused.sort(key=lambda x: x.get("score", 0.0), reverse=True)
+    return fused
+
+
+# ════════════════════════════════════════════════════════════
 #  Step D: Red Flag Boost
 # ════════════════════════════════════════════════════════════
 def detect_symptom_keys(query: str, checklists: dict) -> List[str]:
@@ -747,6 +807,10 @@ def hybrid_search(
     # Step C: RRF 융합
     fused = rrf_fusion(dense_results, sparse_results, k=_RRF_K)
     _cnt_after_rrf = len(fused)
+
+    # Step C.5: Source Priority 가중 reranker (스펙 §5.3, 플래그 — boost 전 base score)
+    if os.environ.get("RAG_HYBRID_WEIGHTED", "0") == "1":
+        fused = _weighted_rerank(fused, dense_results, sparse_results)
 
     # Step D: red_flag boost
     if enable_red_flag_boost:
