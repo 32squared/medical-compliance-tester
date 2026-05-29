@@ -22,6 +22,10 @@ logger = logging.getLogger(__name__)
 _PROVIDER_ID_TO_MODEL: Dict[str, str] = {
     "openai_gpt5": "gpt-5",
     "openai_gpt5_mini": "gpt-5-mini",
+    "openai_gpt5_4": "gpt-5.4",
+    "openai_gpt5_4_mini": "gpt-5.4-mini",
+    "openai_gpt5_4_nano": "gpt-5.4-nano",
+    "openai_gpt5_5": "gpt-5.5",
 }
 
 
@@ -113,16 +117,16 @@ class OpenAIProvider(LLMProvider):
     """
     OpenAI chat completions 스트리밍 프로바이더.
 
-    GPT-5 (메인) 및 GPT-5-mini (재생성) 둘 다 지원.
+    gpt-5.4 계열(메인/재생성) 지원. (gpt-5/gpt-5-mini는 단가표 은퇴 — 마이그레이션)
     환경변수:
-        RAG_LLM_MODEL           — 기본 메인 모델 (기본값: gpt-5)
-        RAG_LLM_FALLBACK_MODEL  — 재생성용 저비용 모델 (기본값: gpt-5-mini)
+        RAG_LLM_MODEL           — 기본 메인 모델 (기본값: gpt-5.4-mini)
+        RAG_LLM_FALLBACK_MODEL  — 재생성용 저비용 모델 (기본값: gpt-5.4-nano)
         OPENAI_API_KEY          — 필수
     """
 
     def __init__(self, model_id: str = None, api_key: str = None):
         from openai import OpenAI
-        self._model_id = model_id or os.environ.get("RAG_LLM_MODEL", "gpt-5")
+        self._model_id = model_id or os.environ.get("RAG_LLM_MODEL", "gpt-5.4-mini")
         self._api_key = api_key or os.environ.get("OPENAI_API_KEY")
         if not self._api_key:
             raise ValueError("OPENAI_API_KEY not set")
@@ -267,6 +271,6 @@ def get_fallback_provider() -> LLMProvider:
     기본: gpt-5-mini (환경변수 RAG_LLM_FALLBACK_MODEL로 재정의 가능).
     사용자 정상 응답은 get_llm_provider()를 사용할 것.
     """
-    model_id = os.environ.get("RAG_LLM_FALLBACK_MODEL", "gpt-5-mini")
+    model_id = os.environ.get("RAG_LLM_FALLBACK_MODEL", "gpt-5.4-nano")
     logger.debug("[LLMRouter] fallback provider model_id=%s", model_id)
     return OpenAIProvider(model_id=model_id)
