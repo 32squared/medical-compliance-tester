@@ -1022,6 +1022,65 @@ _EMERGENCY_KEYWORDS = ["119", "응급실", "긴급", "즉시 병원", "즉시 �
 _CITATION_PATTERN = re.compile(r'\[(\d+)\]')
 
 
+# ── 트리아지(triage): 비의료·대화성 입력 감지 ───────────────────────────────
+# "배고파", "안녕" 같은 비의료/대화성 입력에 4단 의료답변(응급징후 나열·문진)을
+# 들이대는 과의료화를 방지한다. 보수적 설계: 증상·약물·응급·진단·crisis 등 의료
+# 신호가 조금이라도 있으면 절대 발동하지 않는다(진짜 상담 무영향 → both_A 무회귀).
+
+# 의료/건강 신호 — 하나라도 있으면 트리아지하지 않음(분류기 규칙이 놓치는 표현 보강)
+_MEDICAL_SIGNAL_RE = re.compile(
+    r"아프|아파|아픈|통증|쑤시|결리|저리|저림|붓|부었|부어|메스|울렁|구역|토하|"
+    r"발열|오한|몸살|기침|가래|콧물|두통|복통|설사|변비|발진|가렵|두드러기|"
+    r"숨|호흡|가슴|심장|혈압|혈당|당뇨|소변|대변|혈변|혈뇨|출혈|피가|상처|외상|"
+    r"잠|불면|수면|피로|무기력|체중|살\s*빠|식욕|어깨|허리|관절|무릎|"
+    r"피부|복용|진료|병원|검사|증상|질환|감염|코로나|독감|임신|생리|월경|열이|열은"
+)
+
+# 명백한 비의료/대화성 입력 패턴 (짧고 의료 신호 없는 입력에만 적용)
+_NONMEDICAL_RE = re.compile(
+    r"(안녕|하이|헬로|hello|hi\b|ㅎㅇ|반가|잘\s*지내|누구야|누구세요|이름이?\s*(뭐|무엇)|"
+    r"뭐\s*해|뭐하|심심|지루|테스트|test|ㅋㅋ|ㅎㅎ|ㅇㅇ|배고|배\s*고프|허기|졸려|졸리|"
+    r"목말|목\s*마르|날씨|고마워|고맙|감사|잘\s*가|바이|bye|사랑|좋아해|화이팅|파이팅|밥\s*먹)",
+    re.IGNORECASE,
+)
+
+
+def _should_clarify(query: str, classification: Optional[Dict]) -> Optional[str]:
+    """비의료/모호 입력이면 사유 문자열, 아니면 None.
+
+    보수적 발동 조건(모두 충족 시에만): (1) 분류기 intent가 catch-all
+    general_health 이고 저위험, (2) 의료/건강 신호가 전혀 없음, (3) 길이가 짧음
+    (상세 서술 아님), (4) 명백한 비의료/대화성 패턴 매칭. 증상·응급·약물·진단·
+    crisis 등은 분류기가 다른 intent로 잡으므로 절대 트리아지되지 않는다.
+    """
+    q = (query or "").strip()
+    if not q:
+        return "empty"
+    cl = classification or {}
+    if cl.get("intent", "general_health") != "general_health":
+        return None
+    if cl.get("risk_level", "low") != "low":
+        return None
+    if _MEDICAL_SIGNAL_RE.search(q):
+        return None
+    if len(q) > 25:
+        return None
+    if _NONMEDICAL_RE.search(q):
+        return "non_medical_or_vague"
+    return None
+
+
+def _build_clarify_response() -> str:
+    """비의료/모호 입력에 대한 짧은 되묻기 응답(4단 의료답변 대신)."""
+    return (
+        "무엇을 도와드릴까요? 건강과 관련해 불편한 증상이나 궁금한 점을 "
+        "구체적으로 알려주시면(예: 언제부터 / 어디가 / 어떻게 불편한지) "
+        "관련 정보를 안내해 드리겠습니다.\n\n"
+        "갑작스러운 흉통·호흡곤란·의식 저하·편측 마비·심한 출혈 등 응급 증상이 "
+        "있다면 즉시 119 또는 응급실을 이용하세요."
+    )
+
+
 def generate_response(
     query: str,
     conversation_id: str,
@@ -1083,6 +1142,28 @@ def generate_response(
         _classification = classify_rule_based(query)  # 규칙기반(무비용·무지연)
     except Exception as _e:
         logger.debug("[RAGEngine] 분류 스킵: %s", _e)
+
+    # ── 1.7 트리아지: 비의료/대화성 입력은 4단 의료답변 대신 되묻기 ──
+    # "배고파", "안녕" 등 의료 신호 없는 모호 입력에 응급징후·문진을 들이대는
+    # 과의료화 방지. 검색·LLM 호출을 건너뛰어 비용도 절약(0원).
+    _clarify_reason = _should_clarify(query, _classification)
+    if _clarify_reason:
+        logger.info(
+            "[RAGEngine][Triage] 비의료/모호 입력 되묻기 query=%r reason=%s",
+            query[:40], _clarify_reason,
+        )
+        clarify_text = _build_clarify_response()
+        yield {"type": "GENERATION", "text": clarify_text}
+        yield {
+            "type": "STOP",
+            "text": clarify_text,
+            "rag_query_id": None,
+            "citations": [],
+            "latency_ms": int((time.time() - start_ts) * 1000),
+            "tokens": {"input": 0, "output": 0},
+            "guardrail_action": "triage_clarify",
+        }
+        return
 
     # ── 2. Hybrid search ──────────────────────────────────────
     retrieval_start = time.time()
