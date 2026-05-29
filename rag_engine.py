@@ -185,7 +185,7 @@ def _dense_search(
             """
             params = [vec_str] + source_types + [vec_str, limit]
         else:
-            sql = """
+            sql = f"""
                 SELECT
                     c.id AS chunk_id,
                     c.document_id,
@@ -224,6 +224,34 @@ def _dense_search(
 # ════════════════════════════════════════════════════════════
 #  Step B: Sparse 검색 (tsvector BM25)
 # ════════════════════════════════════════════════════════════
+import re as _re_kw
+
+# 한국어 조사·어미 근사 제거 (어절 → 의미 토큰)
+_KW_PARTICLE_RE = _re_kw.compile(
+    r"(?:으로|에서|에게|까지|부터|이라고|라고|이며|하고|하며|되면|되어|이고|"
+    r"이랑|랑|이나|한테|처럼|마다|밖에|"
+    r"입니다|습니다|어요|아요|예요|네요|은|는|이|가|을|를|에|의|도|만|과|와|로|요|고|며|서|들|임|함)$"
+)
+_KW_STOP = {
+    "것", "수", "등", "때", "더", "좀", "잘", "안", "못", "또", "그", "저", "거", "게", "걸",
+    "점", "중", "및", "약간", "정도", "관련", "경우", "무엇", "어떻게", "어떤", "있는", "있어요",
+    "있나요", "같아요", "같은", "너무", "자꾸", "계속", "갑자기", "요즘", "오늘", "어제", "정말",
+}
+
+
+def _korean_meaningful_tokens(query: str, max_tokens: int = 6) -> list:
+    """질의에서 조사·어미·불용어를 제거한 의미 토큰 추출 (tsvector/ILIKE 매칭률 개선)."""
+    clean = _re_kw.sub(r"[^\w\s가-힣a-zA-Z0-9]", " ", query or "")
+    out = []
+    for tok in clean.split():
+        t = _KW_PARTICLE_RE.sub("", tok)
+        if len(t) >= 2 and t not in _KW_STOP and t not in out:
+            out.append(t)
+        if len(out) >= max_tokens:
+            break
+    return out
+
+
 def _sparse_search(
     query: str,
     source_types: Optional[List[str]],
@@ -251,11 +279,22 @@ def _sparse_search(
     if not clean_query:
         clean_query = query
 
-    # 2차 fallback용 키워드 분리 (공백 2자 이상 토큰만)
-    _kw_tokens = [t for t in clean_query.split() if len(t) >= 2]
+    # 의미 토큰(조사·어미 제거) — tsvector OR 질의 + ILIKE fallback 공용
+    _kw_tokens = _korean_meaningful_tokens(query)
+    # tsvector OR 질의식: '가슴 | 통증 | 답답' (to_tsquery용, 한글/영숫자만)
+    _safe_tokens = [_re.sub(r"[^가-힣a-zA-Z0-9]", "", t) for t in _kw_tokens]
+    _safe_tokens = [t for t in _safe_tokens if t]
+    _tsquery_or = " | ".join(_safe_tokens)
+
+    def _tsq_sql_param():
+        """OR 토큰이 있으면 to_tsquery(OR), 없으면 plainto_tsquery(전체질의)."""
+        if _tsquery_or:
+            return "to_tsquery('simple', %s)", _tsquery_or
+        return "plainto_tsquery('simple', %s)", clean_query
 
     def _run_tsv_search(conn, cur, q_str, src_types, lim):
-        """1차: plainto_tsquery('simple', ...) 기반 tsvector 검색."""
+        """1차: tsvector 검색 (의미토큰 OR 우선, 없으면 plainto AND)."""
+        _tsq, _tsqp = _tsq_sql_param()
         if src_types:
             ph_list = _ph(len(src_types))
             sql = f"""
@@ -273,18 +312,18 @@ def _sparse_search(
                     d.source_id,
                     d.evidence_level,
                     d.title,
-                    ts_rank(c.content_tsv, plainto_tsquery('simple', %s)) AS ts_score
+                    ts_rank(c.content_tsv, {_tsq}) AS ts_score
                 FROM kb_chunks c
                 JOIN kb_documents d ON c.document_id = d.id
                 WHERE d.status = 'active'
                   AND d.source_id = ANY(ARRAY[{ph_list}]::text[])
-                  AND c.content_tsv @@ plainto_tsquery('simple', %s)
+                  AND c.content_tsv @@ {_tsq}
                 ORDER BY ts_score DESC
                 LIMIT %s
             """
-            params = [q_str] + src_types + [q_str, lim]
+            params = [_tsqp] + src_types + [_tsqp, lim]
         else:
-            sql = """
+            sql = f"""
                 SELECT
                     c.id AS chunk_id,
                     c.document_id,
@@ -299,91 +338,75 @@ def _sparse_search(
                     d.source_id,
                     d.evidence_level,
                     d.title,
-                    ts_rank(c.content_tsv, plainto_tsquery('simple', %s)) AS ts_score
+                    ts_rank(c.content_tsv, {_tsq}) AS ts_score
                 FROM kb_chunks c
                 JOIN kb_documents d ON c.document_id = d.id
                 WHERE d.status = 'active'
-                  AND c.content_tsv @@ plainto_tsquery('simple', %s)
+                  AND c.content_tsv @@ {_tsq}
                 ORDER BY ts_score DESC
                 LIMIT %s
             """
-            params = [q_str, q_str, lim]
+            params = [_tsqp, _tsqp, lim]
         cur.execute(sql, params)
         return cur.fetchall()
 
     def _run_ilike_fallback(conn, cur, tokens, src_types, lim):
-        """2차 fallback: content ILIKE 키워드 AND 매칭 (tsvector 0건 시 사용)."""
+        """2차 fallback: 의미토큰 OR ILIKE 매칭 + 매칭수 랭킹 (tsvector 0건 시 사용)."""
         if not tokens:
             return []
-        # 각 토큰을 ILIKE '%token%' AND 조건으로 연결
-        ilike_conditions = " AND ".join(
-            f"c.content ILIKE %s" for _ in tokens
-        )
-        ilike_params = [f"%{t}%" for t in tokens]
+        # 의미토큰 OR ILIKE + 매칭 토큰 수로 랭킹 (AND는 과다제약으로 0건 → OR로 recall 확보)
+        or_conditions = " OR ".join("c.content ILIKE %s" for _ in tokens)
+        score_expr = " + ".join("(CASE WHEN c.content ILIKE %s THEN 1 ELSE 0 END)" for _ in tokens)
+        like_params = [f"%{t}%" for t in tokens]
+        _cols = ("c.id AS chunk_id, c.document_id, c.content, c.section_path, "
+                 "c.symptom_tags, c.severity, c.evidence_country, c.evidence_topic, "
+                 "c.regulatory_korea, c.topic_keywords, d.source_id, d.evidence_level, d.title")
         if src_types:
             ph_list = _ph(len(src_types))
             sql = f"""
-                SELECT
-                    c.id AS chunk_id,
-                    c.document_id,
-                    c.content,
-                    c.section_path,
-                    c.symptom_tags,
-                    c.severity,
-                    c.evidence_country,
-                    c.evidence_topic,
-                    c.regulatory_korea,
-                    c.topic_keywords,
-                    d.source_id,
-                    d.evidence_level,
-                    d.title,
-                    0.01 AS ts_score
+                SELECT {_cols},
+                    ({score_expr}) * 0.01 AS ts_score
                 FROM kb_chunks c
                 JOIN kb_documents d ON c.document_id = d.id
                 WHERE d.status = 'active'
                   AND d.source_id = ANY(ARRAY[{ph_list}]::text[])
-                  AND {ilike_conditions}
+                  AND ({or_conditions})
+                ORDER BY ts_score DESC
                 LIMIT %s
             """
-            params = ilike_params + src_types + [lim]
+            params = like_params + src_types + like_params + [lim]
         else:
             sql = f"""
-                SELECT
-                    c.id AS chunk_id,
-                    c.document_id,
-                    c.content,
-                    c.section_path,
-                    c.symptom_tags,
-                    c.severity,
-                    c.evidence_country,
-                    c.evidence_topic,
-                    c.regulatory_korea,
-                    c.topic_keywords,
-                    d.source_id,
-                    d.evidence_level,
-                    d.title,
-                    0.01 AS ts_score
+                SELECT {_cols},
+                    ({score_expr}) * 0.01 AS ts_score
                 FROM kb_chunks c
                 JOIN kb_documents d ON c.document_id = d.id
                 WHERE d.status = 'active'
-                  AND {ilike_conditions}
+                  AND ({or_conditions})
+                ORDER BY ts_score DESC
                 LIMIT %s
             """
-            params = ilike_params + [lim]
+            params = like_params + like_params + [lim]
         cur.execute(sql, params)
         return cur.fetchall()
 
-    with get_conn() as (conn, cur):
-        rows = _run_tsv_search(conn, cur, clean_query, source_types, limit)
-        used_fallback = False
-        if not rows and _kw_tokens:
-            # 1차 tsvector 0건 → 2차 ILIKE fallback
-            logger.info(
-                "[sparse_search] tsvector 0건 → ILIKE fallback 시도 "
-                "query=%r tokens=%s", query[:50], _kw_tokens
-            )
-            rows = _run_ilike_fallback(conn, cur, _kw_tokens, source_types, limit)
-            used_fallback = True
+    rows = []
+    used_fallback = False
+    try:
+        with get_conn() as (conn, cur):
+            rows = _run_tsv_search(conn, cur, clean_query, source_types, limit)
+            if not rows and _kw_tokens:
+                # 1차 tsvector 0건 → 2차 ILIKE fallback
+                logger.info(
+                    "[sparse_search] tsvector 0건 → ILIKE fallback 시도 "
+                    "query=%r tokens=%s", query[:50], _kw_tokens
+                )
+                rows = _run_ilike_fallback(conn, cur, _kw_tokens, source_types, limit)
+                used_fallback = True
+    except Exception as _e:
+        # sparse는 선택적 — 오류 시 dense만으로 진행 (RRF에서 dense가 커버)
+        logger.warning("[sparse_search] 오류로 sparse 스킵: %s", _e)
+        rows = []
 
     if used_fallback:
         logger.info(
