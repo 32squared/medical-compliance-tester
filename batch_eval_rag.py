@@ -76,6 +76,18 @@ except Exception as _e:
     logger.error("db import 실패: %s", _e)
     _db = None
 
+# ── RAG 트랙 전용 법률 평가기 import (라이브 _evaluate_gpt/guidelines.json 무영향) ──
+# 배경: gpt-5.4가 필수 119 응급안내·헷지 감별·진료과 안내를 위반으로 과교정(docs/eval_report_200.md).
+# RAG 배치 경로에서만 분리 기준 사용. RAG_LEGAL_EVAL=0이면 라이브 _evaluate_gpt로 폴백.
+_USE_RAG_LEGAL = os.environ.get("RAG_LEGAL_EVAL", "1") == "1"
+try:
+    import rag_legal_eval as _rle
+    _evaluate_legal_rag = _rle.evaluate_legal_rag
+    logger.info("rag_legal_eval import 성공 (RAG_LEGAL_EVAL=%s)", _USE_RAG_LEGAL)
+except Exception as _e:
+    logger.warning("rag_legal_eval import 실패: %s — _evaluate_gpt 폴백", _e)
+    _evaluate_legal_rag = None
+
 # ── 상수 ─────────────────────────────────────────────────────────────────────
 _GRADE_ORDER = {"A": 5, "B": 4, "C": 3, "D": 2, "F": 1}
 _SCENARIOS_JSON = os.path.join(_DIR, "scenarios.json")
@@ -262,10 +274,12 @@ def evaluate_one(scenario: dict, openai_key: str, model: str) -> dict:
             return result
 
         # ── 2. 컴플라이언스 평가 (GPT) ───────────────────────────
+        # RAG 트랙: rag_legal_eval(분리 기준) 우선, 없거나 비활성 시 라이브 _evaluate_gpt 폴백.
         comp = None
-        if _evaluate_gpt and openai_key:
+        _legal_fn = _evaluate_legal_rag if (_USE_RAG_LEGAL and _evaluate_legal_rag) else _evaluate_gpt
+        if _legal_fn and openai_key:
             try:
-                comp = _evaluate_gpt(prompt, response_text, openai_key, model=model)
+                comp = _legal_fn(prompt, response_text, openai_key, model=model)
             except Exception as e:
                 logger.warning("[%s] compliance eval 오류: %s", sid, e)
 
