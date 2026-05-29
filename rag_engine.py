@@ -982,6 +982,21 @@ def generate_response(
         }
         return
 
+    # ── 1.5 PII/PHI 마스킹 + 질문 분류 (스펙 통합, 가드 — 실패해도 본 흐름 유지) ──
+    _classification = None
+    try:
+        from pii_masker import mask_pii
+        _m = mask_pii(query)
+        if _m.get("detected_items"):
+            query = _m["masked_text"]  # PII 마스킹 질의로 전환 (HealthBench엔 PII 없어 무영향)
+    except Exception as _e:
+        logger.debug("[RAGEngine] PII 마스킹 스킵: %s", _e)
+    try:
+        from medical_classifier import classify_rule_based
+        _classification = classify_rule_based(query)  # 규칙기반(무비용·무지연)
+    except Exception as _e:
+        logger.debug("[RAGEngine] 분류 스킵: %s", _e)
+
     # ── 2. Hybrid search ──────────────────────────────────────
     retrieval_start = time.time()
     try:
@@ -1200,6 +1215,42 @@ def generate_response(
         guardrail_action=guardrail_result["action"],
         gate_result=gate_result,
     )
+
+    # ── 7.5 감사 필드 + 검수 큐 적재 (스펙 통합, 가드) ─────────
+    try:
+        if rag_query_id and _classification is not None:
+            import db as _db
+            from review_queue import should_review
+            _answer_id = "ans_" + rag_query_id[:12]
+            _model_v = getattr(provider, "model_id", None) or getattr(provider, "provider_id", "unknown")
+            _db.update_rag_query_audit(
+                rag_query_id,
+                answer_id=_answer_id,
+                model_version=_model_v,
+                prompt_version="rag-engine-v1",
+                classification_json=json.dumps(_classification, ensure_ascii=False),
+            )
+            _decision = should_review(
+                classification=_classification,
+                citation_result={
+                    "overall_pass": guardrail_result["action"] != "blocked",
+                    "citation_coverage": 1.0 if citations else 0.0,
+                },
+                safety_result={
+                    "safe_to_send": guardrail_result["action"] != "blocked",
+                    "risk_flags": guardrail_result.get("violations", []),
+                },
+            )
+            if _decision.get("needs_review"):
+                _db.add_review_item({
+                    "answer_id": _answer_id, "rag_query_id": rag_query_id,
+                    "question": query[:500], "answer": full_text[:2000],
+                    "priority": _decision["priority"],
+                    "assignee_role": _decision["assignee_role"],
+                    "reasons": _decision["reasons"],
+                })
+    except Exception as _e:
+        logger.debug("[RAGEngine] 감사/검수 스킵: %s", _e)
 
     # ── 8. STOP 이벤트 ────────────────────────────────────────
     yield {

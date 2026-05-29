@@ -3334,6 +3334,72 @@ def get_arena_stats(evaluator_id: str = None, days: int = 30) -> dict:
 
 
 # ════════════════════════════════════════
+#  Medical RAG 스펙 모듈 지원 (Review Queue / Audit)
+# ════════════════════════════════════════
+
+def add_review_item(data: dict):
+    """고위험 답변 검수 큐(review_queue_items) 적재. 스키마 미적용/오류 시 None(비차단)."""
+    import uuid as _uuid
+    try:
+        item_id = "rvq-" + _uuid.uuid4().hex[:10]
+        now = datetime.now(timezone.utc).isoformat()
+        reasons = json.dumps(data.get("reasons", []), ensure_ascii=False)
+        with get_conn() as (conn, cur):
+            cur.execute(
+                f"""INSERT INTO review_queue_items
+                    (id, answer_id, rag_query_id, question, answer, priority,
+                     assignee_role, reasons_json, status, created_at)
+                    VALUES ({_p()},{_p()},{_p()},{_p()},{_p()},{_p()},{_p()},{_p()},{_p()},{_p()})""",
+                (item_id, data.get("answer_id"), data.get("rag_query_id"),
+                 data.get("question"), data.get("answer"), data.get("priority", "medium"),
+                 data.get("assignee_role", "doctor"), reasons,
+                 data.get("status", "pending"), now),
+            )
+            conn.commit()
+        return item_id
+    except Exception:
+        return None
+
+
+def update_rag_query_audit(rag_query_id: str, **fields):
+    """rag_queries 감사 필드(answer_id/model_version/prompt_version/classification_json/
+    evidence_pack_json) 갱신. 스키마 미적용/오류 시 무시(비차단)."""
+    if not rag_query_id or not fields:
+        return False
+    allowed = {"answer_id", "model_version", "prompt_version",
+               "classification_json", "evidence_pack_json"}
+    cols = [k for k in fields if k in allowed]
+    if not cols:
+        return False
+    try:
+        sets = ", ".join(f"{c} = {_p()}" for c in cols)
+        params = [fields[c] for c in cols] + [rag_query_id]
+        with get_conn() as (conn, cur):
+            cur.execute(f"UPDATE rag_queries SET {sets} WHERE id = {_p()}", params)
+            conn.commit()
+        return True
+    except Exception:
+        return False
+
+
+def list_review_queue(status: str = "pending", limit: int = 50) -> list:
+    """검수 큐 조회 (스펙 §8.4 review console용). 오류 시 빈 리스트."""
+    try:
+        with get_conn() as (conn, cur):
+            cur.execute(
+                f"""SELECT id, answer_id, question, priority, assignee_role,
+                           reasons_json, status, created_at
+                    FROM review_queue_items WHERE status = {_p()}
+                    ORDER BY CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END,
+                             created_at DESC LIMIT {_p()}""",
+                (status, limit),
+            )
+            return [_row_to_dict(r) for r in cur.fetchall()]
+    except Exception:
+        return []
+
+
+# ════════════════════════════════════════
 #  모듈 로드 시 자동 초기화
 # ════════════════════════════════════════
 init_db()
