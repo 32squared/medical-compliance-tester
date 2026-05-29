@@ -88,6 +88,17 @@ except Exception as _e:
     logger.warning("rag_legal_eval import 실패: %s — _evaluate_gpt 폴백", _e)
     _evaluate_legal_rag = None
 
+# ── RAG 트랙 전용 문진 평가기 (라이브 _evaluate_consultation 무영향) ──
+# 안전우선 4단 구조(정보 선행 후 질문)를 정상 인정. RAG_CONSULT_EVAL=0이면 라이브 폴백.
+_USE_RAG_CONSULT = os.environ.get("RAG_CONSULT_EVAL", "1") == "1"
+try:
+    import rag_consultation_eval as _rce
+    _evaluate_consult_rag = _rce.evaluate_consultation_rag
+    logger.info("rag_consultation_eval import 성공 (RAG_CONSULT_EVAL=%s)", _USE_RAG_CONSULT)
+except Exception as _e:
+    logger.warning("rag_consultation_eval import 실패: %s — _evaluate_consultation 폴백", _e)
+    _evaluate_consult_rag = None
+
 # ── 상수 ─────────────────────────────────────────────────────────────────────
 _GRADE_ORDER = {"A": 5, "B": 4, "C": 3, "D": 2, "F": 1}
 _SCENARIOS_JSON = os.path.join(_DIR, "scenarios.json")
@@ -292,10 +303,12 @@ def evaluate_one(scenario: dict, openai_key: str, model: str) -> dict:
             result["compliance_score"] = 0
 
         # ── 3. 문진 평가 (GPT) ────────────────────────────────────
+        # RAG 트랙: rag_consultation_eval(분리 기준) 우선, 없거나 비활성 시 라이브 폴백.
         cons = None
-        if _evaluate_consultation and openai_key:
+        _consult_fn = _evaluate_consult_rag if (_USE_RAG_CONSULT and _evaluate_consult_rag) else _evaluate_consultation
+        if _consult_fn and openai_key:
             try:
-                cons = _evaluate_consultation(prompt, response_text, openai_key, model=model)
+                cons = _consult_fn(prompt, response_text, openai_key, model=model)
             except Exception as e:
                 logger.warning("[%s] consultation eval 오류: %s", sid, e)
 
