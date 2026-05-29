@@ -34,17 +34,20 @@
 
 ---
 
-## 남은 작업 (잔여)
+## 진행 현황 업데이트 (2026-05-29)
 
-### A. 라이브 통합 (다음 단계, 클라우드 재빌드/테스트 필요)
-- `proxy_server`/`rag_engine.generate_response`에 파이프라인 배선:
-  - 입력 PII 마스킹 → classify → route(소스 필터/부스트) → Evidence Pack([E#] 형식) → 생성 → citation verify → review enqueue
-  - ⚠️ 인용 형식을 기존 `[N]` → 스펙 `[E#]`로 전환 시 few-shot/검증기 동시 수정 + 클라우드 테스트 필요
-- migration 009를 Cloud SQL에 적용 (run-migration Job, **별도 승인 후**)
+### A. 라이브 통합 — ✅ 코드 완료 / ⏳ Cloud SQL 적용 대기
+- `rag_engine.generate_response`에 **가드 배선 완료**(커밋): 진입부 PII 마스킹 + 규칙기반 분류,
+  INSERT 후 감사필드(answer_id/model_version/prompt_version/classification_json) 갱신 + 고위험 답변 review_queue 적재.
+- 모두 try/except 가드 → migration 009 미적용 상태에서도 **기존 96% 경로 무손상**(감사/검수는 009 적용 후 영구저장).
+- `db.py`: add_review_item / update_rag_query_audit / list_review_queue 추가. 로컬 app.db 009 적용·검증 완료.
+- `migrations/run_migration_009.py` runner 준비. **Cloud SQL 적용은 운영 DB 변경이라 사용자 승인 대기**(분류기 차단됨).
+- ⏳ 잔여: ① migration 009 Cloud SQL 적용 ② (선택) 인용 `[N]`→`[E#]` Evidence Pack 형식 전환 — 전환 시 클라우드 재검증 필요.
 
-### B. 데이터 (잔여)
-- **MFDS/HIRA DUR 구조 데이터**(병용금기/임부금기/연령금기) 수집·색인 — 현재는 MFDS 안전성서한만
-- PubMed/PMC OA 보조 수집기
+### B. DUR 데이터 — ✅ 수집기 코드 완료 / ⏳ 실제 수집 대기
+- `dur_collector.py`: 식약처 DUR OpenAPI 8종(병용/임부/연령/용량/투여기간/노인/효능군중복/서방정) 수집→kb_chunk 정규화. 단위 7/7.
+- ⏳ 잔여: 실제 수집 실행(data.go.kr 키 `DATA_GO_KR_KEY` 필요) → KB ingest.
+- PubMed/PMC OA 보조 수집기는 여전히 잔여.
 
 ### C. 정책/운영 (잔여)
 - Consent(동의) 관리, retention 정책
