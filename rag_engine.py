@@ -1222,6 +1222,33 @@ def generate_response(
     # ── 6. 인용 매핑 추출 ────────────────────────────────────
     citations = _extract_citations(full_text, chunks)
 
+    # ── 6.5 Evidence Pack + Citation Verifier (스펙 §6/§7.7) ──
+    # Evidence Pack 생성→감사 기록(스펙 AC#3·#8). Citation Verifier는 [N] 답변에
+    # shadow로 적용(메트릭·감사·검수큐 피드). 답변 텍스트는 미변경(무회귀).
+    # verify_citations는 [1]을 E1로 정규화하므로 기존 [N] 인용을 그대로 검증한다.
+    # 강제 제거(verified_answer)는 4단 구조·면책을 파괴하므로 미적용(후속: 문장단위 in-place).
+    _evidence_pack = None
+    _citation_result = None
+    try:
+        from evidence_pack import build_evidence_pack
+        _evidence_pack = build_evidence_pack(query, _classification or {}, chunks)
+    except Exception as _e:
+        logger.debug("[RAGEngine] evidence_pack 스킵: %s", _e)
+    try:
+        from citation_verifier import verify_citations
+        _n = len(chunks)
+        _eids = [str(i) for i in range(1, _n + 1)] + [f"E{i}" for i in range(1, _n + 1)]
+        _citation_result = verify_citations(full_text, _eids)
+        if _citation_result:
+            logger.info(
+                "[RAGEngine][CiteVerify] coverage=%.2f unsupported=%d pass=%s",
+                _citation_result.get("citation_coverage", 0.0),
+                len(_citation_result.get("unsupported_claims", [])),
+                _citation_result.get("overall_pass"),
+            )
+    except Exception as _e:
+        logger.debug("[RAGEngine] citation_verify 스킵: %s", _e)
+
     # ── 7. rag_queries INSERT ─────────────────────────────────
     rag_query_id = _insert_rag_query(
         conversation_id=conversation_id,
@@ -1252,13 +1279,16 @@ def generate_response(
                 model_version=_model_v,
                 prompt_version="rag-engine-v1",
                 classification_json=json.dumps(_classification, ensure_ascii=False),
+                evidence_pack_json=(
+                    json.dumps(_evidence_pack, ensure_ascii=False) if _evidence_pack else None
+                ),
             )
             _decision = should_review(
                 classification=_classification,
-                citation_result={
+                citation_result=(_citation_result or {
                     "overall_pass": guardrail_result["action"] != "blocked",
                     "citation_coverage": 1.0 if citations else 0.0,
-                },
+                }),
                 safety_result={
                     "safe_to_send": guardrail_result["action"] != "blocked",
                     "risk_flags": guardrail_result.get("violations", []),
