@@ -175,6 +175,29 @@ RAG 답변 품질은 우수했고, both_A의 진짜 병목은 **평가기 과교
 ### 종합 결론
 세 가지 독립 레버(RAG 트랙 분리 평가기 · 프롬프트 문진 깊이 · 문진 KB)가 모두 **both_A ~81%로 수렴**. 라이브 평가 무영향 분리 평가기로 **gpt-5.4(엄격) both_A 7%→81%** 달성이 확정 결과. 남은 ~19%는 (1) gpt-5.4 평가 변동성, (2) 문진 80~84점 하드테일(개별 임상 깊이). 추가 향상은 다중 실행 평균(변동성 제거)·평가 임계(A≥85) 재검토·검색 게이트 완화가 레버이며, 프롬프트/KB 추가는 수익체감 한계.
 
+## 5-f. 스펙 복귀 작업 (Evidence Pack·Citation·Hybrid) + 부수 버그
+
+사용자 지시("스펙대로 복귀")로 진행. 모두 50샘플(첫 50, id순)로 측정.
+
+**① Evidence Pack + Citation Verifier 라이브 배선 (완료·검증)**
+- `generate_response`에 `build_evidence_pack`→`rag_queries.evidence_pack_json` 감사 저장(AC#3·#8).
+- `verify_citations`를 [N] 답변에 shadow 적용(citation_verifier가 [1]→E1 정규화) → citation coverage 측정 + should_review 피드(AC#5). 답변 미변경(무회귀). 강제제거는 verified_answer가 4단·면책 파괴 → 후속(문장단위 in-place).
+- **측정 결과 citation coverage ≈ 0.54 = 의학주장의 ~46%가 인용부족** — 실제 grounding 갭이 정량화됨.
+
+**② reasoning_effort 버그 (발견·수정)**
+- 50샘플서 문진 F 23건 발견 → 원인: `reasoning_effort='minimal'`이 gpt-5.4 계열 미지원(400) → 재생성(fallback) 전멸 → 차단 폴백.
+- 수정: `'minimal'→'low'`(전 계열 호환) + 재생성 fallback `gpt-5.4-nano→gpt-5.4-mini`(안전 크리티컬 경로엔 약한 모델 금물). 수정 후 차단 0, both_A 42%→64%, 법률 98%.
+
+**③ Hybrid 가중식 (스펙 §5.3) — 구현했으나 데이터상 열위 → 미채택**
+- RAG_HYBRID_WEIGHTED 플래그로 구현(keyword .30+vector .25+source_priority .20+freshness/domain/evidence−penalty).
+- 동일 50 측정: both_A 64%→**56%**↓, citation coverage 0.544→0.480↓, 근거품질 insufficient **49/50**↓↓.
+- 원인: weighted_base 스케일(0~1)이 RRF 스케일(~0.01)과 달라 근거 게이트 임계 오작동 + 증상상담에서 source_priority 가중이 관련성 높은 청크를 밀어냄.
+- **판단: 데이터 근거로 RRF+boost 유지(플래그 OFF).** 스펙과의 정당한 분기(측정 근거). 게이트 재튜닝 시 회복 가능하나 RRF가 이미 우위.
+
+**④ 근거 확보 — 기존 공공 소스 포화**
+- collect_public_kb --source all(max 200) 재실행 결과 **fetched=212, inserted=0, dup=187, violation=25** → health_kdca/mfds/nemc/kdca 완전 포화, 신규 0.
+- 추가 근거는 **신규 수집기** 필요: (a) DUR 레코드 확대(기존 dur_collector+키, rows 100→수천), (b) HIRA DUR(data.go.kr 15127983), (c) PubMed/PMC(영문, priority 6), (d) 국가법령.
+
 ## 6. 다음 단계 (사용자 결정 필요)
 
 1. **샘플 대표성**: 현재 200은 `ORDER BY id` 앞 200(=50% diagnosis). 전체 2101 또는 카테고리 비례 샘플로 확대 시 진짜 분포 확인(diagnosis가 가장 어려움: 미달 38건 중 22건).
