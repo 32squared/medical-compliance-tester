@@ -10,11 +10,11 @@ ALTER TABLE kb_sources ADD COLUMN IF NOT EXISTS medical_domain  TEXT[] DEFAULT '
 ALTER TABLE kb_sources ADD COLUMN IF NOT EXISTS institution     TEXT;
 ALTER TABLE kb_sources ADD COLUMN IF NOT EXISTS update_cycle    TEXT;
 
--- 알려진 출처 priority_rank 시드 (낮을수록 우선)
-UPDATE kb_sources SET priority_rank = 1, jurisdiction = 'KR' WHERE source_id IN ('kdca','kdca_api','health_kdca','mfds','mfds_dur','hira','hira_dur');
-UPDATE kb_sources SET priority_rank = 2, jurisdiction = 'KR' WHERE source_id IN ('guideline','kmle');
-UPDATE kb_sources SET priority_rank = 3 WHERE source_id IN ('who','cdc','nice');
-UPDATE kb_sources SET priority_rank = 6 WHERE source_id IN ('pubmed','pmc_oa');
+-- 알려진 출처 priority_rank 시드 (낮을수록 우선). kb_sources PK = id
+UPDATE kb_sources SET priority_rank = 1, jurisdiction = 'KR' WHERE id IN ('kdca','kdca_api','health_kdca','mfds','mfds_dur','hira','hira_dur','nemc');
+UPDATE kb_sources SET priority_rank = 2, jurisdiction = 'KR' WHERE id IN ('guideline','guideline_internal','kmle','consultation_seed');
+UPDATE kb_sources SET priority_rank = 3 WHERE id IN ('who','cdc','nice');
+UPDATE kb_sources SET priority_rank = 6 WHERE id IN ('pubmed','pmc_oa');
 
 -- ── Chunk 메타 보강 (§3.4) ───────────────────────────────────────────────────
 ALTER TABLE kb_chunks ADD COLUMN IF NOT EXISTS source_priority      INT DEFAULT 3;
@@ -24,9 +24,10 @@ ALTER TABLE kb_chunks ADD COLUMN IF NOT EXISTS recommendation_grade TEXT;
 ALTER TABLE kb_chunks ADD COLUMN IF NOT EXISTS chunk_type           TEXT DEFAULT 'patient_info';
 ALTER TABLE kb_chunks ADD COLUMN IF NOT EXISTS heading_path         TEXT;
 
--- source_priority를 kb_sources.priority_rank로 백필
+-- source_priority를 kb_sources.priority_rank로 백필 (kb_chunks→kb_documents→kb_sources)
 UPDATE kb_chunks c SET source_priority = s.priority_rank
-  FROM kb_sources s WHERE c.source_id = s.source_id AND s.priority_rank IS NOT NULL;
+  FROM kb_documents d, kb_sources s
+  WHERE c.document_id = d.id AND d.source_id = s.id AND s.priority_rank IS NOT NULL;
 
 -- ── Audit 보강 (§13 D-2) ─────────────────────────────────────────────────────
 ALTER TABLE rag_queries ADD COLUMN IF NOT EXISTS answer_id      TEXT;

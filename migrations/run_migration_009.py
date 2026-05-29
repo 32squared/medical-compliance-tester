@@ -33,8 +33,14 @@ if not DATABASE_URL:
 
 
 def _split(sql_text: str):
-    """세미콜론 기준 분리 (009는 $$ 블록 없음)."""
-    return [s.strip() for s in sql_text.split(";") if s.strip() and not s.strip().startswith("--")]
+    """주석(-- ) 줄을 먼저 제거한 뒤 세미콜론 기준 분리 (009는 $$ 블록 없음).
+
+    주의: 줄 단위로 주석을 제거하지 않고 ';'로만 split하면, '주석\\nSTATEMENT'
+    fragment가 '--'로 시작해 통째로 드롭되어 첫 statement가 누락된다.
+    """
+    lines = [ln for ln in sql_text.splitlines() if not ln.strip().startswith("--")]
+    cleaned = "\n".join(lines)
+    return [s.strip() for s in cleaned.split(";") if s.strip()]
 
 
 def main():
