@@ -569,6 +569,41 @@ def main() -> None:
     except Exception as e:
         logger.error("결과 저장 실패: %s", e)
 
+    # ── 결과 JSONL stdout 방출 (보고서 회수용, Cloud Logging 파싱) ──
+    # 결과 JSON 파일은 컨테이너 휘발성이라, 보고서 작성을 위해 결과를
+    # 라인 단위 JSONL로 로그에 방출한다. 각 결과 = 개별 print(로그 라인 256KB 제한 회피).
+    # rag_response는 1200자로 트림(보고서 충분, 로그 안전).
+    if os.environ.get("EVAL_EMIT_JSONL", "1") == "1":
+        print("===EVAL_SUMMARY_JSON_BEGIN===", flush=True)
+        print(json.dumps(summary, ensure_ascii=False), flush=True)
+        print("===EVAL_SUMMARY_JSON_END===", flush=True)
+        print("===EVAL_RESULTS_JSONL_BEGIN===", flush=True)
+        for r in results:
+            viols = []
+            for v in (r.get("compliance_violations") or [])[:5]:
+                if isinstance(v, dict):
+                    viols.append(v.get("type") or v.get("description") or str(v))
+                else:
+                    viols.append(str(v))
+            line = {
+                "id": r.get("id"),
+                "category": r.get("category"),
+                "cg": r.get("compliance_grade"),
+                "cs": r.get("compliance_score"),
+                "qg": r.get("consultation_grade"),
+                "qs": r.get("consultation_score"),
+                "chk": r.get("checklist_grade"),
+                "both_A": r.get("both_A"),
+                "ev": r.get("evidence_quality"),
+                "ms": r.get("latency_ms"),
+                "prompt": (r.get("prompt") or "")[:160],
+                "resp": (r.get("rag_response") or "")[:1200],
+                "viol": viols,
+                "err": r.get("error"),
+            }
+            print("EVAL_ROW " + json.dumps(line, ensure_ascii=False), flush=True)
+        print("===EVAL_RESULTS_JSONL_END===", flush=True)
+
     # ── 콘솔 요약 출력 ────────────────────────────────────────────
     print("\n" + "=" * 60)
     print("  RAG 배치 평가 결과 요약")
