@@ -120,7 +120,7 @@ class OpenAIProvider(LLMProvider):
     gpt-5.4 계열(메인/재생성) 지원. (gpt-5/gpt-5-mini는 단가표 은퇴 — 마이그레이션)
     환경변수:
         RAG_LLM_MODEL           — 기본 메인 모델 (기본값: gpt-5.4-mini)
-        RAG_LLM_FALLBACK_MODEL  — 재생성용 저비용 모델 (기본값: gpt-5.4-nano)
+        RAG_LLM_FALLBACK_MODEL  — 재생성용 모델 (기본값: gpt-5.4-mini)
         OPENAI_API_KEY          — 필수
     """
 
@@ -187,9 +187,10 @@ class OpenAIProvider(LLMProvider):
                 # 2048이면 reasoning에 다 쓰여서 응답이 비는 경우 발생.
                 # 8192로 늘리고, reasoning_effort='minimal'로 빠른 응답 우선.
                 params["max_completion_tokens"] = max(max_tokens * 4, 8192)
-                # gpt-5 계열은 reasoning_effort 지원 (minimal/low/medium/high)
+                # gpt-5 계열 reasoning_effort. 단, gpt-5.4/5.5는 'minimal' 미지원
+                # (지원: none/low/medium/high/xhigh) → 'low'로 통일(빠른 응답 + 호환).
                 if mid.startswith("gpt-5"):
-                    params["reasoning_effort"] = "minimal"
+                    params["reasoning_effort"] = "low"
                 # temperature는 1.0만 허용 — 명시적으로 보내지 않음 (기본 1)
             else:
                 params["max_tokens"] = max_tokens
@@ -271,6 +272,6 @@ def get_fallback_provider() -> LLMProvider:
     기본: gpt-5-mini (환경변수 RAG_LLM_FALLBACK_MODEL로 재정의 가능).
     사용자 정상 응답은 get_llm_provider()를 사용할 것.
     """
-    model_id = os.environ.get("RAG_LLM_FALLBACK_MODEL", "gpt-5.4-nano")
+    model_id = os.environ.get("RAG_LLM_FALLBACK_MODEL", "gpt-5.4-mini")
     logger.debug("[LLMRouter] fallback provider model_id=%s", model_id)
     return OpenAIProvider(model_id=model_id)
