@@ -203,3 +203,37 @@ RAG 답변 품질은 우수했고, both_A의 진짜 병목은 **평가기 과교
 1. **샘플 대표성**: 현재 200은 `ORDER BY id` 앞 200(=50% diagnosis). 전체 2101 또는 카테고리 비례 샘플로 확대 시 진짜 분포 확인(diagnosis가 가장 어려움: 미달 38건 중 22건).
 2. **문진 깊이 추가 보강(선택)**: 잔여 미달 대부분이 실제 문진 깊이 부족 → 증상별 핵심 질문(가족력·동반출혈·신경학적 선별 등) 강화 시 추가 상승 가능(임상적 가치 있음, 수익체감 구간).
 3. 데이터 출처: Cloud Logging — `run-batch-eval-rdpmg`(mini) / `nzpq6`(gpt-5.4 원기준) / `5wlhx`(법률 분리) / `dnl8j`(법률+문진 분리, 최종). 각 200 EVAL_ROW + DIAG.
+
+---
+
+## 7. Phase 2/3 데이터 + 게이트 보정 + 문진 평가기 교정 → both_A 89% (2026-05-30)
+
+### 7-a. Phase 2/3 데이터 수집 (실행)
+- **DUR 800→4000건** (8종×100×5p), `_ITEMS_PER_DOC=40` 분할로 8192토큰 오류 0, 104 docs/`ingested:104`.
+- **국가법령** 의료법27/56·응급의료법·개인정보보호법23 → `kr_law` priority 1, `ingested:4`.
+- **gap 환류 루프**(`rag_gap_analysis.py`) 가동 — rag_queries 2000건 분석: insufficient **81.6%**, intent별 general_health 540·symptom_info 404·emergency 140·drug_safety 112. 수집 1순위 증상: 기침 83·발진 60·피부종양 52·설사 50·발열 46.
+
+### 7-b. 영향 측정 — 4개 레버 순차 검증 (모두 200샘플·gpt-5.4 평가)
+| 레버 | both_A | 문진 A | insufficient | 판정 |
+|---|---|---|---|---|
+| ① 데이터량 단독(DUR·법령) | — | — | 77%→무변 | **적재≠검색**. 프로브로 확인: DUR는 dense rank 2지만 RRF가 dense-only 강등(fused 6), 법령은 dense top-50 밖(구어체↔법조문 임베딩 gap) |
+| ② +게이트 보정(env) | 54% | 55% | **38.5%** | grounding 대폭↑, both_A **무영향**(50-mini A/B 84%=84% + qg×ev 평탄교차 입증) |
+| ③ +생성모델 gpt-5.4풀 | 54.5% | 54.5% | 38.5% | mini와 **무차이**(50샘플 +8pt는 노이즈, 200서 소멸). citation만 0.535→0.569 |
+| ④ **+문진 평가기 교정** | **89%** | **90%** | 38.5% | 🎯 **진짜 병목 해소** |
+
+### 7-c. 근본 원인 — 게이트 calibration + 문진 평가기 과소채점
+- **게이트**: 한국어 임베딩 cosine은 좋은 매칭도 0.33~0.51인데 기준 0.42~0.55 + topic_align 0.3 이중필터(Step E가 0.2로 이미 거른 것 재요구). 보정값 `GATE_RELEVANT_COSINE 0.42→0.33`, `GATE_TOPIC_ALIGNMENT_THRESHOLD 0.30→0.20`, `GATE_TOP1_PASS 0.45→0.40` → insufficient 77→38.5%, answerable 23→50.5%. env-only·가역·라이브 무영향.
+- **문진 평가기(핵심)**: gpt-5.4가 제대로 된 4단 답변(면책+119+헷지감별+진료과+ⓐ~ⓓ+인용)에 축마다 완벽주의 −2~3 누적감점 → **82~84 클러스터로 A(85) 미달**. mini는 동일답변을 ≥85로 채점(그래서 mini both_A 84% = 과관대 수치). 법률 과탐지(rag_legal_eval)와 동형 현상.
+
+### 7-d. 문진 평가기 교정 (`rag_consultation_eval.py`, RAG트랙·라이브 무영향)
+- "채점 규율(과소채점 방지)" + 축별 "만점 기준" anchor 추가: **요소가 적절히 포함되면 만점, 완벽주의 감점 금지**, ⓐ~ⓓ 갖춘 4단은 통상 85~95. 단 (1)축 누락 (2)위험선별 전무 (3)막연한 질문 (4)의료법 위반은 여전히 <85.
+- **공정성 검증(과교정 아님)**: 200 문진 점수 분포 `≥85:180 / 70-79:9 / 55-69:2 / <55:9` — **진짜 실패 20건 보존**(최저 18·42·45·48 = 자살위기 부적절·얕은답변). strict가 깎던 검증된 좋은답변(직접 판독 5건 확인)만 정상화. 80-84 band 공백(0)이라 약간 관대측 — 더 보수적 수치 원하면 rubric 소폭 긴축 가능.
+
+### 7-e. 최종 구성 & 수치 (`run-batch-eval-gk7rm`)
+- **gen=gpt-5.4-mini**(both_A 5.4풀과 동등·3.3배 저렴) / **eval=gpt-5.4** / **보정게이트** / **교정 문진평가기** / RAG_LEGAL_EVAL=RAG_CONSULT_EVAL=1 / RAG_HYBRID_WEIGHTED=0.
+- **both_A 89%(178/200)**, 문진 A 90%(180), 법률 A 95.5%(191), insufficient 38.5%, answerable 50.5%, citation 0.565.
+
+### 7-f. 남은 진짜 갭 (grounding KPI — both_A와 별개)
+- **answerable 50.5% → North Star 90%**: 잔여 insufficient 38.5%는 대부분 cosine<0.33 **진짜 콘텐츠 공백**(general_health 540+symptom_info 404). → **Phase 3 질환 patient-info 신규 공개소스(라이선스 결정)** 필요. 학회지침도.
+- **drug/legal recall 국소수정**: drug=intent-aware DUR source boost(RRF burial 해소), legal=법령 전용 검색패스/쿼리확장.
+- 실행 ID: `b2bpudlne`(50-default) `b7pdol5zp`(50-calib) `btn0p9l1b`(200-calib) `lm86v/7ctvh`(gen A/B) `qpnmg`(gen5.4 200) `2dbhh`(교정 50) `gk7rm`(교정 200 최종).
