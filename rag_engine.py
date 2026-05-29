@@ -1160,8 +1160,10 @@ def generate_response(
             if citations_action == "regenerated":
                 guardrail_result["action"] = "regenerated_citation"
 
-            # 면책조항 자동 부착
+            # 면책조항 자동 부착 (하단)
             full_text = _ensure_disclaimer(full_text)
+            # 상단 고지 자동 부착 (필수 고정 문구)
+            full_text = _ensure_top_disclaimer(full_text)
 
             # 4단 응답 구조 헤더 검증
             structure_ok = _ensure_four_section_structure(full_text)
@@ -1232,14 +1234,22 @@ def _build_rag_system_prompt(query: str, chunks: List[dict], gate_result: Dict =
                      WEAK_PASS이면 근거 제한 모드 문단을 자동 추가.
     """
     # 면책조항만 별도로 가져옴 (평가 프롬프트 X)
+    _DEFAULT_TOP = (
+        "본 서비스는 건강정보·교육 목적의 참고용으로 제공됩니다. "
+        "질병의 진단·처방·치료·선별검사 등 의료행위를 하지 않으며, "
+        "의학적 판단과 치료는 반드시 의료인에 의해 이뤄져야 합니다. "
+        "응급증상 발생 시 즉시 119 또는 응급실을 이용하십시오."
+    )
     try:
         from guideline_loader import get_fixed_notices
         fixed_notices = get_fixed_notices()
+        top_disclaimer = fixed_notices.get("top_disclaimer", _DEFAULT_TOP) or _DEFAULT_TOP
         bottom_disclaimer = fixed_notices.get(
             "bottom_disclaimer",
             "본 정보는 참고용이며, 정확한 진단·치료는 의료진과 상담하세요.",
         )
     except Exception:
+        top_disclaimer = _DEFAULT_TOP
         bottom_disclaimer = "본 정보는 참고용이며, 정확한 진단·치료는 의료진과 상담하세요."
 
     # 설계 문서 §4.2 신규 프롬프트 전문
@@ -1271,7 +1281,11 @@ def _build_rag_system_prompt(query: str, chunks: List[dict], gate_result: Dict =
      · 위험 신호: 해당 증상의 경고 징후 유무 + 악화 요인
      · 환자 맥락: 나이·성별, 기저질환, 현재 복용 약, 생활 요인(수면·스트레스·음주·흡연)
 
-## 응답 형식 (반드시 4단 헤더 사용)
+## 응답 형식
+[맨 처음 줄] 아래 상단 고지를 그대로 1회 출력한 뒤 한 줄 띄우시오 (절대 생략 금지):
+"{top_disclaimer}"
+
+그 다음 반드시 4단 헤더 사용:
 【① 즉시 행동】
    - 1~3개 행동. 응급 여부 판단 포함. 자가관리(휴식·수분 등)는 여기, 병원 방문 권유도 여기에만.
 【② 의심 원인 요약】
@@ -1519,6 +1533,32 @@ def _ensure_disclaimer(text: str) -> str:
         return text + "\n\n※ 본 내용은 건강 정보 제공 목적이며, 정확한 진단·치료는 의료진과 상담하시기 바랍니다."
 
     return text
+
+
+def _ensure_top_disclaimer(text: str) -> str:
+    """
+    상단 고지(top_disclaimer) 자동 부착.
+
+    필수 고정 문구인 상단 고지가 응답 맨 앞에 없으면 자동으로 추가한다.
+    (평가 기준 '필수 고정 문구 포함 여부'를 충족시키기 위함 — gpt-5.4-mini 진단에서 누락 확인됨)
+    """
+    _DEFAULT_TOP = (
+        "본 서비스는 건강정보·교육 목적의 참고용으로 제공됩니다. "
+        "질병의 진단·처방·치료·선별검사 등 의료행위를 하지 않으며, "
+        "의학적 판단과 치료는 반드시 의료인에 의해 이뤄져야 합니다. "
+        "응급증상 발생 시 즉시 119 또는 응급실을 이용하십시오."
+    )
+    try:
+        from guideline_loader import get_fixed_notices
+        top = get_fixed_notices().get("top_disclaimer", _DEFAULT_TOP) or _DEFAULT_TOP
+    except Exception:
+        top = _DEFAULT_TOP
+
+    # 핵심 식별 문구로 이미 포함됐는지 확인 (LLM이 약간 변형해도 인식)
+    markers = ["건강정보·교육 목적", "건강정보ㆍ교육 목적", "참고용으로 제공", "의료행위를 하지 않"]
+    if any(m in text for m in markers):
+        return text
+    return top + "\n\n" + text
 
 
 def _ensure_four_section_structure(text: str) -> bool:
