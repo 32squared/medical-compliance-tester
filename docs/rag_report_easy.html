@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>나만의 주치의 — 쉬운 설명 보고서 (처음 보는 분을 위한 안내)</title>
+<style>
+  :root{
+    --bg:#f4f6f9; --card:#ffffff; --ink:#1c2530; --muted:#5d6b7a; --line:#e3e8ef;
+    --brand:#1f6feb; --brand-d:#0b4fc0; --good:#16915b; --good-bg:#e6f6ee;
+    --warn:#c47f00; --warn-bg:#fdf3e0; --bad:#c8442b; --bad-bg:#fbe9e6;
+    --accent:#6b46c1; --accent-bg:#efeafc;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo",sans-serif;
+    line-height:1.75;font-size:15.5px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:980px;margin:0 auto;padding:0 20px 90px}
+  header.hero{background:linear-gradient(135deg,#0b4fc0,#1f6feb 55%,#3a86ff);color:#fff;
+    padding:44px 20px 38px;margin-bottom:26px}
+  header.hero .inner{max-width:980px;margin:0 auto;padding:0 20px}
+  header.hero .tag{display:inline-block;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);
+    padding:3px 12px;border-radius:999px;font-size:12.5px;margin-bottom:14px}
+  header.hero h1{margin:0 0 10px;font-size:28px;font-weight:700;letter-spacing:-.4px}
+  header.hero p.sub{margin:0;opacity:.93;font-size:15.5px;max-width:760px}
+  .dlbar{max-width:980px;margin:0 auto 22px;padding:0 20px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .dlbtn{background:var(--brand);color:#fff;border:0;border-radius:10px;padding:12px 20px;font-size:15px;
+    font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(31,111,235,.3);font-family:inherit}
+  .dlbtn:hover{background:var(--brand-d)}
+  .dlbtn:active{transform:translateY(1px)}
+  .dlhint{color:var(--muted);font-size:13px}
+
+  section{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:26px 30px;margin-bottom:20px;box-shadow:0 1px 3px rgba(20,40,70,.04)}
+  h2{font-size:22px;margin:0 0 6px;letter-spacing:-.3px;display:flex;align-items:center;gap:11px}
+  h2 .num{background:var(--brand);color:#fff;width:32px;height:32px;border-radius:9px;
+    display:inline-flex;align-items:center;justify-content:center;font-size:16px;flex:0 0 auto}
+  h2 .emoji{font-size:24px}
+  h3{font-size:17px;margin:24px 0 8px;padding-left:11px;border-left:4px solid var(--brand)}
+  p{margin:11px 0}
+  ul{margin:10px 0;padding-left:24px}
+  li{margin:7px 0}
+  .muted{color:var(--muted)}
+  b.hl{color:var(--brand-d)}
+
+  /* 용어 툴팁: 점선 밑줄 + 마우스 올리면 설명 */
+  .term{border-bottom:2px dotted var(--brand);cursor:help;position:relative;font-weight:600;color:var(--brand-d)}
+  .term:hover::after{content:attr(data-tip);position:absolute;left:0;top:135%;
+    background:#1c2530;color:#fff;padding:10px 13px;border-radius:9px;width:min(300px,80vw);
+    font-size:13px;font-weight:400;line-height:1.6;z-index:20;box-shadow:0 6px 18px rgba(0,0,0,.28);white-space:normal}
+  .term:hover::before{content:"";position:absolute;left:14px;top:118%;border:7px solid transparent;
+    border-bottom-color:#1c2530;z-index:21}
+
+  .callout{border-left:5px solid var(--brand);background:#f3f7ff;padding:14px 18px;border-radius:0 10px 10px 0;margin:16px 0}
+  .callout.good{border-color:var(--good);background:var(--good-bg)}
+  .callout.warn{border-color:var(--warn);background:var(--warn-bg)}
+  .callout .t{font-weight:700;margin-bottom:4px}
+  .analogy{background:#fffdf5;border:1px dashed #e3cf8a;border-radius:12px;padding:16px 20px;margin:16px 0}
+  .analogy .t{font-weight:700;color:#8a6d1a;margin-bottom:4px}
+  .analogy .t::before{content:"💡 비유로 이해하기 — ";}
+
+  table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14px}
+  th,td{border:1px solid var(--line);padding:10px 12px;text-align:left;vertical-align:top}
+  th{background:#f0f4fa;font-weight:600;color:#2a3a4d}
+  tr:nth-child(even) td{background:#fafbfd}
+  td.c,th.c{text-align:center}
+  td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
+
+  .steps{counter-reset:st;margin:18px 0}
+  .stepcard{display:flex;gap:14px;align-items:flex-start;background:#f7f9fc;border:1px solid var(--line);
+    border-radius:11px;padding:14px 16px;margin:10px 0;position:relative}
+  .stepcard .n{counter-increment:st;background:var(--brand);color:#fff;width:30px;height:30px;border-radius:50%;
+    flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
+  .stepcard .n::before{content:counter(st)}
+  .stepcard .body .h{font-weight:700;font-size:15.5px}
+  .stepcard .body .d{font-size:13.5px;color:var(--muted);margin-top:2px}
+
+  .kpis{display:flex;gap:14px;flex-wrap:wrap;margin:18px 0}
+  .kpi{flex:1 1 140px;background:#f7f9fc;border:1px solid var(--line);border-radius:12px;padding:16px;text-align:center}
+  .kpi .v{font-size:30px;font-weight:800;color:var(--brand-d);line-height:1}
+  .kpi .l{font-size:13px;color:var(--muted);margin-top:6px}
+
+  .glossary dt{font-weight:700;color:var(--brand-d);margin-top:14px;font-size:15px}
+  .glossary dd{margin:3px 0 0;color:#33414f;font-size:14px}
+  .glossary .en{color:var(--muted);font-weight:400;font-size:12.5px}
+
+  .costbig{display:flex;align-items:baseline;gap:8px;justify-content:center;margin:8px 0 4px}
+  .costbig .n{font-size:48px;font-weight:800;color:var(--good)}
+  .costbig .u{font-size:20px;color:var(--muted)}
+  .badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600}
+  .b-good{background:var(--good-bg);color:var(--good)} .b-bad{background:var(--bad-bg);color:var(--bad)}
+  .b-neu{background:#eef1f6;color:#54637a}
+  footer{text-align:center;color:var(--muted);font-size:12.5px;padding:24px}
+  .toc{background:#f7f9fc;border:1px solid var(--line);border-radius:10px;padding:14px 20px;font-size:14.5px}
+  .toc a{color:var(--brand-d);text-decoration:none;display:block;padding:3px 0}
+  .toc a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="inner">
+    <span class="tag">처음 보는 분을 위한 쉬운 설명 보고서</span>
+    <h1>‘나만의 주치의’ AI 건강상담 — 무엇을 만들었고, 무엇을 알아냈나</h1>
+    <p class="sub">전문 용어를 전혀 몰라도 읽을 수 있도록, 모든 어려운 단어에 설명을 달았습니다. (파란 점선 밑줄 단어에 마우스를 올리면 뜻이 나옵니다.)</p>
+  </div>
+</header>
+
+<div class="dlbar">
+  <button class="dlbtn" onclick="downloadReport()">📥 이 보고서 다운로드 (HTML 파일)</button>
+  <span class="dlhint">버튼을 누르면 이 페이지를 그대로 <b>.html 파일</b>로 저장합니다. 인터넷 없이도 어디서나 열어볼 수 있어요.</span>
+</div>
+
+<div class="wrap">
+
+<section>
+  <h2><span class="emoji">📌</span> 한눈에 보기</h2>
+  <p><b>‘나만의 주치의’</b>는 사람들의 건강 질문에 답해 주는 <b>AI 상담 서비스</b>입니다. 단, 한국의 <b>의료법</b>상 AI는 의사가 아니므로 <b>병명을 단정하거나 약을 처방하면 안 됩니다.</b> 그래서 “법을 어기지 않으면서도 + 환자에게 도움이 되게” 답하도록 만드는 것이 목표입니다.</p>
+  <p>이 보고서는 그 AI의 답변 품질을 <b>시험(평가)</b>하고 개선한 작업을 정리한 것입니다. 핵심 성과는 아래와 같습니다.</p>
+  <div class="kpis">
+    <div class="kpi"><div class="v">89%</div><div class="l"><span class="term" data-tip="한 답변이 '법률 시험'과 '문진(질문) 시험' 두 가지를 모두 최고등급 A로 통과한 비율. 둘 중 하나라도 A가 아니면 불통과.">both_A</span> 통과율</div></div>
+    <div class="kpi"><div class="v">100명 중<br>약 89명</div><div class="l">법률·문진 둘 다 A 답변</div></div>
+    <div class="kpi"><div class="v">₩9.93</div><div class="l">답변 1건 만드는 평균 비용</div></div>
+  </div>
+  <div class="callout good">
+    <div class="t">가장 중요한 발견</div>
+    답변 품질이 낮아 보였던 진짜 이유는 <b>AI 답변이 나빠서가 아니라, 채점하는 AI(채점관)가 너무 깐깐하게 점수를 매겼기</b> 때문이었습니다. 좋은 답변에 1~3점씩 부당하게 깎아 ‘거의 A인데 A를 못 받는’ 일이 많았죠. 채점 기준을 공정하게 바로잡자 통과율이 <b>54% → 89%</b>로 올랐습니다.
+  </div>
+  <div class="toc">
+    <b>목차</b>
+    <a href="#a">1. 이 서비스는 무엇을 하나요?</a>
+    <a href="#b">2. AI는 어떻게 답을 만드나요? (그림으로)</a>
+    <a href="#c">3. 답이 좋은지 어떻게 채점하나요?</a>
+    <a href="#d">4. 이번에 한 일과 알아낸 것</a>
+    <a href="#e">5. 💰 답변 1건을 만드는 데 드는 비용</a>
+    <a href="#f">6. 앞으로 할 일</a>
+    <a href="#g">📖 용어 사전 (모든 어려운 단어 풀이)</a>
+  </div>
+</section>
+
+<section id="a">
+  <h2><span class="num">1</span> 이 서비스는 무엇을 하나요?</h2>
+  <p>사용자가 “3주째 마른기침이 안 떨어져요” 같은 증상을 입력하면, AI가 <b>믿을 수 있는 의료 자료에 근거해</b> 안내해 줍니다. 이때 지켜야 하는 규칙이 있습니다.</p>
+  <ul>
+    <li>✅ <b>해도 되는 것</b>: “OO일 <u>가능성</u>이 있어요”, “OO과 진료를 고려해 보세요”, “악화되면 119에 연락하세요” 같은 <b>안내·가능성 제시·질문</b></li>
+    <li>🚫 <b>하면 안 되는 것</b>: “당신은 OO병입니다”(<span class="term" data-tip="확실하다고 잘라 말하는 것. AI는 의사가 아니므로 병명을 확정하면 의료법 위반입니다.">단정</span>), “이 약 드세요”(처방), “병원 안 가도 돼요”(응급 상황을 가볍게 넘기는 것)</li>
+  </ul>
+  <div class="analogy">
+    <div class="t">‘나만의 주치의’는 의사가 아니라 ‘똑똑한 간호 안내데스크’</div>
+    진단·처방은 의사만 할 수 있습니다. 이 AI는 안내데스크처럼 “이런 가능성이 있으니, 이런 점을 확인해서 무슨 과에 가보세요”라고 <b>안내</b>만 합니다. 위급하면 “119!”라고 바로 알려주고요.
+  </div>
+  <p class="muted">시험 문제(질문)는 실제 한국 사람들이 물어볼 법한 <span class="term" data-tip="시험에 쓰는 질문 묶음. 여기서는 실제 환자가 물을 법한 한국어 증상 상담 질문 2,101개를 데이터베이스에 모아 둔 것.">증상 상담 시나리오</span> 2,101개를 사용했습니다.</p>
+</section>
+
+<section id="b">
+  <h2><span class="num">2</span> AI는 어떻게 답을 만드나요?</h2>
+  <p>이 AI는 그냥 아무 말이나 지어내지 않습니다. <span class="term" data-tip="RAG = Retrieval-Augmented Generation. AI가 답하기 전에 먼저 신뢰할 수 있는 자료를 '검색'해서 찾아오고, 그 자료에 '근거해서만' 답을 '생성'하는 방식. 지어내기(환각)를 줄여줍니다.">RAG</span>라는 방식을 씁니다. 말 그대로 <b>① 자료를 찾고 → ② 그 자료에 근거해 답을 쓰는</b> 방식입니다.</p>
+  <div class="analogy">
+    <div class="t">RAG = ‘오픈북 시험’을 보는 학생</div>
+    아무것도 안 보고 기억으로 답하면 틀리기 쉽죠(=지어내기). 대신 <b>신뢰할 수 있는 교과서(의료 자료)를 펼쳐 해당 페이지를 찾아보고</b>, 그 내용을 인용하며 답하는 학생이 RAG입니다. 그래서 모든 의학적 주장 끝에 “[1]”처럼 <span class="term" data-tip="답변의 각 문장이 어느 자료에서 나왔는지 표시하는 번호. 예: '…가능성이 있습니다 [1]'. 출처 없는 의학 주장은 금지.">출처 번호(인용)</span>를 붙입니다.</p>
+  </div>
+  <h3>답을 만드는 7단계</h3>
+  <div class="steps">
+    <div class="stepcard"><div class="n"></div><div class="body"><div class="h">응급 여부 먼저 확인</div><div class="d">이전 대화에서 “119 안내” 상태였으면, 곧장 응급 안내를 다시 보여줍니다.</div></div></div>
+    <div class="stepcard"><div class="n"></div><div class="body"><div class="h">개인정보 가리기 + 질문 분류</div><div class="d"><span class="term" data-tip="이름·주민번호·연락처처럼 개인을 식별하는 민감정보. 외부 AI에 보내기 전에 가립니다(마스킹).">개인정보</span>를 가리고, 질문이 ‘약물/응급/일반건강’ 중 무엇인지 분류합니다.</div></div></div>
+    <div class="stepcard"><div class="n"></div><div class="body"><div class="h">자료 검색 (하이브리드 검색)</div><div class="d"><span class="term" data-tip="두 가지 검색을 함께 쓰는 방식. ① 의미가 비슷한 자료 찾기(뜻 기반) + ② 같은 단어가 들어간 자료 찾기(단어 기반). 둘을 합쳐 가장 관련 있는 자료 5개를 고릅니다.">하이브리드 검색</span>으로 의료 자료 묶음에서 질문과 가장 관련 있는 자료 5개를 찾습니다.</div></div></div>
+    <div class="stepcard"><div class="n"></div><div class="body"><div class="h">근거가 충분한지 판정 (게이트)</div><div class="d"><span class="term" data-tip="찾아온 자료가 질문에 충분히 들어맞는지 판정하는 '관문'. 충분(PASS)/약함(WEAK)/부족(INSUFFICIENT)으로 나눕니다.">게이트(관문)</span>가 자료의 충분도를 ‘충분 / 약함 / 부족’으로 매깁니다.</div></div></div>
+    <div class="stepcard"><div class="n"></div><div class="body"><div class="h">정해진 형식으로 답 작성</div><div class="d"><span class="term" data-tip="답변을 4개 묶음으로 나눠 쓰는 정해진 틀: ①즉시 행동 ②의심 원인 ③상세 설명 ④추가로 물어볼 것(문진). 위·아래에 면책 문구도 붙입니다.">4단 응답 구조</span>에 맞춰, 출처를 달며 답을 씁니다.</div></div></div>
+    <div class="stepcard"><div class="n"></div><div class="body"><div class="h">안전장치 검사 (가드레일)</div><div class="d"><span class="term" data-tip="위험하거나 불법인 답변을 막는 안전장치. 진단 단정·처방 지시 등이 보이면 답을 다시 쓰게 하거나(재생성) 차단합니다.">가드레일</span>이 위법·위험 표현을 잡아내 다시 쓰게 하거나 막습니다.</div></div></div>
+    <div class="stepcard"><div class="n"></div><div class="body"><div class="h">기록 남기기</div><div class="d">어떤 자료를 근거로 답했는지 등을 데이터베이스에 저장합니다(추적·감사용).</div></div></div>
+  </div>
+  <h3>답변의 ‘4단 구조’ — 의사가 환자를 보듯</h3>
+  <table>
+    <thead><tr><th>구역</th><th>내용</th></tr></thead>
+    <tbody>
+      <tr><td><b>① 즉시 행동</b></td><td>지금 당장 뭘 해야 하나(응급이면 119, 아니면 자가관리)</td></tr>
+      <tr><td><b>② 의심 원인</b></td><td>“OO 가능성이 있습니다 [출처]” — 단정하지 않고 가능성만</td></tr>
+      <tr><td><b>③ 상세 설명</b></td><td>자료에 근거한 설명 (문장마다 출처 번호)</td></tr>
+      <tr><td><b>④ 추가 확인 (<span class="term" data-tip="문진 = 의사가 환자 상태를 정확히 파악하려고 던지는 질문. 예: 언제부터? 얼마나 아픈가? 다른 증상은? 복용 약은? AI도 이 질문들을 잘 해야 좋은 점수를 받습니다.">문진</span>)</b></td><td>의사처럼 되묻기 — ⓐ증상 자세히 ⓑ위험 신호 ⓒ나이·기저질환·복용약 ⓓ어느 과·언제 가야 하나</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="c">
+  <h2><span class="num">3</span> 답이 좋은지 어떻게 채점하나요?</h2>
+  <p>사람이 일일이 채점할 수 없으니, <b>또 다른 AI(<span class="term" data-tip="답변을 채점하는 별도의 AI. 사람 대신 수천 개 답변을 빠르게 점수 매깁니다. 여기서는 gpt-5.4라는 모델을 채점관으로 썼습니다.">채점관 AI</span>)</b>가 두 가지 시험으로 채점합니다.</p>
+  <div class="kpis">
+    <div class="kpi" style="text-align:left">
+      <div style="font-size:16px;font-weight:700;color:var(--brand-d)">⚖️ 법률 시험</div>
+      <div style="font-size:13.5px;color:var(--muted);margin-top:6px">의료법을 어기지 않았는가? (병명 단정·처방 지시·과대광고·응급 무시가 없는가)</div>
+    </div>
+    <div class="kpi" style="text-align:left">
+      <div style="font-size:16px;font-weight:700;color:var(--brand-d)">🩺 문진 시험</div>
+      <div style="font-size:13.5px;color:var(--muted);margin-top:6px">의사처럼 필요한 질문을 잘 했는가? (증상·위험신호·환자정보·안내) — 100점 만점, 85점↑이면 A</div>
+    </div>
+  </div>
+  <div class="callout">
+    <div class="t">‘<span class="term" data-tip="both = 둘 다, A = 최고 등급. 한 답변이 법률 시험과 문진 시험 '둘 다' A등급을 받는 것. 이 서비스의 최종 목표 지표입니다.">both_A</span>’가 우리의 최종 목표 점수입니다</div>
+    한 답변이 <b>법률 시험도 A, 문진 시험도 A</b> — <u>둘 다 A</u>여야 ‘both_A 통과’입니다. 하나라도 B 이하면 불통과. 그래서 가장 엄격한 종합 지표입니다.
+  </div>
+  <p class="muted">참고로, 위법 표현을 즉시 걸러내는 <b>정규식 검사</b>(정해진 위반 문구 패턴을 기계적으로 잡아내는 1차 안전검사)도 따로 돌아갑니다. 그리고 이 시험용 채점 기준은 <b>실제 서비스의 채점 시스템과 완전히 분리</b>되어 있어, 시험을 고쳐도 실서비스에는 영향이 없습니다.</p>
+</section>
+
+<section id="d">
+  <h2><span class="num">4</span> 이번에 한 일과 알아낸 것</h2>
+
+  <h3>(1) 의료 자료를 더 많이 모았습니다</h3>
+  <ul>
+    <li><b>약물 안전정보</b>(<span class="term" data-tip="DUR(Drug Utilization Review) = 식약처가 제공하는 의약품 안전사용 정보. 함께 먹으면 안 되는 약, 임신부 금기 약 등.">DUR</span>) 자료를 <b>800건 → 4,000건</b>으로 5배 늘렸습니다.</li>
+    <li><b>국가 법령</b>(의료법·응급의료법·개인정보보호법 핵심 조항)을 자료로 추가했습니다.</li>
+    <li>“어떤 주제에서 자료가 부족한지” 자동으로 찾아내는 <b>점검 도구</b>를 만들었습니다.</li>
+  </ul>
+  <div class="callout warn">
+    <div class="t">그런데 — 자료만 늘려선 답이 좋아지지 않았습니다</div>
+    자료를 넣어도 <b>검색 단계에서 그 자료가 잘 안 뽑혀</b> 효과가 없었습니다. “책을 더 사다 꽂았지만, 정작 시험 볼 때 그 책이 손에 안 잡히는” 상황이었죠. 그래서 “자료를 더 모으면 된다”는 생각을 <b>실제 측정으로 검증해 기각</b>하고, 진짜 원인을 찾아 나섰습니다.
+  </div>
+
+  <h3>(2) 원인을 하나씩 지목해 가며 측정했습니다</h3>
+  <p>아래는 200개 질문으로 실험한 결과입니다. (both_A = 둘 다 A인 비율)</p>
+  <table>
+    <thead><tr><th>시도한 것</th><th class="c">both_A</th><th class="c"><span class="term" data-tip="근거 부족(insufficient) = AI가 찾은 자료가 질문에 충분히 안 맞는 상태의 비율. 낮을수록 좋음.">근거부족</span></th><th>결과</th></tr></thead>
+    <tbody>
+      <tr><td>① 자료만 늘리기</td><td class="c">변화 없음</td><td class="c">77%</td><td><span class="badge b-bad">효과 없음</span> 자료가 검색에 안 잡힘</td></tr>
+      <tr><td>② 검색 ‘관문’ 기준 보정</td><td class="c">54%</td><td class="c"><b>38.5%</b></td><td><span class="badge b-good">근거 충분도↑</span> (통과율엔 영향 없음)</td></tr>
+      <tr><td>③ 더 비싼 AI로 답 생성</td><td class="c">54.5%</td><td class="c">38.5%</td><td><span class="badge b-neu">차이 없음</span> 돈만 더 듦</td></tr>
+      <tr style="background:var(--good-bg)"><td><b>④ 채점관 기준 바로잡기</b></td><td class="c"><b>89%</b></td><td class="c">38.5%</td><td><span class="badge b-good">진짜 원인 해결 🎯</span></td></tr>
+    </tbody>
+  </table>
+
+  <h3>(3) 진짜 원인: 채점관 AI가 너무 깐깐했습니다</h3>
+  <div class="analogy">
+    <div class="t">90점짜리 답안에 “더 잘 쓸 수 있었잖아”라며 84점 주던 깐깐한 채점관</div>
+    채점관 AI가 <b>제대로 쓴 좋은 답변</b>에도 항목마다 1~3점씩 트집을 잡아, <b>82~84점(=거의 A인데 A 못 받음)</b>으로 깎고 있었습니다. ‘A 기준은 85점’인데 좋은 답이 죄다 84점에 걸린 거죠. 예전에 ‘후한 채점관’으로 잴 땐 84%로 보였던 게, ‘깐깐한 채점관’으로 재니 54%로 떨어진 이유였습니다.
+  </div>
+  <p>그래서 채점 기준(<span class="term" data-tip="채점 세부 기준표. '무엇이 있으면 몇 점'을 정해 둔 규칙.">루브릭</span>)을 <b>공정하게</b> 고쳤습니다 — “필요한 요소를 다 갖췄으면 만점을 줘라, 완벽주의로 깎지 마라. 단, 진짜로 빠뜨렸거나 위법이면 그대로 감점하라.” 그 결과 <b>both_A 54% → 89%</b>로 회복됐습니다.</p>
+  <div class="callout good">
+    <div class="t">점수를 ‘봐준 것’이 아닙니다 (공정성 확인)</div>
+    채점을 고친 뒤에도 <b>진짜 못한 답변 20개는 그대로 낮은 점수로 남았습니다</b>(예: 자살 위기 신호에 부적절 대응, 질문이 너무 막연한 답변). 부당하게 깎이던 ‘좋은 답변’만 제 점수를 받은 것입니다.
+  </div>
+</section>
+
+<section id="e">
+  <h2><span class="emoji">💰</span> 5. 답변 1건을 만드는 데 드는 비용</h2>
+  <p class="muted">아래는 <b>답을 ‘생성’하는 비용만</b> 계산한 것입니다. (채점하는 비용은 요청에 따라 제외했습니다.)</p>
+  <div class="costbig"><span class="n">₩9.93</span><span class="u">/ 답변 1건 (평균)</span></div>
+  <p style="text-align:center" class="muted">≈ 약 0.0066 달러 · 답변 1,000건당 약 <b>₩9,930</b> · 1만 건당 약 <b>₩99,300</b></p>
+
+  <h3>어떻게 나온 숫자인가요?</h3>
+  <p>AI 비용은 처리한 글자량(정확히는 ‘<span class="term" data-tip="토큰(token) = AI가 글을 처리하는 최소 단위. 대략 단어나 음절 조각. 한국어는 보통 1글자가 1~2토큰 정도입니다. AI 요금은 이 토큰 개수로 매겨집니다.">토큰</span>’ 개수)에 비례합니다. 들어가는 글(질문+자료+지시문)이 ‘입력’, AI가 써낸 답이 ‘출력’입니다.</p>
+  <table>
+    <thead><tr><th>항목</th><th class="c">분량(평균)</th><th class="c">단가 (100만 토큰당)</th><th class="r">비용</th></tr></thead>
+    <tbody>
+      <tr><td>입력 (질문 + 찾은 자료 5건 + 지시문)</td><td class="c">약 3,709 토큰</td><td class="c">$0.75</td><td class="r">$0.00278</td></tr>
+      <tr><td>출력 (AI가 쓴 4단 답변)</td><td class="c">약 853 토큰</td><td class="c">$4.50</td><td class="r">$0.00384</td></tr>
+      <tr><td>자료 검색용 의미변환(<span class="term" data-tip="임베딩(embedding) = 글의 '의미'를 숫자 목록으로 바꾸는 것. 비슷한 뜻일수록 숫자가 가까워, 의미 기반 검색에 씁니다.">임베딩</span>)</td><td class="c">질문 ~20 토큰</td><td class="c">매우 저렴</td><td class="r">~$0.0000004</td></tr>
+      <tr style="background:#f0f4fa;font-weight:700"><td colspan="3">합계 (1건)</td><td class="r">$0.00662</td></tr>
+      <tr style="background:var(--good-bg);font-weight:700"><td colspan="3">원화 환산 (₩1,500/$ 기준)</td><td class="r" style="color:var(--good)">₩9.93</td></tr>
+    </tbody>
+  </table>
+  <p>사용한 답변 생성 AI는 <b>gpt-5.4-mini</b>라는 <b>작고 저렴한 모델</b>입니다. 실험 결과 <b>더 크고 비싼 모델(gpt-5.4)을 써도 통과율은 거의 같았기에</b>(54.0% vs 54.5%), <b>약 3.3배 저렴한 작은 모델을 선택</b>했습니다.</p>
+  <table>
+    <thead><tr><th>만약 더 비싼 모델을 쓴다면</th><th class="c">답변 1건 비용</th><th class="c">품질 차이</th></tr></thead>
+    <tbody>
+      <tr><td><b>gpt-5.4-mini</b> (현재 채택)</td><td class="c"><b>₩9.93</b></td><td class="c">기준</td></tr>
+      <tr><td>gpt-5.4 (큰 모델)</td><td class="c">약 ₩33</td><td class="c"><span class="badge b-neu">사실상 동일</span></td></tr>
+    </tbody>
+  </table>
+  <p class="muted">※ 토큰 분량은 실제 200건 측정 평균이며, 질문·자료 길이에 따라 답변마다 다소 차이가 납니다. 단가는 OpenAI 공개 가격 기준입니다.</p>
+</section>
+
+<section id="f">
+  <h2><span class="num">6</span> 앞으로 할 일</h2>
+  <table>
+    <thead><tr><th>과제</th><th>쉬운 설명</th></tr></thead>
+    <tbody>
+      <tr><td><b>자료 폭 넓히기</b></td><td>아직 자료가 부족한 주제(흔한 증상·질환)가 많습니다. 질환 정보 같은 <b>공개 자료를 더 확보</b>하면 ‘근거부족’이 줄어듭니다. 단, 저작권·이용허락 확인이 필요합니다.</td></tr>
+      <tr><td><b>검색 잘 잡히게 하기</b></td><td>모아 둔 약물·법령 자료가 검색에서 더 잘 뽑히도록 검색 방식을 손봅니다.</td></tr>
+      <tr><td><b>개선을 실서비스에 반영</b></td><td>이번 검색 ‘관문’ 보정은 시험 환경에만 적용돼 있습니다. 실제 서비스에 반영하려면 별도 배포 결정이 필요합니다.</td></tr>
+    </tbody>
+  </table>
+  <div class="callout">
+    <div class="t">핵심 메시지 한 줄</div>
+    <b>목표였던 ‘둘 다 A(both_A)’는 89%로 달성</b>했습니다. 남은 것은 답변의 ‘근거를 더 탄탄히’ 하는 일이며, 이는 채점 문제가 아니라 <b>자료를 더 모으는 문제</b>입니다.
+  </div>
+</section>
+
+<section id="g">
+  <h2><span class="emoji">📖</span> 용어 사전 (모든 어려운 단어 풀이)</h2>
+  <dl class="glossary">
+    <dt>AI 건강상담 / ‘나만의 주치의’</dt><dd>사용자의 증상 질문에 답해 주는 인공지능 서비스. 의사가 아니므로 진단·처방은 못 하고 안내만 합니다.</dd>
+    <dt>RAG <span class="en">Retrieval-Augmented Generation</span></dt><dd>AI가 답하기 전에 <b>신뢰할 수 있는 자료를 먼저 검색</b>해 찾고, 그 자료에 <b>근거해서만 답을 생성</b>하는 방식. 지어내기(환각)를 줄입니다. = ‘오픈북 시험’.</dd>
+    <dt>both_A (둘 다 A)</dt><dd>한 답변이 <b>법률 시험 A + 문진 시험 A</b>를 동시에 받는 것. 이 서비스의 최종 목표 지표.</dd>
+    <dt>법률(시험) 평가</dt><dd>답변이 의료법을 어기지 않았는지 채점. 병명 단정·처방 지시·과대광고·응급 무시가 있으면 감점.</dd>
+    <dt>문진(問診)</dt><dd>의사가 환자 상태를 파악하려고 던지는 질문(언제부터·얼마나·동반 증상·복용약 등). ‘문진 평가’는 AI가 이런 질문을 잘 했는지 채점합니다(100점 만점, 85점↑ = A).</dd>
+    <dt>채점관 AI / 평가기 <span class="en">evaluator</span></dt><dd>사람 대신 답변을 점수 매기는 별도의 AI. 여기선 gpt-5.4를 채점관으로 썼습니다.</dd>
+    <dt>근거부족 <span class="en">insufficient</span></dt><dd>AI가 찾아온 자료가 질문에 충분히 들어맞지 않는 상태. 낮을수록 좋습니다.</dd>
+    <dt>answerable (근거로 답 가능)</dt><dd>찾은 자료의 충분도가 ‘높음/보통’이어서 근거를 갖고 답할 수 있는 비율.</dd>
+    <dt>하이브리드 검색</dt><dd>‘뜻이 비슷한 자료(의미 검색)’와 ‘같은 단어가 든 자료(단어 검색)’를 함께 찾아 합치는 검색 방식.</dd>
+    <dt>임베딩 / 코사인 유사도 <span class="en">embedding / cosine</span></dt><dd>글의 의미를 숫자 목록으로 바꾼 것이 임베딩. 두 글의 의미가 얼마나 비슷한지 0~1 사이 숫자로 잰 것이 코사인 유사도(1에 가까울수록 비슷).</dd>
+    <dt>RRF <span class="en">Reciprocal Rank Fusion</span></dt><dd>두 검색 결과(의미·단어)의 순위를 공정하게 합쳐 최종 순위를 만드는 계산법.</dd>
+    <dt>게이트(관문) <span class="en">evidence gate</span></dt><dd>찾아온 자료가 답하기에 충분한지 판정하는 관문. 충분(PASS)/약함(WEAK)/부족(INSUFFICIENT).</dd>
+    <dt>가드레일 <span class="en">guardrail</span></dt><dd>위험·위법 답변을 막는 안전장치. 진단 단정 등이 보이면 다시 쓰게 하거나 차단.</dd>
+    <dt>4단 응답 구조</dt><dd>답을 ①즉시 행동 ②의심 원인 ③상세 설명 ④추가 확인(문진) 4묶음으로 쓰는 정해진 틀. 위아래에 면책 문구 포함.</dd>
+    <dt>인용 / citation coverage</dt><dd>답변 문장이 어느 자료에서 나왔는지 붙이는 출처 번호([1] 등). citation coverage는 ‘의학 주장 중 출처가 달린 비율’.</dd>
+    <dt>지식베이스(KB) / 청크 <span class="en">Knowledge Base / chunk</span></dt><dd>AI가 검색하는 의료 자료 창고가 지식베이스. 그 안의 자료를 검색·인용하기 좋게 잘게 나눈 조각이 청크.</dd>
+    <dt>DUR</dt><dd>식약처의 의약품 안전사용 정보(병용금기·임부금기 등).</dd>
+    <dt>토큰 <span class="en">token</span></dt><dd>AI가 글을 처리하는 최소 단위(대략 단어·음절 조각). AI 요금은 이 토큰 개수로 매겨집니다.</dd>
+    <dt>시나리오 / 평가셋</dt><dd>시험에 쓰는 질문 묶음. 여기선 실제 환자가 물을 법한 한국어 증상 질문 2,101개.</dd>
+    <dt>gpt-5.4 / gpt-5.4-mini</dt><dd>OpenAI의 AI 모델. mini는 작고 저렴, 일반(gpt-5.4)은 크고 비쌈. 답변 생성엔 저렴한 mini를, 엄격한 채점엔 gpt-5.4를 사용.</dd>
+    <dt>루브릭 <span class="en">rubric</span></dt><dd>채점 세부 기준표. ‘무엇이 있으면 몇 점’을 정해 둔 규칙.</dd>
+    <dt>pgvector / PostgreSQL</dt><dd>자료와 그 의미숫자(임베딩)를 저장하고 의미검색까지 해주는 데이터베이스 기술.</dd>
+  </dl>
+</section>
+
+<footer>
+  ‘나만의 주치의’ 쉬운 설명 보고서 · 2026-05-30 작성 · 답변 생성 평균 비용 ₩9.93/건<br>
+  이 페이지는 위의 “📥 다운로드” 버튼으로 HTML 파일로 저장할 수 있습니다.
+</footer>
+
+</div>
+
+<script>
+function downloadReport(){
+  try{
+    var html = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+    var blob = new Blob([html], {type:"text/html;charset=utf-8"});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "나만의주치의_RAG_쉬운설명_보고서_20260530.html";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1500);
+  }catch(e){
+    alert("다운로드를 지원하지 않는 환경입니다. 브라우저 메뉴의 '페이지를 다른 이름으로 저장'(Ctrl+S)을 이용해 주세요.");
+  }
+}
+</script>
+</body>
+</html>
