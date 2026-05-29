@@ -67,8 +67,15 @@ _CATEGORY_TOPIC = {
 }
 
 
+# 문서당 최대 항목 수 — 너무 크면 청크가 임베딩 한도(8192 토큰) 초과(400). 분할.
+_ITEMS_PER_DOC = 40
+
+
 def build_dur_documents(chunks: List[Dict]) -> List[Dict]:
     """DUR chunk 리스트 → 카테고리별 ingest 문서 dict 리스트 (순수 함수).
+
+    카테고리당 항목이 많으면 _ITEMS_PER_DOC 단위로 여러 문서로 분할한다
+    (대량 적재 시 청크가 임베딩 입력 한도 8192 토큰을 넘어 실패하는 문제 방지).
 
     반환 dict: {title, content_md, source_id, metadata, evidence_topic,
                 regulatory_korea, topic_keywords, item_count}
@@ -80,33 +87,36 @@ def build_dur_documents(chunks: List[Dict]) -> List[Dict]:
 
     docs: List[Dict] = []
     for cat, items in by_cat.items():
-        lines = [f"# 식약처 DUR — {cat}", ""]
-        risk_tags, pop_tags, kws = set(), set(), set()
-        for it in items:
-            lines.append(f"- {it.get('content', '')}")
-            for r in it.get("risk_tags", []):
-                risk_tags.add(r)
-            for p in it.get("population_tags", []):
-                pop_tags.add(p)
-        content_md = "\n".join(lines)
-        docs.append({
-            "title": f"식약처 DUR {cat}",
-            "content_md": content_md,
-            "source_id": _SOURCE_ID,
-            "metadata": {
-                "chunk_type": "contraindication",
-                "evidence_level": "A",
-                "source_priority": 1,
-                "risk_tags": sorted(risk_tags),
-                "population_tags": sorted(pop_tags),
-                "jurisdiction": "KR",
-                "dur_category": cat,
-            },
-            "evidence_topic": _CATEGORY_TOPIC.get(cat, "drug_safety"),
-            "regulatory_korea": True,
-            "topic_keywords": sorted({"DUR", cat, *kws}),
-            "item_count": len(items),
-        })
+        n_parts = (len(items) + _ITEMS_PER_DOC - 1) // _ITEMS_PER_DOC
+        for part in range(n_parts):
+            batch = items[part * _ITEMS_PER_DOC:(part + 1) * _ITEMS_PER_DOC]
+            suffix = f" (p{part + 1})" if n_parts > 1 else ""
+            lines = [f"# 식약처 DUR — {cat}{suffix}", ""]
+            risk_tags, pop_tags, kws = set(), set(), set()
+            for it in batch:
+                lines.append(f"- {it.get('content', '')}")
+                for r in it.get("risk_tags", []):
+                    risk_tags.add(r)
+                for p in it.get("population_tags", []):
+                    pop_tags.add(p)
+            docs.append({
+                "title": f"식약처 DUR {cat}{suffix}",
+                "content_md": "\n".join(lines),
+                "source_id": _SOURCE_ID,
+                "metadata": {
+                    "chunk_type": "contraindication",
+                    "evidence_level": "A",
+                    "source_priority": 1,
+                    "risk_tags": sorted(risk_tags),
+                    "population_tags": sorted(pop_tags),
+                    "jurisdiction": "KR",
+                    "dur_category": cat,
+                },
+                "evidence_topic": _CATEGORY_TOPIC.get(cat, "drug_safety"),
+                "regulatory_korea": True,
+                "topic_keywords": sorted({"DUR", cat, *kws}),
+                "item_count": len(batch),
+            })
     return docs
 
 
