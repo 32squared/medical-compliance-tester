@@ -21,6 +21,39 @@ from typing import Dict, List
 
 _SOURCE_ID = "mfds_dur"
 
+# kb_sources 등록용 출처 정의 (FK 제약: kb_documents.source_id → kb_sources.id)
+_DUR_SOURCE = {
+    "id": _SOURCE_ID,
+    "name": "식약처 DUR(의약품 안전사용) 공개 데이터",
+    "source_type": "public",
+    "license": "kogl_type1",
+    "update_frequency": "monthly",
+    "is_active": 1,
+}
+
+
+def _register_dur_source() -> None:
+    """mfds_dur 출처를 kb_sources에 등록(멱등) + priority_rank=1 보강.
+
+    seed_dur가 ingest_document(source_id='mfds_dur')를 호출하기 전에 반드시
+    출처 행이 존재해야 한다(FK kb_documents_source_id_fkey). 다른 시드
+    (seed_emergency_kb/seed_faq_kb)와 동일 패턴. priority_rank/jurisdiction/
+    institution은 migration 009 이후 컬럼이라 try/except로 가드(로컬 SQLite 보호).
+    """
+    from kb_ingest import seed_kb_sources
+    seed_kb_sources([_DUR_SOURCE])
+    try:
+        from db import get_conn, _p
+        with get_conn() as (conn, cur):
+            cur.execute(
+                f"UPDATE kb_sources SET priority_rank = 1, jurisdiction = 'KR', "
+                f"institution = '식약처' WHERE id = {_p()}",
+                (_SOURCE_ID,),
+            )
+    except Exception as e:
+        print(f"[seed_dur] priority_rank 보강 생략(컬럼 미존재 가능): {str(e)[:80]}", flush=True)
+
+
 # 카테고리 → evidence_topic (검색 주제 매칭용)
 _CATEGORY_TOPIC = {
     "병용금기": "drug_interaction",
@@ -90,6 +123,8 @@ def seed_dur(service_key: str, categories: List[str] = None,
     if dry_run:
         summary["dry_run"] = True
         return summary
+
+    _register_dur_source()  # FK 선행: kb_sources에 mfds_dur 등록(멱등)
 
     import kb_ingest
     for d in docs:
