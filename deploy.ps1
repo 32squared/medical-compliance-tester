@@ -93,14 +93,41 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
+# [2.5/3] dev 태그를 방금 배포한 최신 리비전으로 이동
+#   이 서비스는 트래픽이 특정 리비전에 고정되어 있어, deploy가 트래픽 0%의
+#   스테이징 리비전을 새로 만든다. dev 미리보기 URL(https://dev---...)이 항상
+#   최신 코드를 가리키도록 dev 태그를 새 리비전으로 옮긴다. 운영 트래픽은 무영향.
+Write-Host "[2.5/3] Moving 'dev' tag to the newly deployed revision..." -ForegroundColor Yellow
+$LatestRev = gcloud run revisions list --service $ServiceName --region $Region --project $ProjectId `
+    --sort-by="~metadata.creationTimestamp" --limit 1 --format="value(metadata.name)" 2>$null
+if ($LatestRev) {
+    gcloud run services update-traffic $ServiceName --region $Region --project $ProjectId `
+        --update-tags "dev=$LatestRev" | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "  dev tag -> $LatestRev  (운영 트래픽 무영향)" -ForegroundColor Green
+    } else {
+        Write-Host "  [WARN] dev 태그 이동 실패. 수동 실행: gcloud run services update-traffic $ServiceName --region $Region --update-tags dev=$LatestRev" -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "  [WARN] 최신 리비전 조회 실패 — dev 태그를 옮기지 못했습니다." -ForegroundColor Yellow
+}
+
 # [3/3] 결과 확인
 Write-Host ""
 Write-Host "[3/3] Deploy complete!" -ForegroundColor Green
 $url = gcloud run services describe $ServiceName --region $Region --format "value(status.url)" 2>$null
 
+# dev 미리보기 URL (방금 태그를 옮긴 최신 리비전)
+$DevUrl = $null
+try {
+    $svcJson = gcloud run services describe $ServiceName --region $Region --project $ProjectId --format json 2>$null | ConvertFrom-Json
+    $DevUrl = ($svcJson.status.traffic | Where-Object { $_.tag -eq 'dev' } | Select-Object -First 1).url
+} catch {}
+
 Write-Host ""
 Write-Host "============================================" -ForegroundColor Cyan
-Write-Host "  URL: $url" -ForegroundColor Green
+Write-Host "  URL (운영 100%): $url" -ForegroundColor Green
+if ($DevUrl) { Write-Host "  DEV (미리보기, 최신코드): $DevUrl" -ForegroundColor Magenta }
 Write-Host "  Chat:       $url/"
 Write-Host "  Scenario:   $url/manager"
 Write-Host "  History:    $url/history"
