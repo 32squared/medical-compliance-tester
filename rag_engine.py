@@ -175,6 +175,7 @@ def _dense_search(
                     d.source_id,
                     d.evidence_level,
                     d.title,
+                    d.source_url,
                     1 - (c.embedding_primary <=> %s::vector(1536)) AS cosine_score
                 FROM kb_chunks c
                 JOIN kb_documents d ON c.document_id = d.id
@@ -200,6 +201,7 @@ def _dense_search(
                     d.source_id,
                     d.evidence_level,
                     d.title,
+                    d.source_url,
                     1 - (c.embedding_primary <=> %s::vector(1536)) AS cosine_score
                 FROM kb_chunks c
                 JOIN kb_documents d ON c.document_id = d.id
@@ -360,7 +362,7 @@ def _sparse_search(
         like_params = [f"%{t}%" for t in tokens]
         _cols = ("c.id AS chunk_id, c.document_id, c.content, c.section_path, "
                  "c.symptom_tags, c.severity, c.evidence_country, c.evidence_topic, "
-                 "c.regulatory_korea, c.topic_keywords, d.source_id, d.evidence_level, d.title")
+                 "c.regulatory_korea, c.topic_keywords, d.source_id, d.evidence_level, d.title, d.source_url")
         if src_types:
             ph_list = _ph(len(src_types))
             sql = f"""
@@ -1941,9 +1943,13 @@ def _extract_citations(text: str, chunks: List[dict]) -> List[dict]:
         if marker in seen:
             continue
         seen.add(marker)
+        ch = chunks[n - 1]
         citations.append({
             "marker": marker,
-            "chunk_id": chunks[n - 1]["chunk_id"],
+            "chunk_id": ch["chunk_id"],
+            "source_id": ch.get("source_id") or "",
+            "title": ch.get("title") or "",
+            "source_url": ch.get("source_url") or "",  # 원문 URL (있으면 링크)
         })
     return citations
 
@@ -2057,6 +2063,8 @@ def _format_search_result(chunk: dict) -> dict:
         "content": (chunk.get("content") or "")[:300],  # 미리보기 300자
         "section_path": chunk.get("section_path", []),
         "source_id": chunk.get("source_id"),
+        "title": chunk.get("title") or "",            # 문서 제목 (출처 표시용)
+        "source_url": chunk.get("source_url") or "",  # 원문 URL (근거 확인 링크)
         "evidence_level": chunk.get("evidence_level"),
         "evidence_topic": chunk.get("evidence_topic"),
         "severity": chunk.get("severity"),
