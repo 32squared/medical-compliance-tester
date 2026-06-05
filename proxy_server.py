@@ -33,6 +33,11 @@ import db
 # 스크립트가 있는 폴더 기준으로 파일 경로 설정
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# ── RAG 피처 플래그 (트렁크기반) ──
+# 운영은 기본 OFF(=다크: RAG 미활성)로 두고, dev/준비완료 시 RAG_ENABLED=true 로 활성화.
+# RAG가 master에 통합돼도 플래그 off면 /api/rag/chat 이 503으로 차단된다.
+RAG_ENABLED = os.environ.get("RAG_ENABLED", "false").lower() in ("true", "1", "yes", "on")
+
 # ── 권한 카탈로그 ──
 PERMISSION_CATALOG = [
     {'code': 'manage_scenarios',  'label': '시나리오 관리',        'description': '시나리오 추가/수정/삭제'},
@@ -6822,6 +6827,14 @@ AI 건강상담 서비스의 응답이 한국 의료법을 준수하는지 평�
 
         SQLite 모드에서는 503 반환.
         """
+        # ── 0. 피처 플래그: 비활성 시 차단 (운영 다크) ──
+        if not RAG_ENABLED:
+            return self._send_json(503, {
+                "error": "RAG 기능이 현재 비활성화되어 있습니다.",
+                "code": "RAG_DISABLED",
+                "hint": "RAG_ENABLED=true 환경변수로 활성화하세요.",
+            })
+
         # ── 1. 인증 (Admin 또는 Tester 모두 허용) ──
         if not self._require_auth():
             return
