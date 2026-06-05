@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>외부 답변 평가 — 나만의 주치의</title>
+<style>
+  :root {
+    --bg: #0f172a; --surface: #1e293b; --surface2: #334155; --surface3: #3b4a63;
+    --text: #e2e8f0; --text-dim: #94a3b8; --accent: #38bdf8; --accent-dim: #0c4a6e;
+    --green: #22c55e; --red: #ef4444; --yellow: #eab308; --orange: #f97316;
+    --border: #475569; --radius: 12px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Pretendard','Apple SD Gothic Neo',system-ui,sans-serif;
+         background:var(--bg); color:var(--text); min-height:100vh; display:flex; flex-direction:column; }
+  /* ── Top Bar ── */
+  .topbar { display:flex; align-items:center; gap:8px; padding:12px 20px;
+            background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; flex-wrap:nowrap; overflow-x:auto; }
+  .topbar h1 { font-size:16px; font-weight:700; white-space:nowrap; }
+  .nav-btn { background:none; border:1px solid var(--border); color:var(--text-dim); border-radius:8px;
+             padding:6px 14px; cursor:pointer; font-size:13px; text-decoration:none; transition:all .15s; }
+  .nav-btn:hover { background:var(--surface2); color:var(--text); }
+  .nav-btn.active { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
+  .btn-icon { background:none; border:1px solid var(--border); color:var(--text-dim); border-radius:8px;
+              padding:6px 10px; cursor:pointer; font-size:13px; transition:all .15s; }
+  .btn-icon:hover { background:var(--surface2); color:var(--text); }
+
+  /* ── Main ── */
+  .main { max-width: 1100px; margin: 0 auto; padding: 24px 20px 60px; width: 100%; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+          padding:20px; margin-bottom:16px; }
+  .card h2 { font-size:15px; font-weight:700; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+  .card .hint { font-size:12px; color:var(--text-dim); line-height:1.6; margin-bottom:12px; }
+
+  /* ── Intro box ── */
+  .intro-box { background: linear-gradient(135deg, rgba(56,189,248,.12), rgba(34,197,94,.08));
+               border: 1px solid var(--accent); padding: 16px 20px; border-radius: var(--radius); margin-bottom: 16px; }
+  .intro-box .title { font-size: 14px; font-weight: 700; color: var(--accent); margin-bottom: 6px; }
+  .intro-box .desc { font-size: 12.5px; color: var(--text-dim); line-height: 1.7; }
+
+  /* ── Form ── */
+  .form-row { margin-bottom: 14px; }
+  .form-row label { display:block; font-size:12px; font-weight:600; color:var(--text-dim); margin-bottom:6px; }
+  .form-row textarea, .form-row input[type="text"], .form-row select {
+    width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text);
+    border-radius:8px; padding:10px 12px; font-size:13.5px; font-family:inherit; line-height:1.6; outline:none;
+    resize: vertical;
+  }
+  .form-row textarea:focus, .form-row input:focus, .form-row select:focus { border-color: var(--accent); }
+  .form-row .q-area { min-height: 70px; }
+  .form-row .a-area { min-height: 280px; font-family: 'Pretendard','Menlo','Consolas',monospace; }
+  .form-row .row-flex { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .form-row .meta-hint { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+
+  /* ── Buttons ── */
+  .actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+  .btn-primary { background:var(--accent); color:#0f172a; border:none; border-radius:10px; padding:10px 22px;
+                 font-size:13.5px; font-weight:700; cursor:pointer; transition:opacity .15s; }
+  .btn-primary:hover { opacity: .85; }
+  .btn-primary:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-secondary { background: var(--surface2); border:1px solid var(--border); color:var(--text-dim);
+                   padding: 8px 14px; border-radius: 8px; font-size: 12px; cursor: pointer; }
+  .btn-secondary:hover { background: var(--surface3); color: var(--text); }
+  .btn-link { background: none; border: none; color: var(--accent); padding: 0; cursor: pointer; font-size: 12px; text-decoration: underline; }
+
+  /* ── Char counter ── */
+  .char-count { font-size: 11px; color: var(--text-dim); margin-top: 2px; text-align: right; }
+
+  /* ── Result Summary ── */
+  .summary-card { background: var(--surface); border:1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+  .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .summary-grid-2 { grid-template-columns: 1fr 2fr; } /* 법률 1 : 문진(3분할) 2 비율 */
+  .sm-cell { text-align: center; padding: 16px; background: var(--bg); border-radius: 10px; }
+  .sm-cell .sm-label { font-size: 11px; color: var(--text-dim); font-weight: 600; margin-bottom: 8px; }
+  .sm-cell .sm-grade { display: inline-flex; align-items: center; justify-content: center;
+                       width: 56px; height: 56px; border-radius: 14px; font-size: 26px; font-weight: 800; margin-bottom: 6px; }
+  .sm-cell .sm-score { font-size: 22px; font-weight: 800; color: var(--text); }
+  .sm-cell .sm-score .out-of { font-size: 12px; color: var(--text-dim); font-weight: 600; }
+  .sm-cell .sm-extra { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+
+  /* ── Grade colors ── */
+  .grade-A { background:#22c55e33; color:var(--green); }
+  .grade-B { background:#38bdf833; color:var(--accent); }
+  .grade-C { background:#eab30833; color:var(--yellow); }
+  .grade-D { background:#f9731633; color:var(--orange); }
+  .grade-F { background:#ef444433; color:var(--red); }
+  .grade-na { background: var(--surface2); color: var(--text-dim); }
+
+  /* ── Section result cards ── */
+  .result-card { background: var(--surface); border:1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 14px; }
+  .result-card .rc-header { display:flex; align-items:center; gap:10px; margin-bottom: 12px; }
+  .result-card .rc-title { font-size: 14px; font-weight: 700; }
+  .result-card .rc-badge { padding: 3px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; }
+  .result-card .rc-badge.pass { background: rgba(34,197,94,.15); color: var(--green); }
+  .result-card .rc-badge.fail { background: rgba(239,68,68,.15); color: var(--red); }
+  .result-card .rc-meta { font-size: 11px; color: var(--text-dim); }
+
+  /* ── Violation list ── */
+  .viol-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .viol-item { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .viol-item .vi-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+  .viol-item .vi-sev { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 6px; }
+  .vi-sev.CRITICAL { background:#ef444433; color:var(--red); }
+  .vi-sev.HIGH { background:#f9731633; color:var(--orange); }
+  .vi-sev.MEDIUM { background:#eab30833; color:var(--yellow); }
+  .vi-sev.LOW { background:#38bdf833; color:var(--accent); }
+  .viol-item .vi-name { font-size: 12.5px; font-weight: 600; }
+  .viol-item .vi-law { font-size: 11px; color: var(--text-dim); }
+  .viol-item .vi-matched { font-size: 12px; color: var(--text); background: var(--surface2); padding: 6px 10px;
+                           border-radius: 6px; margin-top: 4px; line-height: 1.6; word-break: break-word; }
+  .viol-item .vi-desc { font-size: 11.5px; color: var(--text-dim); margin-top: 4px; line-height: 1.5; }
+
+  /* ── Axis bars (consultation) ── */
+  .axes { display: flex; flex-direction: column; gap: 8px; }
+  .axis { display: grid; grid-template-columns: 130px 1fr 60px; gap: 12px; align-items: center; font-size: 12px; }
+  .axis .name { color: var(--text); font-weight: 600; }
+  .axis .bar-bg { background: var(--bg); border-radius: 6px; height: 10px; overflow: hidden; }
+  .axis .bar-fill { background: var(--accent); height: 100%; border-radius: 6px; transition: width .3s; }
+  .axis .val { text-align: right; color: var(--text-dim); font-size: 11.5px; }
+  .axis .val .max { color: var(--text-dim); }
+
+  /* ── Summary / recommendation ── */
+  .text-box { background: var(--bg); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 6px;
+              font-size: 12.5px; color: var(--text); line-height: 1.7; margin-top: 8px; }
+  .text-box.warn { border-left-color: var(--orange); }
+  .text-box.good { border-left-color: var(--green); }
+  .text-box .lbl { font-size: 11px; color: var(--text-dim); font-weight: 600; margin-bottom: 4px; }
+
+  /* ── Loader ── */
+  .eval-loading { color: var(--yellow); font-size: 12.5px; margin-top: 12px; }
+  .eval-loading::before { content: "⏳ "; }
+  .err-msg { background: rgba(239,68,68,.12); border: 1px solid var(--red); color: var(--red);
+             padding: 10px 14px; border-radius: 8px; font-size: 12.5px; margin-top: 10px; }
+
+  /* ── Login modal placeholder ── */
+  #loginGate { display:none; position:fixed; inset:0; background:rgba(15,23,42,.95); z-index:1000;
+               align-items:center; justify-content:center; }
+  #loginGate.show { display:flex; }
+  #loginGate .modal { background:var(--surface); padding:30px; border-radius:12px; max-width:400px;
+                      text-align:center; }
+  #loginGate h2 { font-size:18px; margin-bottom:14px; }
+  #loginGate p { color:var(--text-dim); font-size:13px; margin-bottom: 18px; line-height: 1.6; }
+  #loginGate a { color: var(--accent); text-decoration: underline; }
+
+  /* ── 종합 카드: 문진 3분할 mini ── */
+  .sm-cell-multi { padding: 12px; }
+  .sm-multi-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 4px; }
+  .sm-mini { background: var(--surface); border-radius: 8px; padding: 8px 4px; }
+  .sm-mini-label { font-size: 10px; font-weight: 700; color: var(--text-dim); line-height: 1.3; margin-bottom: 6px; }
+  .sm-mini-label .sm-mini-sub { font-size: 9px; font-weight: 400; opacity: 0.7; }
+  .sm-grade-mini { width: 36px; height: 36px; font-size: 16px; border-radius: 10px; margin: 0 auto 4px; }
+  .sm-mini-score { font-size: 14px; font-weight: 700; color: var(--text); }
+
+  /* ── 3개 비교 grid ── */
+  .cons-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .cons-card { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+  .cons-card[data-ver="v15"] { border-color: var(--accent); }
+  .cons-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .cons-card-title { font-size: 13px; font-weight: 700; color: var(--text); }
+  .cons-card-meta { font-size: 10.5px; color: var(--text-dim); margin-bottom: 10px; }
+  .cons-card .axes { gap: 6px; }
+  .cons-card .axis { grid-template-columns: 90px 1fr 56px; font-size: 11px; }
+  .cons-card .axis .name { font-size: 11px; }
+  .cons-card .text-box { font-size: 11px; padding: 8px 10px; margin-top: 6px; }
+  .cons-card .text-box .lbl { font-size: 9px; }
+
+  /* ── axis 상세 (details + missing) ── */
+  .axis-group { display: flex; flex-direction: column; gap: 1px; padding: 4px 0; border-bottom: 1px dashed transparent; }
+  .axis-group:hover { background: rgba(56,189,248,.04); border-radius: 6px; }
+  .axis-detail { padding: 4px 8px 4px 14px; font-size: 10.5px; color: var(--text-dim); line-height: 1.55;
+                 background: rgba(255,255,255,.02); border-left: 2px solid var(--surface3); border-radius: 0 6px 6px 0;
+                 margin-top: 4px; margin-left: 6px; }
+  .axis-detail .ad-row { padding: 1px 0; word-break: break-word; }
+  .axis-detail .ad-row.ad-missing { color: var(--orange); font-weight: 500; }
+  .axis-detail .ad-row.ad-missing::before { content: '⚠ 누락: '; font-weight: 700; }
+  .axis-detail .ad-row.ad-details::before { content: '▸ '; color: var(--accent); }
+  /* 총점 강조 */
+  .cons-total { margin-top: 10px; padding: 8px 10px; background: var(--surface2); border-radius: 6px;
+                font-size: 12px; font-weight: 700; text-align: center; color: var(--text); }
+  .cons-total .ct-grade { font-size: 14px; margin-right: 6px; }
+
+  /* ── 내보내기 버튼 영역 ── */
+  .export-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn-export { background: var(--surface2); border: 1px solid var(--accent); color: var(--accent);
+                padding: 8px 14px; border-radius: 8px; font-size: 12.5px; font-weight: 700; cursor: pointer;
+                transition: all .15s; }
+  .btn-export:hover { background: var(--accent-dim); }
+  .btn-export-print { border-color: var(--green); color: var(--green); }
+  .btn-export-print:hover { background: rgba(34,197,94,.15); }
+
+  @media(max-width:1100px) {
+    .cons-grid { grid-template-columns: 1fr; }
+    .cons-card .axis { grid-template-columns: 130px 1fr 56px; font-size: 12px; }
+  }
+  @media(max-width:768px) {
+    .summary-grid { grid-template-columns: 1fr; }
+    .axis { grid-template-columns: 100px 1fr 50px; }
+    .sm-multi-grid { grid-template-columns: 1fr 1fr 1fr; gap: 4px; }
+    .sm-grade-mini { width: 28px; height: 28px; font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Top Bar (다른 페이지와 동일) -->
+<div class="topbar">
+  <h1>&#127973; 나만의 주치의</h1>
+  <a href="/" class="nav-btn">채팅 테스터</a>
+  <a href="/manager" class="nav-btn">시나리오 관리</a>
+  <a href="/history" class="nav-btn">테스트 이력</a>
+  <a href="/healthbench" class="nav-btn">🩺 HealthBench</a>
+  <a href="/guidelines" class="nav-btn">법률 평가 기준</a>
+  <a href="/criteria" class="nav-btn">문진 평가 기준</a>
+  <a href="/external-eval" class="nav-btn active">📋 외부 답변 평가</a>
+  <a href="/rlhf" class="nav-btn">RLHF 관리</a>
+  <a href="/settings" class="nav-btn" id="settingsNavLink">&#9881; 설정</a>
+  <span id="testerBadge" style="margin-left:auto;display:none;font-size:11px;color:var(--accent);background:var(--accent-dim);padding:3px 10px;border-radius:6px;cursor:pointer;white-space:nowrap" onclick="if(confirm('로그아웃 하시겠습니까?'))testerLogout()"></span>
+</div>
+
+<!-- Login modal -->
+<div id="loginGate">
+  <div class="modal">
+    <h2>🔒 로그인 필요</h2>
+    <p>외부 답변 평가 페이지를 사용하려면 먼저 로그인이 필요합니다.</p>
+    <p><a href="/?next=/external-eval">로그인 페이지로 이동 →</a></p>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- 안내 -->
+  <div class="intro-box">
+    <div class="title">📋 외부 AI 답변 평가 · 3개 문진 기준 동시 비교</div>
+    <div class="desc">
+      Claude, ChatGPT 등 외부에서 생성된 답변을 <b>나만의 주치의 평가 기준</b>으로 평가합니다.<br>
+      ▸ <b>GPT 법률 평가</b> (3~5초) — <b>GPT 문진 품질 평가 × 3버전</b> (3~5초)<br>
+      <b>v1.1.1</b> 운영 멀티턴 / <b>v1.5</b> 단일턴 응답 내 문진 Flow 표현 / <b>v2.0</b> 단일턴 답변 가치<br>
+      → 네 평가가 병렬로 실행되며 결과가 도착하는 대로 표시됩니다.
+      &nbsp;·&nbsp; <a href="/reports/v15_advisor_consensus_report.docx" style="color:var(--accent);text-decoration:underline">📄 v1.5 자문 의견 수렴 보고서(docx)</a>
+    </div>
+  </div>
+
+  <!-- 입력 -->
+  <div class="card">
+    <h2>📝 평가 입력</h2>
+
+    <!-- 시나리오 자동 채우기 -->
+    <div class="form-row">
+      <label>시나리오에서 질문 불러오기 <span style="color:var(--text-dim);font-weight:400">(선택)</span></label>
+      <div class="row-flex">
+        <select id="scenarioSelect" style="flex:1;min-width:220px">
+          <option value="">— 직접 입력 —</option>
+        </select>
+        <button class="btn-secondary" onclick="loadScenarioPrompt()">선택한 질문 가져오기</button>
+        <button class="btn-secondary" onclick="clearForm()">전체 비우기</button>
+      </div>
+      <div class="meta-hint">시나리오를 선택하면 질문 텍스트가 자동으로 채워집니다.</div>
+    </div>
+
+    <!-- 사용자 질문 -->
+    <div class="form-row">
+      <label>① 사용자 질문 (prompt) <span style="color:var(--red)">*</span></label>
+      <textarea id="userPrompt" class="q-area" placeholder="예) 50대 여성입니다. 어깨가 아파서 팔을 들어올리기 힘들고 밤에는 더 아파요. 어떻게 해야 할까요?"></textarea>
+      <div class="char-count" id="promptCount">0자</div>
+    </div>
+
+    <!-- 외부 답변 -->
+    <div class="form-row">
+      <label>② 외부 AI 답변 (Claude/ChatGPT/Gemini 등에서 복사) <span style="color:var(--red)">*</span></label>
+      <textarea id="externalResponse" class="a-area" placeholder="외부 AI에서 받은 답변을 그대로 복사해서 붙여넣으세요..."></textarea>
+      <div class="char-count" id="responseCount">0자</div>
+    </div>
+
+    <div class="actions">
+      <button class="btn-primary" id="runBtn" onclick="runEvaluation()">▶ 평가 실행</button>
+      <span style="font-size:11.5px;color:var(--text-dim)">실행 시 법률 + 문진 3버전 평가가 병렬 호출됩니다 (총 약 5초)</span>
+    </div>
+    <div id="errBox"></div>
+  </div>
+
+  <!-- 결과: 종합 -->
+  <div id="resultSummary" style="display:none">
+    <div class="summary-card">
+      <h2 style="font-size:15px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px">
+        🎯 종합 결과
+        <span style="font-size:11px;font-weight:600;color:var(--text-dim);margin-left:auto" id="evalMeta"></span>
+      </h2>
+      <div class="summary-grid summary-grid-2">
+        <div class="sm-cell">
+          <div class="sm-label">GPT 법률 평가</div>
+          <div class="sm-grade" id="sm_gpt_grade">—</div>
+          <div class="sm-score" id="sm_gpt_score">—<span class="out-of"> / 100</span></div>
+          <div class="sm-extra" id="sm_gpt_extra">대기 중</div>
+        </div>
+        <div class="sm-cell sm-cell-multi">
+          <div class="sm-label">문진 품질 평가 (3개 기준 비교)</div>
+          <div class="sm-multi-grid">
+            <div class="sm-mini">
+              <div class="sm-mini-label">v1.1.1<br><span class="sm-mini-sub">멀티턴 운영</span></div>
+              <div class="sm-grade sm-grade-mini" id="sm_cons_v11_grade">—</div>
+              <div class="sm-mini-score" id="sm_cons_v11_score">—</div>
+            </div>
+            <div class="sm-mini">
+              <div class="sm-mini-label">v1.5<br><span class="sm-mini-sub">문진Flow표현</span></div>
+              <div class="sm-grade sm-grade-mini" id="sm_cons_v15_grade">—</div>
+              <div class="sm-mini-score" id="sm_cons_v15_score">—</div>
+            </div>
+            <div class="sm-mini">
+              <div class="sm-mini-label">v2.0<br><span class="sm-mini-sub">단일턴 가치</span></div>
+              <div class="sm-grade sm-grade-mini" id="sm_cons_v20_grade">—</div>
+              <div class="sm-mini-score" id="sm_cons_v20_score">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="actions export-actions" style="margin-top:14px">
+        <button class="btn-export" onclick="publishShare()" style="background:var(--accent);color:#0f172a;border-color:var(--accent);font-weight:800">🔗 공유 페이지로 게시 (의견 수렴)</button>
+        <button class="btn-export" onclick="exportResultHTML()">📄 HTML 내보내기</button>
+        <button class="btn-export btn-export-print" onclick="printResult()">🖨 인쇄 / PDF 저장</button>
+        <button class="btn-secondary" onclick="copyResult()">📋 JSON 복사</button>
+        <button class="btn-secondary" onclick="downloadResult()">💾 텍스트 다운로드</button>
+      </div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:8px;line-height:1.6">
+        ▸ <b>공유 페이지 게시</b>: 누구나 접근 가능한 공개 페이지 생성 — 답변/평가에 대한 의견 수렴 (v2.0 제외, v1.1.1·v1.5만 표시)<br>
+        ▸ <b>HTML 내보내기</b>: 자체 완결 HTML 파일 다운로드 (이메일/슬랙 공유)<br>
+        ▸ <b>인쇄/PDF</b>: 새 창 인쇄 대화상자 → "PDF로 저장"
+      </div>
+    </div>
+  </div>
+
+  <!-- 결과: GPT 법률 -->
+  <div id="gptResult" class="result-card" style="display:none">
+    <div class="rc-header">
+      <div class="rc-title">[1] GPT 법률 평가</div>
+      <span class="rc-badge" id="gpt_badge">—</span>
+      <span class="rc-meta" id="gpt_meta"></span>
+    </div>
+    <div id="gpt_summary" class="text-box" style="display:none"></div>
+    <div id="gpt_violations" class="viol-list"></div>
+    <div id="gpt_recommendation" class="text-box good" style="display:none"></div>
+  </div>
+
+  <!-- 결과: 문진 품질 — 3개 기준 비교 (v1.1.1 / v1.5 / v2.0) -->
+  <div id="consultationResults" class="result-card" style="display:none">
+    <div class="rc-header" style="margin-bottom:6px">
+      <div class="rc-title">[2] GPT 문진 품질 평가 — 3개 기준 동시 비교</div>
+    </div>
+    <div style="font-size:11.5px;color:var(--text-dim);margin-bottom:14px;line-height:1.6">
+      ▸ <b>v1.1.1</b> 운영 기준 (멀티턴 문진 가정) ▸ <b>v1.5</b> 단일턴 응답 내 문진 Flow 표현 평가 ▸ <b>v2.0</b> 단일턴 답변 가치(정보·맞춤·행동)
+    </div>
+    <div class="cons-grid">
+      <!-- v1.1.1 카드 -->
+      <div class="cons-card" data-ver="v11">
+        <div class="cons-card-header">
+          <div class="cons-card-title">v1.1.1 (운영)</div>
+          <span class="rc-badge" id="cons_v11_badge">—</span>
+        </div>
+        <div class="cons-card-meta" id="cons_v11_meta"></div>
+        <div class="axes" id="cons_v11_axes"></div>
+        <div class="text-box" id="cons_v11_summary" style="display:none"></div>
+        <div class="text-box good" id="cons_v11_recommendation" style="display:none"></div>
+      </div>
+      <!-- v1.5 카드 -->
+      <div class="cons-card" data-ver="v15">
+        <div class="cons-card-header">
+          <div class="cons-card-title">v1.5 (문진Flow표현)</div>
+          <span class="rc-badge" id="cons_v15_badge">—</span>
+        </div>
+        <div class="cons-card-meta" id="cons_v15_meta"></div>
+        <div class="axes" id="cons_v15_axes"></div>
+        <div class="text-box" id="cons_v15_summary" style="display:none"></div>
+        <div class="text-box good" id="cons_v15_recommendation" style="display:none"></div>
+      </div>
+      <!-- v2.0 카드 -->
+      <div class="cons-card" data-ver="v20">
+        <div class="cons-card-header">
+          <div class="cons-card-title">v2.0 (단일턴 가치)</div>
+          <span class="rc-badge" id="cons_v20_badge">—</span>
+        </div>
+        <div class="cons-card-meta" id="cons_v20_meta"></div>
+        <div class="axes" id="cons_v20_axes"></div>
+        <div class="text-box" id="cons_v20_summary" style="display:none"></div>
+        <div class="text-box good" id="cons_v20_recommendation" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+// 인증 + 시나리오 로드
+// ════════════════════════════════════════════════════════════
+async function initAuth() {
+  try {
+    const auth = await fetch('/api/auth/status').then(r => r.json());
+    if (!auth.tester && !auth.isAdmin) {
+      document.getElementById('loginGate').classList.add('show');
+      return false;
+    }
+    // 테스터 배지
+    if (auth.tester) {
+      const badge = document.getElementById('testerBadge');
+      badge.style.display = '';
+      badge.textContent = `👤 ${auth.tester.alias}`;
+    }
+    // advisor면 다른 메뉴 숨김 + 평가결과 자체 숨기지는 않음 (이 페이지 자체가 평가용)
+    if (!auth.isAdmin) {
+      const sl = document.getElementById('settingsNavLink');
+      if (sl) sl.style.display = 'none';
+    }
+    return true;
+  } catch (e) {
+    console.error('auth check failed', e);
+    return true; // 폴백: 보여줌
+  }
+}
+
+async function testerLogout() {
+  try { await fetch('/api/auth/logout', { method: 'POST' }); } catch(e) {}
+  location.href = '/';
+}
+
+async function loadScenarios() {
+  try {
+    // 가벼운 summary만 (id, prompt, category)
+    const data = await fetch('/api/scenarios?fields=summary&limit=1000').then(r => r.json());
+    const list = data.scenarios || data || [];
+    const sel = document.getElementById('scenarioSelect');
+    list.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.id;
+      const prompt = (s.prompt || '').slice(0, 60);
+      const cat = s.category || '미분류';
+      opt.textContent = `[${cat}] ${prompt}${prompt.length === 60 ? '…' : ''}`;
+      opt.dataset.prompt = s.prompt || '';
+      sel.appendChild(opt);
+    });
+  } catch (e) {
+    console.warn('scenario load failed', e);
+  }
+}
+
+function loadScenarioPrompt() {
+  const sel = document.getElementById('scenarioSelect');
+  const opt = sel.options[sel.selectedIndex];
+  if (!opt || !opt.dataset.prompt) {
+    alert('시나리오를 선택해주세요.');
+    return;
+  }
+  document.getElementById('userPrompt').value = opt.dataset.prompt;
+  updateCounts();
+}
+
+function clearForm() {
+  document.getElementById('userPrompt').value = '';
+  document.getElementById('externalResponse').value = '';
+  document.getElementById('scenarioSelect').value = '';
+  updateCounts();
+  // 결과 영역 숨김
+  document.getElementById('resultSummary').style.display = 'none';
+  document.getElementById('gptResult').style.display = 'none';
+  document.getElementById('consultationResults').style.display = 'none';
+  document.getElementById('errBox').innerHTML = '';
+}
+
+function updateCounts() {
+  document.getElementById('promptCount').textContent = (document.getElementById('userPrompt').value || '').length + '자';
+  document.getElementById('responseCount').textContent = (document.getElementById('externalResponse').value || '').length + '자';
+}
+
+// ════════════════════════════════════════════════════════════
+// 평가 실행
+// ════════════════════════════════════════════════════════════
+let _lastResult = null;
+
+async function runEvaluation() {
+  const prompt = document.getElementById('userPrompt').value.trim();
+  const response = document.getElementById('externalResponse').value.trim();
+  const errBox = document.getElementById('errBox');
+  errBox.innerHTML = '';
+
+  if (!prompt) {
+    errBox.innerHTML = '<div class="err-msg">사용자 질문(prompt)을 입력해주세요.</div>';
+    return;
+  }
+  if (!response) {
+    errBox.innerHTML = '<div class="err-msg">외부 AI 답변을 붙여넣어주세요.</div>';
+    return;
+  }
+  if (response.length < 20) {
+    errBox.innerHTML = '<div class="err-msg">답변이 너무 짧습니다 (최소 20자).</div>';
+    return;
+  }
+
+  // UI 초기화 — 모든 카드 표시 (로딩 상태)
+  document.getElementById('resultSummary').style.display = 'block';
+  document.getElementById('gptResult').style.display = 'block';
+  document.getElementById('consultationResults').style.display = 'block';
+
+  // 종합 카드 리셋 — gpt 법률만
+  ['gpt'].forEach(k => {
+    const g = document.getElementById('sm_' + k + '_grade');
+    const s = document.getElementById('sm_' + k + '_score');
+    const e = document.getElementById('sm_' + k + '_extra');
+    if (g) { g.className = 'sm-grade grade-na'; g.textContent = '...'; }
+    if (s) { s.innerHTML = '...<span class="out-of"> / 100</span>'; }
+    if (e) { e.textContent = '평가 중...'; }
+  });
+  // 종합 카드 리셋 — 문진 3버전 mini
+  ['v11','v15','v20'].forEach(v => {
+    const g = document.getElementById('sm_cons_' + v + '_grade');
+    const s = document.getElementById('sm_cons_' + v + '_score');
+    if (g) { g.className = 'sm-grade sm-grade-mini grade-na'; g.textContent = '...'; }
+    if (s) { s.textContent = '...'; }
+  });
+
+  // 각 카드 초기화 — gpt 법률
+  ['gpt_badge'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.className = 'rc-badge'; el.textContent = '평가 중...'; }
+  });
+  ['gpt_meta'].forEach(id => {
+    document.getElementById(id).textContent = '';
+  });
+  ['gpt_summary','gpt_recommendation'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.style.display = 'none'; el.innerHTML = ''; }
+  });
+  document.getElementById('gpt_violations').innerHTML = '';
+  // 문진 3개 카드 초기화
+  ['v11','v15','v20'].forEach(v => {
+    const badge = document.getElementById('cons_' + v + '_badge');
+    if (badge) { badge.className = 'rc-badge'; badge.textContent = '평가 중...'; }
+    document.getElementById('cons_' + v + '_meta').textContent = '';
+    document.getElementById('cons_' + v + '_axes').innerHTML = '';
+    ['summary','recommendation'].forEach(p => {
+      const el = document.getElementById('cons_' + v + '_' + p);
+      if (el) { el.style.display = 'none'; el.innerHTML = ''; }
+    });
+  });
+
+  // 버튼 비활성화
+  const runBtn = document.getElementById('runBtn');
+  runBtn.disabled = true;
+  runBtn.textContent = '⏳ 평가 중...';
+
+  document.getElementById('evalMeta').textContent = '평가 시작: ' + new Date().toLocaleString('ko-KR');
+
+  // 결과 누적 객체
+  _lastResult = {
+    timestamp: new Date().toISOString(),
+    prompt: prompt,
+    response: response,
+    gpt: null,
+    consultationV11: null,
+    consultationV15: null,
+    consultationV20: null,
+  };
+
+  // 네 평가를 병렬로 실행 (GPT법률 + 문진v1.1.1 + 문진v1.5 + 문진v2.0)
+  const tStart = performance.now();
+  const tasks = [
+    runGptLegal(prompt, response).then(r => { _lastResult.gpt = r; renderGptLegal(r); })
+      .catch(e => renderError('gpt', e)),
+    runConsultation(prompt, response, 'v11').then(r => { _lastResult.consultationV11 = r; renderConsultation(r, 'v11'); })
+      .catch(e => renderConsError('v11', e)),
+    runConsultation(prompt, response, 'v15').then(r => { _lastResult.consultationV15 = r; renderConsultation(r, 'v15'); })
+      .catch(e => renderConsError('v15', e)),
+    runConsultation(prompt, response, 'v20').then(r => { _lastResult.consultationV20 = r; renderConsultation(r, 'v20'); })
+      .catch(e => renderConsError('v20', e)),
+  ];
+
+  try {
+    await Promise.allSettled(tasks);
+  } finally {
+    const sec = Math.round((performance.now() - tStart) / 100) / 10;
+    runBtn.disabled = false;
+    runBtn.textContent = '▶ 다시 평가';
+    document.getElementById('evalMeta').textContent = '완료: ' + new Date().toLocaleString('ko-KR') + ` (${sec}s)`;
+  }
+}
+
+async function runGptLegal(prompt, response) {
+  const res = await fetch('/api/evaluate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt: prompt, response: response }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `GPT 법률 평가 실패 (HTTP ${res.status})`);
+  }
+  return await res.json();
+}
+
+async function runConsultation(prompt, response, version) {
+  const res = await fetch('/api/evaluate-consultation', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt: prompt, response: response, version: version || 'v11' }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `문진 평가 실패 (${version}, HTTP ${res.status})`);
+  }
+  return await res.json();
+}
+
+// ════════════════════════════════════════════════════════════
+// 렌더링
+// ════════════════════════════════════════════════════════════
+function scoreToGrade(score) {
+  if (score == null || isNaN(score)) return '?';
+  if (score >= 90) return 'A';
+  if (score >= 80) return 'B';
+  if (score >= 70) return 'C';
+  if (score >= 60) return 'D';
+  return 'F';
+}
+
+function applyGradeClass(el, grade) {
+  if (!el) return;
+  el.className = el.className.replace(/\bgrade-\w+\b/g, '').trim();
+  const g = (grade || '').toString().toUpperCase();
+  if (['A','B','C','D','F'].includes(g)) {
+    el.classList.add('sm-grade', 'grade-' + g);
+  } else {
+    el.classList.add('sm-grade', 'grade-na');
+  }
+}
+
+function renderGptLegal(data) {
+  const evaluation = data.evaluation || data;
+  const score = evaluation.score != null ? evaluation.score : null;
+  const grade = evaluation.grade || scoreToGrade(score);
+  const violations = evaluation.violations || [];
+  const passed = !!evaluation.passed;
+  const model = data.model || evaluation.model || '';
+
+  // 종합
+  const gradeEl = document.getElementById('sm_gpt_grade');
+  gradeEl.textContent = grade;
+  applyGradeClass(gradeEl, grade);
+  document.getElementById('sm_gpt_score').innerHTML = (score != null ? score : '?') + '<span class="out-of"> / 100</span>';
+  document.getElementById('sm_gpt_extra').textContent = `위반 ${violations.length}건 · ${passed ? '통과' : '미달'}`;
+
+  // 카드
+  const badge = document.getElementById('gpt_badge');
+  badge.className = 'rc-badge ' + (passed ? 'pass' : 'fail');
+  badge.textContent = passed ? `✓ 통과 (등급 ${grade})` : `✗ 미달 (등급 ${grade})`;
+  document.getElementById('gpt_meta').textContent = `${model ? 'model=' + model + ' · ' : ''}점수 ${score} / 100`;
+
+  if (evaluation.summary) {
+    const sm = document.getElementById('gpt_summary');
+    sm.style.display = 'block';
+    sm.innerHTML = '<div class="lbl">평가 요약</div>' + escapeHtml(evaluation.summary);
+  }
+
+  const vbox = document.getElementById('gpt_violations');
+  if (violations.length === 0) {
+    vbox.innerHTML = '<div style="font-size:12.5px;color:var(--green);padding:10px;background:rgba(34,197,94,.08);border-radius:6px">✓ 의료법 위반 없음</div>';
+  } else {
+    violations.forEach(v => vbox.appendChild(buildViolItem(v)));
+  }
+
+  if (evaluation.recommendation) {
+    const rb = document.getElementById('gpt_recommendation');
+    rb.style.display = 'block';
+    rb.innerHTML = '<div class="lbl">개선 권고</div>' + escapeHtml(evaluation.recommendation);
+  }
+}
+
+// 버전별 axis 한글 label 폴백 매핑 (서버가 name 주입 안 했을 경우)
+const CONS_AXIS_LABELS = {
+  // v1.1.x (운영)
+  symptomExploration: '증상 탐색',
+  redFlagScreening: '위험 선별',
+  patientContext: '환자 맥락',
+  structuredApproach: '단계적 접근',
+  appropriateGuidance: '적절한 안내',
+  // v1.5 (단일턴 문진 Flow)
+  safetyDisclosure: '의료법경계·안전고지',
+  redFlagAwareness: '위험신호 인식·전달',
+  consultationFlow: '문진 Flow 명시',
+  clinicalValue: '환자맞춤·임상가치',
+  actionAndCommunication: '행동가이드·의사소통',
+  // v2.0 (단일턴 가치)
+  clinicalContent: '임상정보 충실성',
+  personalization: '환자 맞춤성',
+  actionability: '행동가이드 명확성',
+  communicationQuality: '의사소통 품질',
+};
+const CONS_AXIS_MAX = {
+  symptomExploration: 25, redFlagScreening: 25, patientContext: 20, structuredApproach: 15, appropriateGuidance: 15,
+  safetyDisclosure: 15, redFlagAwareness: 25, consultationFlow: 25, clinicalValue: 20, actionAndCommunication: 15,
+  clinicalContent: 25, /* redFlagAwareness duplicate, v2.0=20: handled inline */ personalization: 20, actionability: 20, communicationQuality: 15,
+};
+
+function renderConsultation(data, version) {
+  // version: 'v11' | 'v15' | 'v20'
+  const v = version || 'v11';
+  const evaluation = data.evaluation || data;
+  const score = evaluation.totalScore != null ? evaluation.totalScore :
+                (evaluation.total_score != null ? evaluation.total_score :
+                 (evaluation.score != null ? evaluation.score : null));
+  const grade = evaluation.grade || scoreToGrade(score);
+  const model = data.model || evaluation._model || '';
+  const critVer = data.criteriaVersion || '';
+
+  // === 종합 카드 mini ===
+  const miniGrade = document.getElementById('sm_cons_' + v + '_grade');
+  if (miniGrade) {
+    miniGrade.textContent = grade;
+    miniGrade.className = 'sm-grade sm-grade-mini';
+    const g = (grade || '').toString().toUpperCase();
+    if (['A','B','C','D','F'].includes(g)) miniGrade.classList.add('grade-' + g);
+    else miniGrade.classList.add('grade-na');
+  }
+  const miniScore = document.getElementById('sm_cons_' + v + '_score');
+  if (miniScore) miniScore.textContent = (score != null ? score + ' / 100' : '?');
+
+  // === 상세 카드 ===
+  const badge = document.getElementById('cons_' + v + '_badge');
+  if (badge) {
+    badge.className = 'rc-badge ' + (score >= 70 ? 'pass' : 'fail');
+    badge.textContent = `${grade} · ${score}`;
+  }
+  document.getElementById('cons_' + v + '_meta').textContent = `${critVer ? 'v' + critVer + ' · ' : ''}${model || ''}`;
+
+  // axes (상세 표시 — buildAxisWithDetail 사용)
+  const scoresObj = evaluation.scores || evaluation.axes || extractAxesFromEval(evaluation);
+  const axesBox = document.getElementById('cons_' + v + '_axes');
+  axesBox.innerHTML = '';
+  if (scoresObj && typeof scoresObj === 'object') {
+    Object.entries(scoresObj).forEach(([key, val]) => {
+      if (key.startsWith('_') || ['total','totalScore','grade'].includes(key)) return;
+      if (typeof val === 'object' && val !== null) {
+        const sc = val.score != null ? val.score : (val.value != null ? val.value : 0);
+        const max = val.maxScore != null ? val.maxScore : (val.max != null ? val.max : (CONS_AXIS_MAX[key] || 100));
+        const displayName = val.name || CONS_AXIS_LABELS[key] || key;
+        const details = val.details || val.comment || val.reason || '';
+        const missing = val.missing || [];
+        axesBox.appendChild(buildAxisWithDetail(displayName, sc, max, details, missing));
+      } else if (typeof val === 'number') {
+        const max = CONS_AXIS_MAX[key] || 100;
+        const displayName = CONS_AXIS_LABELS[key] || key;
+        axesBox.appendChild(buildAxisWithDetail(displayName, val, max, '', []));
+      }
+    });
+  }
+  if (axesBox.children.length === 0) {
+    axesBox.innerHTML = '<div style="font-size:11px;color:var(--text-dim)">축별 점수 데이터 없음</div>';
+  }
+
+  // 총점 박스
+  const totalBox = document.createElement('div');
+  totalBox.className = 'cons-total';
+  totalBox.innerHTML = `<span class="ct-grade grade-${grade}">${grade}</span> 합계 <b>${score}</b> / 100`;
+  axesBox.appendChild(totalBox);
+
+  // 요약
+  if (evaluation.summary) {
+    const sm = document.getElementById('cons_' + v + '_summary');
+    sm.style.display = 'block';
+    sm.innerHTML = '<div class="lbl">📝 평가 요약</div>' + escapeHtml(evaluation.summary);
+  }
+  // 누락 핵심 항목 (전체)
+  if (evaluation.missingItems && Array.isArray(evaluation.missingItems) && evaluation.missingItems.length > 0) {
+    const mi = document.createElement('div');
+    mi.className = 'text-box warn';
+    mi.innerHTML = '<div class="lbl">⚠ 누락된 핵심 항목</div>' +
+      evaluation.missingItems.map(s => '• ' + escapeHtml(s)).join('<br>');
+    const sm = document.getElementById('cons_' + v + '_summary');
+    sm.parentNode.insertBefore(mi, sm.nextSibling);
+  }
+  // 개선 권고
+  const rec = evaluation.recommendation || evaluation.suggestions || evaluation.improvements;
+  if (rec) {
+    const rb = document.getElementById('cons_' + v + '_recommendation');
+    rb.style.display = 'block';
+    const recText = Array.isArray(rec) ? rec.map(s => '• ' + s).join('\n') : rec;
+    rb.innerHTML = '<div class="lbl">💡 개선 권고</div>' + escapeHtml(recText).replace(/\n/g, '<br>');
+  }
+}
+
+function renderConsError(version, err) {
+  const v = version || 'v11';
+  const msg = err && err.message ? err.message : String(err);
+  const miniGrade = document.getElementById('sm_cons_' + v + '_grade');
+  if (miniGrade) { miniGrade.textContent = 'X'; miniGrade.className = 'sm-grade sm-grade-mini grade-na'; }
+  const miniScore = document.getElementById('sm_cons_' + v + '_score');
+  if (miniScore) miniScore.textContent = '실패';
+  const badge = document.getElementById('cons_' + v + '_badge');
+  if (badge) { badge.className = 'rc-badge fail'; badge.textContent = '❌ 실패'; }
+  const meta = document.getElementById('cons_' + v + '_meta');
+  if (meta) meta.textContent = '오류: ' + msg.slice(0, 80);
+}
+
+function extractAxesFromEval(evalObj) {
+  // evaluation 자체가 {증상수집:8, 기저질환:7, ...} 형태일 수도 있음
+  const out = {};
+  const skipKeys = new Set(['totalScore','total_score','grade','summary','recommendation','suggestions','improvements','_model','score','passed','model','axes','scores']);
+  for (const [k, v] of Object.entries(evalObj || {})) {
+    if (skipKeys.has(k) || k.startsWith('_')) continue;
+    if (typeof v === 'number' || (typeof v === 'object' && v && (v.score != null || v.value != null))) {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+
+function buildAxisBar(name, score, max, comment) {
+  const div = document.createElement('div');
+  div.className = 'axis';
+  const pct = max > 0 ? (score / max) * 100 : 0;
+  const color = pct >= 80 ? 'var(--green)' : (pct >= 60 ? 'var(--accent)' : (pct >= 40 ? 'var(--yellow)' : 'var(--red)'));
+  div.innerHTML = `
+    <div class="name" title="${escapeHtml(comment)}">${escapeHtml(name)}</div>
+    <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+    <div class="val">${score}<span class="max"> / ${max}</span></div>
+  `;
+  return div;
+}
+
+// axis + details/missing 한 묶음 (상세 표시용)
+function buildAxisWithDetail(name, score, max, details, missing) {
+  const wrap = document.createElement('div');
+  wrap.className = 'axis-group';
+  wrap.appendChild(buildAxisBar(name, score, max, details));
+  const hasDetails = details && String(details).trim();
+  const missingArr = Array.isArray(missing) ? missing.filter(Boolean) : (missing ? [String(missing)] : []);
+  if (hasDetails || missingArr.length > 0) {
+    const det = document.createElement('div');
+    det.className = 'axis-detail';
+    let h = '';
+    if (hasDetails) h += `<div class="ad-row ad-details">${escapeHtml(details)}</div>`;
+    if (missingArr.length > 0) h += `<div class="ad-row ad-missing">${escapeHtml(missingArr.join(', '))}</div>`;
+    det.innerHTML = h;
+    wrap.appendChild(det);
+  }
+  return wrap;
+}
+
+function buildViolItem(v) {
+  const div = document.createElement('div');
+  div.className = 'viol-item';
+  const sev = (v.severity || 'LOW').toUpperCase();
+  const law = v.law || '';
+  const name = v.name || v.type || v.rule_name || '의료법 위반';
+  const matched = v.matched || v.matched_text || '';
+  const desc = v.description || '';
+  div.innerHTML = `
+    <div class="vi-line">
+      <span class="vi-sev ${sev}">${sev}</span>
+      <span class="vi-name">${escapeHtml(name)}</span>
+      ${law ? `<span class="vi-law">· ${escapeHtml(law)}</span>` : ''}
+    </div>
+    ${matched ? `<div class="vi-matched">「${escapeHtml(matched)}」</div>` : ''}
+    ${desc ? `<div class="vi-desc">${escapeHtml(desc)}</div>` : ''}
+  `;
+  return div;
+}
+
+function renderError(kind, err) {
+  // kind: 'gpt'  (cons는 renderConsError로 별도 처리)
+  const msg = err && err.message ? err.message : String(err);
+  const labels = { gpt: 'GPT 법률' };
+  const cardIdMap = { gpt: 'gptResult' };
+  const badgeIdMap = { gpt: 'gpt_badge' };
+  const card = document.getElementById(cardIdMap[kind]);
+  if (card) {
+    const badge = document.getElementById(badgeIdMap[kind]);
+    if (badge) { badge.className = 'rc-badge fail'; badge.textContent = '❌ 실패'; }
+    let errDiv = card.querySelector('.err-msg');
+    if (!errDiv) {
+      errDiv = document.createElement('div');
+      errDiv.className = 'err-msg';
+      card.appendChild(errDiv);
+    }
+    errDiv.textContent = `${labels[kind] || kind} 평가 실패: ${msg}`;
+  }
+  // 종합 카드도 표시
+  const gradeEl = document.getElementById('sm_' + kind + '_grade');
+  if (gradeEl) { gradeEl.textContent = 'X'; gradeEl.className = 'sm-grade grade-na'; }
+  const extraEl = document.getElementById('sm_' + kind + '_extra');
+  if (extraEl) extraEl.textContent = '실패: ' + msg.slice(0, 30);
+}
+
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// ════════════════════════════════════════════════════════════
+// Mini Markdown 렌더러 (외부 답변 가시성용)
+// 제목(#~####), 번호리스트(1. 2. 3.), 불릿(- * • ▸), 굵게(**),
+// 기울임(*), 코드(`), 인용(>), 구분선(---), 들여쓰기 보존
+// ════════════════════════════════════════════════════════════
+function renderMarkdownLite(rawText) {
+  if (!rawText) return '';
+  const escapeBase = (s) => String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+  // 인라인 포맷: **굵게**, *기울임*, `코드`
+  const formatInline = (s) => s
+    .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/(?:^|(?<=\s))\*([^*\n]+)\*(?=\s|$|[.,!?])/g, '<em>$1</em>')
+    .replace(/`([^`\n]+)`/g, '<code>$1</code>');
+
+  const lines = escapeBase(rawText).split('\n');
+  const out = [];
+  let listStack = []; // [{type:'ul'|'ol', indent: 들여쓰기 칸수}]
+
+  const closeListsUpTo = (targetIndent) => {
+    while (listStack.length && listStack[listStack.length - 1].indent >= targetIndent) {
+      out.push(`</${listStack.pop().type}>`);
+    }
+  };
+  const closeAllLists = () => { while (listStack.length) out.push(`</${listStack.pop().type}>`); };
+
+  let inBlockquote = false;
+  const closeBq = () => { if (inBlockquote) { out.push('</blockquote>'); inBlockquote = false; } };
+
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i];
+    if (!rawLine.trim()) {
+      // 빈 줄 → 단락 분리. 리스트도 함께 닫는다 (다음 1.은 새 ol로 시작 — start 속성 자동 적용)
+      closeAllLists();
+      closeBq();
+      out.push('');
+      continue;
+    }
+    // 들여쓰기 (공백 또는 탭) 카운트
+    const indentMatch = rawLine.match(/^(\s*)/);
+    const indentChars = indentMatch[1].replace(/\t/g, '    '); // 탭 = 4공백
+    const indent = indentChars.length;
+    const stripped = rawLine.slice(indentMatch[1].length);
+
+    let m;
+    // ── 제목 (####+ 까지) ──
+    if (m = stripped.match(/^(#{1,6})\s+(.+)$/)) {
+      closeAllLists(); closeBq();
+      const lvl = Math.min(6, m[1].length);
+      out.push(`<div class="md-h md-h${lvl}">${formatInline(m[2])}</div>`);
+      continue;
+    }
+    // ── 구분선 ──
+    if (/^([-*_]\s*){3,}$/.test(stripped)) {
+      closeAllLists(); closeBq();
+      out.push('<hr class="md-hr">');
+      continue;
+    }
+    // ── 인용 (> ...) ──
+    if (m = stripped.match(/^&gt;\s*(.+)$/)) {
+      closeAllLists();
+      if (!inBlockquote) { out.push('<blockquote class="md-bq">'); inBlockquote = true; }
+      out.push(`<div class="md-bq-line">${formatInline(m[1])}</div>`);
+      continue;
+    }
+    // ── 번호 리스트 (1. / 2. ...) ──
+    if (m = stripped.match(/^(\d+)\.\s+(.+)$/)) {
+      closeBq();
+      // 들여쓰기 같거나 큰 ol 유지, 작으면 닫고 새로 시작
+      closeListsUpTo(indent + 1);
+      if (!listStack.length || listStack[listStack.length - 1].type !== 'ol' || listStack[listStack.length - 1].indent !== indent) {
+        // 동일 indent에서 다른 타입이면 닫고 새로
+        if (listStack.length && listStack[listStack.length - 1].indent === indent) {
+          out.push(`</${listStack.pop().type}>`);
+        }
+        out.push(`<ol class="md-ol" start="${m[1]}">`);
+        listStack.push({ type: 'ol', indent: indent });
+      }
+      out.push(`<li class="md-li">${formatInline(m[2])}</li>`);
+      continue;
+    }
+    // ── 불릿 (-, *, •, ▸) ──
+    if (m = stripped.match(/^[-*•▸▪◦●]\s+(.+)$/)) {
+      closeBq();
+      closeListsUpTo(indent + 1);
+      if (!listStack.length || listStack[listStack.length - 1].type !== 'ul' || listStack[listStack.length - 1].indent !== indent) {
+        if (listStack.length && listStack[listStack.length - 1].indent === indent) {
+          out.push(`</${listStack.pop().type}>`);
+        }
+        out.push(`<ul class="md-ul">`);
+        listStack.push({ type: 'ul', indent: indent });
+      }
+      out.push(`<li class="md-li">${formatInline(m[1])}</li>`);
+      continue;
+    }
+    // ── 일반 단락 ──
+    // 이모지+텍스트 시작 (예: 🩺 ..., 🚫 ..., 🏃‍♂️ ...) → 섹션 라벨로 강조
+    if (/^([\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F100}-\u{1F1FF}]️?(?:\u{200D}[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F100}-\u{1F1FF}]️?)*)\s+(.{2,})$/u.test(stripped)) {
+      const em = stripped.match(/^([\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F100}-\u{1F1FF}]️?(?:\u{200D}[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F100}-\u{1F1FF}]️?)*)\s+(.+)$/u);
+      // 단, 리스트 안이면 일반 처리. 빈 줄 다음의 짧은 단락(50자 이하)만 헤더 처리
+      if (!listStack.length && stripped.length <= 80) {
+        closeBq();
+        out.push(`<div class="md-emoji-header"><span class="me-icon">${em[1]}</span><span class="me-text">${formatInline(em[2])}</span></div>`);
+        continue;
+      }
+    }
+    // 일반 텍스트는 들여쓰기 0이면 모든 리스트 닫고 새 단락 시작 (li 바깥)
+    // 들여쓰기가 있으면 listsUpTo만 닫고 단락 (들여쓰기된 본문은 li 직후 따라옴 — DOM상 li 뒤지만 시각상 이어짐)
+    if (indent === 0) closeAllLists();
+    else closeListsUpTo(indent + 1);
+    closeBq();
+    const indentSpan = indent > 0 ? `<span class="md-indent" style="display:inline-block;width:${indent * 7}px"></span>` : '';
+    out.push(`<div class="md-p">${indentSpan}${formatInline(stripped)}</div>`);
+  }
+
+  closeAllLists();
+  closeBq();
+  return out.join('\n');
+}
+
+// ════════════════════════════════════════════════════════════
+// 결과 HTML 내보내기 (자체 완결 + 인쇄 친화)
+// ════════════════════════════════════════════════════════════
+function buildExportHtml(r) {
+  // 자체 완결 HTML — 외부 의존성 없음, 단독으로 열림, 인쇄 친화
+  const ts = new Date(r.timestamp || Date.now()).toLocaleString('ko-KR');
+  const promptH = renderMarkdownLite(r.prompt || '');
+  const responseH = renderMarkdownLite(r.response || '');
+
+  const renderVioItem = (v) => {
+    const sev = (v.severity || 'LOW').toUpperCase();
+    const sevColor = {CRITICAL:'#ef4444',HIGH:'#f97316',MEDIUM:'#eab308',LOW:'#38bdf8'}[sev] || '#94a3b8';
+    return `<div class="vio"><span class="sev" style="background:${sevColor}22;color:${sevColor}">${sev}</span>
+      <b>${escapeHtml(v.name || v.type || v.rule_name || '위반')}</b>${v.law ? ' · ' + escapeHtml(v.law) : ''}
+      ${(v.matched || v.matched_text) ? `<div class="match">「${escapeHtml(v.matched || v.matched_text)}」</div>` : ''}
+      ${v.description ? `<div class="desc">${escapeHtml(v.description)}</div>` : ''}
+    </div>`;
+  };
+
+  const renderGptLegalBlock = () => {
+    if (!r.gpt) return '';
+    const e = r.gpt.evaluation || r.gpt;
+    const violations = e.violations || [];
+    const passed = !!e.passed;
+    return `
+      <div class="card">
+        <h2>[1] GPT 법률 평가</h2>
+        <div class="badge ${passed ? 'pass' : 'fail'}">${passed ? '✓ 통과' : '✗ 미달'} · 등급 ${e.grade || '?'}</div>
+        <div class="meta">점수 <b>${e.score}</b> / 100${r.gpt.model ? ' · model=' + escapeHtml(r.gpt.model) : ''}</div>
+        ${e.summary ? `<div class="text-box"><b>요약:</b> ${escapeHtml(e.summary)}</div>` : ''}
+        ${violations.length ? violations.map(renderVioItem).join('') : '<div class="ok">✓ 의료법 위반 없음</div>'}
+        ${e.recommendation ? `<div class="text-box good"><b>개선 권고:</b> ${escapeHtml(e.recommendation)}</div>` : ''}
+      </div>`;
+  };
+
+  const renderConsBlock = (block, verLabel, modeLabel) => {
+    if (!block) return `<div class="cons-col"><div class="cons-card-h">${verLabel}</div><div class="meta">평가 실패 또는 미실행</div></div>`;
+    const e = block.evaluation || block;
+    const total = e.totalScore || e.total_score || e.score || 0;
+    const grade = e.grade || '?';
+    const axes = e.axes || {};
+    let axisHtml = '';
+    Object.entries(axes).forEach(([key, ax]) => {
+      if (typeof ax !== 'object' || !ax) return;
+      const sc = ax.score != null ? ax.score : 0;
+      const max = ax.maxScore != null ? ax.maxScore : 100;
+      const name = ax.name || CONS_AXIS_LABELS[key] || key;
+      const pct = max > 0 ? (sc / max) * 100 : 0;
+      const barColor = pct >= 80 ? '#22c55e' : (pct >= 60 ? '#38bdf8' : (pct >= 40 ? '#eab308' : '#ef4444'));
+      const details = ax.details || ax.comment || '';
+      const missing = Array.isArray(ax.missing) ? ax.missing.join(', ') : '';
+      axisHtml += `
+        <div class="axis-row">
+          <div class="axis-head"><span class="axis-name">${escapeHtml(name)}</span>
+            <span class="axis-val"><b>${sc}</b> / ${max}</span></div>
+          <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
+          ${details ? `<div class="axis-detail">▸ ${escapeHtml(details)}</div>` : ''}
+          ${missing ? `<div class="axis-detail missing">⚠ 누락: ${escapeHtml(missing)}</div>` : ''}
+        </div>`;
+    });
+    const recommendation = e.recommendation || '';
+    return `
+      <div class="cons-col">
+        <div class="cons-card-h">${verLabel}<span class="cons-mode">${modeLabel}</span></div>
+        <div class="cons-total-line"><span class="grade grade-${grade}">${grade}</span> 합계 <b>${total}</b> / 100</div>
+        ${axisHtml}
+        ${e.summary ? `<div class="text-box"><b>📝 요약:</b> ${escapeHtml(e.summary)}</div>` : ''}
+        ${(e.missingItems && e.missingItems.length) ? `<div class="text-box warn"><b>⚠ 누락 핵심:</b><br>${e.missingItems.map(s => '• ' + escapeHtml(s)).join('<br>')}</div>` : ''}
+        ${recommendation ? `<div class="text-box good"><b>💡 권고:</b> ${escapeHtml(recommendation)}</div>` : ''}
+      </div>`;
+  };
+
+  // 종합 점수 요약
+  const summaryCells = [];
+  if (r.gpt) { const e = r.gpt.evaluation || r.gpt; summaryCells.push({label: 'GPT 법률', grade: e.grade || scoreToGrade(e.score), score: e.score}); }
+  [['V11','v1.1.1'],['V15','v1.5'],['V20','v2.0']].forEach(([s, l]) => {
+    const b = r['consultation' + s];
+    if (b) { const e = b.evaluation || b; summaryCells.push({label: '문진 ' + l, grade: e.grade || scoreToGrade(e.totalScore || e.score), score: e.totalScore || e.score}); }
+  });
+  const summaryHtml = summaryCells.map(c => `
+    <div class="sm-cell">
+      <div class="sm-label">${escapeHtml(c.label)}</div>
+      <div class="sm-grade grade-${c.grade}">${escapeHtml(c.grade)}</div>
+      <div class="sm-score">${c.score} <span class="o">/ 100</span></div>
+    </div>`).join('');
+
+  return `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>외부 답변 평가 결과 — ${ts}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Pretendard','Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f8fafc;color:#0f172a;padding:24px;line-height:1.6}
+  .container{max-width:1100px;margin:0 auto;background:white;padding:32px 36px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  h1{font-size:22px;color:#0f172a;margin-bottom:6px}
+  .subtitle{font-size:12px;color:#64748b;margin-bottom:20px}
+  h2{font-size:15px;font-weight:700;color:#0f172a;margin:18px 0 10px;padding-bottom:6px;border-bottom:2px solid #e2e8f0}
+  h3{font-size:13px;font-weight:700;color:#334155;margin:14px 0 8px}
+  .card{margin-bottom:18px;padding:16px;background:#fafbfc;border:1px solid #e2e8f0;border-radius:10px}
+  .qa-block{background:#f8fafc;padding:18px 22px;border-radius:8px;margin-bottom:10px;font-size:13.5px;line-height:1.75;border-left:4px solid #0ea5e9;word-break:keep-all;overflow-wrap:break-word}
+  .qa-block.response{border-left-color:#22c55e;background:#f7fdf9}
+  .qa-label{font-size:11px;font-weight:700;color:#64748b;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px}
+  /* ── Markdown Lite 렌더 (외부 답변 가시성) ── */
+  .md-p{margin:6px 0;line-height:1.75;color:#1e293b}
+  .md-indent{display:inline-block}
+  .md-h{font-weight:800;margin:14px 0 8px;line-height:1.4;color:#0f172a;border-left:none}
+  .md-h1{font-size:18px;color:#0f172a;padding-bottom:4px;border-bottom:2px solid #cbd5e1}
+  .md-h2{font-size:16px;color:#1e40af}
+  .md-h3{font-size:14px;color:#334155}
+  .md-h4{font-size:13px;color:#475569}
+  .md-h5,.md-h6{font-size:12.5px;color:#64748b}
+  /* 번호 리스트 */
+  .md-ol{counter-reset:item;list-style:none;padding-left:0;margin:8px 0}
+  .md-ol > .md-li{counter-increment:item;position:relative;padding:8px 12px 8px 38px;margin:4px 0;background:white;border-radius:6px;border:1px solid #e2e8f0;line-height:1.7}
+  .md-ol > .md-li::before{content:counter(item);position:absolute;left:8px;top:8px;width:22px;height:22px;background:#0ea5e9;color:white;border-radius:50%;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  /* 불릿 리스트 */
+  .md-ul{list-style:none;padding-left:0;margin:6px 0}
+  .md-ul > .md-li{position:relative;padding:3px 6px 3px 22px;line-height:1.7}
+  .md-ul > .md-li::before{content:'▸';position:absolute;left:6px;color:#0ea5e9;font-weight:700}
+  /* 중첩 ol/ul */
+  .md-li .md-ol, .md-li .md-ul { margin: 4px 0 4px 8px; }
+  /* 인용 */
+  .md-bq{border-left:3px solid #94a3b8;background:#f1f5f9;padding:8px 14px;margin:10px 0;border-radius:0 6px 6px 0;color:#475569;font-style:italic}
+  .md-bq-line{margin:2px 0}
+  /* 구분선 */
+  .md-hr{border:none;border-top:1.5px dashed #cbd5e1;margin:14px 0}
+  /* 이모지 헤더 (🩺 안전한…, 🚫 약국…, 🏃 지금 바로… 등) */
+  .md-emoji-header{margin:14px 0 8px;padding:10px 14px;background:linear-gradient(90deg,#eff6ff,white);border-left:4px solid #0ea5e9;border-radius:0 6px 6px 0;font-weight:700;font-size:14.5px;color:#1e40af;display:flex;align-items:center;gap:8px}
+  .md-emoji-header .me-icon{font-size:18px;flex-shrink:0}
+  /* 코드 / 굵게 / 기울임 */
+  code{background:#f1f5f9;padding:1px 7px;border-radius:4px;font-size:12.5px;font-family:'JetBrains Mono','Menlo','Consolas',monospace;color:#0f172a}
+  strong{font-weight:700;color:#0f172a}
+  em{font-style:italic;color:#475569}
+  .badge{display:inline-block;padding:3px 10px;border-radius:8px;font-size:11px;font-weight:700;margin-right:6px}
+  .badge.pass{background:#dcfce7;color:#15803d}
+  .badge.fail{background:#fee2e2;color:#b91c1c}
+  .meta{font-size:11.5px;color:#64748b;margin-bottom:10px}
+  .grade-A{background:#dcfce7;color:#15803d}
+  .grade-B{background:#dbeafe;color:#1e40af}
+  .grade-C{background:#fef3c7;color:#854d0e}
+  .grade-D{background:#fed7aa;color:#9a3412}
+  .grade-F{background:#fee2e2;color:#b91c1c}
+  /* 종합 요약 grid */
+  .summary{display:grid;grid-template-columns:repeat(${Math.max(2,Math.min(5,summaryCells.length))},1fr);gap:10px;margin:10px 0 18px;padding:14px;background:#f8fafc;border-radius:10px}
+  .sm-cell{text-align:center;padding:10px 6px;background:white;border-radius:8px;border:1px solid #e2e8f0}
+  .sm-label{font-size:10.5px;color:#64748b;font-weight:700;margin-bottom:6px}
+  .sm-grade{display:inline-block;width:40px;height:40px;line-height:40px;border-radius:10px;font-size:18px;font-weight:800;margin-bottom:4px}
+  .sm-score{font-size:13.5px;font-weight:700;color:#0f172a}
+  .sm-score .o{font-size:10px;color:#94a3b8;font-weight:400}
+  /* 위반 사항 */
+  .vio{padding:8px 12px;background:white;border:1px solid #e2e8f0;border-radius:6px;margin:6px 0;font-size:12.5px}
+  .sev{display:inline-block;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:700;margin-right:6px}
+  .match{font-size:12px;color:#475569;background:#f1f5f9;padding:5px 9px;border-radius:5px;margin-top:5px;word-break:break-word}
+  .desc{font-size:11.5px;color:#64748b;margin-top:4px;line-height:1.5}
+  .ok{padding:10px 14px;background:#dcfce7;color:#15803d;border-radius:6px;font-size:12.5px}
+  .text-box{padding:10px 14px;background:#f1f5f9;border-left:3px solid #0ea5e9;border-radius:0 6px 6px 0;font-size:12.5px;line-height:1.65;margin:8px 0}
+  .text-box.warn{border-left-color:#f97316;background:#fff7ed}
+  .text-box.good{border-left-color:#22c55e;background:#f0fdf4}
+  /* 문진 3열 */
+  .cons-3col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+  .cons-col{background:white;padding:14px;border-radius:8px;border:1px solid #e2e8f0}
+  .cons-col:nth-child(2){border-color:#0ea5e9;border-width:2px}
+  .cons-card-h{font-size:13px;font-weight:700;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #e2e8f0}
+  .cons-mode{display:block;font-size:9.5px;color:#94a3b8;font-weight:400;margin-top:2px}
+  .cons-total-line{padding:8px;background:#f8fafc;border-radius:6px;text-align:center;font-size:12.5px;font-weight:700;margin-bottom:10px}
+  .grade{display:inline-block;width:24px;height:24px;line-height:24px;border-radius:6px;font-weight:800;margin-right:4px;text-align:center}
+  .axis-row{margin:6px 0;padding:5px 0;border-bottom:1px dashed #f1f5f9}
+  .axis-head{display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px}
+  .axis-name{font-weight:600;color:#334155}
+  .axis-val{color:#64748b}
+  .bar-bg{height:7px;background:#f1f5f9;border-radius:4px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:4px}
+  .axis-detail{font-size:10.5px;color:#64748b;margin-top:4px;padding:3px 6px;background:#fafbfc;border-radius:4px;line-height:1.5}
+  .axis-detail.missing{color:#9a3412;background:#fff7ed}
+  /* 인쇄 친화 (PDF 저장 시) */
+  @media print {
+    body{background:white;padding:0}
+    .container{box-shadow:none;padding:14px 20px;max-width:100%}
+    .no-print{display:none !important}
+    .card{break-inside:avoid;page-break-inside:avoid}
+    .cons-col{break-inside:avoid}
+    .summary{break-inside:avoid}
+  }
+  /* 좁은 화면 (공유 받은 사람이 모바일에서 열 때) */
+  @media(max-width:768px){
+    .cons-3col{grid-template-columns:1fr}
+    .summary{grid-template-columns:repeat(2,1fr)}
+  }
+  .footer{margin-top:30px;padding-top:14px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;text-align:center}
+  .footer a{color:#0ea5e9}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📋 외부 AI 답변 평가 결과</h1>
+  <div class="subtitle">평가 일시: ${ts} · 도구: 나만의 주치의 평가 시스템</div>
+
+  <div class="qa-block">
+    <div class="qa-label">① 사용자 질문 (prompt)</div>
+    ${promptH}
+  </div>
+  <div class="qa-block response">
+    <div class="qa-label">② 외부 AI 답변</div>
+    ${responseH}
+  </div>
+
+  <h2>🎯 종합 점수 요약</h2>
+  <div class="summary">${summaryHtml}</div>
+
+  ${renderGptLegalBlock()}
+
+  <h2>[2] GPT 문진 품질 평가 — 3개 기준 동시 비교</h2>
+  <div class="meta">▸ <b>v1.1.1</b> 운영 멀티턴 기준 ▸ <b>v1.5</b> 단일턴 응답 내 문진 Flow 표현 ▸ <b>v2.0</b> 단일턴 답변 가치</div>
+  <div class="cons-3col">
+    ${renderConsBlock(r.consultationV11, 'v1.1.1 (운영)', '멀티턴 문진 평가')}
+    ${renderConsBlock(r.consultationV15, 'v1.5 (문진Flow표현)', '단일턴 응답 내 문진 Flow 표현')}
+    ${renderConsBlock(r.consultationV20, 'v2.0 (단일턴 가치)', '단일턴 답변 가치(정보·맞춤·행동)')}
+  </div>
+
+  <div class="footer">
+    나만의 주치의 — AI 건강상담 의료법 준수 테스트 도구<br>
+    생성: ${ts} · 이 파일은 단독 HTML로 이메일/슬랙 등에 공유 가능
+  </div>
+</div>
+</body>
+</html>`;
+}
+
+// ════════════════════════════════════════════════════════════
+// 공유 페이지로 게시 (v2.0 제외, v1.1.1·v1.5만 전송)
+// ════════════════════════════════════════════════════════════
+async function publishShare() {
+  if (!_lastResult) return alert('먼저 평가를 실행해주세요.');
+  if (!_lastResult.gpt && !_lastResult.consultationV11 && !_lastResult.consultationV15) {
+    return alert('GPT 법률 평가 또는 문진 평가 결과가 없습니다. 다시 시도해주세요.');
+  }
+  if (!confirm('이 평가 결과를 공유 페이지로 게시합니다.\n게시 후 URL을 통해 누구나 접근 + 의견 작성이 가능합니다.\n진행하시겠습니까?')) return;
+  try {
+    const res = await fetch('/api/share/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: _lastResult.prompt,
+        response: _lastResult.response,
+        evalGpt: _lastResult.gpt,
+        evalV11: _lastResult.consultationV11,
+        evalV15: _lastResult.consultationV15,
+        // v2.0는 제외 — 공유 페이지에선 표시하지 않음
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+    const fullUrl = location.origin + data.url;
+    const message =
+      '✅ 공유 페이지가 게시되었습니다!\n\n' +
+      'URL: ' + fullUrl + '\n\n' +
+      '"확인"을 누르면 클립보드에 복사하고 새 탭에서 엽니다.';
+    if (confirm(message)) {
+      try {
+        await navigator.clipboard.writeText(fullUrl);
+      } catch (e) {
+        // 폴백
+        const ta = document.createElement('textarea');
+        ta.value = fullUrl;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      window.open(fullUrl, '_blank');
+    }
+  } catch (e) {
+    alert('공유 페이지 게시 실패: ' + (e.message || e));
+  }
+}
+
+function exportResultHTML() {
+  if (!_lastResult) return alert('평가 결과가 없습니다.');
+  const html = buildExportHtml(_lastResult);
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').slice(0, 19);
+  a.href = url;
+  a.download = `eval_result_${ts}.html`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function printResult() {
+  if (!_lastResult) return alert('평가 결과가 없습니다.');
+  const html = buildExportHtml(_lastResult);
+  const w = window.open('', '_blank', 'width=1200,height=900');
+  if (!w) {
+    alert('팝업 차단됨. 브라우저 팝업 허용 후 다시 시도해주세요.');
+    return;
+  }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+  // load 완료 후 인쇄 대화상자 열기
+  w.onload = function() {
+    setTimeout(() => {
+      w.focus();
+      w.print();
+    }, 300);
+  };
+}
+
+// ════════════════════════════════════════════════════════════
+// 결과 복사/다운로드
+// ════════════════════════════════════════════════════════════
+function copyResult() {
+  if (!_lastResult) return alert('평가 결과가 없습니다.');
+  const txt = JSON.stringify(_lastResult, null, 2);
+  navigator.clipboard.writeText(txt).then(() => {
+    alert('결과 JSON이 클립보드에 복사되었습니다.');
+  }).catch(() => {
+    // 폴백: textarea
+    const ta = document.createElement('textarea');
+    ta.value = txt;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    alert('복사되었습니다.');
+  });
+}
+
+function downloadResult() {
+  if (!_lastResult) return alert('평가 결과가 없습니다.');
+  const r = _lastResult;
+  const lines = [];
+  lines.push('=== 외부 답변 평가 결과 ===');
+  lines.push('일시: ' + r.timestamp);
+  lines.push('');
+  lines.push('[사용자 질문]');
+  lines.push(r.prompt);
+  lines.push('');
+  lines.push('[외부 AI 답변]');
+  lines.push(r.response);
+  lines.push('');
+  if (r.gpt) {
+    const e = r.gpt.evaluation || r.gpt;
+    lines.push('=== GPT 법률 평가 ===');
+    lines.push('점수: ' + e.score + ' / 100 · 등급: ' + e.grade + ' · 통과: ' + (e.passed ? 'YES' : 'NO'));
+    if (e.summary) lines.push('요약: ' + e.summary);
+    if (e.recommendation) lines.push('권고: ' + e.recommendation);
+    (e.violations || []).forEach((v, i) => {
+      lines.push(`  위반${i+1}. [${v.severity}] ${v.type || v.name} (${v.law || ''}) - ${v.matched_text || v.matched || ''}`);
+    });
+    lines.push('');
+  }
+  ['V11','V15','V20'].forEach(suffix => {
+    const block = r['consultation' + suffix];
+    if (!block) return;
+    const e = block.evaluation || block;
+    const total = e.totalScore || e.total_score || e.score || '?';
+    const verLabel = { V11: 'v1.1.1 (운영)', V15: 'v1.5 (문진Flow표현)', V20: 'v2.0 (단일턴 가치)' }[suffix];
+    lines.push(`=== GPT 문진 품질 평가 — ${verLabel} ===`);
+    lines.push('총점: ' + total + ' / 100 · 등급: ' + (e.grade || '?'));
+    const axes = e.axes || {};
+    Object.entries(axes).forEach(([k, ax]) => {
+      if (typeof ax === 'object' && ax) {
+        const sc = ax.score != null ? ax.score : '?';
+        const max = ax.maxScore != null ? ax.maxScore : '?';
+        const name = ax.name || k;
+        lines.push(`  [${name}] ${sc} / ${max}`);
+      }
+    });
+    if (e.summary) lines.push('요약: ' + e.summary);
+    if (e.recommendation) lines.push('권고: ' + (Array.isArray(e.recommendation) ? e.recommendation.join(', ') : e.recommendation));
+    lines.push('');
+  });
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'external_eval_' + new Date().toISOString().replace(/[:.]/g, '-') + '.txt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ════════════════════════════════════════════════════════════
+// 초기화
+// ════════════════════════════════════════════════════════════
+document.getElementById('userPrompt').addEventListener('input', updateCounts);
+document.getElementById('externalResponse').addEventListener('input', updateCounts);
+
+(async function() {
+  const ok = await initAuth();
+  if (ok) await loadScenarios();
+})();
+</script>
+
+</body>
+</html>

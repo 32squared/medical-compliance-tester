@@ -311,6 +311,7 @@
       <a href="/healthbench" class="nav-btn">🩺 HealthBench</a>
   <a href="/guidelines" class="nav-btn">법률 평가 기준</a>
   <a href="/criteria" class="nav-btn">문진 평가 기준</a>
+  <a href="/external-eval" class="nav-btn">📋 외부 답변 평가</a>
   <a href="/rlhf" class="nav-btn">RLHF 관리</a>
   <a href="/settings" class="nav-btn" id="settingsNavLink">&#9881; 설정</a>
   <button class="btn-icon sidebar-toggle-btn" onclick="toggleSidebar()" title="대화 목록" style="font-size:14px">&#9776;</button>
@@ -1443,13 +1444,13 @@ async function evaluateConsultation(prompt, responseText, msgId) {
     const gradeColors = { A: 'var(--green)', B: '#38bdf8', C: '#f59e0b', D: '#f97316', F: 'var(--red)' };
     const gradeColor = gradeColors[ev.grade] || 'var(--text-dim)';
 
-    // 5축 바 생성
+    // 5축 바 생성 (v1.1, 2026-06-01)
     const axes = [
-      { key: 'symptomExploration', label: '증상 탐색', max: 30 },
+      { key: 'symptomExploration', label: '증상 탐색', max: 25 },
       { key: 'redFlagScreening', label: '위험 선별', max: 25 },
       { key: 'patientContext', label: '환자 맥락', max: 20 },
       { key: 'structuredApproach', label: '단계적 접근', max: 15 },
-      { key: 'appropriateGuidance', label: '적절한 안내', max: 10 },
+      { key: 'appropriateGuidance', label: '적절한 안내', max: 15 },
     ];
 
     let axesHtml = '';
@@ -1852,12 +1853,13 @@ function renderAssistantEvaluation(msgDiv, evalData) {
     // Show existing consultation eval data
     var cGradeColors = { A: 'var(--green)', B: '#38bdf8', C: '#f59e0b', D: '#f97316', F: 'var(--red)' };
     var cGradeColor = cGradeColors[consultationEval.grade] || 'var(--text-dim)';
+    // v1.1 (2026-06-01): \uC99D\uC0C1 \uD0D0\uC0C9 30\u219225, \uC801\uC808\uD55C \uC548\uB0B4 10\u219215
     var cAxes = [
-      { key: 'symptomExploration', label: '\uC99D\uC0C1 \uD0D0\uC0C9', max: 30 },
+      { key: 'symptomExploration', label: '\uC99D\uC0C1 \uD0D0\uC0C9', max: 25 },
       { key: 'redFlagScreening', label: '\uC704\uD5D8 \uC120\uBCC4', max: 25 },
       { key: 'patientContext', label: '\uD658\uC790 \uB9E5\uB77D', max: 20 },
       { key: 'structuredApproach', label: '\uB2E8\uACC4\uC801 \uC811\uADFC', max: 15 },
-      { key: 'appropriateGuidance', label: '\uC801\uC808\uD55C \uC548\uB0B4', max: 10 },
+      { key: 'appropriateGuidance', label: '\uC801\uC808\uD55C \uC548\uB0B4', max: 15 },
     ];
     var cAxesHtml = '';
     for (var ca = 0; ca < cAxes.length; ca++) {
@@ -3364,10 +3366,22 @@ async function saveExtractedScenario() {
 }
 
 // 카테고리 목록 로드 (추출 시 선택용)
+// 성능 개선: /api/scenarios 응답에 categories 가 포함되므로 그쪽에서 가져옴
+// (별도 /api/categories 호출 제거 — 0.5초 단축)
 (async function loadCategories() {
   try {
-    const res = await fetch('/api/categories');
-    if (res.ok) window._categories = (await res.json()).categories || [];
+    // 이미 캐시된 시나리오 목록이 있으면 즉시 사용
+    if (window._scenariosCache && Array.isArray(window._scenariosCache.categories)) {
+      window._categories = window._scenariosCache.categories;
+      return;
+    }
+    // 첫 진입 시 light 모드로 시나리오 + 카테고리 한 번에
+    const res = await fetch('/api/scenarios?fields=summary');
+    if (res.ok) {
+      const data = await res.json();
+      window._scenariosCache = data;
+      window._categories = data.categories || [];
+    }
   } catch(e) {}
 })();
 

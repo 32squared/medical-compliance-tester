@@ -90,6 +90,7 @@
       <a href="/healthbench" class="nav-btn">🩺 HealthBench</a>
   <a href="/guidelines" class="nav-btn">법률 평가 기준</a>
   <a href="/criteria" class="nav-btn active">문진 평가 기준</a>
+  <a href="/external-eval" class="nav-btn">📋 외부 답변 평가</a>
   <a href="/rlhf" class="nav-btn">RLHF 관리</a>
   <a href="/settings" class="nav-btn" id="settingsNavLink">&#9881; 설정</a>
   <span id="testerBadge" style="margin-left:auto;display:none;font-size:11px;color:var(--accent);background:var(--accent-dim);padding:3px 10px;border-radius:6px;cursor:pointer;white-space:nowrap" onclick="if(confirm('로그아웃 하시겠습니까?'))testerLogout()"></span>
@@ -125,8 +126,20 @@
 <div class="content">
 
   <div class="card">
-    <h2>🩺 문진 평가 기준 관리</h2>
-    <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px">문진 평가 축(Axis), 등급 기준, 의료법 경계 규칙을 관리합니다</p>
+    <h2>🩺 문진 평가 기준 관리 <span id="criteriaVersionBadge" style="font-size:11px;font-weight:600;background:#22c55e;color:#0f172a;padding:3px 10px;border-radius:10px;margin-left:8px;vertical-align:middle"></span></h2>
+    <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px">문진 평가 축(Axis), 등급 기준, 의료법 경계 규칙을 관리합니다</p>
+
+    <!-- v1.1 자문 반영 안내 -->
+    <div id="versionNoteBox" style="display:none;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3);border-radius:10px;padding:12px 16px;margin-bottom:18px">
+      <div style="font-size:12px;font-weight:700;color:#22c55e;margin-bottom:4px">📋 v1.1 자문 의견 반영 (2026-06-01)</div>
+      <div id="versionNoteText" style="font-size:12px;color:var(--text-dim);line-height:1.6"></div>
+    </div>
+
+    <!-- 표현 유형 가이드 (v1.1) -->
+    <div id="expressionTypesBox" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:18px">
+      <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:8px">📝 의료법 경계 — 표현 유형 가이드 (v1.1 신규)</div>
+      <div id="expressionTypesList" style="display:flex;flex-direction:column;gap:6px"></div>
+    </div>
 
     <!-- 축 및 항목 -->
     <div id="criteriaAxes"></div>
@@ -167,8 +180,9 @@
 
     <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
 
-    <!-- 저장 / 초기화 -->
-    <div style="display:flex;gap:10px;justify-content:flex-end">
+    <!-- 저장 / 초기화 / 다운로드 -->
+    <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap">
+      <button class="btn-save" onclick="downloadCriteriaExcel()" style="background:#15803d;color:#fff" title="현재 평가 기준을 엑셀 파일로 다운로드">📥 엑셀 다운로드</button>
       <button class="btn-save" onclick="resetCriteriaToDefaults()" style="color:var(--orange);background:transparent;border:1px solid var(--orange)">기본값 초기화</button>
       <button class="btn-save" onclick="saveCriteria()">평가 기준 저장</button>
     </div>
@@ -195,6 +209,42 @@ async function loadCriteria() {
 
 function renderCriteria() {
   if (!criteriaData) return;
+
+  // 버전 배지 / 자문 반영 안내
+  const versionBadge = document.getElementById('criteriaVersionBadge');
+  const versionBox = document.getElementById('versionNoteBox');
+  const versionText = document.getElementById('versionNoteText');
+  if (criteriaData.version) {
+    if (versionBadge) versionBadge.textContent = 'v' + criteriaData.version;
+    if (versionBox && criteriaData.revisionNote) {
+      versionBox.style.display = 'block';
+      if (versionText) versionText.textContent = criteriaData.revisionNote + ' · 개정일: ' + (criteriaData.revisedAt || '');
+    }
+  } else if (versionBadge) {
+    versionBadge.textContent = '';
+  }
+
+  // 표현 유형 가이드 (v1.1)
+  const exprBox = document.getElementById('expressionTypesBox');
+  const exprList = document.getElementById('expressionTypesList');
+  const exprTypes = criteriaData.expressionTypes || [];
+  if (exprTypes.length && exprBox && exprList) {
+    exprBox.style.display = 'block';
+    exprList.innerHTML = '';
+    for (let i = 0; i < exprTypes.length; i++) {
+      const et = exprTypes[i];
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:6px 10px;background:var(--surface);border-radius:6px';
+      row.innerHTML =
+        '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + (et.color || '#94a3b8') + '"></span>' +
+        '<span style="font-size:12px;font-weight:700;color:var(--text);min-width:90px">' + esc(et.name || '') + '</span>' +
+        '<span style="font-size:11px;color:var(--text-dim);flex:1">' + esc(et.desc || '') + '</span>';
+      exprList.appendChild(row);
+    }
+  } else if (exprBox) {
+    exprBox.style.display = 'none';
+  }
+
   const axes = criteriaData.axes || [];
   const container = document.getElementById('criteriaAxes');
   container.innerHTML = '';
@@ -314,6 +364,39 @@ function collectCriteriaFromForm() {
   criteriaData.boundaryRules = [];
   ruleInputs.forEach(function(el) { criteriaData.boundaryRules.push(el.value); });
   return criteriaData;
+}
+
+async function downloadCriteriaExcel() {
+  try {
+    const res = await fetch('/api/consultation-criteria/download-excel', { method: 'GET' });
+    if (!res.ok) {
+      let msg = '다운로드 실패 (HTTP ' + res.status + ')';
+      try { const err = await res.json(); if (err && err.error) msg = '다운로드 실패: ' + err.error; } catch(_) {}
+      toast(msg, 'error');
+      return;
+    }
+    // 응답 헤더에서 파일명 추출 (없으면 기본값)
+    let filename = 'consultation_criteria.xlsx';
+    const cd = res.headers.get('Content-Disposition') || '';
+    const m = cd.match(/filename="([^"]+)"/i) || cd.match(/filename=([^;]+)/i);
+    if (m && m[1]) filename = m[1].trim();
+    // 버전이 criteriaData에 있으면 우선 사용 (서버 헤더가 누락된 경우 대비)
+    if (criteriaData && criteriaData.version && filename === 'consultation_criteria.xlsx') {
+      filename = 'consultation_criteria_v' + criteriaData.version + '.xlsx';
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+    toast('엑셀 다운로드 완료: ' + filename, 'success');
+  } catch(e) {
+    toast('다운로드 실패: ' + e.message, 'error');
+  }
 }
 
 async function saveCriteria() {

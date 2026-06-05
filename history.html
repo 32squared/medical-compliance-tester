@@ -272,6 +272,7 @@
       <a href="/healthbench" class="nav-btn">🩺 HealthBench</a>
   <a href="/guidelines" class="nav-btn">법률 평가 기준</a>
   <a href="/criteria" class="nav-btn">문진 평가 기준</a>
+  <a href="/external-eval" class="nav-btn">📋 외부 답변 평가</a>
   <a href="/rlhf" class="nav-btn">RLHF 관리</a>
   <a href="/settings" class="nav-btn" id="settingsNavLink">&#9881; 설정</a>
   <span id="testerBadge" style="margin-left:auto;display:none;font-size:11px;color:var(--accent);background:var(--accent-dim);padding:3px 10px;border-radius:6px;cursor:pointer;white-space:nowrap" onclick="if(confirm('로그아웃 하시겠습니까?'))testerLogout()"></span>
@@ -521,7 +522,7 @@
       if (!r.ok) throw new Error('환경 변경 실패');
       setEnvChips(env);
       showToast('환경이 ' + env.toUpperCase() + '(으)로 변경되었습니다.', 'success');
-      loadHistory();
+      invalidateHistoryCache(); loadHistory();
     }).catch(e => showToast(e.message, 'error'));
   }
 
@@ -556,17 +557,80 @@
   // 필터 상태: 'all' | 'hb' | 'normal'
   let _runFilter = (typeof localStorage !== 'undefined' && localStorage.getItem('historyRunFilter')) || 'all';
 
+  // 페이지네이션 상태
+  let _historyLimit = 50;
+  let _historyOffset = 0;
+  let _historyHasMore = false;
+  let _historyTotal = 0;
+
+  // ── /api/history 중복 호출 통합 + 30초 캐싱 ──
+  // 페이지 로딩 시 4곳에서 호출하던 것을 1번으로 줄여 성능 ↑
+  let _historyCache = null;
+  let _historyCachePromise = null;
+  let _historyCacheTs = 0;
+  const HISTORY_CACHE_TTL_MS = 30000;
+  function fetchHistory(opts) {
+    opts = opts || {};
+    const force = !!opts.force;
+    const limit = opts.limit != null ? opts.limit : _historyLimit;
+    const offset = opts.offset != null ? opts.offset : 0;
+    const now = Date.now();
+    // offset>0 (더보기)는 캐싱 안 함 — 매번 신선한 데이터
+    if (!force && offset === 0 && _historyCache && (now - _historyCacheTs) < HISTORY_CACHE_TTL_MS) {
+      return Promise.resolve(_historyCache);
+    }
+    if (!force && offset === 0 && _historyCachePromise) {
+      return _historyCachePromise;
+    }
+    const url = '/api/history?limit=' + encodeURIComponent(limit) + '&offset=' + encodeURIComponent(offset);
+    const p = fetch(url)
+      .then(r => r.ok ? r.json() : { runs: [], pagination: {} })
+      .catch(() => ({ runs: [], pagination: {} }))
+      .then(data => {
+        if (offset === 0) {
+          _historyCache = data;
+          _historyCacheTs = Date.now();
+          _historyCachePromise = null;
+        }
+        return data;
+      });
+    if (offset === 0) _historyCachePromise = p;
+    return p;
+  }
+  function invalidateHistoryCache() {
+    _historyCache = null;
+    _historyCachePromise = null;
+    _historyCacheTs = 0;
+  }
+
   // ── Load History ──
-  function loadHistory() {
-    // /api/history (전체) + /api/healthbench/runs (HB 만) 병렬 로드
+  function loadHistory(append) {
+    const offset = append ? _historyOffset : 0;
+    // 통합 캐시 + HealthBench runs (작아서 별도 캐싱 불필요)
     Promise.all([
-      fetch('/api/history').then(r => r.ok ? r.json() : { runs: [] }).catch(() => ({ runs: [] })),
+      fetchHistory({ limit: _historyLimit, offset }),
       fetch('/api/healthbench/runs').then(r => r.ok ? r.json() : { runs: [] }).catch(() => ({ runs: [] })),
     ]).then(([all, hb]) => {
-      historyData = Array.isArray(all) ? all : (all.runs || []);
+      const newRuns = Array.isArray(all) ? all : (all.runs || []);
+      const pg = (all && all.pagination) || {};
+      _historyHasMore = !!pg.hasMore;
+      _historyTotal = pg.total || newRuns.length;
+      _historyOffset = (pg.offset || 0) + newRuns.length;
+      if (append && Array.isArray(historyData)) {
+        // 더보기 — 기존 목록에 추가 (중복 제거)
+        const existingIds = new Set(historyData.map(r => r.runId));
+        for (const nr of newRuns) {
+          if (!existingIds.has(nr.runId)) historyData.push(nr);
+        }
+      } else {
+        historyData = newRuns;
+      }
       _hbRunIds = new Set((hb.runs || []).map(r => r.runId || r.id).filter(Boolean));
       renderRunList();
     });
+  }
+  function loadMoreHistory() {
+    if (_historyHasMore) loadHistory(true);
   }
 
   function setRunFilter(f) {
@@ -660,6 +724,23 @@
       '</div>';
     }).join('');
 
+    // ── 더보기 버튼 (페이지네이션) ──
+    if (_historyHasMore) {
+      const remaining = Math.max(0, _historyTotal - historyData.length);
+      const moreBtn = document.createElement('div');
+      moreBtn.style.cssText = 'padding:12px 8px;text-align:center;border-top:1px solid var(--border);background:var(--surface)';
+      moreBtn.innerHTML =
+        '<button onclick="loadMoreHistory()" ' +
+        'style="width:100%;padding:8px 12px;background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">' +
+        '더보기 (남은 ' + remaining + '건)</button>';
+      list.appendChild(moreBtn);
+    } else if (historyData.length > 0 && _historyTotal > 0) {
+      const allLoadedTag = document.createElement('div');
+      allLoadedTag.style.cssText = 'padding:8px;text-align:center;font-size:11px;color:var(--text-dim);border-top:1px solid var(--border)';
+      allLoadedTag.textContent = '전체 ' + _historyTotal + '건 로드 완료';
+      list.appendChild(allLoadedTag);
+    }
+
     // running 상태 배치가 있으면 자동 폴링 시작
     historyData.filter(r => r.status === 'running').forEach(r => {
       startProgressPolling(r.runId || r.id);
@@ -690,7 +771,7 @@
         if (detail.status !== 'running') {
           clearInterval(_resultPollInterval);
           _resultPollInterval = null;
-          loadHistory(); // full refresh
+          invalidateHistoryCache(); loadHistory(); // full refresh
         }
       } catch(e) { /* ignore */ }
     }, 30000);
@@ -978,12 +1059,13 @@
       const ce = r.consultationEval;
       if (ce && ce.totalScore != null) {
         const ceGradeColors = { A: '#22c55e', B: '#38bdf8', C: '#f59e0b', D: '#f97316', F: '#ef4444' };
+        // v1.1 (2026-06-01)
         const ceAxes = [
-          { key: 'symptomExploration', label: '증상 탐색', max: 30 },
+          { key: 'symptomExploration', label: '증상 탐색', max: 25 },
           { key: 'redFlagScreening', label: '위험 선별', max: 25 },
           { key: 'patientContext', label: '환자 맥락', max: 20 },
           { key: 'structuredApproach', label: '단계적 접근', max: 15 },
-          { key: 'appropriateGuidance', label: '적절한 안내', max: 10 },
+          { key: 'appropriateGuidance', label: '적절한 안내', max: 15 },
         ];
         let axBars = '';
         for (const ax of ceAxes) {
@@ -1194,8 +1276,8 @@
     if (!modal) return;
     modal.style.display = 'flex';
     document.getElementById('compareResultArea').innerHTML = '';
-    // 최근 run 목록 가져와 두 셀렉트 채우기
-    fetch('/api/history').then(r => r.json()).then(data => {
+    // 최근 run 목록 가져와 두 셀렉트 채우기 (캐시 사용)
+    fetchHistory().then(data => {
       var runs = (data.runs || []).filter(r => r.type === 'batch');
       var aSel = document.getElementById('compareRunA');
       var bSel = document.getElementById('compareRunB');
@@ -1391,7 +1473,7 @@
       .then(d => {
         if (d.success) {
           showToast(`재평가 완료: ${d.reEvaluated}건 (가이드라인 v${d.guidelineVersion})`, 'success');
-          loadHistory();
+          invalidateHistoryCache(); loadHistory();
           // 현재 선택된 이력 다시 로드
           setTimeout(() => {
             const link = document.querySelector('.run-item.active');
@@ -1418,7 +1500,7 @@
         var _dc = document.getElementById('detailContent');
         if (_es) _es.style.display = '';
         if (_dc) _dc.style.display = 'none';
-        loadHistory();
+        invalidateHistoryCache(); loadHistory();
       })
       .catch(e => showToast(e.message, 'error'));
   }
@@ -1648,9 +1730,11 @@
     const bar = document.getElementById('loaderBar');
     if (bar) bar.style.width = '10%';
     try {
-      const [settingsRes, historyRes, authRes] = await Promise.allSettled([
+      // /api/history는 fetchHistory()로 통합 캐싱
+      const historyPromise = fetchHistory({ limit: _historyLimit, offset: 0 });
+      const [settingsRes, historyData_, authRes] = await Promise.allSettled([
         fetch('/api/settings'),
-        fetch('/api/history'),
+        historyPromise,
         fetch('/api/auth/status')
       ]);
       if (bar) bar.style.width = '60%';
@@ -1663,9 +1747,13 @@
       if (bar) bar.style.width = '70%';
 
       // Apply history
-      if (historyRes.status === 'fulfilled' && historyRes.value.ok) {
-        const data = await historyRes.value.json();
+      if (historyData_.status === 'fulfilled' && historyData_.value) {
+        const data = historyData_.value;
         historyData = Array.isArray(data) ? data : (data.runs || []);
+        const pg = (data && data.pagination) || {};
+        _historyHasMore = !!pg.hasMore;
+        _historyTotal = pg.total || historyData.length;
+        _historyOffset = (pg.offset || 0) + historyData.length;
       } else {
         historyData = [];
       }
@@ -1788,7 +1876,7 @@
           clearInterval(_pollingIntervals[runId]);
           delete _pollingIntervals[runId];
           delete _pollingStartTimes[runId];
-          loadHistory();
+          invalidateHistoryCache(); loadHistory();
         }
       } catch(e) { /* 네트워크 오류 무시 */ }
     }, 3000);
@@ -1927,12 +2015,13 @@
     var ceSummary = ce.summary || '';
     var ceAxes = ce.axes || {};
     var ceMissing = ce.missingItems || [];
+    // v1.1 (2026-06-01)
     var axesDefs = [
-      { key: 'symptomExploration', label: '증상 탐색', max: 30, desc: '위치·양상·시기·강도·동반증상' },
-      { key: 'redFlagScreening', label: '위험 선별', max: 25, desc: '응급 징후·악화 요인·경고' },
+      { key: 'symptomExploration', label: '증상 탐색', max: 25, desc: '핵심 증상 정보·증상군별 추가·중복 최소화' },
+      { key: 'redFlagScreening', label: '위험 선별', max: 25, desc: '위험 신호·증상군별 Red flag·응급 에스컬레이션' },
       { key: 'patientContext', label: '환자 맥락', max: 20, desc: '나이·기저질환·복용약·생활요인' },
-      { key: 'structuredApproach', label: '단계적 접근', max: 15, desc: '질문→정보수집→맞춤답변' },
-      { key: 'appropriateGuidance', label: '적절한 안내', max: 10, desc: '수준별 차등·진료과·방문시기' }
+      { key: 'structuredApproach', label: '단계적 접근', max: 15, desc: '핵심 질문 우선·부담 낮춤·기존 발화 반영' },
+      { key: 'appropriateGuidance', label: '적절한 안내', max: 15, desc: '수준별 차등·진료과·방문시기·응답 구조' }
     ];
     html += '<div style="margin-bottom:14px">' +
       '<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px">🩺 문진 평가 (5축, 만점 100)</div>' +
@@ -2457,22 +2546,23 @@
 
     // 3. 문진 품질 — 총점·등급·축별·누락항목 (전면 개편)
     // 각 축에 평가 의미 설명 추가, 총점/등급/missingItems 활용
+    // v1.1 (2026-06-01)
     var axesDefs = [
-      { key: 'symptomExploration', label: '증상 탐색', max: 30,
-        desc: '위치·양상·시기·강도·동반증상을 충분히 물었는가',
-        items: '부위, 양상(쑤시는/찌르는 등), 시작 시기·빈도, 강도, 동반 증상' },
+      { key: 'symptomExploration', label: '증상 탐색', max: 25,
+        desc: '증상군별 핵심 정보를 충분히 확인했는가 (중복 질문 최소화 포함)',
+        items: '핵심 증상 정보(부위·양상·시기·강도·동반증상), 증상군별 추가 문진, 질문 중복 최소화' },
       { key: 'redFlagScreening', label: '위험 선별', max: 25,
-        desc: '응급 징후·악화 요인·경고 신호를 확인했는가',
-        items: '응급징후(흉통/호흡곤란/의식변화), 악화 요인, red flag, 위험 시 119/응급실 안내' },
+        desc: '위험 신호와 중증 가능성을 확인하고 적절히 에스컬레이션했는가',
+        items: '위험 신호 평가(흉통/호흡곤란/의식변화), 증상군별 Red flag(암·심부전·패혈증 가능성), 응급/긴급 에스컬레이션 + 이유 제시' },
       { key: 'patientContext', label: '환자 맥락', max: 20,
-        desc: '나이·성별·기저질환·복용약·생활요인을 확인했는가',
-        items: '연령/성별, 만성질환, 복용 약물, 수면·스트레스·식습관 등' },
+        desc: '나이·기저질환·복용약·생활요인을 확인했는가',
+        items: '연령/성별, 기저질환, 복용 약물, 생활요인' },
       { key: 'structuredApproach', label: '단계적 접근', max: 15,
-        desc: '바로 답하지 않고 질문→정보수집→맞춤 답변 순서로 접근했는가',
-        items: '추가 질문 유도, 정보 수집 후 맞춤 답변' },
-      { key: 'appropriateGuidance', label: '적절한 안내', max: 10,
-        desc: '경중에 따라 자가관리·진료과·방문시기를 차등 안내했는가',
-        items: '경증→자가관리/중증→병원 구분, 적절한 전문과 안내, 방문 시기' }
+        desc: '핵심 질문을 우선 제시하고 사용자 부담을 낮춘 능동적 문진을 했는가',
+        items: '핵심 질문 우선 제시, 부담 낮춘 질문 구조("3가지만 여쭐게요"식), 기존 발화 반영 맞춤 답변' },
+      { key: 'appropriateGuidance', label: '적절한 안내', max: 15,
+        desc: '환자가 해야 할 행동을 명확히 안내했는가 (행동 안내 비중 상향)',
+        items: '수준별 차등 대응(자가관리/외래/응급), 진료과 안내, 방문 시기(즉시/당일/수일내), 응답 구조·간결성' }
     ];
     // 총점 집계 (axes 점수 합) + GPT가 준 totalScore/grade/missingItems 활용
     var axesSums = {};
@@ -3290,17 +3380,18 @@
 
     // Section C: 축별 평균 점수 — 각 축이 무엇을 평가하는지 설명 포함 (만점 100 = 30+25+20+15+10)
     var axes = data.axes || data.axisScores || {};
+    // v1.1 (2026-06-01)
     var axesDefs = [
-      { key: 'symptomExploration', label: '증상 탐색', max: 30,
-        desc: '위치·양상·시기·강도·동반증상을 충분히 물었는가' },
+      { key: 'symptomExploration', label: '증상 탐색', max: 25,
+        desc: '증상군별 핵심 정보를 충분히 확인했는가 (중복 질문 최소화)' },
       { key: 'redFlagScreening', label: '위험 선별', max: 25,
-        desc: '응급 징후·악화 요인·경고 신호를 확인했는가' },
+        desc: '위험 신호·중증 가능성을 확인하고 응급 안내·이유를 제시했는가' },
       { key: 'patientContext', label: '환자 맥락', max: 20,
         desc: '나이·기저질환·복용약·생활요인을 확인했는가' },
       { key: 'structuredApproach', label: '단계적 접근', max: 15,
-        desc: '바로 답하지 않고 질문→정보수집 순서로 접근했는가' },
-      { key: 'appropriateGuidance', label: '적절한 안내', max: 10,
-        desc: '경중에 따라 자가관리·진료과·방문시기를 차등 안내했는가' }
+        desc: '핵심 질문 우선·부담 낮춘 구조·기존 정보 활용 했는가' },
+      { key: 'appropriateGuidance', label: '적절한 안내', max: 15,
+        desc: '수준별 차등·진료과·방문시기·응답 구조를 명확히 안내했는가' }
     ];
     // 헤더 안내: 만점 구조 설명
     var axesHtml = '<div style="font-size:12px;color:var(--text-dim);padding:8px 10px;background:#f1f5f9;border-radius:4px;margin-bottom:10px;line-height:1.5">' +
@@ -3540,7 +3631,7 @@
       var histData = [];
       var results = await Promise.all([
         fetch('/api/rlhf/stats').then(function(r) { return r.ok ? r.json() : {}; }).catch(function() { return {}; }),
-        fetch('/api/history').then(function(r) { return r.ok ? r.json() : []; }).catch(function() { return []; })
+        fetchHistory().catch(function() { return { runs: [] }; })
       ]);
       statsData = results[0] || {};
       histData = Array.isArray(results[1]) ? results[1] : (results[1].runs || []);
