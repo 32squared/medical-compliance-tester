@@ -78,7 +78,8 @@ gcloud run deploy $ServiceName `
     --min-instances 0 --max-instances 3 `
     --concurrency 5 `
     --execution-environment gen2 `
-    --set-env-vars "DATABASE_URL=$DatabaseUrl,APP_ENV=development" `
+    --set-env-vars "DATABASE_URL=$DatabaseUrl,APP_ENV=development,RAG_ENABLED=true" `
+    --set-secrets "OPENAI_API_KEY=openai-api-key:latest,DB_PASSWORD=db-password:latest" `
     --add-cloudsql-instances $SqlConnection `
     --vpc-connector=medical-connector `
     --vpc-egress=all-traffic `

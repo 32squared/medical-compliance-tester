@@ -26,6 +26,20 @@ except ImportError:
 DB_PATH = os.environ.get('DB_PATH', os.path.join(os.path.dirname(__file__), 'app.db'))
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
 
+# Secret Manager 분리 주입 지원:
+# DB_PASSWORD(Secret) + DB_USER + DB_NAME + DB_HOST → DATABASE_URL 자동 조합
+if not DATABASE_URL:
+    _pw   = os.environ.get('DB_PASSWORD', '')
+    _user = os.environ.get('DB_USER', 'app_user')
+    _name = os.environ.get('DB_NAME', 'medical_app')
+    _host = os.environ.get('DB_HOST', '')
+    if _pw and _host:
+        import urllib.parse as _urlparse
+        DATABASE_URL = (
+            f"postgresql://{_user}:{_urlparse.quote(_pw, safe='')}@/{_name}"
+            f"?host={_host}"
+        )
+
 _pg_pool = None  # PostgreSQL connection pool
 _use_postgres = False
 
@@ -1049,6 +1063,196 @@ def init_db(db_path=None):
                 cur.execute("UPDATE test_runs SET status = 'cancelled' WHERE status = 'running'")
             except Exception:
                 pass
+            # ── RAG Phase 1 마이그레이션 (001_rag_tables) ──
+            # 8개 신규 테이블 + conversations ALTER
+            # pgvector extension은 이미 활성화 완료 전제
+            _rag_migrations_pg = [
+                # 1. kb_sources
+                """CREATE TABLE IF NOT EXISTS kb_sources (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    source_type TEXT NOT NULL,
+                    license TEXT NOT NULL,
+                    url TEXT,
+                    update_frequency TEXT,
+                    last_updated_at TEXT,
+                    is_active INTEGER DEFAULT 1,
+                    created_at TEXT NOT NULL
+                )""",
+                # 2. kb_documents
+                """CREATE TABLE IF NOT EXISTS kb_documents (
+                    id TEXT PRIMARY KEY,
+                    source_id TEXT REFERENCES kb_sources(id),
+                    title TEXT NOT NULL,
+                    content_md TEXT NOT NULL,
+                    metadata_json TEXT DEFAULT '{}',
+                    status TEXT DEFAULT 'draft',
+                    author_id TEXT,
+                    approved_by TEXT,
+                    approved_at TEXT,
+                    rejected_reason TEXT,
+                    evidence_level CHAR(1) DEFAULT 'B',
+                    last_verified_date TEXT,
+                    version INTEGER DEFAULT 1,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )""",
+                "CREATE INDEX IF NOT EXISTS idx_kb_documents_status ON kb_documents(status)",
+                "CREATE INDEX IF NOT EXISTS idx_kb_documents_source ON kb_documents(source_id)",
+                # 3. kb_chunks (듀얼 임베딩 + 자문 반영 메타 컬럼)
+                """CREATE TABLE IF NOT EXISTS kb_chunks (
+                    id TEXT PRIMARY KEY,
+                    document_id TEXT NOT NULL REFERENCES kb_documents(id) ON DELETE CASCADE,
+                    chunk_index INTEGER NOT NULL,
+                    content TEXT NOT NULL,
+                    section_path TEXT,
+                    embedding_primary vector(1536),
+                    embedding_secondary vector(1024),
+                    embedding_primary_model TEXT NOT NULL DEFAULT '',
+                    embedding_secondary_model TEXT,
+                    secondary_indexed_at TEXT,
+                    evidence_country TEXT,
+                    evidence_topic TEXT,
+                    regulatory_korea BOOLEAN DEFAULT FALSE,
+                    topic_keywords TEXT DEFAULT '[]',
+                    token_count INTEGER,
+                    symptom_tags TEXT DEFAULT '[]',
+                    severity TEXT,
+                    content_tsv tsvector,
+                    created_at TEXT NOT NULL
+                )""",
+                # HNSW 인덱스 — embedding_primary
+                """CREATE INDEX IF NOT EXISTS idx_kb_chunks_emb_primary
+                   ON kb_chunks USING hnsw (embedding_primary vector_cosine_ops)
+                   WITH (m = 16, ef_construction = 64)""",
+                "CREATE INDEX IF NOT EXISTS idx_kb_chunks_tsv ON kb_chunks USING gin(content_tsv)",
+                "CREATE INDEX IF NOT EXISTS idx_kb_chunks_document ON kb_chunks(document_id)",
+                # 4. llm_providers
+                """CREATE TABLE IF NOT EXISTS llm_providers (
+                    id TEXT PRIMARY KEY,
+                    label TEXT NOT NULL,
+                    provider TEXT NOT NULL,
+                    model_id TEXT NOT NULL,
+                    base_url TEXT,
+                    api_key_encrypted TEXT,
+                    max_tokens INTEGER DEFAULT 2048,
+                    temperature REAL DEFAULT 0.3,
+                    streaming_supported INTEGER DEFAULT 1,
+                    is_active INTEGER DEFAULT 1,
+                    cost_per_1m_input REAL,
+                    cost_per_1m_output REAL,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )""",
+                # 5. rag_queries
+                """CREATE TABLE IF NOT EXISTS rag_queries (
+                    id TEXT PRIMARY KEY,
+                    conversation_id TEXT,
+                    user_id TEXT,
+                    query_text TEXT NOT NULL,
+                    query_embedding vector(1536),
+                    retrieved_chunk_ids TEXT NOT NULL,
+                    rerank_scores TEXT,
+                    llm_provider_id TEXT,
+                    system_prompt_hash TEXT,
+                    response_text TEXT,
+                    citations_json TEXT,
+                    latency_total_ms INTEGER,
+                    latency_retrieval_ms INTEGER,
+                    latency_llm_ms INTEGER,
+                    token_input INTEGER,
+                    token_output INTEGER,
+                    cost_usd REAL,
+                    guardrail_violations TEXT,
+                    guardrail_action TEXT,
+                    created_at TEXT NOT NULL
+                )""",
+                "CREATE INDEX IF NOT EXISTS idx_rag_queries_conv ON rag_queries(conversation_id)",
+                "CREATE INDEX IF NOT EXISTS idx_rag_queries_user ON rag_queries(user_id)",
+                "CREATE INDEX IF NOT EXISTS idx_rag_queries_date ON rag_queries(created_at)",
+                # 6. kb_feedback
+                """CREATE TABLE IF NOT EXISTS kb_feedback (
+                    id TEXT PRIMARY KEY,
+                    rag_query_id TEXT REFERENCES rag_queries(id),
+                    chunk_id TEXT REFERENCES kb_chunks(id),
+                    feedback_type TEXT,
+                    note TEXT,
+                    evaluator_id TEXT,
+                    created_at TEXT NOT NULL
+                )""",
+                # 7. embedding_providers
+                """CREATE TABLE IF NOT EXISTS embedding_providers (
+                    slot TEXT PRIMARY KEY,
+                    provider TEXT NOT NULL,
+                    model_id TEXT NOT NULL,
+                    dimension INTEGER NOT NULL,
+                    base_url TEXT,
+                    api_key_encrypted TEXT,
+                    is_active INTEGER DEFAULT 1,
+                    migration_status TEXT DEFAULT 'stable',
+                    rollout_percentage INTEGER DEFAULT 0,
+                    last_changed_by TEXT,
+                    last_changed_at TEXT NOT NULL
+                )""",
+                # 8. email_notifications (Phase 4 발송 로직 구현 예정)
+                """CREATE TABLE IF NOT EXISTS email_notifications (
+                    id TEXT PRIMARY KEY,
+                    recipient TEXT NOT NULL,
+                    subject TEXT NOT NULL,
+                    body_html TEXT NOT NULL,
+                    category TEXT,
+                    status TEXT DEFAULT 'pending',
+                    sent_at TEXT,
+                    error_message TEXT,
+                    created_at TEXT NOT NULL
+                )""",
+                # 9. embedding_migration_log
+                """CREATE TABLE IF NOT EXISTS embedding_migration_log (
+                    id TEXT PRIMARY KEY,
+                    checkpoint TEXT NOT NULL,
+                    from_state TEXT,
+                    to_state TEXT,
+                    triggered_by TEXT NOT NULL,
+                    approved_at TEXT NOT NULL,
+                    rollback_plan TEXT,
+                    metrics_json TEXT,
+                    notes TEXT
+                )""",
+                # 10. conversations ALTER — EMERGENCY_REDIRECTED 상태머신
+                "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS emergency_state TEXT DEFAULT 'NORMAL'",
+                "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS emergency_redirected_at TEXT",
+            ]
+            for _sql in _rag_migrations_pg:
+                try:
+                    cur.execute(_sql)
+                except Exception:
+                    pass
+            # 시드 데이터 — embedding_providers
+            try:
+                cur.execute("""
+                    INSERT INTO embedding_providers
+                        (slot, provider, model_id, dimension, is_active, migration_status,
+                         rollout_percentage, last_changed_by, last_changed_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                    ON CONFLICT (slot) DO NOTHING
+                """, ('default', 'openai', 'text-embedding-3-small', 1536, 1, 'stable', 100, 'system_init'))
+            except Exception:
+                pass
+            # 시드 데이터 — llm_providers (GPT-5 + GPT-5-mini)
+            for _lp in [
+                ('openai_gpt5', 'GPT-5 (메인)', 'openai', 'gpt-5'),
+                ('openai_gpt5_mini', 'GPT-5 mini (재생성/저비용)', 'openai', 'gpt-5-mini'),
+            ]:
+                try:
+                    cur.execute("""
+                        INSERT INTO llm_providers
+                            (id, label, provider, model_id, max_tokens, temperature,
+                             streaming_supported, is_active, created_at, updated_at)
+                        VALUES (%s, %s, %s, %s, 2048, 0.3, 1, 1, NOW(), NOW())
+                        ON CONFLICT (id) DO NOTHING
+                    """, _lp)
+                except Exception:
+                    pass
             cur.close()
         finally:
             _pg_pool.putconn(conn)
@@ -1199,6 +1403,198 @@ def init_db(db_path=None):
             conn.execute("UPDATE test_runs SET status = 'cancelled' WHERE status = 'running'")
         except sqlite3.OperationalError:
             pass
+        # ── RAG Phase 1 마이그레이션 (SQLite 모킹) ──
+        # 벡터 컬럼은 TEXT(JSON serialized)로 대체, pgvector 미지원
+        _rag_migrations_sqlite = [
+            # 1. kb_sources
+            """CREATE TABLE IF NOT EXISTS kb_sources (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                source_type TEXT NOT NULL,
+                license TEXT NOT NULL,
+                url TEXT,
+                update_frequency TEXT,
+                last_updated_at TEXT,
+                is_active INTEGER DEFAULT 1,
+                created_at TEXT NOT NULL
+            )""",
+            # 2. kb_documents
+            """CREATE TABLE IF NOT EXISTS kb_documents (
+                id TEXT PRIMARY KEY,
+                source_id TEXT,
+                title TEXT NOT NULL,
+                content_md TEXT NOT NULL,
+                metadata_json TEXT DEFAULT '{}',
+                status TEXT DEFAULT 'draft',
+                author_id TEXT,
+                approved_by TEXT,
+                approved_at TEXT,
+                rejected_reason TEXT,
+                evidence_level TEXT DEFAULT 'B',
+                last_verified_date TEXT,
+                version INTEGER DEFAULT 1,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (source_id) REFERENCES kb_sources(id)
+            )""",
+            "CREATE INDEX IF NOT EXISTS idx_kb_documents_status ON kb_documents(status)",
+            "CREATE INDEX IF NOT EXISTS idx_kb_documents_source ON kb_documents(source_id)",
+            # 3. kb_chunks (벡터 컬럼 = TEXT 모킹)
+            """CREATE TABLE IF NOT EXISTS kb_chunks (
+                id TEXT PRIMARY KEY,
+                document_id TEXT NOT NULL,
+                chunk_index INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                section_path TEXT,
+                embedding_primary TEXT,
+                embedding_secondary TEXT,
+                embedding_primary_model TEXT NOT NULL DEFAULT '',
+                embedding_secondary_model TEXT,
+                secondary_indexed_at TEXT,
+                evidence_country TEXT,
+                evidence_topic TEXT,
+                regulatory_korea INTEGER DEFAULT 0,
+                topic_keywords TEXT DEFAULT '[]',
+                token_count INTEGER,
+                symptom_tags TEXT DEFAULT '[]',
+                severity TEXT,
+                content_tsv TEXT,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (document_id) REFERENCES kb_documents(id) ON DELETE CASCADE
+            )""",
+            "CREATE INDEX IF NOT EXISTS idx_kb_chunks_document ON kb_chunks(document_id)",
+            # 4. llm_providers
+            """CREATE TABLE IF NOT EXISTS llm_providers (
+                id TEXT PRIMARY KEY,
+                label TEXT NOT NULL,
+                provider TEXT NOT NULL,
+                model_id TEXT NOT NULL,
+                base_url TEXT,
+                api_key_encrypted TEXT,
+                max_tokens INTEGER DEFAULT 2048,
+                temperature REAL DEFAULT 0.3,
+                streaming_supported INTEGER DEFAULT 1,
+                is_active INTEGER DEFAULT 1,
+                cost_per_1m_input REAL,
+                cost_per_1m_output REAL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )""",
+            # 5. rag_queries (query_embedding = TEXT 모킹)
+            """CREATE TABLE IF NOT EXISTS rag_queries (
+                id TEXT PRIMARY KEY,
+                conversation_id TEXT,
+                user_id TEXT,
+                query_text TEXT NOT NULL,
+                query_embedding TEXT,
+                retrieved_chunk_ids TEXT NOT NULL,
+                rerank_scores TEXT,
+                llm_provider_id TEXT,
+                system_prompt_hash TEXT,
+                response_text TEXT,
+                citations_json TEXT,
+                latency_total_ms INTEGER,
+                latency_retrieval_ms INTEGER,
+                latency_llm_ms INTEGER,
+                token_input INTEGER,
+                token_output INTEGER,
+                cost_usd REAL,
+                guardrail_violations TEXT,
+                guardrail_action TEXT,
+                created_at TEXT NOT NULL
+            )""",
+            "CREATE INDEX IF NOT EXISTS idx_rag_queries_conv ON rag_queries(conversation_id)",
+            "CREATE INDEX IF NOT EXISTS idx_rag_queries_user ON rag_queries(user_id)",
+            "CREATE INDEX IF NOT EXISTS idx_rag_queries_date ON rag_queries(created_at)",
+            # 6. kb_feedback
+            """CREATE TABLE IF NOT EXISTS kb_feedback (
+                id TEXT PRIMARY KEY,
+                rag_query_id TEXT,
+                chunk_id TEXT,
+                feedback_type TEXT,
+                note TEXT,
+                evaluator_id TEXT,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (rag_query_id) REFERENCES rag_queries(id),
+                FOREIGN KEY (chunk_id) REFERENCES kb_chunks(id)
+            )""",
+            # 7. embedding_providers
+            """CREATE TABLE IF NOT EXISTS embedding_providers (
+                slot TEXT PRIMARY KEY,
+                provider TEXT NOT NULL,
+                model_id TEXT NOT NULL,
+                dimension INTEGER NOT NULL,
+                base_url TEXT,
+                api_key_encrypted TEXT,
+                is_active INTEGER DEFAULT 1,
+                migration_status TEXT DEFAULT 'stable',
+                rollout_percentage INTEGER DEFAULT 0,
+                last_changed_by TEXT,
+                last_changed_at TEXT NOT NULL
+            )""",
+            # 8. email_notifications
+            """CREATE TABLE IF NOT EXISTS email_notifications (
+                id TEXT PRIMARY KEY,
+                recipient TEXT NOT NULL,
+                subject TEXT NOT NULL,
+                body_html TEXT NOT NULL,
+                category TEXT,
+                status TEXT DEFAULT 'pending',
+                sent_at TEXT,
+                error_message TEXT,
+                created_at TEXT NOT NULL
+            )""",
+            # 9. embedding_migration_log
+            """CREATE TABLE IF NOT EXISTS embedding_migration_log (
+                id TEXT PRIMARY KEY,
+                checkpoint TEXT NOT NULL,
+                from_state TEXT,
+                to_state TEXT,
+                triggered_by TEXT NOT NULL,
+                approved_at TEXT NOT NULL,
+                rollback_plan TEXT,
+                metrics_json TEXT,
+                notes TEXT
+            )""",
+        ]
+        for _sql in _rag_migrations_sqlite:
+            try:
+                conn.execute(_sql)
+            except sqlite3.OperationalError:
+                pass
+        # conversations ALTER (SQLite: IF NOT EXISTS 미지원 — 오류 무시)
+        for _col_sql in [
+            "ALTER TABLE conversations ADD COLUMN emergency_state TEXT DEFAULT 'NORMAL'",
+            "ALTER TABLE conversations ADD COLUMN emergency_redirected_at TEXT",
+        ]:
+            try:
+                conn.execute(_col_sql)
+            except sqlite3.OperationalError:
+                pass
+        # 시드 데이터 — embedding_providers
+        try:
+            conn.execute("""
+                INSERT OR IGNORE INTO embedding_providers
+                    (slot, provider, model_id, dimension, is_active, migration_status,
+                     rollout_percentage, last_changed_by, last_changed_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            """, ('default', 'openai', 'text-embedding-3-small', 1536, 1, 'stable', 100, 'system_init'))
+        except sqlite3.OperationalError:
+            pass
+        # 시드 데이터 — llm_providers
+        for _lp in [
+            ('openai_gpt5', 'GPT-5 (메인)', 'openai', 'gpt-5'),
+            ('openai_gpt5_mini', 'GPT-5 mini (재생성/저비용)', 'openai', 'gpt-5-mini'),
+        ]:
+            try:
+                conn.execute("""
+                    INSERT OR IGNORE INTO llm_providers
+                        (id, label, provider, model_id, max_tokens, temperature,
+                         streaming_supported, is_active, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, 2048, 0.3, 1, 1, datetime('now'), datetime('now'))
+                """, _lp)
+            except sqlite3.OperationalError:
+                pass
         conn.commit()
         conn.close()
 
@@ -3412,6 +3808,72 @@ def add_shared_comment(eval_id, comment_type, author, content, target_version=''
         )
     return {'author': author, 'content': content, 'createdAt': now_iso,
             'type': comment_type, 'targetVersion': target_version or ''}
+
+
+# ════════════════════════════════════════
+#  Medical RAG 스펙 모듈 지원 (Review Queue / Audit)
+# ════════════════════════════════════════
+
+def add_review_item(data: dict):
+    """고위험 답변 검수 큐(review_queue_items) 적재. 스키마 미적용/오류 시 None(비차단)."""
+    import uuid as _uuid
+    try:
+        item_id = "rvq-" + _uuid.uuid4().hex[:10]
+        now = datetime.now(timezone.utc).isoformat()
+        reasons = json.dumps(data.get("reasons", []), ensure_ascii=False)
+        with get_conn() as (conn, cur):
+            cur.execute(
+                f"""INSERT INTO review_queue_items
+                    (id, answer_id, rag_query_id, question, answer, priority,
+                     assignee_role, reasons_json, status, created_at)
+                    VALUES ({_p()},{_p()},{_p()},{_p()},{_p()},{_p()},{_p()},{_p()},{_p()},{_p()})""",
+                (item_id, data.get("answer_id"), data.get("rag_query_id"),
+                 data.get("question"), data.get("answer"), data.get("priority", "medium"),
+                 data.get("assignee_role", "doctor"), reasons,
+                 data.get("status", "pending"), now),
+            )
+            conn.commit()
+        return item_id
+    except Exception:
+        return None
+
+
+def update_rag_query_audit(rag_query_id: str, **fields):
+    """rag_queries 감사 필드(answer_id/model_version/prompt_version/classification_json/
+    evidence_pack_json) 갱신. 스키마 미적용/오류 시 무시(비차단)."""
+    if not rag_query_id or not fields:
+        return False
+    allowed = {"answer_id", "model_version", "prompt_version",
+               "classification_json", "evidence_pack_json"}
+    cols = [k for k in fields if k in allowed]
+    if not cols:
+        return False
+    try:
+        sets = ", ".join(f"{c} = {_p()}" for c in cols)
+        params = [fields[c] for c in cols] + [rag_query_id]
+        with get_conn() as (conn, cur):
+            cur.execute(f"UPDATE rag_queries SET {sets} WHERE id = {_p()}", params)
+            conn.commit()
+        return True
+    except Exception:
+        return False
+
+
+def list_review_queue(status: str = "pending", limit: int = 50) -> list:
+    """검수 큐 조회 (스펙 §8.4 review console용). 오류 시 빈 리스트."""
+    try:
+        with get_conn() as (conn, cur):
+            cur.execute(
+                f"""SELECT id, answer_id, question, priority, assignee_role,
+                           reasons_json, status, created_at
+                    FROM review_queue_items WHERE status = {_p()}
+                    ORDER BY CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END,
+                             created_at DESC LIMIT {_p()}""",
+                (status, limit),
+            )
+            return [_row_to_dict(r) for r in cur.fetchall()]
+    except Exception:
+        return []
 
 
 # ════════════════════════════════════════

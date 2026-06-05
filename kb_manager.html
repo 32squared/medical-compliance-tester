@@ -1,0 +1,2181 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>지식 베이스 관리 — 나만의 주치의</title>
+<style>
+  :root {
+    --bg: #0f172a; --surface: #1e293b; --surface2: #334155; --surface3: #3b4a63;
+    --text: #e2e8f0; --text-dim: #94a3b8; --accent: #38bdf8; --accent-dim: #0c4a6e;
+    --green: #22c55e; --red: #ef4444; --yellow: #eab308; --orange: #f97316;
+    --purple: #a855f7; --border: #475569; --radius: 12px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Pretendard','Apple SD Gothic Neo',system-ui,sans-serif;
+         background:var(--bg); color:var(--text); height:100vh; display:flex; flex-direction:column; }
+
+  /* 로딩 스피너 */
+  #appLoader{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .3s}
+  #appLoader.fade-out{opacity:0;pointer-events:none}
+  .loader-spinner{width:40px;height:40px;border:3px solid #334155;border-top-color:#38bdf8;border-radius:50%;animation:spin .8s linear infinite}
+  .loader-text{margin-top:16px;color:#94a3b8;font-size:13px;font-family:system-ui}
+  .loader-progress{width:200px;height:3px;background:#334155;border-radius:2px;margin-top:12px;overflow:hidden}
+  .loader-bar{height:100%;background:#38bdf8;border-radius:2px;transition:width .2s;width:0%}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* Top Bar */
+  .topbar { display:flex; align-items:center; gap:8px; padding:12px 20px;
+            background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; flex-wrap:nowrap; overflow-x:auto; }
+  .topbar h1 { font-size:16px; font-weight:700; display:flex; align-items:center; gap:8px; white-space:nowrap; }
+  .nav-btn { background:none; border:1px solid var(--border); color:var(--text-dim); border-radius:8px;
+             padding:6px 14px; cursor:pointer; font-size:13px; text-decoration:none; transition:all .15s; white-space:nowrap; }
+  .nav-btn:hover { background:var(--surface2); color:var(--text); }
+  .nav-btn.active { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
+  .btn { padding:8px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;
+         border:1px solid var(--border); transition:all .15s; font-family:inherit; }
+  .btn-primary { background:var(--accent); color:#0f172a; border-color:var(--accent); }
+  .btn-primary:hover { opacity:.9; }
+  .btn-outline { background:none; color:var(--text-dim); }
+  .btn-outline:hover { background:var(--surface2); color:var(--text); }
+  .btn-danger { background:var(--red); color:white; border-color:var(--red); }
+  .btn-danger:hover { opacity:.9; }
+  .btn-success { background:var(--green); color:white; border-color:var(--green); }
+  .btn-success:hover { opacity:.9; }
+  .btn-warning { background:var(--yellow); color:#0f172a; border-color:var(--yellow); }
+  .btn-warning:hover { opacity:.9; }
+  .btn-sm { padding:5px 10px; font-size:12px; }
+  .btn-xs { padding:3px 8px; font-size:11px; }
+  .btn:disabled { opacity:.5; cursor:not-allowed; }
+
+  /* Layout */
+  .layout { display:flex; flex:1; overflow:hidden; }
+
+  /* Sidebar */
+  .sidebar { width:220px; background:var(--surface); border-right:1px solid var(--border);
+             padding:16px; overflow-y:auto; flex-shrink:0; }
+  .sidebar-section { margin-bottom:20px; }
+  .sidebar-section h3 { font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:1px;
+                        margin-bottom:10px; font-weight:700; }
+  .filter-item { display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px;
+                 cursor:pointer; font-size:13px; transition:all .15s; margin-bottom:2px; user-select:none; }
+  .filter-item:hover { background:var(--surface2); }
+  .filter-item.active { background:var(--accent-dim); color:var(--accent); }
+  .filter-item input[type="checkbox"] { accent-color:var(--accent); width:14px; height:14px; flex-shrink:0; }
+  .filter-label { flex:1; }
+  .filter-count { font-size:11px; color:var(--text-dim); background:var(--surface2); padding:1px 6px; border-radius:8px; }
+  .filter-item.active .filter-count { background:var(--accent-dim); color:var(--accent); }
+
+  .sidebar-divider { border:none; border-top:1px solid var(--border); margin:14px 0; }
+  .sidebar-stats { font-size:12px; color:var(--text-dim); }
+  .sidebar-stats .stat { display:flex; justify-content:space-between; margin-bottom:5px; }
+  .sidebar-stats .stat-val { color:var(--text); font-weight:600; }
+
+  .btn-queue { width:100%; padding:8px 12px; background:var(--surface2); border:1px solid var(--border);
+               color:var(--text); border-radius:8px; font-size:12px; font-weight:600; cursor:pointer;
+               transition:all .15s; display:flex; align-items:center; justify-content:space-between; }
+  .btn-queue:hover { border-color:var(--yellow); color:var(--yellow); }
+  .btn-queue.active-queue { background:rgba(234,179,8,.12); border-color:var(--yellow); color:var(--yellow); }
+  .queue-badge { background:var(--yellow); color:#0f172a; border-radius:10px; padding:1px 7px; font-size:11px; font-weight:700; min-width:18px; text-align:center; }
+
+  /* Main area */
+  .main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+
+  /* Toolbar */
+  .toolbar { display:flex; align-items:center; gap:10px; padding:12px 20px;
+             background:var(--surface); border-bottom:1px solid var(--border); flex-wrap:wrap; }
+  .search-wrap { flex:1; min-width:200px; display:flex; align-items:center; background:var(--bg);
+                 border:1px solid var(--border); border-radius:8px; padding:0 12px; }
+  .search-wrap input { flex:1; background:none; border:none; color:var(--text); padding:8px 0;
+                       font-size:13px; outline:none; font-family:inherit; }
+  .search-icon { color:var(--text-dim); font-size:14px; }
+  .bulk-actions { display:flex; gap:6px; align-items:center; }
+  .selected-count { font-size:12px; color:var(--text-dim); white-space:nowrap; }
+
+  /* Phase notice */
+  .phase-notice { margin:12px 20px; padding:10px 14px; background:rgba(234,179,8,.08); border:1px solid rgba(234,179,8,.3);
+                  border-radius:8px; font-size:12px; color:var(--yellow); display:flex; align-items:center; gap:8px; }
+  .phase-notice.hidden { display:none; }
+
+  /* Document list */
+  .doc-list { flex:1; overflow-y:auto; padding:12px 20px; }
+  .doc-card { background:var(--surface); border:1px solid var(--border); border-radius:12px;
+              margin-bottom:8px; padding:14px 16px; cursor:pointer; transition:all .15s; position:relative; }
+  .doc-card:hover { border-color:var(--accent); background:var(--surface2); }
+  .doc-card.selected { border-color:var(--accent); background:rgba(56,189,248,.06); }
+  .doc-card.queue-card { border-left:3px solid var(--yellow); }
+  .doc-card-top { display:flex; align-items:flex-start; gap:10px; }
+  .doc-cb { width:16px; height:16px; border:2px solid var(--border); border-radius:3px; flex-shrink:0;
+            margin-top:2px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .15s; }
+  .doc-cb.checked { background:var(--accent); border-color:var(--accent); }
+  .doc-cb.checked::after { content:'\2713'; color:#0f172a; font-size:10px; font-weight:bold; }
+  .doc-body { flex:1; min-width:0; }
+  .doc-header { display:flex; align-items:center; gap:6px; margin-bottom:4px; flex-wrap:wrap; }
+  .doc-title { font-size:14px; font-weight:600; color:var(--text); }
+  .doc-meta { font-size:12px; color:var(--text-dim); margin-bottom:6px; display:flex; gap:12px; flex-wrap:wrap; }
+  .doc-actions { display:flex; gap:4px; flex-shrink:0; }
+  .doc-actions .btn-sm { opacity:0; transition:opacity .15s; }
+  .doc-card:hover .doc-actions .btn-sm { opacity:1; }
+
+  /* Badges */
+  .badge { padding:2px 8px; border-radius:10px; font-size:11px; font-weight:700; }
+  .badge-source { background:var(--surface2); color:var(--text-dim); }
+  .badge-active { background:#22c55e22; color:var(--green); }
+  .badge-draft { background:var(--surface2); color:var(--text-dim); }
+  .badge-pending { background:rgba(234,179,8,.2); color:var(--yellow); }
+  .badge-approved { background:rgba(56,189,248,.15); color:var(--accent); }
+  .badge-rejected { background:#ef444422; color:var(--red); }
+  .badge-A { background:rgba(56,189,248,.15); color:var(--accent); }
+  .badge-B { background:rgba(234,179,8,.15); color:var(--yellow); }
+  .badge-C { background:var(--surface2); color:var(--text-dim); }
+
+  /* Pagination */
+  .pagination { display:flex; align-items:center; justify-content:center; gap:6px; padding:12px 20px;
+                background:var(--surface); border-top:1px solid var(--border); flex-shrink:0; }
+  .page-btn { width:32px; height:32px; border:1px solid var(--border); background:none; color:var(--text-dim);
+              border-radius:6px; cursor:pointer; font-size:13px; transition:all .15s; display:flex; align-items:center; justify-content:center; }
+  .page-btn:hover { background:var(--surface2); color:var(--text); }
+  .page-btn.active { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); font-weight:700; }
+  .page-btn:disabled { opacity:.4; cursor:not-allowed; }
+  .page-ellipsis { color:var(--text-dim); font-size:13px; padding:0 4px; }
+  .page-info { font-size:12px; color:var(--text-dim); }
+
+  /* Empty state */
+  .empty-state { text-align:center; padding:60px 20px; color:var(--text-dim); }
+  .empty-state .icon { font-size:48px; margin-bottom:16px; opacity:.4; }
+  .empty-state p { font-size:14px; margin-bottom:16px; }
+  .empty-state .hint { font-size:12px; color:var(--text-dim); margin-top:8px; }
+
+  /* Modal overlay */
+  .modal-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.65);
+                   display:none; align-items:flex-start; justify-content:center; z-index:100;
+                   padding:20px; overflow-y:auto; }
+  .modal-overlay.show { display:flex; }
+  .modal { background:var(--surface); border:1px solid var(--border); border-radius:16px;
+           width:760px; max-width:100%; padding:24px; flex-shrink:0; margin:auto; }
+  .modal-sm { width:460px; }
+  .modal-lg { width:900px; }
+  .modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+  .modal-header h2 { font-size:15px; font-weight:700; }
+  .close-btn { background:none; border:none; color:var(--text-dim); font-size:20px; cursor:pointer; padding:4px; line-height:1; }
+  .close-btn:hover { color:var(--text); }
+  .modal-footer { display:flex; justify-content:flex-end; gap:8px; margin-top:20px; padding-top:16px;
+                  border-top:1px solid var(--border); }
+
+  /* Form fields */
+  .field { margin-bottom:14px; }
+  .field label { display:block; font-size:12px; color:var(--text-dim); margin-bottom:5px; font-weight:600; }
+  .field input, .field select, .field textarea {
+    width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text);
+    padding:9px 12px; border-radius:8px; font-size:13px; font-family:inherit; outline:none;
+    transition:border-color .15s;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color:var(--accent); }
+  .field textarea { resize:vertical; min-height:80px; }
+  .field .hint { font-size:11px; color:var(--text-dim); margin-top:3px; }
+  .field-row { display:flex; gap:12px; }
+  .field-row .field { flex:1; }
+  .field-group { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-bottom:14px; }
+  .field-group-title { font-size:12px; color:var(--accent); font-weight:700; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+
+  /* Tag input */
+  .tag-input-wrap { display:flex; flex-wrap:wrap; gap:4px; background:var(--bg); border:1px solid var(--border);
+                    border-radius:8px; padding:6px 10px; min-height:38px; cursor:text; }
+  .tag-input-wrap:focus-within { border-color:var(--accent); }
+  .tag-chip { display:inline-flex; align-items:center; gap:4px; background:var(--surface2); color:var(--text);
+              padding:2px 8px; border-radius:12px; font-size:12px; }
+  .tag-chip-remove { background:none; border:none; color:var(--text-dim); cursor:pointer; padding:0; font-size:14px; line-height:1; }
+  .tag-chip-remove:hover { color:var(--red); }
+  .tag-input-inner { background:none; border:none; outline:none; color:var(--text); font-size:12px;
+                     font-family:inherit; min-width:80px; flex:1; padding:2px 0; }
+
+  /* Checkbox row */
+  .cb-row { display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; }
+  .cb-row input[type="checkbox"] { accent-color:var(--accent); width:15px; height:15px; cursor:pointer; }
+
+  /* Chunk preview */
+  .chunks-area { margin-top:14px; }
+  .chunks-title { font-size:12px; color:var(--text-dim); font-weight:700; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; }
+  .chunk-card { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:6px; }
+  .chunk-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  .chunk-idx { font-size:11px; font-weight:700; color:var(--accent); font-family:monospace; }
+  .chunk-tokens { font-size:11px; color:var(--text-dim); }
+  .chunk-section { font-size:11px; color:var(--purple); margin-bottom:4px; }
+  .chunk-content { font-size:12px; color:var(--text-dim); line-height:1.6; white-space:pre-wrap; max-height:80px; overflow:hidden; }
+  .chunk-content.expanded { max-height:none; }
+  .chunk-toggle { font-size:11px; color:var(--accent); cursor:pointer; margin-top:4px; background:none; border:none; padding:0; }
+
+  /* Meta display */
+  .meta-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:12px; }
+  .meta-item label { color:var(--text-dim); font-weight:600; display:block; margin-bottom:2px; }
+  .meta-item .val { color:var(--text); }
+
+  /* Reject reason */
+  .reject-reason { background:rgba(239,68,68,.08); border:1px solid rgba(239,68,68,.3); border-radius:8px;
+                   padding:10px 12px; font-size:12px; color:var(--red); margin-top:8px; }
+
+  /* Toast */
+  .toast-container { position:fixed; bottom:20px; right:20px; z-index:200; display:flex;
+                     flex-direction:column; gap:8px; }
+  .toast { padding:12px 20px; border-radius:10px; font-size:13px; font-weight:500;
+           animation:slideIn .3s ease; box-shadow:0 4px 12px rgba(0,0,0,.3); }
+  .toast-success { background:var(--green); color:white; }
+  .toast-error { background:var(--red); color:white; }
+  .toast-info { background:var(--accent); color:#0f172a; }
+  .toast-warn { background:var(--yellow); color:#0f172a; }
+  @keyframes slideIn { from { transform:translateX(100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
+
+  /* Confirm dialog */
+  .confirm-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.65);
+                     display:none; align-items:center; justify-content:center; z-index:150; }
+  .confirm-overlay.show { display:flex; }
+  .confirm-box { background:var(--surface); border:1px solid var(--border); border-radius:16px;
+                 padding:24px; width:380px; max-width:90vw; text-align:center; }
+  .confirm-box h3 { font-size:15px; font-weight:700; margin-bottom:10px; }
+  .confirm-box p { font-size:13px; color:var(--text-dim); margin-bottom:20px; line-height:1.6; }
+  .confirm-actions { display:flex; gap:8px; justify-content:center; }
+
+  /* Stats bar */
+  .stats-bar { display:flex; gap:16px; padding:10px 20px; background:var(--surface);
+               border-bottom:1px solid var(--border); font-size:12px; flex-shrink:0; flex-wrap:wrap; }
+  .stat-item { display:flex; align-items:center; gap:6px; color:var(--text-dim); }
+  .stat-item .val { color:var(--text); font-weight:700; }
+  .stat-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
+  /* 원본 URL 링크 */
+  .doc-source-url { font-size:11px; color:var(--accent); text-decoration:none; display:inline-flex; align-items:center; gap:3px;
+                    background:rgba(56,189,248,.08); border:1px solid rgba(56,189,248,.2); border-radius:4px;
+                    padding:1px 7px; transition:all .15s; white-space:nowrap; }
+  .doc-source-url:hover { background:rgba(56,189,248,.2); border-color:var(--accent); }
+
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--surface2); border-radius:3px; }
+</style>
+</head>
+<body>
+
+<div id="appLoader">
+  <div class="loader-spinner"></div>
+  <div class="loader-text">KB 관리 로딩 중...</div>
+  <div class="loader-progress"><div class="loader-bar" id="loaderBar"></div></div>
+</div>
+
+<!-- Top Bar -->
+<div class="topbar">
+  <h1>&#127973; 나만의 주치의</h1>
+  <a href="/" class="nav-btn">채팅 테스터</a>
+  <a href="/manager" class="nav-btn">시나리오 관리</a>
+  <a href="/history" class="nav-btn">테스트 이력</a>
+  <a href="/guidelines" class="nav-btn">가이드라인</a>
+  <a href="/kb_manager" class="nav-btn active">KB 관리</a>
+  <a href="/settings" class="nav-btn" id="settingsNavLink">&#9881; 설정</a>
+  <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-shrink:0">
+    <button class="btn btn-outline btn-sm" onclick="refreshDocuments()">&#8635; 새로고침</button>
+    <button class="btn btn-primary btn-sm" id="btnAddDoc" onclick="openCreateModal()">+ 문서 추가</button>
+    <span id="testerBadge" style="display:none;font-size:11px;color:var(--accent);background:var(--accent-dim);padding:3px 10px;border-radius:6px;cursor:pointer;white-space:nowrap" onclick="if(confirm('로그아웃 하시겠습니까?'))testerLogout()"></span>
+  </div>
+</div>
+
+<!-- Stats bar -->
+<div class="stats-bar" id="statsBar">
+  <div class="stat-item"><div class="stat-dot" style="background:var(--accent)"></div>전체 <span class="val" id="statTotal">0</span>건</div>
+  <div class="stat-item"><div class="stat-dot" style="background:var(--green)"></div>활성 <span class="val" id="statActive">0</span></div>
+  <div class="stat-item"><div class="stat-dot" style="background:var(--yellow)"></div>승인 대기 <span class="val" id="statPending">0</span></div>
+  <div class="stat-item"><div class="stat-dot" style="background:var(--text-dim)"></div>초안 <span class="val" id="statDraft">0</span></div>
+  <div class="stat-item" style="margin-left:auto;color:var(--yellow);font-size:11px" id="apiStatusNote"></div>
+</div>
+
+<!-- Phase notice -->
+<div class="phase-notice" id="phaseNotice">
+  <span>&#9888;</span>
+  <span id="phaseNoticeText">KB 관리 API (T7)가 아직 구현 중입니다. 현재 mock 데이터로 동작합니다. T7 완료 시 자동으로 실제 데이터가 표시됩니다.</span>
+  <button style="margin-left:auto;background:none;border:none;color:var(--yellow);cursor:pointer;font-size:16px" onclick="document.getElementById('phaseNotice').classList.add('hidden')">&#10005;</button>
+</div>
+
+<!-- Layout -->
+<div class="layout">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+
+    <!-- 승인 큐 버튼 -->
+    <div class="sidebar-section">
+      <button class="btn-queue" id="btnApprovalQueue" onclick="toggleApprovalQueue()">
+        <span>&#9679; 승인 큐</span>
+        <span class="queue-badge" id="queueBadge">0</span>
+      </button>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <!-- 소스 필터 -->
+    <div class="sidebar-section">
+      <h3>소스</h3>
+      <div id="sourceFilters"></div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <!-- 상태 필터 -->
+    <div class="sidebar-section">
+      <h3>상태</h3>
+      <div id="statusFilters">
+        <label class="filter-item">
+          <input type="checkbox" value="active" onchange="onFilterChange()"> <span class="filter-label">활성</span>
+          <span class="filter-count" id="cnt-active">0</span>
+        </label>
+        <label class="filter-item">
+          <input type="checkbox" value="pending_review" onchange="onFilterChange()"> <span class="filter-label">승인 대기</span>
+          <span class="filter-count" id="cnt-pending">0</span>
+        </label>
+        <label class="filter-item">
+          <input type="checkbox" value="approved" onchange="onFilterChange()"> <span class="filter-label">승인됨</span>
+          <span class="filter-count" id="cnt-approved">0</span>
+        </label>
+        <label class="filter-item">
+          <input type="checkbox" value="draft" onchange="onFilterChange()"> <span class="filter-label">초안</span>
+          <span class="filter-count" id="cnt-draft">0</span>
+        </label>
+        <label class="filter-item">
+          <input type="checkbox" value="rejected" onchange="onFilterChange()"> <span class="filter-label">거부됨</span>
+          <span class="filter-count" id="cnt-rejected">0</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <!-- 증상 필터 -->
+    <div class="sidebar-section">
+      <h3>증상 태그</h3>
+      <div id="symptomFilters"></div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <!-- 통계 -->
+    <div class="sidebar-stats">
+      <div class="stat"><span>총 청크</span><span class="stat-val" id="sideStatChunks">-</span></div>
+      <div class="stat"><span>소스 수</span><span class="stat-val" id="sideStatSources">-</span></div>
+      <div class="stat"><span>마지막 업데이트</span><span class="stat-val" id="sideStatUpdated">-</span></div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <div class="search-wrap">
+        <span class="search-icon">&#128269;</span>
+        <input type="text" id="searchInput" placeholder="문서 제목 검색..." oninput="onSearchInput()">
+      </div>
+      <div class="bulk-actions" id="bulkActions" style="display:none">
+        <span class="selected-count" id="selectedCount">0개 선택됨</span>
+        <button class="btn btn-sm btn-success" id="btnBulkApprove" onclick="bulkApprove()" style="display:none">일괄 승인</button>
+        <button class="btn btn-sm btn-danger" onclick="bulkDelete()">일괄 삭제</button>
+        <button class="btn btn-sm btn-outline" onclick="clearSelection()">선택 해제</button>
+      </div>
+    </div>
+
+    <!-- Document list -->
+    <div class="doc-list" id="docList">
+      <div class="empty-state" id="emptyState" style="display:none">
+        <div class="icon">&#128196;</div>
+        <p id="emptyStateMsg">문서가 없습니다</p>
+        <div class="hint" id="emptyStateHint"></div>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination" id="paginationWrap">
+      <button class="page-btn" id="prevPageBtn" onclick="changePage(state.page - 1)">&#8249;</button>
+      <div id="pageButtons"></div>
+      <button class="page-btn" id="nextPageBtn" onclick="changePage(state.page + 1)">&#8250;</button>
+      <span class="page-info" id="pageInfo"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ── 문서 상세 모달 ── -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal modal-lg" id="detailModalBox">
+    <div class="modal-header">
+      <h2 id="detailModalTitle">문서 상세</h2>
+      <button class="close-btn" onclick="closeDetailModal()">&#10005;</button>
+    </div>
+
+    <!-- 탭 -->
+    <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:16px">
+      <button class="detail-tab active" data-tab="content" onclick="switchDetailTab('content')"
+        style="padding:8px 16px;background:none;border:none;border-bottom:2px solid var(--accent);color:var(--accent);font-size:13px;font-weight:600;cursor:pointer">
+        내용 편집
+      </button>
+      <button class="detail-tab" data-tab="meta" onclick="switchDetailTab('meta')"
+        style="padding:8px 16px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text-dim);font-size:13px;font-weight:600;cursor:pointer">
+        메타데이터
+      </button>
+      <button class="detail-tab" data-tab="chunks" onclick="switchDetailTab('chunks')"
+        style="padding:8px 16px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text-dim);font-size:13px;font-weight:600;cursor:pointer">
+        청크 미리보기 <span id="chunkCountBadge" style="font-size:11px;background:var(--surface2);padding:1px 6px;border-radius:8px;margin-left:4px">0</span>
+      </button>
+    </div>
+
+    <!-- 내용 탭 -->
+    <div id="tabContent" class="detail-tab-panel">
+      <div class="field">
+        <label>제목</label>
+        <input type="text" id="detailTitle" placeholder="문서 제목">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>소스</label>
+          <select id="detailSourceId">
+            <option value="">소스 선택...</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>근거 수준</label>
+          <select id="detailEvidenceLevel">
+            <option value="A">A — 가이드라인 (높음)</option>
+            <option value="B" selected>B — 공공통계 (중간)</option>
+            <option value="C">C — 전문가 의견 (낮음)</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>마크다운 원본</label>
+        <textarea id="detailContent" style="min-height:200px;font-family:monospace;font-size:12px" placeholder="# 제목&#10;&#10;내용을 마크다운으로 작성하세요..."></textarea>
+      </div>
+      <div class="field">
+        <label>마지막 검증일</label>
+        <input type="date" id="detailVerifiedDate">
+      </div>
+    </div>
+
+    <!-- 메타데이터 탭 -->
+    <div id="tabMeta" class="detail-tab-panel" style="display:none">
+      <div class="field-group">
+        <div class="field-group-title">&#127981; 의료 분류</div>
+        <div class="field-row">
+          <div class="field">
+            <label>증상 태그 (symptom_tags)</label>
+            <div class="tag-input-wrap" id="symptomTagsWrap" onclick="focusTagInput('symptomTagInput')">
+              <input type="text" id="symptomTagInput" class="tag-input-inner" placeholder="태그 입력 후 Enter..."
+                     onkeydown="handleTagInput(event,'symptomTagsWrap','symptomTagInput')">
+            </div>
+            <div class="hint">예: fever, headache, cough</div>
+          </div>
+          <div class="field">
+            <label>연령 그룹 (age_group)</label>
+            <div class="tag-input-wrap" id="ageGroupWrap" onclick="focusTagInput('ageGroupInput')">
+              <input type="text" id="ageGroupInput" class="tag-input-inner" placeholder="adult, child, elderly...">
+            </div>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>중증도 (severity)</label>
+            <select id="detailSeverity">
+              <option value="">미지정</option>
+              <option value="mild">mild — 경증</option>
+              <option value="moderate">moderate — 중등도</option>
+              <option value="severe">severe — 중증</option>
+              <option value="emergency">emergency — 응급</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>진료과 (department)</label>
+            <input type="text" id="detailDepartment" placeholder="예: 내과, 응급의학과">
+          </div>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-group-title">&#127752; 자문 반영 메타 (expert_review_insights 2026-05-27)</div>
+        <div class="field-row">
+          <div class="field">
+            <label>근거 국가 (evidence_country)</label>
+            <select id="detailEvidenceCountry">
+              <option value="KR" selected>KR — 한국</option>
+              <option value="US">US — 미국</option>
+              <option value="EU">EU — 유럽</option>
+              <option value="WHO">WHO</option>
+              <option value="other">기타</option>
+            </select>
+            <div class="hint">한국 가이드라인 우선 부스팅 (양현종 자문)</div>
+          </div>
+          <div class="field">
+            <label>근거 주제 (evidence_topic)</label>
+            <input type="text" id="detailEvidenceTopic" placeholder="예: fever_pediatric">
+            <div class="hint">retrieval 주제 일치 검증용</div>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>주제 키워드 (topic_keywords)</label>
+            <div class="tag-input-wrap" id="topicKeywordsWrap" onclick="focusTagInput('topicKeywordsInput')">
+              <input type="text" id="topicKeywordsInput" class="tag-input-inner" placeholder="키워드 입력 후 Enter...">
+            </div>
+            <div class="hint">BM25 보조 + 주제 일치 검증</div>
+          </div>
+          <div class="field" style="display:flex;flex-direction:column;justify-content:flex-end">
+            <label class="cb-row" style="margin-bottom:8px">
+              <input type="checkbox" id="detailRegulatoryKorea">
+              <span>심평원·식약처 기준 관련 (regulatory_korea)</span>
+            </label>
+            <div class="hint">항생제 처방 제한 등 국내 규제 매칭</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 승인 정보 (읽기 전용) -->
+      <div class="field-group" id="approvalInfoGroup" style="display:none">
+        <div class="field-group-title">&#128203; 승인 정보</div>
+        <div class="meta-grid">
+          <div class="meta-item"><label>작성자</label><span class="val" id="metaAuthor">-</span></div>
+          <div class="meta-item"><label>상태</label><span class="val" id="metaStatus">-</span></div>
+          <div class="meta-item"><label>승인자</label><span class="val" id="metaApprovedBy">-</span></div>
+          <div class="meta-item"><label>승인일</label><span class="val" id="metaApprovedAt">-</span></div>
+          <div class="meta-item"><label>버전</label><span class="val" id="metaVersion">-</span></div>
+          <div class="meta-item"><label>생성일</label><span class="val" id="metaCreatedAt">-</span></div>
+        </div>
+        <!-- 원본 URL (source_url 있을 때만 표시) -->
+        <div id="metaSourceUrlRow" style="display:none;margin-top:10px;font-size:12px">
+          <label style="color:var(--text-dim);font-weight:600;display:block;margin-bottom:4px">원본 URL</label>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <a id="metaSourceUrlLink" href="#" target="_blank" rel="noopener noreferrer"
+               style="color:var(--accent);word-break:break-all;font-size:12px">-</a>
+            <span id="metaSourceFetchedAt" style="color:var(--text-dim);font-size:11px"></span>
+          </div>
+        </div>
+        <div class="reject-reason" id="metaRejectReason" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- 청크 탭 -->
+    <div id="tabChunks" class="detail-tab-panel" style="display:none">
+      <div class="chunks-area" id="chunksArea">
+        <div class="empty-state" style="padding:30px">
+          <p style="font-size:13px">저장 후 청크 미리보기가 표시됩니다.</p>
+          <div class="hint">백엔드 T7 완료 시 자동으로 청크가 표시됩니다.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 모달 푸터 -->
+    <div class="modal-footer">
+      <div style="display:flex;gap:8px;flex:1">
+        <!-- 의사 권한 액션 -->
+        <button class="btn btn-success btn-sm" id="btnApprove" onclick="approveDocument()" style="display:none">&#10003; 승인</button>
+        <button class="btn btn-danger btn-sm" id="btnReject" onclick="openRejectModal()" style="display:none">&#10005; 거부</button>
+        <button class="btn btn-outline btn-sm" id="btnReEmbed" onclick="reembedDocument()">&#8635; 재임베딩</button>
+        <button class="btn btn-danger btn-sm" id="btnDeleteDoc" onclick="confirmDeleteDocument()">&#128465; 삭제</button>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="closeDetailModal()">닫기</button>
+      <button class="btn btn-sm btn-outline" id="btnSaveDraft" onclick="saveDocument('draft')">초안 저장</button>
+      <button class="btn btn-primary btn-sm" id="btnSubmitReview" onclick="saveDocument('pending_review')">&#128203; 검토 제출</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 문서 생성 모달 ── -->
+<div class="modal-overlay" id="createModal">
+  <div class="modal" id="createModalBox">
+    <div class="modal-header">
+      <h2>+ 새 문서 추가</h2>
+      <button class="close-btn" onclick="closeCreateModal()">&#10005;</button>
+    </div>
+    <div class="field-row">
+      <div class="field" style="flex:2">
+        <label>제목 *</label>
+        <input type="text" id="createTitle" placeholder="예: 소아 발열 평가 가이드">
+      </div>
+      <div class="field">
+        <label>소스 *</label>
+        <select id="createSourceId">
+          <option value="">소스 선택...</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>근거 수준</label>
+        <select id="createEvidenceLevel">
+          <option value="A">A — 가이드라인</option>
+          <option value="B" selected>B — 공공통계</option>
+          <option value="C">C — 전문가 의견</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>근거 국가</label>
+        <select id="createEvidenceCountry">
+          <option value="KR" selected>KR</option>
+          <option value="US">US</option>
+          <option value="EU">EU</option>
+          <option value="WHO">WHO</option>
+          <option value="other">기타</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>마크다운 내용 *</label>
+      <textarea id="createContent" style="min-height:180px;font-family:monospace;font-size:12px"
+        placeholder="# 제목&#10;&#10;## 개요&#10;내용을 작성하세요..."></textarea>
+    </div>
+    <div class="field">
+      <label>증상 태그 (쉼표 구분)</label>
+      <input type="text" id="createSymptomTags" placeholder="fever, headache, cough">
+    </div>
+    <div class="field">
+      <label>근거 주제 (evidence_topic)</label>
+      <input type="text" id="createEvidenceTopic" placeholder="fever_pediatric">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline btn-sm" onclick="closeCreateModal()">취소</button>
+      <button class="btn btn-sm btn-outline" onclick="createDocument('draft')">초안으로 저장</button>
+      <button class="btn btn-primary btn-sm" onclick="createDocument('pending_review')">저장 후 검토 제출</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 거부 사유 모달 ── -->
+<div class="modal-overlay" id="rejectModal">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h2>거부 사유 입력</h2>
+      <button class="close-btn" onclick="closeRejectModal()">&#10005;</button>
+    </div>
+    <div class="field">
+      <label>거부 사유 *</label>
+      <textarea id="rejectReason" style="min-height:100px" placeholder="의학적으로 부정확한 내용, 출처 불명, 의료법 위반 가능 표현 등 구체적인 사유를 입력하세요."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline btn-sm" onclick="closeRejectModal()">취소</button>
+      <button class="btn btn-danger btn-sm" onclick="confirmRejectDocument()">거부 확정</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 삭제 확인 모달 ── -->
+<div class="confirm-overlay" id="deleteConfirm">
+  <div class="confirm-box">
+    <h3>&#9888; 문서 삭제</h3>
+    <p id="deleteConfirmMsg">이 문서를 삭제하면 연결된 모든 청크 및 임베딩도 함께 삭제됩니다. 이 작업은 되돌릴 수 없습니다.</p>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" onclick="cancelDelete()">취소</button>
+      <button class="btn btn-danger btn-sm" onclick="executeDelete()">삭제</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ─────────────────────────────────────────────
+// 상수 & 상태
+// ─────────────────────────────────────────────
+const PAGE_SIZE = 20;
+
+const state = {
+  documents: [],        // 현재 페이지 문서
+  allDocuments: [],     // 로컬 필터링용 전체 문서 (mock 모드)
+  sources: [],
+  page: 1,
+  totalPages: 1,
+  totalCount: 0,
+  search: '',
+  statusFilters: [],
+  sourceFilters: [],
+  symptomFilters: [],
+  approvalQueueMode: false,
+  selectedIds: new Set(),
+  currentDocId: null,
+  currentDocData: null,
+  isMockMode: false,
+  tagData: {
+    symptomTagsWrap: [],
+    ageGroupWrap: [],
+    topicKeywordsWrap: []
+  }
+};
+
+const MOCK_FALLBACK = {
+  sources: [
+    { id: 'kmle', name: 'KMLE 가이드라인', source_type: 'guideline', license: 'public_domain' },
+    { id: 'kdca', name: '질병관리청(KDCA)', source_type: 'public', license: 'kogl_type1' },
+    { id: 'mfds', name: '식품의약품안전처(MFDS)', source_type: 'public', license: 'kogl_type1' },
+    { id: 'internal', name: '내부 작성 (의사)', source_type: 'internal', license: 'proprietary' }
+  ],
+  documents: [
+    {
+      id: 'doc-mock-1', source_id: 'kmle', title: '소아 발열 환자 평가 가이드',
+      status: 'active', evidence_level: 'A', chunk_count: 12,
+      author_id: 'dr_kim', approved_by: 'admin', approved_at: '2026-04-01',
+      created_at: '2026-03-28', updated_at: '2026-04-01',
+      metadata_json: JSON.stringify({ symptom_tags: ['fever', 'pediatric'], age_group: ['child'], severity: 'moderate', evidence_country: 'KR', evidence_topic: 'fever_pediatric', regulatory_korea: false, topic_keywords: ['발열', '소아', '해열'] })
+    },
+    {
+      id: 'doc-mock-2', source_id: 'internal', title: '두통 감별진단 프로토콜',
+      status: 'pending_review', evidence_level: 'B', chunk_count: 8,
+      author_id: 'dr_park', approved_by: null, approved_at: null,
+      created_at: '2026-05-10', updated_at: '2026-05-10',
+      metadata_json: JSON.stringify({ symptom_tags: ['headache'], age_group: ['adult'], severity: 'mild', evidence_country: 'KR', evidence_topic: 'headache_differential', regulatory_korea: false, topic_keywords: ['두통', '감별', '진단'] })
+    },
+    {
+      id: 'doc-mock-3', source_id: 'kdca', title: '고혈압 환자 생활습관 관리',
+      status: 'active', evidence_level: 'B', chunk_count: 10,
+      author_id: null, approved_by: 'admin', approved_at: '2026-03-15',
+      created_at: '2026-03-10', updated_at: '2026-03-15',
+      metadata_json: JSON.stringify({ symptom_tags: ['hypertension'], age_group: ['adult', 'elderly'], severity: 'moderate', evidence_country: 'KR', evidence_topic: 'hypertension_management', regulatory_korea: true, topic_keywords: ['고혈압', '생활습관', '혈압'] })
+    },
+    {
+      id: 'doc-mock-4', source_id: 'mfds', title: '해열진통제 일반 안내',
+      status: 'draft', evidence_level: 'B', chunk_count: 5,
+      author_id: 'dr_lee', approved_by: null, approved_at: null,
+      created_at: '2026-05-20', updated_at: '2026-05-20',
+      metadata_json: JSON.stringify({ symptom_tags: ['fever', 'pain'], age_group: ['adult', 'child'], severity: 'mild', evidence_country: 'KR', evidence_topic: 'otc_analgesics', regulatory_korea: true, topic_keywords: ['해열제', '진통제', 'OTC'] })
+    },
+    {
+      id: 'doc-mock-5', source_id: 'internal', title: '49세 남성 흉통 감별 (한국 가이드라인)',
+      status: 'pending_review', evidence_level: 'A', chunk_count: 9,
+      author_id: 'dr_won', approved_by: null, approved_at: null,
+      created_at: '2026-05-22', updated_at: '2026-05-22',
+      metadata_json: JSON.stringify({ symptom_tags: ['chest_pain', 'cardiovascular'], age_group: ['adult'], severity: 'emergency', evidence_country: 'KR', evidence_topic: 'chest_pain_differential', regulatory_korea: false, topic_keywords: ['흉통', '협심증', '심혈관'] })
+    },
+    {
+      id: 'doc-mock-6', source_id: 'kmle', title: '심평원 항생제 처방 제한 질환 기준',
+      status: 'rejected', evidence_level: 'A', chunk_count: 6,
+      author_id: 'dr_yang', approved_by: null, approved_at: null,
+      rejected_reason: '출처 명시 필요 — 심평원 고시 번호 추가 바람',
+      created_at: '2026-05-05', updated_at: '2026-05-12',
+      metadata_json: JSON.stringify({ symptom_tags: ['infection', 'antibiotic'], age_group: ['adult', 'child'], severity: 'moderate', evidence_country: 'KR', evidence_topic: 'antibiotic_restriction', regulatory_korea: true, topic_keywords: ['항생제', '심평원', '처방제한'] })
+    }
+  ],
+  message: 'KB 관리 API는 Phase 1 T7 완료 후 활성화됩니다.'
+};
+
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function getProxyUrl() {
+  return window.location.origin;
+}
+
+// ─────────────────────────────────────────────
+// API 레이어
+// ─────────────────────────────────────────────
+const API = {
+  listSources: () =>
+    fetch(`${getProxyUrl()}/api/rag/kb/sources`).catch(handleFetchError),
+  listDocuments: (filters) =>
+    fetch(`${getProxyUrl()}/api/rag/kb/documents?${new URLSearchParams(filters)}`).catch(handleFetchError),
+  getDocument: (id) =>
+    fetch(`${getProxyUrl()}/api/rag/kb/documents/${encodeURIComponent(id)}`).catch(handleFetchError),
+  createDocument: (body) =>
+    fetch(`${getProxyUrl()}/api/rag/kb/documents`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).catch(handleFetchError),
+  updateDocument: (id, body) =>
+    fetch(`${getProxyUrl()}/api/rag/kb/documents/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).catch(handleFetchError),
+  deleteDocument: (id) =>
+    fetch(`${getProxyUrl()}/api/rag/kb/documents/${encodeURIComponent(id)}`, {
+      method: 'DELETE'
+    }).catch(handleFetchError),
+  approveDocument: (id) =>
+    fetch(`${getProxyUrl()}/api/rag/kb/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ document_id: id })
+    }).catch(handleFetchError),
+  rejectDocument: (id, reason) =>
+    fetch(`${getProxyUrl()}/api/rag/kb/reject`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ document_id: id, reason: reason })
+    }).catch(handleFetchError),
+  reembedDocument: (id) =>
+    fetch(`${getProxyUrl()}/api/rag/kb/documents/${encodeURIComponent(id)}/reembed`, {
+      method: 'POST'
+    }).catch(handleFetchError),
+  searchPreview: (query) =>
+    fetch(`${getProxyUrl()}/api/rag/search/preview?q=${encodeURIComponent(query)}`).catch(handleFetchError)
+};
+
+async function handleFetchError(err) {
+  console.error('Fetch failed:', err);
+  return new Response(null, { status: 0 });
+}
+
+async function safeJson(response) {
+  if (!response || response.status === 0) {
+    return { ok: false, error: 'network' };
+  }
+  if (response.status === 503) {
+    let data = {};
+    try { data = await response.json(); } catch (e) { /* ignore */ }
+    return { ok: false, error: 'unavailable', message: data.message || 'KB API가 아직 구현 중입니다 (Phase 1 T7 미완료)' };
+  }
+  if (response.status === 404) {
+    return { ok: false, error: 'not_found' };
+  }
+  if (response.status === 403) {
+    return { ok: false, error: 'forbidden' };
+  }
+  if (!response.ok) {
+    return { ok: false, error: 'http_' + response.status };
+  }
+  try {
+    return await response.json();
+  } catch (e) {
+    return { ok: false, error: 'parse_error' };
+  }
+}
+
+// ─────────────────────────────────────────────
+// 초기화
+// ─────────────────────────────────────────────
+async function init() {
+  const bar = document.getElementById('loaderBar');
+  if (bar) bar.style.width = '30%';
+
+  await loadSources();
+  if (bar) bar.style.width = '60%';
+
+  await loadDocuments();
+  if (bar) bar.style.width = '90%';
+
+  renderSidebarFilters();
+  checkUserRole();
+
+  const loader = document.getElementById('appLoader');
+  if (loader) {
+    loader.classList.add('fade-out');
+    setTimeout(() => { if (loader) loader.style.display = 'none'; }, 400);
+  }
+  if (bar) bar.style.width = '100%';
+}
+
+async function loadSources() {
+  const resp = await API.listSources();
+  const data = await safeJson(resp);
+  if (data.ok === false) {
+    state.isMockMode = true;
+    state.sources = MOCK_FALLBACK.sources;
+    updatePhaseNotice(MOCK_FALLBACK.message);
+  } else {
+    state.sources = Array.isArray(data) ? data : (data.sources || []);
+    hidePhaseNotice();
+  }
+  populateSourceSelects();
+}
+
+async function loadDocuments() {
+  const filters = buildFilterParams();
+  const resp = await API.listDocuments(filters);
+  const data = await safeJson(resp);
+
+  if (data.ok === false) {
+    state.isMockMode = true;
+    state.allDocuments = MOCK_FALLBACK.documents;
+    applyLocalFilters();
+    updateApiStatus('mock 모드 (T7 미구현)');
+  } else {
+    state.isMockMode = false;
+    state.documents = Array.isArray(data) ? data : (data.documents || []);
+    state.totalCount = data.total || state.documents.length;
+    state.totalPages = Math.max(1, Math.ceil(state.totalCount / PAGE_SIZE));
+    hidePhaseNotice();
+    updateApiStatus('');
+    renderDocumentList();
+  }
+
+  updateStats();
+  renderPagination();
+}
+
+function buildFilterParams() {
+  const params = {
+    page: state.page,
+    limit: PAGE_SIZE
+  };
+  if (state.search) params.search = state.search;
+  if (state.statusFilters.length) params.status = state.statusFilters.join(',');
+  if (state.sourceFilters.length) params.source_id = state.sourceFilters.join(',');
+  if (state.symptomFilters.length) params.symptom_tags = state.symptomFilters.join(',');
+  if (state.approvalQueueMode) params.status = 'pending_review';
+  return params;
+}
+
+function applyLocalFilters() {
+  let docs = state.allDocuments.slice();
+
+  if (state.approvalQueueMode) {
+    docs = docs.filter(d => d.status === 'pending_review');
+  } else {
+    if (state.statusFilters.length) {
+      docs = docs.filter(d => state.statusFilters.includes(d.status));
+    }
+    if (state.sourceFilters.length) {
+      docs = docs.filter(d => state.sourceFilters.includes(d.source_id));
+    }
+    if (state.symptomFilters.length) {
+      docs = docs.filter(d => {
+        try {
+          const meta = JSON.parse(d.metadata_json || '{}');
+          const tags = meta.symptom_tags || [];
+          return state.symptomFilters.some(f => tags.includes(f));
+        } catch (e) { return false; }
+      });
+    }
+  }
+
+  if (state.search) {
+    const q = state.search.toLowerCase();
+    docs = docs.filter(d => d.title && d.title.toLowerCase().includes(q));
+  }
+
+  state.totalCount = docs.length;
+  state.totalPages = Math.max(1, Math.ceil(state.totalCount / PAGE_SIZE));
+  const start = (state.page - 1) * PAGE_SIZE;
+  state.documents = docs.slice(start, start + PAGE_SIZE);
+  renderDocumentList();
+}
+
+// ─────────────────────────────────────────────
+// 렌더링
+// ─────────────────────────────────────────────
+function renderDocumentList() {
+  const container = document.getElementById('docList');
+  const emptyState = document.getElementById('emptyState');
+  if (!container) return;
+
+  // 기존 문서 카드만 제거 (emptyState는 유지)
+  Array.from(container.children).forEach(child => {
+    if (child.id !== 'emptyState') container.removeChild(child);
+  });
+
+  if (!state.documents || state.documents.length === 0) {
+    if (emptyState) {
+      emptyState.style.display = '';
+      const msg = document.getElementById('emptyStateMsg');
+      const hint = document.getElementById('emptyStateHint');
+      if (state.approvalQueueMode) {
+        if (msg) msg.textContent = '승인 대기 문서가 없습니다';
+        if (hint) hint.textContent = '검토 제출된 문서가 생기면 이곳에 표시됩니다.';
+      } else if (state.isMockMode) {
+        if (msg) msg.textContent = '검색 결과가 없습니다';
+        if (hint) hint.textContent = MOCK_FALLBACK.message;
+      } else {
+        if (msg) msg.textContent = '문서가 없습니다';
+        if (hint) hint.textContent = '문서를 추가하여 KB를 구성하세요.';
+      }
+    }
+    return;
+  }
+
+  if (emptyState) emptyState.style.display = 'none';
+
+  state.documents.forEach(doc => {
+    const card = buildDocCard(doc);
+    container.appendChild(card);
+  });
+}
+
+function buildDocCard(doc) {
+  const card = document.createElement('div');
+  card.className = 'doc-card' + (doc.status === 'pending_review' ? ' queue-card' : '');
+  card.dataset.id = doc.id;
+  if (state.selectedIds.has(doc.id)) card.classList.add('selected');
+
+  // 체크박스
+  const cb = document.createElement('div');
+  cb.className = 'doc-cb' + (state.selectedIds.has(doc.id) ? ' checked' : '');
+  cb.addEventListener('click', function(e) {
+    e.stopPropagation();
+    toggleSelect(doc.id);
+  });
+
+  // 본문
+  const body = document.createElement('div');
+  body.className = 'doc-body';
+
+  // 헤더
+  const header = document.createElement('div');
+  header.className = 'doc-header';
+
+  const titleSpan = document.createElement('span');
+  titleSpan.className = 'doc-title';
+  titleSpan.textContent = doc.title || '(제목 없음)';
+
+  const sourceId = doc.source_id || '';
+  const sourceBadge = document.createElement('span');
+  sourceBadge.className = 'badge badge-source';
+  sourceBadge.textContent = sourceId;
+
+  const statusBadge = document.createElement('span');
+  statusBadge.className = 'badge ' + getStatusBadgeClass(doc.status);
+  statusBadge.textContent = getStatusLabel(doc.status);
+
+  const levelBadge = document.createElement('span');
+  levelBadge.className = 'badge badge-' + (doc.evidence_level || 'C');
+  levelBadge.textContent = 'Ev.' + (doc.evidence_level || '?');
+
+  header.appendChild(titleSpan);
+  header.appendChild(sourceBadge);
+  header.appendChild(statusBadge);
+  header.appendChild(levelBadge);
+
+  // 메타
+  const meta = document.createElement('div');
+  meta.className = 'doc-meta';
+
+  const chunkSpan = document.createElement('span');
+  chunkSpan.textContent = '청크 ' + (doc.chunk_count || 0) + '개';
+
+  const dateSpan = document.createElement('span');
+  dateSpan.textContent = formatDate(doc.updated_at || doc.created_at);
+
+  const authorSpan = document.createElement('span');
+  authorSpan.textContent = doc.author_id ? ('작성: ' + escapeHtml(doc.author_id)) : '';
+
+  meta.appendChild(chunkSpan);
+  meta.appendChild(dateSpan);
+  if (doc.author_id) meta.appendChild(authorSpan);
+
+  // 원본 URL 링크 (source_url 있을 때만)
+  if (doc.source_url) {
+    const urlLink = document.createElement('a');
+    urlLink.className = 'doc-source-url';
+    urlLink.textContent = '원본 보기 ↗';
+    urlLink.href = doc.source_url;
+    urlLink.target = '_blank';
+    urlLink.rel = 'noopener noreferrer';
+    urlLink.addEventListener('click', function(e) { e.stopPropagation(); });
+    meta.appendChild(urlLink);
+  }
+
+  body.appendChild(header);
+  body.appendChild(meta);
+
+  // 거부 이유
+  if (doc.status === 'rejected' && doc.rejected_reason) {
+    const rejectDiv = document.createElement('div');
+    rejectDiv.className = 'reject-reason';
+    rejectDiv.textContent = '거부 사유: ' + doc.rejected_reason;
+    body.appendChild(rejectDiv);
+  }
+
+  // 액션 버튼
+  const actions = document.createElement('div');
+  actions.className = 'doc-actions';
+
+  const btnDetail = document.createElement('button');
+  btnDetail.className = 'btn btn-outline btn-sm';
+  btnDetail.textContent = '상세보기';
+  btnDetail.addEventListener('click', function(e) {
+    e.stopPropagation();
+    openDetailModal(doc);
+  });
+  actions.appendChild(btnDetail);
+
+  const btnReEmbed = document.createElement('button');
+  btnReEmbed.className = 'btn btn-outline btn-sm';
+  btnReEmbed.textContent = '재임베딩';
+  btnReEmbed.addEventListener('click', function(e) {
+    e.stopPropagation();
+    reembedDocumentById(doc.id);
+  });
+  actions.appendChild(btnReEmbed);
+
+  // 승인/거부는 권한 체크 후 노출
+  if (doc.status === 'pending_review' && canManageKB()) {
+    const btnAppr = document.createElement('button');
+    btnAppr.className = 'btn btn-success btn-sm';
+    btnAppr.textContent = '승인';
+    btnAppr.addEventListener('click', function(e) {
+      e.stopPropagation();
+      approveDocumentById(doc.id);
+    });
+    actions.appendChild(btnAppr);
+
+    const btnRej = document.createElement('button');
+    btnRej.className = 'btn btn-danger btn-sm';
+    btnRej.textContent = '거부';
+    btnRej.addEventListener('click', function(e) {
+      e.stopPropagation();
+      state.currentDocId = doc.id;
+      openRejectModal();
+    });
+    actions.appendChild(btnRej);
+  }
+
+  // 카드 클릭
+  card.addEventListener('click', function() {
+    openDetailModal(doc);
+  });
+
+  const top = document.createElement('div');
+  top.className = 'doc-card-top';
+  top.appendChild(cb);
+  top.appendChild(body);
+  top.appendChild(actions);
+  card.appendChild(top);
+
+  return card;
+}
+
+function getStatusBadgeClass(status) {
+  const map = {
+    active: 'badge-active',
+    draft: 'badge-draft',
+    pending_review: 'badge-pending',
+    approved: 'badge-approved',
+    rejected: 'badge-rejected'
+  };
+  return map[status] || 'badge-draft';
+}
+
+function getStatusLabel(status) {
+  const map = {
+    active: '활성',
+    draft: '초안',
+    pending_review: '승인대기',
+    approved: '승인됨',
+    rejected: '거부됨',
+    archived: '보관'
+  };
+  return map[status] || status;
+}
+
+function formatDate(dt) {
+  if (!dt) return '-';
+  return String(dt).slice(0, 10);
+}
+
+// ─────────────────────────────────────────────
+// 사이드바 필터 렌더링
+// ─────────────────────────────────────────────
+function renderSidebarFilters() {
+  renderSourceFilters();
+  renderSymptomFilters();
+  updateSidebarCounts();
+  renderQueueBadge();
+}
+
+function renderSourceFilters() {
+  const container = document.getElementById('sourceFilters');
+  if (!container) return;
+  container.innerHTML = '';
+  state.sources.forEach(src => {
+    const label = document.createElement('label');
+    label.className = 'filter-item';
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.value = src.id;
+    cb.addEventListener('change', onFilterChange);
+
+    const span = document.createElement('span');
+    span.className = 'filter-label';
+    span.textContent = src.name || src.id;
+
+    const count = document.createElement('span');
+    count.className = 'filter-count';
+    count.id = 'src-cnt-' + src.id;
+    const c = state.allDocuments.filter(d => d.source_id === src.id).length;
+    count.textContent = String(c);
+
+    label.appendChild(cb);
+    label.appendChild(span);
+    label.appendChild(count);
+    container.appendChild(label);
+  });
+}
+
+function renderSymptomFilters() {
+  const container = document.getElementById('symptomFilters');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const tagSet = new Set();
+  state.allDocuments.forEach(doc => {
+    try {
+      const meta = JSON.parse(doc.metadata_json || '{}');
+      (meta.symptom_tags || []).forEach(t => tagSet.add(t));
+    } catch (e) { /* ignore */ }
+  });
+
+  Array.from(tagSet).sort().forEach(tag => {
+    const label = document.createElement('label');
+    label.className = 'filter-item';
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.value = tag;
+    cb.addEventListener('change', onFilterChange);
+
+    const span = document.createElement('span');
+    span.className = 'filter-label';
+    span.textContent = tag;
+
+    label.appendChild(cb);
+    label.appendChild(span);
+    container.appendChild(label);
+  });
+}
+
+function updateSidebarCounts() {
+  const docs = state.allDocuments;
+  const counts = { active: 0, pending_review: 0, approved: 0, draft: 0, rejected: 0 };
+  docs.forEach(d => { if (counts[d.status] !== undefined) counts[d.status]++; });
+
+  ['active', 'pending_review', 'approved', 'draft', 'rejected'].forEach(s => {
+    const key = s === 'pending_review' ? 'cnt-pending' : 'cnt-' + s.replace('_review', '');
+    const el = document.getElementById(key);
+    if (el) el.textContent = String(counts[s]);
+  });
+
+  // 소스 카운트
+  state.sources.forEach(src => {
+    const el = document.getElementById('src-cnt-' + src.id);
+    if (el) el.textContent = String(docs.filter(d => d.source_id === src.id).length);
+  });
+
+  // 사이드바 통계
+  const totalChunks = docs.reduce((sum, d) => sum + (d.chunk_count || 0), 0);
+  const elChunks = document.getElementById('sideStatChunks');
+  if (elChunks) elChunks.textContent = totalChunks.toLocaleString();
+  const elSources = document.getElementById('sideStatSources');
+  if (elSources) elSources.textContent = String(state.sources.length);
+  const elUpdated = document.getElementById('sideStatUpdated');
+  if (elUpdated) {
+    const dates = docs.map(d => d.updated_at || d.created_at).filter(Boolean).sort();
+    elUpdated.textContent = dates.length ? formatDate(dates[dates.length - 1]) : '-';
+  }
+}
+
+function renderQueueBadge() {
+  const pending = state.allDocuments.filter(d => d.status === 'pending_review').length;
+  const el = document.getElementById('queueBadge');
+  if (el) el.textContent = String(pending);
+  const statPendingEl = document.getElementById('statPending');
+  if (statPendingEl) statPendingEl.textContent = String(pending);
+}
+
+function updateStats() {
+  const docs = state.isMockMode ? state.allDocuments : state.documents;
+  const el = document.getElementById('statTotal');
+  if (el) el.textContent = String(state.totalCount);
+  const elActive = document.getElementById('statActive');
+  if (elActive) elActive.textContent = String(docs.filter(d => d.status === 'active').length);
+  const elDraft = document.getElementById('statDraft');
+  if (elDraft) elDraft.textContent = String(docs.filter(d => d.status === 'draft').length);
+}
+
+// ─────────────────────────────────────────────
+// 페이지네이션
+// ─────────────────────────────────────────────
+function renderPagination() {
+  const wrap = document.getElementById('paginationWrap');
+  const btns = document.getElementById('pageButtons');
+  const info = document.getElementById('pageInfo');
+  const prev = document.getElementById('prevPageBtn');
+  const next = document.getElementById('nextPageBtn');
+  if (!wrap || !btns) return;
+
+  if (state.totalPages <= 1 && state.totalCount === 0) {
+    wrap.style.display = 'none';
+    return;
+  }
+  wrap.style.display = '';
+
+  if (prev) prev.disabled = state.page <= 1;
+  if (next) next.disabled = state.page >= state.totalPages;
+
+  btns.innerHTML = '';
+  const pages = getPaginationPages(state.page, state.totalPages);
+  pages.forEach(p => {
+    if (p === '...') {
+      const span = document.createElement('span');
+      span.className = 'page-ellipsis';
+      span.textContent = '...';
+      btns.appendChild(span);
+    } else {
+      const btn = document.createElement('button');
+      btn.className = 'page-btn' + (p === state.page ? ' active' : '');
+      btn.textContent = String(p);
+      const pageNum = p;
+      btn.addEventListener('click', function() { changePage(pageNum); });
+      btns.appendChild(btn);
+    }
+  });
+
+  if (info) {
+    const start = Math.min((state.page - 1) * PAGE_SIZE + 1, state.totalCount);
+    const end = Math.min(state.page * PAGE_SIZE, state.totalCount);
+    info.textContent = state.totalCount ? (start + '-' + end + ' / ' + state.totalCount) : '';
+  }
+}
+
+function getPaginationPages(cur, total) {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const pages = [];
+  pages.push(1);
+  if (cur > 3) pages.push('...');
+  for (let i = Math.max(2, cur - 1); i <= Math.min(total - 1, cur + 1); i++) pages.push(i);
+  if (cur < total - 2) pages.push('...');
+  pages.push(total);
+  return pages;
+}
+
+function changePage(p) {
+  if (p < 1 || p > state.totalPages) return;
+  state.page = p;
+  if (state.isMockMode) applyLocalFilters();
+  else loadDocuments();
+  renderPagination();
+}
+
+// ─────────────────────────────────────────────
+// 필터 & 검색
+// ─────────────────────────────────────────────
+let searchTimer = null;
+function onSearchInput() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    const el = document.getElementById('searchInput');
+    state.search = el ? el.value.trim() : '';
+    state.page = 1;
+    if (state.isMockMode) applyLocalFilters();
+    else loadDocuments();
+  }, 300);
+}
+
+function onFilterChange() {
+  state.statusFilters = getCheckedValues('#statusFilters input');
+  state.sourceFilters = getCheckedValues('#sourceFilters input');
+  state.symptomFilters = getCheckedValues('#symptomFilters input');
+  state.page = 1;
+  if (state.isMockMode) applyLocalFilters();
+  else loadDocuments();
+}
+
+function getCheckedValues(selector) {
+  const inputs = document.querySelectorAll(selector);
+  const vals = [];
+  inputs.forEach(inp => { if (inp.checked) vals.push(inp.value); });
+  return vals;
+}
+
+function toggleApprovalQueue() {
+  state.approvalQueueMode = !state.approvalQueueMode;
+  state.page = 1;
+  const btn = document.getElementById('btnApprovalQueue');
+  if (btn) btn.classList.toggle('active-queue', state.approvalQueueMode);
+
+  // 일괄 승인 버튼 노출 여부
+  const bulkApproveBtn = document.getElementById('btnBulkApprove');
+  if (bulkApproveBtn) bulkApproveBtn.style.display = (state.approvalQueueMode && canManageKB()) ? '' : 'none';
+
+  if (state.isMockMode) applyLocalFilters();
+  else loadDocuments();
+}
+
+function refreshDocuments() {
+  state.page = 1;
+  loadDocuments().then(() => {
+    renderSidebarFilters();
+    showToast('새로고침 완료', 'info');
+  });
+}
+
+// ─────────────────────────────────────────────
+// 선택 (체크박스)
+// ─────────────────────────────────────────────
+function toggleSelect(id) {
+  if (state.selectedIds.has(id)) state.selectedIds.delete(id);
+  else state.selectedIds.add(id);
+  updateBulkActions();
+  // 카드 스타일 업데이트
+  const card = document.querySelector('.doc-card[data-id="' + id + '"]');
+  if (card) {
+    card.classList.toggle('selected', state.selectedIds.has(id));
+    const cb = card.querySelector('.doc-cb');
+    if (cb) cb.classList.toggle('checked', state.selectedIds.has(id));
+  }
+}
+
+function updateBulkActions() {
+  const n = state.selectedIds.size;
+  const wrap = document.getElementById('bulkActions');
+  if (wrap) wrap.style.display = n > 0 ? '' : 'none';
+  const cnt = document.getElementById('selectedCount');
+  if (cnt) cnt.textContent = n + '개 선택됨';
+}
+
+function clearSelection() {
+  state.selectedIds.clear();
+  updateBulkActions();
+  document.querySelectorAll('.doc-card').forEach(c => {
+    c.classList.remove('selected');
+    const cb = c.querySelector('.doc-cb');
+    if (cb) cb.classList.remove('checked');
+  });
+}
+
+async function bulkApprove() {
+  if (!canManageKB()) { showToast('권한이 없습니다', 'error'); return; }
+  if (state.selectedIds.size === 0) return;
+  const ids = Array.from(state.selectedIds);
+  let done = 0;
+  for (const id of ids) {
+    const result = await approveDocumentById(id, true);
+    if (result) done++;
+  }
+  clearSelection();
+  showToast(done + '개 문서 승인 완료', 'success');
+  refreshDocuments();
+}
+
+async function bulkDelete() {
+  if (state.selectedIds.size === 0) return;
+  const n = state.selectedIds.size;
+  const el = document.getElementById('deleteConfirmMsg');
+  if (el) el.textContent = n + '개 문서를 삭제합니다. 연결된 청크 및 임베딩도 함께 삭제됩니다. 되돌릴 수 없습니다.';
+  state._pendingBulkDelete = Array.from(state.selectedIds);
+  state.currentDocId = null;
+  const overlay = document.getElementById('deleteConfirm');
+  if (overlay) overlay.classList.add('show');
+}
+
+// ─────────────────────────────────────────────
+// 상세 모달
+// ─────────────────────────────────────────────
+function openDetailModal(doc) {
+  state.currentDocId = doc.id;
+  state.currentDocData = doc;
+
+  const el = document.getElementById('detailModal');
+  if (!el) return;
+
+  // 제목
+  const titleEl = document.getElementById('detailModalTitle');
+  if (titleEl) titleEl.textContent = '문서 상세 — ' + (doc.title || '');
+
+  // 내용 탭
+  const t = document.getElementById('detailTitle');
+  if (t) t.value = doc.title || '';
+  const c = document.getElementById('detailContent');
+  if (c) c.value = doc.content_md || '';
+  const ev = document.getElementById('detailEvidenceLevel');
+  if (ev) ev.value = doc.evidence_level || 'B';
+  const vd = document.getElementById('detailVerifiedDate');
+  if (vd) vd.value = doc.last_verified_date || '';
+
+  // 소스 선택
+  const srcSel = document.getElementById('detailSourceId');
+  if (srcSel) srcSel.value = doc.source_id || '';
+
+  // 메타 탭
+  let meta = {};
+  try { meta = JSON.parse(doc.metadata_json || '{}'); } catch (e) { /* ignore */ }
+
+  resetTagWrap('symptomTagsWrap', meta.symptom_tags || []);
+  resetTagWrap('ageGroupWrap', meta.age_group || []);
+  resetTagWrap('topicKeywordsWrap', meta.topic_keywords || []);
+
+  const sev = document.getElementById('detailSeverity');
+  if (sev) sev.value = meta.severity || '';
+  const dept = document.getElementById('detailDepartment');
+  if (dept) dept.value = meta.department || '';
+  const ec = document.getElementById('detailEvidenceCountry');
+  if (ec) ec.value = meta.evidence_country || 'KR';
+  const et = document.getElementById('detailEvidenceTopic');
+  if (et) et.value = meta.evidence_topic || '';
+  const rk = document.getElementById('detailRegulatoryKorea');
+  if (rk) rk.checked = !!meta.regulatory_korea;
+
+  // 승인 정보
+  const approvalGroup = document.getElementById('approvalInfoGroup');
+  if (approvalGroup) approvalGroup.style.display = '';
+  const metaFields = {
+    metaAuthor: doc.author_id || '-',
+    metaStatus: getStatusLabel(doc.status),
+    metaApprovedBy: doc.approved_by || '-',
+    metaApprovedAt: formatDate(doc.approved_at),
+    metaVersion: String(doc.version || 1),
+    metaCreatedAt: formatDate(doc.created_at)
+  };
+  Object.keys(metaFields).forEach(k => {
+    const el2 = document.getElementById(k);
+    if (el2) el2.textContent = metaFields[k];
+  });
+
+  const rejectEl = document.getElementById('metaRejectReason');
+  if (rejectEl) {
+    if (doc.rejected_reason) {
+      rejectEl.style.display = '';
+      rejectEl.textContent = '거부 사유: ' + doc.rejected_reason;
+    } else {
+      rejectEl.style.display = 'none';
+    }
+  }
+
+  // 원본 URL 행 (source_url이 있을 때만 표시)
+  const urlRow = document.getElementById('metaSourceUrlRow');
+  const urlLink = document.getElementById('metaSourceUrlLink');
+  const fetchedAtEl = document.getElementById('metaSourceFetchedAt');
+  if (urlRow && urlLink) {
+    if (doc.source_url) {
+      urlRow.style.display = '';
+      urlLink.href = doc.source_url;
+      urlLink.textContent = doc.source_url;
+      if (fetchedAtEl) {
+        fetchedAtEl.textContent = doc.source_fetched_at ? ('수집: ' + formatDate(doc.source_fetched_at)) : '';
+      }
+    } else {
+      urlRow.style.display = 'none';
+    }
+  }
+
+  // 청크 탭
+  renderChunks(doc);
+  const chunkBadge = document.getElementById('chunkCountBadge');
+  if (chunkBadge) chunkBadge.textContent = String(doc.chunk_count || 0);
+
+  // 승인/거부 버튼 표시
+  const btnApprove = document.getElementById('btnApprove');
+  const btnReject = document.getElementById('btnReject');
+  if (btnApprove) btnApprove.style.display = (doc.status === 'pending_review' && canManageKB()) ? '' : 'none';
+  if (btnReject) btnReject.style.display = (doc.status === 'pending_review' && canManageKB()) ? '' : 'none';
+
+  // 탭 초기화
+  switchDetailTab('content');
+
+  el.classList.add('show');
+}
+
+function closeDetailModal() {
+  const el = document.getElementById('detailModal');
+  if (el) el.classList.remove('show');
+  state.currentDocId = null;
+  state.currentDocData = null;
+}
+
+function switchDetailTab(tab) {
+  const panels = ['tabContent', 'tabMeta', 'tabChunks'];
+  const tabNames = ['content', 'meta', 'chunks'];
+
+  panels.forEach((panelId, i) => {
+    const panel = document.getElementById(panelId);
+    if (panel) panel.style.display = tabNames[i] === tab ? '' : 'none';
+  });
+
+  document.querySelectorAll('.detail-tab').forEach(btn => {
+    const isActive = btn.dataset.tab === tab;
+    btn.style.borderBottomColor = isActive ? 'var(--accent)' : 'transparent';
+    btn.style.color = isActive ? 'var(--accent)' : 'var(--text-dim)';
+  });
+}
+
+function renderChunks(doc) {
+  const area = document.getElementById('chunksArea');
+  if (!area) return;
+  area.innerHTML = '';
+
+  const chunks = doc.chunks || [];
+  if (!chunks.length) {
+    const div = document.createElement('div');
+    div.className = 'empty-state';
+    div.style.padding = '30px';
+    const p = document.createElement('p');
+    p.style.fontSize = '13px';
+    if (doc.chunk_count) {
+      p.textContent = doc.chunk_count + '개 청크 (백엔드 T7 완료 시 내용 표시)';
+    } else {
+      p.textContent = '저장 후 청크 미리보기가 표시됩니다.';
+    }
+    const hint = document.createElement('div');
+    hint.className = 'hint';
+    hint.textContent = '백엔드 T7 완료 시 자동으로 청크가 표시됩니다.';
+    div.appendChild(p);
+    div.appendChild(hint);
+    area.appendChild(div);
+    return;
+  }
+
+  const titleDiv = document.createElement('div');
+  titleDiv.className = 'chunks-title';
+  const leftSpan = document.createElement('span');
+  leftSpan.textContent = '청크 ' + chunks.length + '개';
+  titleDiv.appendChild(leftSpan);
+  area.appendChild(titleDiv);
+
+  chunks.forEach((chunk, idx) => {
+    const card = document.createElement('div');
+    card.className = 'chunk-card';
+
+    const hdr = document.createElement('div');
+    hdr.className = 'chunk-header';
+    const idxSpan = document.createElement('span');
+    idxSpan.className = 'chunk-idx';
+    idxSpan.textContent = '#' + (idx + 1);
+    const tokSpan = document.createElement('span');
+    tokSpan.className = 'chunk-tokens';
+    tokSpan.textContent = (chunk.token_count || '?') + ' 토큰';
+    hdr.appendChild(idxSpan);
+    hdr.appendChild(tokSpan);
+    card.appendChild(hdr);
+
+    if (chunk.section_path) {
+      const sec = document.createElement('div');
+      sec.className = 'chunk-section';
+      sec.textContent = Array.isArray(chunk.section_path) ? chunk.section_path.join(' > ') : chunk.section_path;
+      card.appendChild(sec);
+    }
+
+    const content = document.createElement('div');
+    content.className = 'chunk-content';
+    content.textContent = chunk.content || '';
+    card.appendChild(content);
+
+    if (chunk.content && chunk.content.length > 120) {
+      const toggle = document.createElement('button');
+      toggle.className = 'chunk-toggle';
+      toggle.textContent = '펼치기';
+      toggle.addEventListener('click', function() {
+        const expanded = content.classList.toggle('expanded');
+        toggle.textContent = expanded ? '접기' : '펼치기';
+      });
+      card.appendChild(toggle);
+    }
+
+    area.appendChild(card);
+  });
+}
+
+// ─────────────────────────────────────────────
+// 생성 모달
+// ─────────────────────────────────────────────
+function openCreateModal() {
+  const el = document.getElementById('createModal');
+  if (!el) return;
+  const t = document.getElementById('createTitle');
+  if (t) t.value = '';
+  const c = document.getElementById('createContent');
+  if (c) c.value = '';
+  const st = document.getElementById('createSymptomTags');
+  if (st) st.value = '';
+  const et = document.getElementById('createEvidenceTopic');
+  if (et) et.value = '';
+  el.classList.add('show');
+}
+
+function closeCreateModal() {
+  const el = document.getElementById('createModal');
+  if (el) el.classList.remove('show');
+}
+
+async function createDocument(targetStatus) {
+  const title = (document.getElementById('createTitle') || {}).value || '';
+  const content = (document.getElementById('createContent') || {}).value || '';
+  const sourceId = (document.getElementById('createSourceId') || {}).value || '';
+  const evidenceLevel = (document.getElementById('createEvidenceLevel') || {}).value || 'B';
+  const evidenceCountry = (document.getElementById('createEvidenceCountry') || {}).value || 'KR';
+  const evidenceTopic = (document.getElementById('createEvidenceTopic') || {}).value || '';
+  const symptomTagsRaw = (document.getElementById('createSymptomTags') || {}).value || '';
+  const symptomTags = symptomTagsRaw.split(',').map(s => s.trim()).filter(Boolean);
+
+  if (!title.trim()) { showToast('제목을 입력하세요', 'error'); return; }
+  if (!content.trim()) { showToast('내용을 입력하세요', 'error'); return; }
+
+  const body = {
+    title: title.trim(),
+    content_md: content,
+    source_id: sourceId,
+    evidence_level: evidenceLevel,
+    status: targetStatus,
+    metadata: {
+      symptom_tags: symptomTags,
+      evidence_country: evidenceCountry,
+      evidence_topic: evidenceTopic
+    }
+  };
+
+  const resp = await API.createDocument(body);
+  const data = await safeJson(resp);
+
+  if (data.ok === false) {
+    if (data.error === 'unavailable' || data.error === 'network') {
+      // mock 모드 — 로컬 추가
+      const newDoc = {
+        id: 'doc-local-' + Date.now(),
+        source_id: sourceId,
+        title: title.trim(),
+        content_md: content,
+        status: targetStatus,
+        evidence_level: evidenceLevel,
+        chunk_count: 0,
+        author_id: 'me',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        metadata_json: JSON.stringify(body.metadata)
+      };
+      state.allDocuments.unshift(newDoc);
+      applyLocalFilters();
+      renderSidebarFilters();
+      closeCreateModal();
+      showToast('(mock) 문서 추가됨 — T7 완료 시 실제 저장됩니다', 'warn');
+    } else {
+      showToast('저장 실패: ' + (data.message || data.error), 'error');
+    }
+    return;
+  }
+
+  closeCreateModal();
+  showToast('문서가 저장되었습니다', 'success');
+  refreshDocuments();
+}
+
+// ─────────────────────────────────────────────
+// 문서 저장 (상세 모달)
+// ─────────────────────────────────────────────
+async function saveDocument(targetStatus) {
+  const id = state.currentDocId;
+  if (!id) return;
+
+  const title = (document.getElementById('detailTitle') || {}).value || '';
+  const content = (document.getElementById('detailContent') || {}).value || '';
+  const sourceId = (document.getElementById('detailSourceId') || {}).value || '';
+  const evidenceLevel = (document.getElementById('detailEvidenceLevel') || {}).value || 'B';
+  const verifiedDate = (document.getElementById('detailVerifiedDate') || {}).value || '';
+
+  const evidenceCountry = (document.getElementById('detailEvidenceCountry') || {}).value || 'KR';
+  const evidenceTopic = (document.getElementById('detailEvidenceTopic') || {}).value || '';
+  const severity = (document.getElementById('detailSeverity') || {}).value || '';
+  const department = (document.getElementById('detailDepartment') || {}).value || '';
+  const regulatoryKorea = (document.getElementById('detailRegulatoryKorea') || {}).checked || false;
+
+  const symptomTags = getTagsFromWrap('symptomTagsWrap');
+  const ageGroup = getTagsFromWrap('ageGroupWrap');
+  const topicKeywords = getTagsFromWrap('topicKeywordsWrap');
+
+  if (!title.trim()) { showToast('제목을 입력하세요', 'error'); return; }
+
+  const body = {
+    title: title.trim(),
+    content_md: content,
+    source_id: sourceId,
+    evidence_level: evidenceLevel,
+    status: targetStatus,
+    last_verified_date: verifiedDate,
+    metadata: {
+      symptom_tags: symptomTags,
+      age_group: ageGroup,
+      severity: severity,
+      department: department,
+      evidence_country: evidenceCountry,
+      evidence_topic: evidenceTopic,
+      regulatory_korea: regulatoryKorea,
+      topic_keywords: topicKeywords
+    }
+  };
+
+  const resp = await API.updateDocument(id, body);
+  const data = await safeJson(resp);
+
+  if (data.ok === false) {
+    if (data.error === 'unavailable' || data.error === 'network') {
+      // mock 모드 — 로컬 수정
+      const idx = state.allDocuments.findIndex(d => d.id === id);
+      if (idx >= 0) {
+        state.allDocuments[idx] = Object.assign({}, state.allDocuments[idx], {
+          title: title.trim(),
+          content_md: content,
+          source_id: sourceId,
+          evidence_level: evidenceLevel,
+          status: targetStatus,
+          updated_at: new Date().toISOString(),
+          metadata_json: JSON.stringify(body.metadata)
+        });
+      }
+      applyLocalFilters();
+      renderSidebarFilters();
+      closeDetailModal();
+      showToast('(mock) 저장됨 — T7 완료 시 실제 반영됩니다', 'warn');
+    } else {
+      showToast('저장 실패: ' + (data.message || data.error), 'error');
+    }
+    return;
+  }
+
+  closeDetailModal();
+  showToast('저장되었습니다', 'success');
+  refreshDocuments();
+}
+
+// ─────────────────────────────────────────────
+// 승인 / 거부
+// ─────────────────────────────────────────────
+async function approveDocument() {
+  const id = state.currentDocId;
+  if (!id) return;
+  const ok = await approveDocumentById(id, false);
+  if (ok) closeDetailModal();
+}
+
+async function approveDocumentById(id, silent) {
+  const resp = await API.approveDocument(id);
+  const data = await safeJson(resp);
+
+  if (data.ok === false) {
+    if (data.error === 'unavailable' || data.error === 'network') {
+      // mock
+      const idx = state.allDocuments.findIndex(d => d.id === id);
+      if (idx >= 0) state.allDocuments[idx].status = 'active';
+      applyLocalFilters();
+      renderSidebarFilters();
+      if (!silent) showToast('(mock) 승인 처리됨', 'warn');
+      return true;
+    } else {
+      if (!silent) showToast('승인 실패: ' + (data.message || data.error), 'error');
+      return false;
+    }
+  }
+
+  if (!silent) showToast('승인되었습니다', 'success');
+  if (!silent) refreshDocuments();
+  return true;
+}
+
+function openRejectModal() {
+  const el = document.getElementById('rejectModal');
+  if (el) {
+    const reason = document.getElementById('rejectReason');
+    if (reason) reason.value = '';
+    el.classList.add('show');
+  }
+}
+
+function closeRejectModal() {
+  const el = document.getElementById('rejectModal');
+  if (el) el.classList.remove('show');
+}
+
+async function confirmRejectDocument() {
+  const id = state.currentDocId;
+  const reasonEl = document.getElementById('rejectReason');
+  const reason = reasonEl ? reasonEl.value.trim() : '';
+  if (!reason) { showToast('거부 사유를 입력하세요', 'error'); return; }
+
+  const resp = await API.rejectDocument(id, reason);
+  const data = await safeJson(resp);
+
+  if (data.ok === false) {
+    if (data.error === 'unavailable' || data.error === 'network') {
+      const idx = state.allDocuments.findIndex(d => d.id === id);
+      if (idx >= 0) {
+        state.allDocuments[idx].status = 'rejected';
+        state.allDocuments[idx].rejected_reason = reason;
+      }
+      applyLocalFilters();
+      renderSidebarFilters();
+      closeRejectModal();
+      closeDetailModal();
+      showToast('(mock) 거부 처리됨', 'warn');
+      return;
+    }
+    showToast('거부 처리 실패: ' + (data.message || data.error), 'error');
+    return;
+  }
+
+  closeRejectModal();
+  closeDetailModal();
+  showToast('거부 처리되었습니다', 'success');
+  refreshDocuments();
+}
+
+// ─────────────────────────────────────────────
+// 재임베딩
+// ─────────────────────────────────────────────
+async function reembedDocument() {
+  const id = state.currentDocId;
+  if (!id) return;
+  await reembedDocumentById(id);
+}
+
+async function reembedDocumentById(id) {
+  const resp = await API.reembedDocument(id);
+  const data = await safeJson(resp);
+  if (data.ok === false) {
+    if (data.error === 'unavailable' || data.error === 'network') {
+      showToast('(mock) 재임베딩 요청됨 — T7 완료 시 실제 동작합니다', 'warn');
+    } else {
+      showToast('재임베딩 실패: ' + (data.message || data.error), 'error');
+    }
+    return;
+  }
+  showToast('재임베딩 완료', 'success');
+}
+
+// ─────────────────────────────────────────────
+// 삭제
+// ─────────────────────────────────────────────
+function confirmDeleteDocument() {
+  state._pendingBulkDelete = null;
+  const msg = document.getElementById('deleteConfirmMsg');
+  if (msg && state.currentDocData) {
+    msg.textContent = '"' + state.currentDocData.title + '" 문서를 삭제합니다. 연결된 모든 청크 및 임베딩도 함께 삭제됩니다. 이 작업은 되돌릴 수 없습니다.';
+  }
+  const overlay = document.getElementById('deleteConfirm');
+  if (overlay) overlay.classList.add('show');
+}
+
+function cancelDelete() {
+  const overlay = document.getElementById('deleteConfirm');
+  if (overlay) overlay.classList.remove('show');
+  state._pendingBulkDelete = null;
+}
+
+async function executeDelete() {
+  const overlay = document.getElementById('deleteConfirm');
+  if (overlay) overlay.classList.remove('show');
+
+  if (state._pendingBulkDelete) {
+    // 일괄 삭제
+    const ids = state._pendingBulkDelete;
+    state._pendingBulkDelete = null;
+    let done = 0;
+    for (const id of ids) {
+      const ok = await deleteDocumentById(id, true);
+      if (ok) done++;
+    }
+    clearSelection();
+    showToast(done + '개 문서 삭제 완료', 'success');
+    if (state.isMockMode) { applyLocalFilters(); renderSidebarFilters(); }
+    else refreshDocuments();
+    return;
+  }
+
+  const id = state.currentDocId;
+  if (!id) return;
+  const ok = await deleteDocumentById(id, false);
+  if (ok) {
+    closeDetailModal();
+    if (state.isMockMode) { applyLocalFilters(); renderSidebarFilters(); }
+    else refreshDocuments();
+  }
+}
+
+async function deleteDocumentById(id, silent) {
+  const resp = await API.deleteDocument(id);
+  const data = await safeJson(resp);
+
+  if (data.ok === false) {
+    if (data.error === 'unavailable' || data.error === 'network') {
+      const idx = state.allDocuments.findIndex(d => d.id === id);
+      if (idx >= 0) state.allDocuments.splice(idx, 1);
+      if (!silent) showToast('(mock) 삭제됨 — T7 완료 시 실제 반영됩니다', 'warn');
+      return true;
+    }
+    if (!silent) showToast('삭제 실패: ' + (data.message || data.error), 'error');
+    return false;
+  }
+  if (!silent) showToast('삭제되었습니다', 'success');
+  return true;
+}
+
+// ─────────────────────────────────────────────
+// 소스 셀렉트 채우기
+// ─────────────────────────────────────────────
+function populateSourceSelects() {
+  const ids = ['detailSourceId', 'createSourceId'];
+  ids.forEach(elId => {
+    const sel = document.getElementById(elId);
+    if (!sel) return;
+    sel.innerHTML = '<option value="">소스 선택...</option>';
+    state.sources.forEach(src => {
+      const opt = document.createElement('option');
+      opt.value = src.id;
+      opt.textContent = (src.name || src.id) + ' (' + (src.source_type || '') + ')';
+      sel.appendChild(opt);
+    });
+  });
+}
+
+// ─────────────────────────────────────────────
+// 태그 입력
+// ─────────────────────────────────────────────
+function focusTagInput(inputId) {
+  const el = document.getElementById(inputId);
+  if (el) el.focus();
+}
+
+function handleTagInput(event, wrapId, inputId) {
+  if (event.key === 'Enter' || event.key === ',') {
+    event.preventDefault();
+    const inp = document.getElementById(inputId);
+    if (!inp) return;
+    const val = inp.value.replace(',', '').trim();
+    if (val) {
+      addTag(wrapId, val);
+      inp.value = '';
+    }
+  }
+  if (event.key === 'Backspace') {
+    const inp = document.getElementById(inputId);
+    if (inp && inp.value === '') {
+      removeLastTag(wrapId, inputId);
+    }
+  }
+}
+
+function addTag(wrapId, val) {
+  const wrap = document.getElementById(wrapId);
+  if (!wrap) return;
+  if (!state.tagData[wrapId]) state.tagData[wrapId] = [];
+  if (state.tagData[wrapId].includes(val)) return;
+  state.tagData[wrapId].push(val);
+
+  const chip = document.createElement('span');
+  chip.className = 'tag-chip';
+  const text = document.createTextNode(val);
+  chip.appendChild(text);
+
+  const rmBtn = document.createElement('button');
+  rmBtn.className = 'tag-chip-remove';
+  rmBtn.setAttribute('type', 'button');
+  rmBtn.textContent = '×';
+  const tagVal = val;
+  const tagWrapId = wrapId;
+  rmBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    removeTag(tagWrapId, tagVal);
+  });
+  chip.appendChild(rmBtn);
+
+  // input 앞에 삽입
+  const inp = wrap.querySelector('.tag-input-inner');
+  if (inp) wrap.insertBefore(chip, inp);
+  else wrap.appendChild(chip);
+}
+
+function removeTag(wrapId, val) {
+  if (!state.tagData[wrapId]) return;
+  state.tagData[wrapId] = state.tagData[wrapId].filter(t => t !== val);
+  const wrap = document.getElementById(wrapId);
+  if (!wrap) return;
+  const chips = wrap.querySelectorAll('.tag-chip');
+  chips.forEach(chip => {
+    if (chip.firstChild && chip.firstChild.textContent === val) chip.remove();
+  });
+}
+
+function removeLastTag(wrapId, inputId) {
+  if (!state.tagData[wrapId] || !state.tagData[wrapId].length) return;
+  const last = state.tagData[wrapId][state.tagData[wrapId].length - 1];
+  removeTag(wrapId, last);
+}
+
+function getTagsFromWrap(wrapId) {
+  return state.tagData[wrapId] ? state.tagData[wrapId].slice() : [];
+}
+
+function resetTagWrap(wrapId, tags) {
+  state.tagData[wrapId] = [];
+  const wrap = document.getElementById(wrapId);
+  if (!wrap) return;
+  const chips = wrap.querySelectorAll('.tag-chip');
+  chips.forEach(c => c.remove());
+  tags.forEach(t => addTag(wrapId, t));
+}
+
+// ─────────────────────────────────────────────
+// 권한 체크
+// ─────────────────────────────────────────────
+function canManageKB() {
+  const role = window.currentUserRole || '';
+  return role === 'admin' || role === 'manage_kb';
+}
+
+function checkUserRole() {
+  // 서버에서 사용자 역할을 가져오는 패턴 (다른 페이지 참고)
+  fetch(`${getProxyUrl()}/api/auth/me`).then(r => r.ok ? r.json() : null).then(data => {
+    if (data && data.role) {
+      window.currentUserRole = data.role;
+    } else {
+      window.currentUserRole = 'admin'; // 개발 시 기본값
+    }
+    // 승인 큐 버튼 권한 반영
+    const bulkApproveBtn = document.getElementById('btnBulkApprove');
+    if (bulkApproveBtn && state.approvalQueueMode && canManageKB()) {
+      bulkApproveBtn.style.display = '';
+    }
+  }).catch(() => {
+    window.currentUserRole = 'admin'; // 네트워크 에러 시 개발 편의
+  });
+}
+
+function testerLogout() {
+  document.cookie = 'tester_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+  document.cookie = 'admin_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+  window.location.reload();
+}
+
+// ─────────────────────────────────────────────
+// 상태 표시
+// ─────────────────────────────────────────────
+function updatePhaseNotice(msg) {
+  const el = document.getElementById('phaseNotice');
+  if (el) el.classList.remove('hidden');
+  const textEl = document.getElementById('phaseNoticeText');
+  if (textEl && msg) textEl.textContent = msg;
+}
+
+function hidePhaseNotice() {
+  const el = document.getElementById('phaseNotice');
+  if (el) el.classList.add('hidden');
+}
+
+function updateApiStatus(msg) {
+  const el = document.getElementById('apiStatusNote');
+  if (el) el.textContent = msg;
+}
+
+// ─────────────────────────────────────────────
+// Toast
+// ─────────────────────────────────────────────
+function showToast(msg, type) {
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
+  const toast = document.createElement('div');
+  const typeMap = { success: 'toast-success', error: 'toast-error', info: 'toast-info', warn: 'toast-warn' };
+  toast.className = 'toast ' + (typeMap[type] || 'toast-info');
+  toast.textContent = msg;
+  container.appendChild(toast);
+  setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 3000);
+}
+
+// ─────────────────────────────────────────────
+// 시작
+// ─────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

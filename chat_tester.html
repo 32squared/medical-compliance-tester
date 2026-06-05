@@ -224,6 +224,86 @@
   .send-btn:disabled { opacity:.3; cursor:not-allowed; }
   .input-hint { text-align:center; font-size:11px; color:var(--text-dim); margin-top:8px; }
 
+  /* ── Endpoint Toggle ── */
+  .endpoint-toggle { display:flex; gap:6px; align-items:center; max-width:800px; margin:0 auto 8px; flex-wrap:wrap; }
+  .endpoint-toggle-label { font-size:12px; font-weight:600; color:var(--text-dim); white-space:nowrap; }
+  .endpoint-radio-group { display:flex; gap:4px; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:2px; }
+  .endpoint-radio-label { display:flex; align-items:center; gap:5px; padding:4px 10px; border-radius:6px;
+                           font-size:12px; cursor:pointer; color:var(--text-dim); transition:all .15s; user-select:none; white-space:nowrap; }
+  .endpoint-radio-label:hover { color:var(--text); }
+  .endpoint-radio-label input[type="radio"] { display:none; }
+  .endpoint-radio-label.selected { background:var(--accent); color:#0f172a; font-weight:700; }
+  .endpoint-beta-badge { background:#fef3c7; color:#92400e; font-size:10px; padding:1px 5px;
+                          border-radius:4px; margin-left:2px; font-weight:600; }
+  .endpoint-rag-notice { font-size:11px; color:var(--yellow); background:rgba(234,179,8,.1);
+                          border:1px solid rgba(234,179,8,.3); border-radius:6px;
+                          padding:3px 10px; white-space:nowrap; }
+  /* RAG Citations */
+  .rag-citations { margin-top:10px; padding-top:8px; border-top:1px solid var(--border); }
+  .rag-citations-title { font-size:12px; color:var(--text-dim); font-weight:600; margin-bottom:6px; }
+  .rag-citation-item { font-size:12px; color:var(--accent); cursor:pointer; padding:4px 8px;
+                        background:var(--bg); border:1px solid var(--border); border-radius:6px;
+                        margin-bottom:4px; display:flex; align-items:center; gap:6px; }
+  .rag-citation-item:hover { background:var(--surface2); }
+  .rag-citation-marker { font-weight:700; color:var(--accent); font-size:11px; flex-shrink:0; }
+  .rag-citation-chunk { font-size:11px; color:var(--text-dim); margin-top:4px; padding:6px 8px;
+                         background:var(--surface2); border-radius:4px; display:none; white-space:pre-wrap; line-height:1.5; }
+  .rag-citation-chunk.open { display:block; }
+  sup.rag-cite { color:#2563eb; cursor:pointer; font-weight:600; font-size:11px; padding:0 2px;
+                 position:relative; border-radius:3px; transition:background .15s, color .15s; }
+  sup.rag-cite:hover { text-decoration:underline; background:rgba(37,99,235,.12); }
+  sup.rag-cite:active { background:rgba(37,99,235,.25); }
+  /* sup hover tooltip */
+  sup.rag-cite .rag-sup-tooltip {
+    display:none; position:absolute; top:calc(100% + 6px); left:50%; transform:translateX(-50%);
+    z-index:600; min-width:180px; max-width:260px;
+    background:#1e293b; border:1px solid rgba(56,189,248,.35); border-radius:8px;
+    padding:8px 10px; font-size:11px; color:var(--text); line-height:1.5;
+    box-shadow:0 4px 16px rgba(0,0,0,.4); pointer-events:auto; cursor:auto;
+    white-space:normal; font-weight:400; text-align:left;
+  }
+  sup.rag-cite .rag-sup-tooltip::before {
+    content:''; position:absolute; top:-5px; left:50%; transform:translateX(-50%);
+    border:5px solid transparent; border-bottom-color:#1e293b;
+    border-top:none;
+  }
+  sup.rag-cite:hover .rag-sup-tooltip,
+  sup.rag-cite.rag-tooltip-open .rag-sup-tooltip { display:block; }
+  .rag-sup-tooltip-title { font-weight:600; color:var(--accent); margin-bottom:4px;
+                            overflow:hidden; text-overflow:ellipsis; display:-webkit-box;
+                            -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+  .rag-sup-tooltip-src  { color:var(--text-dim); font-size:10px; margin-bottom:6px; }
+  .rag-sup-tooltip-link { display:inline-block; color:#38bdf8; font-size:10px;
+                           text-decoration:none; border-bottom:1px solid rgba(56,189,248,.4); }
+  .rag-sup-tooltip-link:hover { color:#7dd3fc; }
+  .rag-sup-tooltip-nourl { color:#64748b; font-size:10px; font-style:italic; }
+  /* 카드 하이라이트 */
+  .rag-citation-item.rag-cite-card-highlight {
+    background:rgba(255,235,59,.13) !important;
+    border-color:rgba(255,235,59,.45) !important;
+    transition:background .3s, border-color .3s;
+  }
+  /* 원본 버튼 펄스 */
+  @keyframes ragSourcePulse {
+    0%   { box-shadow:0 0 0 0 rgba(56,189,248,.55); }
+    60%  { box-shadow:0 0 0 7px rgba(56,189,248,0); }
+    100% { box-shadow:0 0 0 0 rgba(56,189,248,0); }
+  }
+  .rag-source-pulse {
+    animation:ragSourcePulse 1.4s ease-out 2 !important;
+  }
+  /* Guardrail banner */
+  .rag-guardrail-banner { margin-top:8px; padding:6px 12px; background:rgba(239,68,68,.15);
+                           border:1px solid rgba(239,68,68,.4); border-radius:6px;
+                           font-size:12px; color:#ef4444; display:flex; align-items:center; gap:6px; }
+  /* Both mode side-by-side */
+  .rag-both-container { display:flex; gap:12px; width:100%; }
+  .rag-both-panel { flex:1; min-width:0; border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+  .rag-both-header { font-size:12px; font-weight:700; padding:6px 12px; background:var(--surface2);
+                      display:flex; align-items:center; gap:6px; }
+  .rag-both-body { padding:12px; font-size:13px; line-height:1.7; }
+  .rag-both-error { color:var(--yellow); font-size:12px; }
+
   /* ── Empty state ── */
   .empty-state { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
                  color:var(--text-dim); gap:12px; }
@@ -285,6 +365,51 @@
   .rlhf-regen-btn { padding:5px 12px; border-radius:8px; font-size:12px; cursor:pointer; border:1px solid #7c3aed44;
                     background:rgba(124,58,237,.15); color:#c4b5fd; transition:all .15s; }
   .rlhf-regen-btn:hover { background:rgba(124,58,237,.3); color:#e9d5ff; }
+
+  /* ── Evidence Trust Badge ── */
+  .evidence-badge-wrap { margin-bottom:8px; display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .evidence-badge {
+    display:inline-flex; align-items:center; gap:5px;
+    height:26px; padding:0 10px;
+    border-radius:13px; font-size:12px; font-weight:700;
+    cursor:default; position:relative; user-select:none;
+    border:1px solid transparent; transition:opacity .15s;
+    white-space:nowrap;
+  }
+  .evidence-badge:hover { opacity:.85; }
+  .evidence-badge.quality-high   { background:rgba(34,197,94,.18);  color:var(--green);  border-color:rgba(34,197,94,.35); }
+  .evidence-badge.quality-medium { background:rgba(234,179,8,.18);  color:var(--yellow); border-color:rgba(234,179,8,.35); }
+  .evidence-badge.quality-low    { background:rgba(249,115,22,.18); color:var(--orange); border-color:rgba(249,115,22,.35); }
+  .evidence-badge.quality-insufficient { background:rgba(239,68,68,.18); color:var(--red); border-color:rgba(239,68,68,.35); }
+  .evidence-badge-tooltip {
+    display:none; position:absolute; top:calc(100% + 6px); left:0; z-index:500;
+    background:var(--surface); border:1px solid var(--border); border-radius:8px;
+    padding:8px 12px; font-size:11px; color:var(--text-dim); white-space:nowrap;
+    box-shadow:0 4px 16px rgba(0,0,0,.4); font-weight:400;
+    line-height:1.7; min-width:180px;
+  }
+  .evidence-badge:hover .evidence-badge-tooltip { display:block; }
+  /* insufficient bubble border */
+  .bubble.evidence-insufficient {
+    border-left:4px solid var(--red) !important;
+    background:rgba(239,68,68,.05) !important;
+  }
+  /* evidence level badge on citation cards */
+  .evidence-level-badge {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:20px; height:20px; border-radius:4px;
+    font-size:10px; font-weight:800; flex-shrink:0;
+  }
+  .evidence-level-A { background:rgba(34,197,94,.2);  color:var(--green); }
+  .evidence-level-B { background:rgba(56,189,248,.2); color:var(--accent); }
+  .evidence-level-C { background:rgba(148,163,184,.2); color:var(--text-dim); }
+  .rag-citation-meta { font-size:11px; color:var(--text-dim); margin-top:4px; display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .rag-citation-source { color:var(--text-dim); font-size:11px; }
+  .rag-citation-verified { color:var(--text-dim); font-size:10px; }
+  @media(max-width:768px) {
+    .evidence-badge-wrap { gap:4px; }
+    .evidence-badge { font-size:11px; height:24px; padding:0 8px; }
+  }
 </style>
 </head>
 <body>
@@ -313,6 +438,7 @@
   <a href="/criteria" class="nav-btn">문진 평가 기준</a>
   <a href="/external-eval" class="nav-btn">📋 외부 답변 평가</a>
   <a href="/rlhf" class="nav-btn">RLHF 관리</a>
+  <a href="/kb_manager" class="nav-btn">KB 관리</a>
   <a href="/settings" class="nav-btn" id="settingsNavLink">&#9881; 설정</a>
   <button class="btn-icon sidebar-toggle-btn" onclick="toggleSidebar()" title="대화 목록" style="font-size:14px">&#9776;</button>
   <button class="btn-icon" onclick="newConversation()" title="새 대화" style="font-size:12px">&#128465;</button>
@@ -378,6 +504,22 @@
     </div>
 
     <div class="input-bar">
+      <!-- 엔드포인트 토글 -->
+      <div class="endpoint-toggle" id="endpointToggleBar">
+        <span class="endpoint-toggle-label">엔드포인트:</span>
+        <div class="endpoint-radio-group" id="endpointRadioGroup">
+          <label class="endpoint-radio-label selected" id="endpointLabelSkix">
+            <input type="radio" name="endpointMode" value="skix" checked> SKIX
+          </label>
+          <label class="endpoint-radio-label" id="endpointLabelRag">
+            <input type="radio" name="endpointMode" value="rag"> RAG <span class="endpoint-beta-badge">베타</span>
+          </label>
+          <label class="endpoint-radio-label" id="endpointLabelBoth">
+            <input type="radio" name="endpointMode" value="both"> Both <span class="endpoint-beta-badge">A/B</span>
+          </label>
+        </div>
+        <span class="endpoint-rag-notice" id="endpointRagNotice" style="display:none">&#9888; RAG는 베타 — Phase 1 개발 중</span>
+      </div>
       <div class="input-row">
         <textarea id="userInput" placeholder="질문을 입력하세요..." rows="1"
                   onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
@@ -873,6 +1015,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     setProgress(100);
 
+    // ── 엔드포인트 토글 초기화 (localStorage 복원) ──
+    initEndpointToggle();
+
   } catch(e) {
     console.warn('초기화 오류', e);
   } finally {
@@ -883,6 +1028,51 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 });
+
+// ──────────────────────────────────────
+// 엔드포인트 토글 초기화
+// ──────────────────────────────────────
+function initEndpointToggle() {
+  var savedMode = localStorage.getItem('chat_tester.endpoint') || 'skix';
+  var targetRadio = document.querySelector('input[name="endpointMode"][value="' + savedMode + '"]');
+  if (targetRadio) targetRadio.checked = true;
+
+  // 라디오 label 선택 상태 반영 + 안내 배지 갱신
+  updateEndpointToggleUI(savedMode);
+
+  // 변경 이벤트 등록
+  document.querySelectorAll('input[name="endpointMode"]').forEach(function(radio) {
+    radio.addEventListener('change', function(e) {
+      var mode = e.target.value;
+      localStorage.setItem('chat_tester.endpoint', mode);
+      updateEndpointToggleUI(mode);
+    });
+  });
+}
+
+function updateEndpointToggleUI(mode) {
+  // 라디오 label selected 클래스 갱신
+  var labels = {
+    skix: document.getElementById('endpointLabelSkix'),
+    rag:  document.getElementById('endpointLabelRag'),
+    both: document.getElementById('endpointLabelBoth'),
+  };
+  Object.keys(labels).forEach(function(key) {
+    var el = labels[key];
+    if (!el) return;
+    if (key === mode) {
+      el.classList.add('selected');
+    } else {
+      el.classList.remove('selected');
+    }
+  });
+
+  // RAG/Both 선택 시 안내 배지 표시
+  var notice = document.getElementById('endpointRagNotice');
+  if (notice) {
+    notice.style.display = (mode === 'rag' || mode === 'both') ? '' : 'none';
+  }
+}
 
 // ──────────────────────────────────────
 // Config (환경별 설정 사용)
@@ -2440,7 +2630,83 @@ function finalizeAssistantMessage(fullText, meta = {}) {
     bubble.removeAttribute('id');
     var parsedHtml = marked.parse(fullText);
     parsedHtml = convertCitations(parsedHtml, meta.searchResults);
+    // RAG citations이 전달되면 [N] → <sup class="rag-cite"> 즉시 변환
+    // 후처리 단계가 덮어쓰기에 영향받지 않도록 finalize 시점에 통합
+    if (meta.ragCitations && meta.ragCitations.length > 0 && typeof renderRagCitations === 'function') {
+      parsedHtml = renderRagCitations(parsedHtml, meta.ragCitations);
+    }
     bubble.innerHTML = parsedHtml;
+
+    // Trust Badge: EVIDENCE_CHECK 결과를 finalize 시점에 재적용
+    // (스트림 중 streamBubble에 innerHTML이 덮여쓰여진 경우에도 배지 유지)
+    if (meta.evidenceCheck) {
+      var ev = meta.evidenceCheck;
+      renderEvidenceBadge(bubble, ev.quality || 'low', {
+        decision: ev.decision,
+        top1: ev.top1_score,
+        chunkCount: ev.chunk_count,
+      });
+    }
+
+    // RAG citations: sup 클릭 이벤트 + 카드 생성 (finalize 시점에 통합)
+    // 후처리에서 innerHTML이 덮어씌워져도 이벤트 유실 없도록 여기서 바인딩
+    if (meta.ragCitations && meta.ragCitations.length > 0) {
+      // 카드 먼저 생성해야 클릭 이벤트에서 참조 가능
+      if (typeof appendRagCitationCards === 'function') {
+        var evQuality = (meta.evidenceCheck && meta.evidenceCheck.quality) || null;
+        appendRagCitationCards(bubble, meta.ragCitations, meta.searchResults, evQuality);
+      }
+
+      // sup tooltip DOM 주입 (hover 옵션 B)
+      if (typeof injectSupTooltips === 'function') {
+        injectSupTooltips(bubble, meta.ragCitations);
+      }
+
+      bubble.querySelectorAll('sup.rag-cite').forEach(function(sup) {
+        sup.addEventListener('click', function(e) {
+          var chunkId = sup.dataset.chunkId || '';
+
+          // fallback 모드: chunk_id 없음
+          if (!chunkId) {
+            sup.style.background = '#fbbf24';
+            sup.style.color = '#0f172a';
+            setTimeout(function() { sup.style.background = ''; sup.style.color = ''; }, 500);
+            showToast('이 인용의 출처 정보를 받지 못했습니다 (스트림 truncation 가능성).', 'error');
+            return;
+          }
+
+          // 옵션 C: shift+click → 원본 새 탭 직접 이동
+          if (e.shiftKey) {
+            var directUrl = sup.dataset.sourceUrl || '';
+            if (directUrl) {
+              window.open(directUrl, '_blank', 'noopener,noreferrer');
+              return;
+            } else {
+              showToast('이 출처에 등록된 원본 URL이 없습니다.', 'warn');
+              return;
+            }
+          }
+
+          // 옵션 A: 일반 클릭 → 카드 스크롤 + highlight + 원본 버튼 펄스
+          var card = bubble.querySelector('.rag-citation-item[data-chunk-id="' + chunkId + '"]');
+          if (card) {
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // 본문 펼침
+            var body = card.querySelector('.rag-citation-chunk');
+            if (body) body.classList.add('open');
+            // 카드 하이라이트
+            card.classList.add('rag-cite-card-highlight');
+            setTimeout(function() { card.classList.remove('rag-cite-card-highlight'); }, 2000);
+            // 원본 버튼 펄스 강조
+            var srcBtn = card.querySelector('.rag-source-url-btn');
+            if (srcBtn) {
+              srcBtn.classList.add('rag-source-pulse');
+              setTimeout(function() { srcBtn.classList.remove('rag-source-pulse'); }, 3000);
+            }
+          }
+        });
+      });
+    }
   }
 
   var metaEl = document.getElementById('streamMeta');
@@ -2472,6 +2738,673 @@ function finalizeAssistantMessage(fullText, meta = {}) {
   scrollToBottom();
 }
 
+// ══════════════════════════════════════════
+// 엔드포인트 토글 (SKIX / RAG / Both)
+// ══════════════════════════════════════════
+
+function getEndpointMode() {
+  const radio = document.querySelector('input[name="endpointMode"]:checked');
+  return radio ? radio.value : 'skix';
+}
+
+function getCurrentConversationId() {
+  return currentConvId || '';
+}
+
+// RAG 응답의 citations 인용 마커를 클릭 가능한 sup 태그로 변환
+function renderRagCitations(text, citations) {
+  if (!citations || citations.length === 0) return text;
+  return text.replace(/\[(\d+)\]/g, function(match, num) {
+    var idx = parseInt(num, 10) - 1;
+    var citation = (idx >= 0 && idx < citations.length) ? citations[idx] : null;
+    if (!citation) return match;
+    var chunkId = escapeHtml(citation.chunk_id || '');
+    var sourceUrl = escapeHtml(citation.source_url || '');
+    var titleAttr = escapeHtml(citation.title || ('출처 ' + num));
+    var sourceId = escapeHtml(citation.source_id || '');
+    return '<sup class="rag-cite"' +
+      ' data-chunk-id="' + chunkId + '"' +
+      ' data-marker="' + escapeHtml(match) + '"' +
+      ' data-source-url="' + sourceUrl + '"' +
+      ' data-title="' + titleAttr + '"' +
+      ' data-source-id="' + sourceId + '"' +
+      ' title="' + titleAttr + '">' +
+      escapeHtml(match) + '</sup>';
+  });
+}
+
+// sup에 hover tooltip DOM을 주입 (innerHTML 변환 후 호출)
+function injectSupTooltips(bubbleEl, citations) {
+  if (!bubbleEl || !citations) return;
+  bubbleEl.querySelectorAll('sup.rag-cite').forEach(function(sup) {
+    // 중복 방지
+    if (sup.querySelector('.rag-sup-tooltip')) return;
+    var chunkId = sup.dataset.chunkId || '';
+    var idx = -1;
+    if (chunkId) {
+      idx = citations.findIndex(function(c) { return (c.chunk_id || '') === chunkId; });
+    }
+    if (idx === -1) {
+      var marker = sup.dataset.marker || sup.textContent;
+      var num = parseInt((marker.match(/\d+/) || [])[0], 10);
+      if (!isNaN(num)) idx = num - 1;
+    }
+    var cit = (idx >= 0 && idx < citations.length) ? citations[idx] : null;
+    var titleText = (cit && cit.title) ? cit.title : (sup.dataset.title || ('출처 ' + (idx + 1)));
+    var sourceUrl = (cit && cit.source_url) ? cit.source_url : (sup.dataset.sourceUrl || '');
+    var sourceId  = (cit && cit.source_id)  ? cit.source_id  : (sup.dataset.sourceId || '');
+    var sourceName = SOURCE_NAMES[sourceId] || sourceId || '';
+
+    var tip = document.createElement('span');
+    tip.className = 'rag-sup-tooltip';
+
+    var titleEl = document.createElement('div');
+    titleEl.className = 'rag-sup-tooltip-title';
+    titleEl.textContent = titleText;
+    tip.appendChild(titleEl);
+
+    if (sourceName) {
+      var srcEl = document.createElement('div');
+      srcEl.className = 'rag-sup-tooltip-src';
+      srcEl.textContent = sourceName;
+      tip.appendChild(srcEl);
+    }
+
+    if (sourceUrl) {
+      var linkEl = document.createElement('a');
+      linkEl.className = 'rag-sup-tooltip-link';
+      linkEl.textContent = '원본 문서 열기 ↗';
+      linkEl.href = sourceUrl;
+      linkEl.target = '_blank';
+      linkEl.rel = 'noopener noreferrer';
+      linkEl.addEventListener('click', function(e) { e.stopPropagation(); });
+      tip.appendChild(linkEl);
+    } else {
+      var noUrl = document.createElement('span');
+      noUrl.className = 'rag-sup-tooltip-nourl';
+      noUrl.textContent = '원본 URL 미등록';
+      tip.appendChild(noUrl);
+    }
+
+    sup.appendChild(tip);
+
+    // 모바일: touch로 토글
+    sup.addEventListener('touchstart', function(e) {
+      e.preventDefault();
+      sup.classList.toggle('rag-tooltip-open');
+    }, { passive: false });
+  });
+}
+
+// RAG 인용 카드 섹션 렌더링 (응답 bubble 하단에 추가)
+function appendRagCitationCards(bubbleEl, citations, searchResults, evidenceQuality) {
+  if (!bubbleEl) return;
+
+  // insufficient 케이스: 근거 없음 안내 카드 1개만 표시
+  if (evidenceQuality === 'insufficient' && (!citations || citations.length === 0)) {
+    var insuffContainer = document.createElement('div');
+    insuffContainer.className = 'rag-citations';
+    var insuffTitle = document.createElement('div');
+    insuffTitle.className = 'rag-citations-title';
+    insuffTitle.textContent = '참고 출처';
+    insuffContainer.appendChild(insuffTitle);
+    var insuffCard = document.createElement('div');
+    insuffCard.className = 'rag-citation-item';
+    insuffCard.style.cssText = 'color:var(--red);border-color:rgba(239,68,68,.35);background:rgba(239,68,68,.06);';
+    var insuffIcon = document.createElement('span');
+    insuffIcon.textContent = '⚠';
+    insuffIcon.style.cssText = 'color:var(--red);font-size:14px;flex-shrink:0;';
+    var insuffMsg = document.createElement('span');
+    insuffMsg.textContent = '이 질문에 대해 충분한 근거를 찾지 못해 추가 정보를 제공할 수 없습니다';
+    insuffMsg.style.cssText = 'font-size:12px;color:var(--red);';
+    insuffCard.appendChild(insuffIcon);
+    insuffCard.appendChild(insuffMsg);
+    insuffContainer.appendChild(insuffCard);
+    bubbleEl.appendChild(insuffContainer);
+    return;
+  }
+
+  if (!citations || citations.length === 0) return;
+
+  var container = document.createElement('div');
+  container.className = 'rag-citations';
+
+  var title = document.createElement('div');
+  title.className = 'rag-citations-title';
+  title.textContent = '참고 출처 (' + citations.length + '개)';
+  container.appendChild(title);
+
+  citations.forEach(function(cit, i) {
+    var chunkId = cit.chunk_id || '';
+    // searchResults에서 매칭 청크 찾기 (chunk_id 우선, 없으면 title 매칭)
+    var matched = null;
+    if (Array.isArray(searchResults)) {
+      if (chunkId) {
+        matched = searchResults.find(function(sr) { return sr.chunk_id === chunkId; }) || null;
+      }
+      if (!matched && cit.title) {
+        matched = searchResults.find(function(sr) { return sr.title === cit.title; }) || null;
+      }
+    }
+
+    // 인용 데이터 우선, 없으면 matched에서 가져옴
+    var evidenceLevel = cit.evidence_level || (matched && matched.evidence_level) || '';
+    var sourceId = cit.source_id || (matched && matched.source_id) || '';
+    var sourceUrl = cit.source_url || (matched && matched.source_url) || '';
+    var lastVerified = cit.last_verified_date || (matched && matched.last_verified_date) || '';
+    var score = (cit.score != null) ? cit.score : ((matched && matched.score != null) ? matched.score : null);
+
+    var titleText = (cit.title || (matched && matched.title)) ? (cit.title || matched.title) : '출처 ' + (i + 1);
+    var sourceName = SOURCE_NAMES[sourceId] || sourceId || '';
+
+    var item = document.createElement('div');
+    item.className = 'rag-citation-item';
+    item.setAttribute('data-chunk-id', chunkId);
+    item.setAttribute('data-cite-chunk', chunkId); // 추가 selector 호환성
+
+    // ── 카드 헤더 행: [마커] [evidence 배지] [제목] [원본 버튼 or 없음 표시] ──
+    var headerRow = document.createElement('div');
+    headerRow.style.cssText = 'display:flex;align-items:center;gap:6px;width:100%;min-width:0;flex-wrap:nowrap;';
+
+    var marker = document.createElement('span');
+    marker.className = 'rag-citation-marker';
+    marker.textContent = cit.marker || ('[' + (i + 1) + ']');
+    headerRow.appendChild(marker);
+
+    // evidence_level 배지 (A/B/C)
+    if (evidenceLevel) {
+      var lvlBadge = document.createElement('span');
+      lvlBadge.className = 'evidence-level-badge evidence-level-' + evidenceLevel;
+      lvlBadge.textContent = evidenceLevel;
+      lvlBadge.title = '근거 수준 ' + evidenceLevel;
+      headerRow.appendChild(lvlBadge);
+    }
+
+    var info = document.createElement('span');
+    info.textContent = titleText;
+    info.style.cssText = 'flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--text);';
+    headerRow.appendChild(info);
+
+    // 원본 URL 버튼 — 카드 헤더 오른쪽
+    if (sourceUrl) {
+      var urlBtn = document.createElement('a');
+      urlBtn.className = 'rag-source-url-btn';
+      // 버튼 레이블: 출처명 있으면 "[출처명] 원본 문서 열기 ↗", 없으면 "원본 문서 열기 ↗"
+      var btnLabel = sourceName ? (sourceName + ' 원본 ↗') : '원본 문서 열기 ↗';
+      urlBtn.textContent = btnLabel;
+      urlBtn.href = sourceUrl;
+      urlBtn.target = '_blank';
+      urlBtn.rel = 'noopener noreferrer';
+      urlBtn.title = titleText + ' — 원본 문서 열기';
+      urlBtn.style.cssText = 'flex-shrink:0;font-size:11px;color:var(--accent);text-decoration:none;' +
+        'background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.3);border-radius:4px;' +
+        'padding:2px 8px;transition:background .15s,box-shadow .15s;white-space:nowrap;';
+      (function(btn) {
+        btn.addEventListener('click', function(e) { e.stopPropagation(); });
+        btn.addEventListener('mouseenter', function() { btn.style.background = 'rgba(56,189,248,.25)'; });
+        btn.addEventListener('mouseleave', function() { btn.style.background = 'rgba(56,189,248,.1)'; });
+      })(urlBtn);
+      headerRow.appendChild(urlBtn);
+    } else {
+      // source_url 없음 — 회색 표시 + KB 매니저 링크
+      var noUrlWrap = document.createElement('span');
+      noUrlWrap.style.cssText = 'flex-shrink:0;display:inline-flex;align-items:center;gap:4px;';
+
+      var noUrlBadge = document.createElement('span');
+      noUrlBadge.className = 'rag-source-url-btn';
+      noUrlBadge.textContent = 'URL 없음';
+      noUrlBadge.title = '원본 URL이 등록되지 않은 문서입니다';
+      noUrlBadge.style.cssText = 'font-size:11px;color:#64748b;background:rgba(100,116,139,.1);' +
+        'border:1px solid rgba(100,116,139,.25);border-radius:4px;padding:2px 8px;' +
+        'white-space:nowrap;cursor:default;';
+      noUrlWrap.appendChild(noUrlBadge);
+
+      // KB 매니저 링크 (doc_id 있을 때만)
+      var docId = cit.doc_id || (matched && matched.doc_id) || '';
+      if (docId) {
+        var kbLink = document.createElement('a');
+        kbLink.textContent = 'KB 등록';
+        kbLink.href = '/kb_manager?id=' + encodeURIComponent(docId);
+        kbLink.target = '_blank';
+        kbLink.rel = 'noopener noreferrer';
+        kbLink.title = 'KB 매니저에서 원본 URL 등록';
+        kbLink.style.cssText = 'font-size:10px;color:#94a3b8;text-decoration:underline;white-space:nowrap;';
+        kbLink.addEventListener('click', function(e) { e.stopPropagation(); });
+        noUrlWrap.appendChild(kbLink);
+      }
+
+      headerRow.appendChild(noUrlWrap);
+    }
+
+    item.appendChild(headerRow);
+
+    // ── 메타 정보 행 (source 이름 + 검증일 + 유사도) ──
+    var hasMetaInfo = sourceId || lastVerified || score !== null;
+    if (hasMetaInfo) {
+      var metaRow = document.createElement('div');
+      metaRow.className = 'rag-citation-meta';
+      if (sourceId) {
+        var sourceSpan = document.createElement('span');
+        sourceSpan.className = 'rag-citation-source';
+        sourceSpan.textContent = sourceName || sourceId;
+        metaRow.appendChild(sourceSpan);
+      }
+      if (lastVerified) {
+        var verifiedSpan = document.createElement('span');
+        verifiedSpan.className = 'rag-citation-verified';
+        verifiedSpan.textContent = '검증일: ' + lastVerified;
+        metaRow.appendChild(verifiedSpan);
+      }
+      if (score !== null) {
+        var scoreSpan = document.createElement('span');
+        scoreSpan.className = 'rag-citation-verified';
+        scoreSpan.textContent = '유사도: ' + parseFloat(score).toFixed(2);
+        metaRow.appendChild(scoreSpan);
+      }
+      item.appendChild(metaRow);
+    }
+
+    // ── 청크 본문 (접힘/펼침) ──
+    var chunkBody = document.createElement('div');
+    chunkBody.className = 'rag-citation-chunk';
+    var snippetText = cit.content || (matched && matched.snippet) || (matched && matched.text_snapshot) || '';
+    if (snippetText) {
+      chunkBody.textContent = snippetText.substring(0, 300);
+    } else {
+      chunkBody.textContent = '청크 ID: ' + (chunkId || '(없음)');
+    }
+    item.appendChild(chunkBody);
+
+    // 클릭 시 본문 펼침/접힘 (헤더 영역에서만, 버튼 클릭은 stopPropagation)
+    (function(it, cb) {
+      it.addEventListener('click', function() {
+        cb.classList.toggle('open');
+      });
+    })(item, chunkBody);
+
+    container.appendChild(item);
+  });
+
+  bubbleEl.appendChild(container);
+}
+
+// 가드레일 차단 배너 표시
+function appendGuardrailBanner(bubbleEl, action) {
+  if (!action || action === 'pass') return;
+  var banner = document.createElement('div');
+  banner.className = 'rag-guardrail-banner';
+  var icon = document.createElement('span');
+  icon.textContent = '⛔';
+  var msg = document.createElement('span');
+  if (action === 'blocked') {
+    msg.textContent = '가드레일 차단: 응답이 안전 기준에 위배되어 차단되었습니다.';
+  } else if (action === 'regenerated') {
+    msg.textContent = '가드레일 재생성: 위반 감지 후 응답을 재생성했습니다.';
+  } else {
+    msg.textContent = '가드레일 동작: ' + escapeHtml(action);
+  }
+  banner.appendChild(icon);
+  banner.appendChild(msg);
+  bubbleEl.appendChild(banner);
+}
+
+// ──────────────────────────────────────
+// Evidence Trust Badge
+// ──────────────────────────────────────
+var SOURCE_NAMES = {
+  'nemc':                   '응급의료포털',
+  'mfds':                   '식약처 의약품안전나라',
+  'mfds_dur':               '식약처 DUR(의약품 안전사용)',
+  'kdca_api':               'KDCA 공공데이터포털',
+  'health_kdca':            '국가건강정보포털',
+  'kr_law':                 '국가법령정보센터',
+  'consultation_seed':      '자체 문진 가이드',
+  'consultation_checklist': '증상별 문진 가이드',
+  'guideline_internal':     '내부 의료법 가이드',
+  'gpt_generated_v1':       '자체 생성 자료'
+};
+
+var EVIDENCE_BADGE_CONFIG = {
+  high:         { dot: '●', label: '근거 충실',   msg: '전 항목 검증된 의료 자료 기반' },
+  medium:       { dot: '●', label: '부분 검증',   msg: '일부 항목은 추가 확인 권장' },
+  low:          { dot: '●', label: '근거 약함',   msg: '참고용 — 의사 상담 권장' },
+  insufficient: { dot: '●', label: '근거 부족',   msg: '의료진 직접 상담 권장' }
+};
+
+function renderEvidenceBadge(bubbleEl, quality, meta) {
+  if (!bubbleEl || !quality) return;
+  // 기존 배지 제거 (중복 방지)
+  var existingWrap = bubbleEl.parentElement
+    ? bubbleEl.parentElement.querySelector('.evidence-badge-wrap')
+    : null;
+  if (existingWrap) existingWrap.remove();
+
+  var cfg = EVIDENCE_BADGE_CONFIG[quality] || EVIDENCE_BADGE_CONFIG['low'];
+
+  var wrap = document.createElement('div');
+  wrap.className = 'evidence-badge-wrap';
+
+  var badge = document.createElement('span');
+  badge.className = 'evidence-badge quality-' + quality;
+
+  var dot = document.createElement('span');
+  dot.textContent = cfg.dot;
+  dot.setAttribute('aria-hidden', 'true');
+
+  var labelSpan = document.createElement('span');
+  labelSpan.textContent = cfg.label;
+
+  // tooltip
+  var tooltip = document.createElement('div');
+  tooltip.className = 'evidence-badge-tooltip';
+  var top1 = (meta && meta.top1 != null) ? meta.top1 : null;
+  var decision = (meta && meta.decision) ? meta.decision : null;
+  var chunkCount = (meta && meta.chunkCount != null) ? meta.chunkCount : null;
+  var lines = [];
+  lines.push(cfg.msg);
+  if (top1 !== null) lines.push('유사도: ' + top1.toFixed(2));
+  if (decision) lines.push('판정: ' + decision);
+  if (chunkCount !== null) lines.push('근거 청크: ' + chunkCount + '개');
+  lines.forEach(function(line) {
+    var p = document.createElement('div');
+    p.textContent = line;
+    tooltip.appendChild(p);
+  });
+
+  badge.appendChild(dot);
+  badge.appendChild(labelSpan);
+  badge.appendChild(tooltip);
+  wrap.appendChild(badge);
+
+  // insufficient: bubble border 강조
+  if (quality === 'insufficient') {
+    bubbleEl.classList.add('evidence-insufficient');
+  } else {
+    bubbleEl.classList.remove('evidence-insufficient');
+  }
+
+  // bubble 바로 앞에 삽입 (bubble 상단에 표시)
+  var parent = bubbleEl.parentElement;
+  if (parent) {
+    parent.insertBefore(wrap, bubbleEl);
+  }
+}
+
+// /api/rag/chat SSE 호출
+async function callRag(query, { onGeneration, onInfo, onDone, onError, conversationId }) {
+  var body = {
+    query: query,
+    conversation_id: conversationId || getCurrentConversationId(),
+  };
+
+  var resp;
+  try {
+    resp = await fetch('/api/rag/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch(err) {
+    onError('네트워크 오류: ' + err.message);
+    return null;
+  }
+
+  if (resp.status === 503) {
+    var errData = {};
+    try { errData = await resp.json(); } catch(e) {}
+    var msg503 = errData.message || '현재 환경에서는 RAG가 비활성화되어 있습니다 (SQLite 모드 또는 Phase 1 개발 중)';
+    onError(msg503);
+    return null;
+  }
+
+  if (resp.status === 401 || resp.status === 403) {
+    onError('인증 오류: 로그인 후 RAG를 사용할 수 있습니다.');
+    return null;
+  }
+
+  if (!resp.ok) {
+    var errText = '';
+    try { errText = await resp.text(); } catch(e) {}
+    onError('RAG 호출 실패 (HTTP ' + resp.status + '): ' + errText.substring(0, 200));
+    return null;
+  }
+
+  // SSE 스트림 파싱 (기존 callSSE 파서 동일 포맷)
+  var reader = resp.body.getReader();
+  var decoder = new TextDecoder();
+  var buffer = '';
+  var fullText = '';
+  var ragCitations = [];
+  var ragQueryId = null;
+  var searchResults = [];
+  var guardrailAction = 'pass';
+  var lastEvidenceCheck = null;  // EVIDENCE_CHECK 이벤트 저장
+
+  while (true) {
+    if (cancelRequested) { reader.cancel(); break; }
+    var readResult = await reader.read();
+    if (readResult.done) break;
+
+    buffer += decoder.decode(readResult.value, { stream: true });
+    var lines = buffer.split('\n');
+    buffer = lines.pop();
+
+    for (var li = 0; li < lines.length; li++) {
+      var trimmed = lines[li].trim();
+      if (!trimmed || !trimmed.startsWith('data:')) continue;
+      var raw = trimmed.slice(5).trim();
+      if (!raw) continue;
+
+      var event;
+      try { event = JSON.parse(raw); } catch(e) { continue; }
+
+      var type = event.type;
+
+      if (type === 'GENERATION') {
+        var chunk = event.text || '';
+        fullText += chunk;
+        onGeneration(fullText, chunk);
+
+      } else if (type === 'EVIDENCE_CHECK') {
+        // Phase A Trust Badge: retrieval gate 결과를 즉시 bubble에 표시
+        var evData = event.data || event;
+        var evQuality = evData.quality || 'low';
+        lastEvidenceCheck = evData;
+        // 현재 스트림 버블 찾아 배지 즉시 렌더
+        var currentBubble = document.getElementById('streamBubble');
+        if (currentBubble) {
+          renderEvidenceBadge(currentBubble, evQuality, {
+            decision: evData.decision,
+            top1: evData.top1_score,
+            chunkCount: evData.chunk_count,
+          });
+        }
+
+      } else if (type === 'INFO') {
+        var data = event.data || {};
+        if (data.search_results) searchResults = data.search_results;
+        onInfo({ data: data, searchResults: searchResults, followUps: [] });
+
+      } else if (type === 'STOP') {
+        if (event.citations) ragCitations = event.citations;
+        if (event.rag_query_id) ragQueryId = event.rag_query_id;
+        if (event.guardrail_action) guardrailAction = event.guardrail_action;
+        break;
+
+      } else if (type === 'ERROR') {
+        onError(event.message || JSON.stringify(event));
+        return null;
+
+      } else if (type === 'KEEP_ALIVE') {
+        continue;
+      }
+    }
+  }
+
+  // STOP 이벤트 미수신(스트림 Truncated) 시 fallback:
+  // fullText에서 [N] 마커를 직접 추출해 마커만 있는 citations 구성
+  // chunk_id는 없지만 sup 변환은 가능
+  if (ragCitations.length === 0 && fullText) {
+    var fallbackSeen = new Set();
+    var fallbackMatches = fullText.match(/\[(\d+)\]/g) || [];
+    fallbackMatches.forEach(function(m) {
+      if (!fallbackSeen.has(m)) {
+        fallbackSeen.add(m);
+        ragCitations.push({ marker: m, chunk_id: '' });
+      }
+    });
+  }
+
+  onDone({
+    fullText: fullText,
+    citations: ragCitations,
+    ragQueryId: ragQueryId,
+    searchResults: searchResults,
+    guardrailAction: guardrailAction,
+    evidenceCheck: lastEvidenceCheck,
+    followUps: [],
+    tokenUsage: null,
+  });
+  return { fullText, citations: ragCitations, ragQueryId, searchResults, guardrailAction, evidenceCheck: lastEvidenceCheck };
+}
+
+// Both 모드: SKIX + RAG 병렬 호출 후 side-by-side 렌더링
+async function sendMessageBoth(text) {
+  isLoading = true;
+  var sendBtn = document.getElementById('sendBtn');
+  if (sendBtn) sendBtn.disabled = true;
+
+  addUserMessage(text);
+  chatHistory.push({ role:'user', content: text });
+
+  // 대화 생성
+  if (!currentConvId) {
+    try {
+      var createRes = await fetch('/api/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: text.substring(0, 40), env: currentEnv })
+      });
+      var createData = await createRes.json();
+      if (createData.success) currentConvId = createData.id;
+    } catch(e) { console.warn('대화 생성 실패', e); }
+  }
+
+  // both 전용 메시지 컨테이너 생성
+  var msgDiv = document.createElement('div');
+  msgDiv.className = 'msg assistant';
+  var bothContainer = document.createElement('div');
+  bothContainer.className = 'rag-both-container';
+
+  // SKIX 패널
+  var skixPanel = document.createElement('div');
+  skixPanel.className = 'rag-both-panel';
+  var skixHeader = document.createElement('div');
+  skixHeader.className = 'rag-both-header';
+  skixHeader.innerHTML = '<span style="color:var(--accent)">&#9679;</span> SKIX';
+  var skixBody = document.createElement('div');
+  skixBody.className = 'rag-both-body';
+  skixBody.textContent = '응답 대기 중...';
+  skixPanel.appendChild(skixHeader);
+  skixPanel.appendChild(skixBody);
+
+  // RAG 패널
+  var ragPanel = document.createElement('div');
+  ragPanel.className = 'rag-both-panel';
+  var ragHeader = document.createElement('div');
+  ragHeader.className = 'rag-both-header';
+  ragHeader.innerHTML = '<span style="color:var(--green)">&#9679;</span> RAG <span class="endpoint-beta-badge">베타</span>';
+  var ragBody = document.createElement('div');
+  ragBody.className = 'rag-both-body';
+  ragBody.textContent = '응답 대기 중...';
+  ragPanel.appendChild(ragHeader);
+  ragPanel.appendChild(ragBody);
+
+  bothContainer.appendChild(skixPanel);
+  bothContainer.appendChild(ragPanel);
+  msgDiv.appendChild(bothContainer);
+  var messagesEl = document.getElementById('messages');
+  if (messagesEl) {
+    var emptyEl = document.getElementById('emptyState');
+    if (emptyEl) emptyEl.remove();
+    messagesEl.appendChild(msgDiv);
+    scrollToBottom();
+  }
+
+  var skixText = '';
+  var ragText = '';
+  var convId = currentConvId || '';
+
+  // 병렬 호출
+  var [skixSettled, ragSettled] = await Promise.allSettled([
+    // SKIX
+    new Promise(function(resolve, reject) {
+      callSSE(text, {
+        conversationId: convId,
+        onGeneration: function(full) {
+          skixText = full;
+          skixBody.innerHTML = marked.parse(full);
+        },
+        onProgress: function() {},
+        onInfo: function() {},
+        onDone: function(r) { resolve(r); },
+        onError: function(msg) {
+          skixBody.innerHTML = '<span class="rag-both-error">&#9888; SKIX 오류: ' + escapeHtml(msg) + '</span>';
+          resolve(null);
+        },
+      }).catch(function(e) {
+        skixBody.innerHTML = '<span class="rag-both-error">&#9888; SKIX 오류: ' + escapeHtml(e.message) + '</span>';
+        resolve(null);
+      });
+    }),
+    // RAG
+    new Promise(function(resolve) {
+      callRag(text, {
+        conversationId: convId,
+        onGeneration: function(full) {
+          ragText = full;
+          ragBody.innerHTML = marked.parse(full);
+        },
+        onInfo: function() {},
+        onDone: function(r) { resolve(r); },
+        onError: function(msg) {
+          ragBody.innerHTML = '<span class="rag-both-error">&#9888; RAG 오류: ' + escapeHtml(msg) + '</span>';
+          resolve(null);
+        },
+      });
+    }),
+  ]);
+
+  // RAG 인용 카드 + Trust Badge (both 모드)
+  var ragResult = ragSettled.status === 'fulfilled' ? ragSettled.value : null;
+  if (ragResult) {
+    var bothEvQuality = (ragResult.evidenceCheck && ragResult.evidenceCheck.quality) || null;
+    // Trust Badge를 ragBody 위에 표시
+    if (bothEvQuality) {
+      renderEvidenceBadge(ragBody, bothEvQuality, {
+        decision: ragResult.evidenceCheck.decision,
+        top1: ragResult.evidenceCheck.top1_score,
+        chunkCount: ragResult.evidenceCheck.chunk_count,
+      });
+    }
+    if (ragResult.citations && ragResult.citations.length > 0) {
+      appendRagCitationCards(ragBody, ragResult.citations, ragResult.searchResults, bothEvQuality);
+    } else if (bothEvQuality === 'insufficient') {
+      appendRagCitationCards(ragBody, [], ragResult.searchResults, 'insufficient');
+    }
+  }
+  if (ragResult && ragResult.guardrailAction) {
+    appendGuardrailBanner(ragBody, ragResult.guardrailAction);
+  }
+
+  setTimeout(function() { loadConversations(); }, 500);
+
+  isLoading = false;
+  if (sendBtn) sendBtn.disabled = false;
+  var inputEl = document.getElementById('userInput');
+  if (inputEl) inputEl.focus();
+}
+
 async function sendMessage() {
   if (isLoading) return;
   const input = document.getElementById('userInput');
@@ -2480,6 +3413,14 @@ async function sendMessage() {
 
   input.value = '';
   input.style.height = 'auto';
+
+  const mode = getEndpointMode();
+
+  // Both 모드는 별도 함수로 처리
+  if (mode === 'both') {
+    return await sendMessageBoth(text);
+  }
+
   isLoading = true;
   document.getElementById('sendBtn').disabled = true;
 
@@ -2508,39 +3449,79 @@ async function sendMessage() {
   let finalText = '';
   let searchResults = [];
   let followUps = [];
+  // RAG 전용 결과
+  let ragCitations = [];
+  let ragQueryId = null;
+  let ragGuardrailAction = 'pass';
+  let ragEvidenceCheck = null;
 
   try {
-    // ── LIVE 모드: 실제 API 호출 (서버가 자동저장) ──
-    await callSSE(text, {
-      conversationId: currentConvId || '',
-      onGeneration(full, chunk) {
-        updateStreamBubble(full);
-        finalText = full;
-      },
-      onProgress({ message, status }) {
-        if (message) addProgressIndicator(message);
-        if (status === 'SUCCESS' || status === 'FAILURE') addProgressIndicator(null);
-      },
-      onInfo({ searchResults: sr, followUps: fu }) {
-        if (sr && sr.length) searchResults = sr;
-        if (fu && fu.length) followUps = fu;
-      },
-      onDone({ fullText, tokenUsage: tu }) {
-        finalText = fullText;
-        if (tu) window._lastTokenUsage = tu;
-      },
-      onError(msg) {
-        finalText = `오류: ${msg}`;
-      },
-    });
+    if (mode === 'rag') {
+      // ── RAG 모드: /api/rag/chat 호출 ──
+      await callRag(text, {
+        conversationId: currentConvId || '',
+        onGeneration(full) {
+          updateStreamBubble(full);
+          finalText = full;
+        },
+        onInfo({ searchResults: sr }) {
+          if (sr && sr.length) searchResults = sr;
+        },
+        onDone(r) {
+          if (r) {
+            finalText = r.fullText || finalText;
+            ragCitations = r.citations || [];
+            ragQueryId = r.ragQueryId || null;
+            ragGuardrailAction = r.guardrailAction || 'pass';
+            ragEvidenceCheck = r.evidenceCheck || null;
+            if (r.searchResults && r.searchResults.length) searchResults = r.searchResults;
+          }
+        },
+        onError(msg) {
+          finalText = '오류: ' + msg;
+        },
+      });
+    } else {
+      // ── SKIX 모드 (기본): 기존 callSSE 그대로 ──
+      await callSSE(text, {
+        conversationId: currentConvId || '',
+        onGeneration(full, chunk) {
+          updateStreamBubble(full);
+          finalText = full;
+        },
+        onProgress({ message, status }) {
+          if (message) addProgressIndicator(message);
+          if (status === 'SUCCESS' || status === 'FAILURE') addProgressIndicator(null);
+        },
+        onInfo({ searchResults: sr, followUps: fu }) {
+          if (sr && sr.length) searchResults = sr;
+          if (fu && fu.length) followUps = fu;
+        },
+        onDone({ fullText, tokenUsage: tu }) {
+          finalText = fullText;
+          if (tu) window._lastTokenUsage = tu;
+        },
+        onError(msg) {
+          finalText = `오류: ${msg}`;
+        },
+      });
+    }
 
     if (!connectionOk) setStatus(true);
     const elapsed = Math.round(performance.now() - start);
     const compliance = (savedSettings.enableCompliance !== false)
       ? analyzeCompliance(finalText) : null;
 
-    finalizeAssistantMessage(finalText, { elapsed, compliance, searchResults, followUps, userPrompt: text, tokenUsage: window._lastTokenUsage || null });
+    finalizeAssistantMessage(finalText, { elapsed, compliance, searchResults, followUps, userPrompt: text, tokenUsage: window._lastTokenUsage || null, ragCitations: (mode === 'rag' ? ragCitations : null), evidenceCheck: (mode === 'rag' ? ragEvidenceCheck : null) });
     chatHistory.push({ role:'assistant', content: finalText, compliance, searchResults });
+
+    // RAG 모드 후처리: 가드레일 배너만 (sup 이벤트 + 카드는 finalizeAssistantMessage에 통합됨)
+    if (mode === 'rag') {
+      const bubbleEl = document.querySelector('.msg.assistant:last-child .bubble');
+      if (bubbleEl) {
+        appendGuardrailBanner(bubbleEl, ragGuardrailAction);
+      }
+    }
 
     // 사이드바 갱신 (서버에서 메시지가 이미 저장됨)
     setTimeout(() => loadConversations(), 500);
