@@ -92,24 +92,23 @@ def enqueue_review(
     rag_query_id: str = None,
 ) -> Optional[str]:
     """
-    검수 큐에 적재 (review_queue_items). db 모듈에 add_review_item 있으면 호출.
+    검수 큐에 적재 (review_queue_items). rag_db.add_review_item 을 직접 호출.
     DB 미연동/오류 시 None 반환 (호출 흐름 비차단).
     """
     if not decision.get("needs_review"):
         return None
     try:
-        import db as _db
-        if hasattr(_db, "add_review_item"):
-            return _db.add_review_item({
-                "answer_id": answer_id,
-                "rag_query_id": rag_query_id,
-                "question": question,
-                "answer": answer,
-                "priority": decision.get("priority", "medium"),
-                "assignee_role": decision.get("assignee_role", "doctor"),
-                "reasons": decision.get("reasons", []),
-                "status": "pending",
-            })
+        import rag_db as _rag_db
+        return _rag_db.add_review_item({
+            "answer_id": answer_id,
+            "rag_query_id": rag_query_id,
+            "question": question,
+            "answer": answer,
+            "priority": decision.get("priority", "medium"),
+            "assignee_role": decision.get("assignee_role", "doctor"),
+            "reasons": decision.get("reasons", []),
+            "status": "pending",
+        })
     except Exception:
         pass
     return None

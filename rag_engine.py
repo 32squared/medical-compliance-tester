@@ -1416,11 +1416,11 @@ def generate_response(
     # ── 7.5 감사 필드 + 검수 큐 적재 (스펙 통합, 가드) ─────────
     try:
         if rag_query_id and _classification is not None:
-            import db as _db
+            import rag_db as _rag_db
             from review_queue import should_review
             _answer_id = "ans_" + rag_query_id[:12]
             _model_v = getattr(provider, "model_id", None) or getattr(provider, "provider_id", "unknown")
-            _db.update_rag_query_audit(
+            _rag_db.update_rag_query_audit(
                 rag_query_id,
                 answer_id=_answer_id,
                 model_version=_model_v,
@@ -1442,7 +1442,7 @@ def generate_response(
                 },
             )
             if _decision.get("needs_review"):
-                _db.add_review_item({
+                _rag_db.add_review_item({
                     "answer_id": _answer_id, "rag_query_id": rag_query_id,
                     "question": query[:500], "answer": full_text[:2000],
                     "priority": _decision["priority"],
