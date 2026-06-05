@@ -188,9 +188,11 @@ class OpenAIProvider(LLMProvider):
                 # 8192로 늘리고, reasoning_effort='minimal'로 빠른 응답 우선.
                 params["max_completion_tokens"] = max(max_tokens * 4, 8192)
                 # gpt-5 계열 reasoning_effort. 단, gpt-5.4/5.5는 'minimal' 미지원
-                # (지원: none/low/medium/high/xhigh) → 'low'로 통일(빠른 응답 + 호환).
+                # (지원: none/low/medium/high/xhigh).
+                # 대화형 RAG는 속도 우선 → LLM_REASONING_EFFORT=none 권장(TTFT 단축).
+                # 배치 평가 등 품질 우선은 low/medium. 기본 'low'(배치 무영향).
                 if mid.startswith("gpt-5"):
-                    params["reasoning_effort"] = "low"
+                    params["reasoning_effort"] = os.environ.get("LLM_REASONING_EFFORT", "low")
                 # temperature는 1.0만 허용 — 명시적으로 보내지 않음 (기본 1)
             else:
                 params["max_tokens"] = max_tokens
