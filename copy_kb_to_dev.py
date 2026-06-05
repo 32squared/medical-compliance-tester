@@ -24,9 +24,51 @@ import psycopg2
 
 _TABLES = ["kb_sources", "kb_documents", "kb_chunks"]
 _BATCH = 500
+# 특수 타입: ::text 로 읽고 ::<udt> 로 써야 보존되는 컬럼 타입
+_SPECIAL_UDT = {"vector", "tsvector"}
+
+# kb_chunks DDL (db.py와 동일) — dev에 pgvector 확장 후 테이블이 없으면 생성
+_KB_CHUNKS_DDL = """CREATE TABLE IF NOT EXISTS kb_chunks (
+    id TEXT PRIMARY KEY,
+    document_id TEXT NOT NULL REFERENCES kb_documents(id) ON DELETE CASCADE,
+    chunk_index INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    section_path TEXT,
+    embedding_primary vector(1536),
+    embedding_secondary vector(1024),
+    embedding_primary_model TEXT NOT NULL DEFAULT '',
+    embedding_secondary_model TEXT,
+    secondary_indexed_at TEXT,
+    evidence_country TEXT,
+    evidence_topic TEXT,
+    regulatory_korea BOOLEAN DEFAULT FALSE,
+    topic_keywords TEXT DEFAULT '[]',
+    token_count INTEGER,
+    symptom_tags TEXT DEFAULT '[]',
+    severity TEXT,
+    content_tsv tsvector,
+    created_at TEXT NOT NULL
+)"""
+_KB_CHUNKS_IDX = [
+    "CREATE INDEX IF NOT EXISTS idx_kb_chunks_emb_primary ON kb_chunks "
+    "USING hnsw (embedding_primary vector_cosine_ops) WITH (m = 16, ef_construction = 64)",
+    "CREATE INDEX IF NOT EXISTS idx_kb_chunks_tsv ON kb_chunks USING gin(content_tsv)",
+    "CREATE INDEX IF NOT EXISTS idx_kb_chunks_document ON kb_chunks(document_id)",
+]
+
+
+def _ensure_dev_schema(cur, conn):
+    """dev에 pgvector 확장 + kb_chunks 테이블/인덱스 보장(없으면 생성)."""
+    cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
+    cur.execute(_KB_CHUNKS_DDL)
+    for idx in _KB_CHUNKS_IDX:
+        cur.execute(idx)
+    conn.commit()
+    print("  [dev schema] pgvector + kb_chunks 보장 완료", flush=True)
 
 
 def _columns(cur, table):
+    """반환: (cols, special) — special = {col: udt_name} (vector/tsvector)."""
     cur.execute(
         "SELECT column_name, udt_name FROM information_schema.columns "
         "WHERE table_name = %s ORDER BY ordinal_position",
@@ -34,8 +76,8 @@ def _columns(cur, table):
     )
     rows = cur.fetchall()
     cols = [r[0] for r in rows]
-    vcols = {r[0] for r in rows if r[1] == "vector"}
-    return cols, vcols
+    special = {r[0]: r[1] for r in rows if r[1] in _SPECIAL_UDT}
+    return cols, special
 
 
 def main():
@@ -55,13 +97,15 @@ def main():
     sc = src.cursor()
     dc = dst.cursor()
 
+    _ensure_dev_schema(dc, dst)  # pgvector + kb_chunks 보장
+
     for t in _TABLES:
-        cols, vcols = _columns(dc, t)  # dev 스키마 기준 컬럼
+        cols, special = _columns(dc, t)  # dev 스키마 기준 컬럼 (special = {col: udt})
         if not cols:
             print(f"  [skip] {t}: dev에 테이블/컬럼 없음", flush=True)
             continue
-        sel = ", ".join((f"{c}::text" if c in vcols else c) for c in cols)
-        ph = ", ".join((f"%s::vector" if c in vcols else "%s") for c in cols)
+        sel = ", ".join((f"{c}::text" if c in special else c) for c in cols)
+        ph = ", ".join((f"%s::{special[c]}" if c in special else "%s") for c in cols)
         ins = (f"INSERT INTO {t} ({', '.join(cols)}) VALUES ({ph}) "
                f"ON CONFLICT DO NOTHING")
         sc.execute(f"SELECT {sel} FROM {t}")
