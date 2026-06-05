@@ -30,5 +30,8 @@ reports/*.pptx
 # 비용 모니터링 누적 로그 (로컬 보관, 시간 흐름 누적)
 logs/
 
+# cost_report.py 산출물 (매번 재생성, 추적 불필요)
+reports/cost_report*.md
+
 # 임시 deploy/test 로그 (다른 worktree 산출물)
 prod_deploy_*.log
