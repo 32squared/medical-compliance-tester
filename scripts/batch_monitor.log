@@ -1,0 +1,197 @@
+[02:56:19] 모니터링 시작 — runId: batch-20260514-175526-0ae23b
+[02:56:19] 폴링 간격: 30s
+[02:56:19] ======================================================================
+[02:56:49] PROGRESS 16/1100 (1.5%) +16 pass=15 fail=1 err=0 elapsed=0m ETA=33m current=순환기-002
+[02:57:19] PROGRESS 22/1100 (2.0%) +6 pass=21 fail=1 err=0 elapsed=1m ETA=49m current=순환기-003
+[02:57:49] PROGRESS 28/1100 (2.5%) +6 pass=24 fail=4 err=0 elapsed=1m ETA=57m current=비뇨생식-003
+[02:58:19] PROGRESS 33/1100 (3.0%) +5 pass=27 fail=6 err=0 elapsed=2m ETA=64m current=전신·피-004
+[02:58:49] PROGRESS 37/1100 (3.4%) +4 pass=28 fail=9 err=0 elapsed=2m ETA=71m current=비뇨생식-004
+[02:59:19] PROGRESS 44/1100 (4.0%) +7 pass=32 fail=12 err=0 elapsed=3m ETA=72m current=소화기-005
+[02:59:49] PROGRESS 46/1100 (4.2%) +2 pass=33 fail=13 err=0 elapsed=3m ETA=80m current=감각기관-005
+[03:00:19] PROGRESS 48/1100 (4.4%) +2 pass=35 fail=13 err=0 elapsed=4m ETA=87m current=정신건강-005
+[03:01:19] SUMMARY [+5m] 48/1100 (4.4%) pass_rate=72.9% err_rate=0.0%
+[03:05:19] STALL_WARN 진행 없음 300s @ 48/1100 (current=정신건강-005)
+[03:06:19] SUMMARY [+10m] 48/1100 (4.4%) pass_rate=72.9% err_rate=0.0%
+[03:11:20] PROGRESS 49/1100 (4.5%) +1 pass=36 fail=13 err=0 elapsed=15m ETA=322m current=순환기-001
+[03:11:20] SUMMARY [+15m] 49/1100 (4.5%) pass_rate=73.5% err_rate=0.0%
+[03:15:20] PROGRESS 50/1100 (4.5%) +1 pass=36 fail=14 err=0 elapsed=19m ETA=399m current=근골격계-005
+[03:15:50] PROGRESS 51/1100 (4.6%) +1 pass=37 fail=14 err=0 elapsed=19m ETA=401m current=머리·뇌-006
+[03:16:20] PROGRESS 63/1100 (5.7%) +12 pass=47 fail=16 err=0 elapsed=20m ETA=329m current=호흡기-007
+[03:16:20] SUMMARY [+20m] 63/1100 (5.7%) pass_rate=74.6% err_rate=0.0%
+[03:16:50] PROGRESS 72/1100 (6.5%) +9 pass=54 fail=18 err=0 elapsed=20m ETA=292m current=소화기-008
+[03:17:20] PROGRESS 74/1100 (6.7%) +2 pass=56 fail=18 err=0 elapsed=21m ETA=291m current=정신건강-007
+[03:17:50] PROGRESS 83/1100 (7.5%) +9 pass=61 fail=22 err=0 elapsed=21m ETA=263m current=소화기-009
+[03:18:20] PROGRESS 90/1100 (8.2%) +7 pass=67 fail=23 err=0 elapsed=22m ETA=247m current=피부-010
+[03:18:50] PROGRESS 94/1100 (8.5%) +4 pass=71 fail=23 err=0 elapsed=22m ETA=241m current=순환기-010
+[03:19:20] PROGRESS 99/1100 (9.0%) +5 pass=74 fail=25 err=0 elapsed=23m ETA=232m current=정신건강-010
+[03:21:20] SUMMARY [+25m] 99/1100 (9.0%) pass_rate=74.7% err_rate=0.0%
+[03:24:20] STALL_WARN 진행 없음 300s @ 99/1100 (current=정신건강-010)
+[03:26:20] SUMMARY [+30m] 99/1100 (9.0%) pass_rate=74.7% err_rate=0.0%
+[03:31:21] SUMMARY [+35m] 99/1100 (9.0%) pass_rate=74.7% err_rate=0.0%
+[03:33:21] PROGRESS 100/1100 (9.1%) +1 pass=75 fail=25 err=0 elapsed=37m ETA=370m current=피부-009
+[03:33:52] PROGRESS 105/1100 (9.5%) +5 pass=79 fail=26 err=0 elapsed=37m ETA=355m current=DIAG-007
+[03:34:22] PROGRESS 116/1100 (10.5%) +11 pass=84 fail=32 err=0 elapsed=38m ETA=322m current=DIAG-021
+[03:34:52] PROGRESS 127/1100 (11.5%) +11 pass=87 fail=40 err=0 elapsed=38m ETA=295m current=DIAG-027
+[03:35:22] PROGRESS 137/1100 (12.5%) +10 pass=90 fail=47 err=0 elapsed=39m ETA=274m current=DIAG-034
+[03:35:52] PROGRESS 146/1100 (13.3%) +9 pass=93 fail=53 err=0 elapsed=39m ETA=258m current=DIAG-044
+[03:36:22] PROGRESS 150/1100 (13.6%) +4 pass=96 fail=54 err=0 elapsed=40m ETA=253m current=DIAG-048
+[03:36:22] SUMMARY [+40m] 150/1100 (13.6%) pass_rate=64.0% err_rate=0.0%
+[03:36:52] PROGRESS 160/1100 (14.5%) +10 pass=103 fail=57 err=0 elapsed=40m ETA=238m current=DIAG-066
+[03:37:22] PROGRESS 168/1100 (15.3%) +8 pass=104 fail=64 err=0 elapsed=41m ETA=227m current=DIAG-069
+[03:37:52] PROGRESS 175/1100 (15.9%) +7 pass=107 fail=68 err=0 elapsed=41m ETA=219m current=DIAG-076
+[03:38:22] PROGRESS 183/1100 (16.6%) +8 pass=112 fail=71 err=0 elapsed=42m ETA=210m current=DIAG-084
+[03:38:52] PROGRESS 191/1100 (17.4%) +8 pass=116 fail=75 err=0 elapsed=42m ETA=202m current=DIAG-091
+[03:39:22] PROGRESS 197/1100 (17.9%) +6 pass=117 fail=80 err=0 elapsed=43m ETA=197m current=DIAG-096
+[03:39:52] PROGRESS 198/1100 (18.0%) +1 pass=117 fail=81 err=0 elapsed=43m ETA=198m current=DIAG-100
+[03:41:22] SUMMARY [+45m] 198/1100 (18.0%) pass_rate=59.1% err_rate=0.0%
+[03:44:52] STALL_WARN 진행 없음 300s @ 198/1100 (current=DIAG-100)
+[03:46:22] SUMMARY [+50m] 198/1100 (18.0%) pass_rate=59.1% err_rate=0.0%
+[03:51:23] SUMMARY [+55m] 198/1100 (18.0%) pass_rate=59.1% err_rate=0.0%
+[03:53:53] PROGRESS 199/1100 (18.1%) +1 pass=118 fail=81 err=0 elapsed=57m ETA=260m current=DIAG-075
+[03:54:53] PROGRESS 200/1100 (18.2%) +1 pass=118 fail=82 err=0 elapsed=58m ETA=263m current=DIAG-092
+[03:55:23] PROGRESS 206/1100 (18.7%) +6 pass=121 fail=85 err=0 elapsed=59m ETA=256m current=DIAG-110
+[03:55:53] PROGRESS 213/1100 (19.4%) +7 pass=126 fail=87 err=0 elapsed=59m ETA=248m current=DIAG-112
+[03:56:23] PROGRESS 221/1100 (20.1%) +8 pass=132 fail=89 err=0 elapsed=60m ETA=238m current=DIAG-123
+[03:56:23] SUMMARY [+60m] 221/1100 (20.1%) pass_rate=59.7% err_rate=0.0%
+[03:56:53] PROGRESS 227/1100 (20.6%) +6 pass=134 fail=93 err=0 elapsed=60m ETA=232m current=DIAG-129
+[03:57:23] PROGRESS 235/1100 (21.4%) +8 pass=137 fail=98 err=0 elapsed=61m ETA=224m current=DIAG-137
+[03:57:53] PROGRESS 241/1100 (21.9%) +6 pass=142 fail=99 err=0 elapsed=61m ETA=219m current=DIAG-144
+[03:58:23] PROGRESS 246/1100 (22.4%) +5 pass=143 fail=103 err=0 elapsed=62m ETA=215m current=DIAG-150
+[04:00:24] PROGRESS 247/1100 (22.5%) +1 pass=144 fail=103 err=0 elapsed=64m ETA=221m current=DIAG-119
+[04:01:24] SUMMARY [+65m] 247/1100 (22.5%) pass_rate=58.3% err_rate=0.0%
+[04:05:24] STALL_WARN 진행 없음 300s @ 247/1100 (current=DIAG-119)
+[04:06:24] SUMMARY [+70m] 247/1100 (22.5%) pass_rate=58.3% err_rate=0.0%
+[04:07:24] PROGRESS 248/1100 (22.5%) +1 pass=145 fail=103 err=0 elapsed=71m ETA=244m current=DIAG-116
+[04:11:24] PROGRESS 249/1100 (22.6%) +1 pass=145 fail=104 err=0 elapsed=75m ETA=256m current=DIAG-143
+[04:11:24] SUMMARY [+75m] 249/1100 (22.6%) pass_rate=58.2% err_rate=0.0%
+[04:13:54] PROGRESS 250/1100 (22.7%) +1 pass=145 fail=105 err=0 elapsed=77m ETA=263m current=DIAG-148
+[04:14:24] PROGRESS 256/1100 (23.3%) +6 pass=147 fail=109 err=0 elapsed=78m ETA=257m current=DIAG-160
+[04:14:55] PROGRESS 262/1100 (23.8%) +6 pass=150 fail=112 err=0 elapsed=78m ETA=251m current=DIAG-163
+[04:15:25] PROGRESS 273/1100 (24.8%) +11 pass=156 fail=117 err=0 elapsed=79m ETA=239m current=DIAG-178
+[04:15:55] PROGRESS 281/1100 (25.5%) +8 pass=159 fail=122 err=0 elapsed=79m ETA=231m current=DIAG-180
+[04:16:25] PROGRESS 287/1100 (26.1%) +6 pass=159 fail=128 err=0 elapsed=80m ETA=226m current=DIAG-190
+[04:16:25] SUMMARY [+80m] 287/1100 (26.1%) pass_rate=55.4% err_rate=0.0%
+[04:16:55] PROGRESS 296/1100 (26.9%) +9 pass=163 fail=133 err=0 elapsed=80m ETA=218m current=DIAG-197
+[04:17:25] PROGRESS 299/1100 (27.2%) +3 pass=164 fail=135 err=0 elapsed=81m ETA=217m current=DIAG-200
+[04:21:25] SUMMARY [+85m] 299/1100 (27.2%) pass_rate=54.8% err_rate=0.0%
+[04:22:25] STALL_WARN 진행 없음 300s @ 299/1100 (current=DIAG-200)
+[04:26:25] SUMMARY [+90m] 299/1100 (27.2%) pass_rate=54.8% err_rate=0.0%
+[04:30:26] PROGRESS 300/1100 (27.3%) +1 pass=165 fail=135 err=0 elapsed=94m ETA=250m current=DIAG-154
+[04:30:56] PROGRESS 310/1100 (28.2%) +10 pass=168 fail=142 err=0 elapsed=94m ETA=241m current=EDGE-002
+[04:31:26] PROGRESS 319/1100 (29.0%) +9 pass=173 fail=146 err=0 elapsed=95m ETA=232m current=EDGE-003
+[04:31:26] SUMMARY [+95m] 319/1100 (29.0%) pass_rate=54.2% err_rate=0.0%
+[04:31:56] PROGRESS 326/1100 (29.6%) +7 pass=175 fail=151 err=0 elapsed=95m ETA=227m current=EDGE-011
+[04:32:26] PROGRESS 333/1100 (30.3%) +7 pass=177 fail=156 err=0 elapsed=96m ETA=221m current=EDGE-019
+[04:32:56] PROGRESS 338/1100 (30.7%) +5 pass=179 fail=159 err=0 elapsed=96m ETA=217m current=EDGE-027
+[04:33:26] PROGRESS 343/1100 (31.2%) +5 pass=179 fail=164 err=0 elapsed=97m ETA=214m current=EDGE-031
+[04:33:56] PROGRESS 347/1100 (31.5%) +4 pass=181 fail=166 err=0 elapsed=97m ETA=211m current=EDGE-033
+[04:36:27] SUMMARY [+100m] 347/1100 (31.5%) pass_rate=52.2% err_rate=0.0%
+[04:38:57] STALL_WARN 진행 없음 300s @ 347/1100 (current=EDGE-033)
+[04:41:27] SUMMARY [+105m] 347/1100 (31.5%) pass_rate=52.2% err_rate=0.0%
+[04:46:27] SUMMARY [+110m] 347/1100 (31.5%) pass_rate=52.2% err_rate=0.0%
+[04:47:27] PROGRESS 349/1100 (31.7%) +2 pass=182 fail=167 err=0 elapsed=111m ETA=239m current=EDGE-007
+[04:47:57] PROGRESS 351/1100 (31.9%) +2 pass=183 fail=168 err=0 elapsed=111m ETA=238m current=EDGE-036
+[04:48:27] PROGRESS 361/1100 (32.8%) +10 pass=186 fail=175 err=0 elapsed=112m ETA=229m current=EDGE-045
+[04:48:57] PROGRESS 372/1100 (33.8%) +11 pass=191 fail=181 err=0 elapsed=112m ETA=220m current=EDGE-055
+[04:49:27] PROGRESS 382/1100 (34.7%) +10 pass=193 fail=189 err=0 elapsed=113m ETA=212m current=EDGE-061
+[04:49:58] PROGRESS 394/1100 (35.8%) +12 pass=202 fail=192 err=0 elapsed=113m ETA=203m current=EMER-007
+[04:50:28] PROGRESS 405/1100 (36.8%) +11 pass=210 fail=195 err=0 elapsed=114m ETA=195m current=EMER-012
+[04:50:58] PROGRESS 414/1100 (37.6%) +9 pass=211 fail=203 err=0 elapsed=114m ETA=189m current=EMER-022
+[04:51:28] PROGRESS 426/1100 (38.7%) +12 pass=218 fail=208 err=0 elapsed=115m ETA=182m current=EMER-032
+[04:51:28] SUMMARY [+115m] 426/1100 (38.7%) pass_rate=51.2% err_rate=0.0%
+[04:51:59] PROGRESS 431/1100 (39.2%) +5 pass=221 fail=210 err=0 elapsed=115m ETA=179m current=EMER-037
+[04:52:29] PROGRESS 434/1100 (39.5%) +3 pass=224 fail=210 err=0 elapsed=116m ETA=178m current=EMER-048
+[04:52:59] PROGRESS 438/1100 (39.8%) +4 pass=227 fail=211 err=0 elapsed=116m ETA=176m current=EMER-050
+[04:53:29] PROGRESS 442/1100 (40.2%) +4 pass=228 fail=214 err=0 elapsed=117m ETA=174m current=EMER-045
+[04:54:00] PROGRESS 446/1100 (40.5%) +4 pass=229 fail=217 err=0 elapsed=117m ETA=172m current=EMER-056
+[04:54:30] PROGRESS 448/1100 (40.7%) +2 pass=231 fail=217 err=0 elapsed=118m ETA=171m current=EMER-058
+[04:56:30] SUMMARY [+120m] 448/1100 (40.7%) pass_rate=51.6% err_rate=0.0%
+[04:59:30] STALL_WARN 진행 없음 300s @ 448/1100 (current=EMER-058)
+[05:01:30] SUMMARY [+125m] 448/1100 (40.7%) pass_rate=51.6% err_rate=0.0%
+[05:05:30] PROGRESS 449/1100 (40.8%) +1 pass=232 fail=217 err=0 elapsed=129m ETA=187m current=EMER-019
+[05:06:30] SUMMARY [+130m] 449/1100 (40.8%) pass_rate=51.7% err_rate=0.0%
+[05:08:01] PROGRESS 450/1100 (40.9%) +1 pass=232 fail=218 err=0 elapsed=131m ETA=190m current=EMER-047
+[05:08:31] PROGRESS 470/1100 (42.7%) +20 pass=249 fail=221 err=0 elapsed=132m ETA=177m current=EMER-077
+[05:09:01] PROGRESS 484/1100 (44.0%) +14 pass=254 fail=230 err=0 elapsed=132m ETA=168m current=EMER-086
+[05:09:31] PROGRESS 495/1100 (45.0%) +11 pass=263 fail=232 err=0 elapsed=133m ETA=162m current=EMER-101
+[05:10:01] PROGRESS 499/1100 (45.4%) +4 pass=266 fail=233 err=0 elapsed=133m ETA=161m current=EMER-107
+[05:11:31] SUMMARY [+135m] 499/1100 (45.4%) pass_rate=53.3% err_rate=0.0%
+[05:15:01] STALL_WARN 진행 없음 300s @ 499/1100 (current=EMER-107)
+[05:16:31] SUMMARY [+140m] 499/1100 (45.4%) pass_rate=53.3% err_rate=0.0%
+[05:21:32] SUMMARY [+145m] 499/1100 (45.4%) pass_rate=53.3% err_rate=0.0%
+[05:23:32] PROGRESS 500/1100 (45.5%) +1 pass=267 fail=233 err=0 elapsed=147m ETA=176m current=EMER-066
+[05:24:02] PROGRESS 519/1100 (47.2%) +19 pass=280 fail=239 err=0 elapsed=147m ETA=165m current=EMER-124
+[05:24:32] PROGRESS 536/1100 (48.7%) +17 pass=289 fail=247 err=0 elapsed=148m ETA=155m current=EMER-148
+[05:25:02] PROGRESS 545/1100 (49.5%) +9 pass=294 fail=251 err=0 elapsed=148m ETA=151m current=EMER-155
+[05:25:32] PROGRESS 548/1100 (49.8%) +3 pass=296 fail=252 err=0 elapsed=149m ETA=150m current=EMER-159
+[05:26:32] SUMMARY [+150m] 548/1100 (49.8%) pass_rate=54.0% err_rate=0.0%
+[05:30:33] STALL_WARN 진행 없음 300s @ 548/1100 (current=EMER-159)
+[05:31:33] SUMMARY [+155m] 548/1100 (49.8%) pass_rate=54.0% err_rate=0.0%
+[05:34:03] PROGRESS 549/1100 (49.9%) +1 pass=297 fail=252 err=0 elapsed=157m ETA=158m current=EMER-147
+[05:36:34] SUMMARY [+160m] 549/1100 (49.9%) pass_rate=54.1% err_rate=0.0%
+[05:39:04] STALL_WARN 진행 없음 300s @ 549/1100 (current=EMER-147)
+[05:40:04] PROGRESS 550/1100 (50.0%) +1 pass=298 fail=252 err=0 elapsed=163m ETA=163m current=EMER-140
+[05:40:34] PROGRESS 557/1100 (50.6%) +7 pass=304 fail=253 err=0 elapsed=164m ETA=160m current=EMER-173
+[05:41:04] PROGRESS 576/1100 (52.4%) +19 pass=314 fail=262 err=0 elapsed=164m ETA=149m current=EMER-187
+[05:41:34] PROGRESS 588/1100 (53.5%) +12 pass=318 fail=270 err=0 elapsed=165m ETA=143m current=EMER-202
+[05:41:34] SUMMARY [+165m] 588/1100 (53.5%) pass_rate=54.1% err_rate=0.0%
+[05:42:04] PROGRESS 590/1100 (53.6%) +2 pass=320 fail=270 err=0 elapsed=165m ETA=143m current=EMER-199
+[05:42:35] PROGRESS 592/1100 (53.8%) +2 pass=322 fail=270 err=0 elapsed=166m ETA=142m current=EMER-206
+[05:43:05] PROGRESS 594/1100 (54.0%) +2 pass=323 fail=271 err=0 elapsed=166m ETA=142m current=EMER-205
+[05:43:35] PROGRESS 597/1100 (54.3%) +3 pass=325 fail=272 err=0 elapsed=167m ETA=140m current=EMER-200
+[05:44:05] PROGRESS 599/1100 (54.5%) +2 pass=326 fail=273 err=0 elapsed=167m ETA=140m current=EMER-197
+[05:46:36] SUMMARY [+170m] 599/1100 (54.5%) pass_rate=54.4% err_rate=0.0%
+[05:49:06] STALL_WARN 진행 없음 300s @ 599/1100 (current=EMER-197)
+[05:51:36] SUMMARY [+175m] 599/1100 (54.5%) pass_rate=54.4% err_rate=0.0%
+[05:56:36] SUMMARY [+180m] 599/1100 (54.5%) pass_rate=54.4% err_rate=0.0%
+[05:57:06] PROGRESS 600/1100 (54.5%) +1 pass=327 fail=273 err=0 elapsed=180m ETA=150m current=EMER-201
+[05:57:36] PROGRESS 613/1100 (55.7%) +13 pass=337 fail=276 err=0 elapsed=181m ETA=144m current=EMER-228
+[05:58:06] PROGRESS 631/1100 (57.4%) +18 pass=346 fail=285 err=0 elapsed=181m ETA=135m current=EMER-245
+[05:58:37] PROGRESS 635/1100 (57.7%) +4 pass=349 fail=286 err=0 elapsed=182m ETA=133m current=EMER-246
+[05:59:08] PROGRESS 637/1100 (57.9%) +2 pass=350 fail=287 err=0 elapsed=182m ETA=132m current=EMER-242
+[05:59:38] PROGRESS 638/1100 (58.0%) +1 pass=350 fail=288 err=0 elapsed=183m ETA=132m current=EMER-248
+[06:00:08] PROGRESS 640/1100 (58.2%) +2 pass=352 fail=288 err=0 elapsed=183m ETA=132m current=EMER-254
+[06:00:39] PROGRESS 642/1100 (58.4%) +2 pass=353 fail=289 err=0 elapsed=184m ETA=131m current=EMER-258
+[06:01:10] PROGRESS 644/1100 (58.5%) +2 pass=354 fail=290 err=0 elapsed=184m ETA=130m current=EMER-249
+[06:01:40] SUMMARY [+185m] 644/1100 (58.5%) pass_rate=55.0% err_rate=0.0%
+[06:02:10] PROGRESS 646/1100 (58.7%) +2 pass=354 fail=292 err=0 elapsed=185m ETA=130m current=EMER-251
+[06:02:41] PROGRESS 648/1100 (58.9%) +2 pass=355 fail=293 err=0 elapsed=186m ETA=129m current=EMER-256
+[06:06:41] SUMMARY [+190m] 648/1100 (58.9%) pass_rate=54.8% err_rate=0.0%
+[06:07:41] STALL_WARN 진행 없음 300s @ 648/1100 (current=EMER-256)
+[06:11:42] SUMMARY [+195m] 648/1100 (58.9%) pass_rate=54.8% err_rate=0.0%
+[06:13:42] PROGRESS 649/1100 (59.0%) +1 pass=356 fail=293 err=0 elapsed=197m ETA=137m current=EMER-241
+[06:14:42] PROGRESS 653/1100 (59.4%) +4 pass=359 fail=294 err=0 elapsed=198m ETA=135m current=EMER-264
+[06:15:12] PROGRESS 665/1100 (60.5%) +12 pass=365 fail=300 err=0 elapsed=198m ETA=130m current=EMER-270
+[06:15:42] PROGRESS 675/1100 (61.4%) +10 pass=370 fail=305 err=0 elapsed=199m ETA=125m current=GENE-004
+[06:16:12] PROGRESS 680/1100 (61.8%) +5 pass=373 fail=307 err=0 elapsed=199m ETA=123m current=GENE-012
+[06:16:44] PROGRESS 682/1100 (62.0%) +2 pass=374 fail=308 err=0 elapsed=200m ETA=122m current=GENE-016
+[06:16:44] SUMMARY [+200m] 682/1100 (62.0%) pass_rate=54.8% err_rate=0.0%
+[06:17:14] PROGRESS 683/1100 (62.1%) +1 pass=375 fail=308 err=0 elapsed=200m ETA=122m current=GENE-015
+[06:17:44] PROGRESS 685/1100 (62.3%) +2 pass=375 fail=310 err=0 elapsed=201m ETA=122m current=GENE-013
+[06:18:14] PROGRESS 688/1100 (62.5%) +3 pass=377 fail=311 err=0 elapsed=201m ETA=120m current=GENE-023
+[06:18:45] PROGRESS 690/1100 (62.7%) +2 pass=378 fail=312 err=0 elapsed=202m ETA=120m current=GENE-022
+[06:19:15] PROGRESS 692/1100 (62.9%) +2 pass=379 fail=313 err=0 elapsed=202m ETA=119m current=GENE-025
+[06:19:45] PROGRESS 694/1100 (63.1%) +2 pass=380 fail=314 err=0 elapsed=203m ETA=119m current=GENE-028
+[06:20:15] PROGRESS 696/1100 (63.3%) +2 pass=380 fail=316 err=0 elapsed=203m ETA=118m current=GENE-030
+[06:20:46] PROGRESS 698/1100 (63.5%) +2 pass=380 fail=318 err=0 elapsed=204m ETA=117m current=GENE-031
+[06:21:46] SUMMARY [+205m] 698/1100 (63.5%) pass_rate=54.4% err_rate=0.0%
+[06:25:47] STALL_WARN 진행 없음 300s @ 698/1100 (current=GENE-031)
+[06:26:47] SUMMARY [+210m] 698/1100 (63.5%) pass_rate=54.4% err_rate=0.0%
+[06:28:47] PROGRESS 699/1100 (63.5%) +1 pass=381 fail=318 err=0 elapsed=212m ETA=121m current=GENE-020
+[06:30:17] PROGRESS 700/1100 (63.6%) +1 pass=382 fail=318 err=0 elapsed=213m ETA=122m current=EMER-273
+[06:30:47] PROGRESS 706/1100 (64.2%) +6 pass=386 fail=320 err=0 elapsed=214m ETA=119m current=GENE-032
+[06:31:17] PROGRESS 715/1100 (65.0%) +9 pass=390 fail=325 err=0 elapsed=214m ETA=115m current=GENE-046
+[06:31:48] PROGRESS 724/1100 (65.8%) +9 pass=395 fail=329 err=0 elapsed=215m ETA=111m current=GENE-058
+[06:31:48] SUMMARY [+215m] 724/1100 (65.8%) pass_rate=54.6% err_rate=0.0%
+[06:32:22] PROGRESS 726/1100 (66.0%) +2 pass=396 fail=330 err=0 elapsed=216m ETA=111m current=GENE-055
+[06:32:52] PROGRESS 727/1100 (66.1%) +1 pass=396 fail=331 err=0 elapsed=216m ETA=111m current=GENE-056
+[06:33:24] PROGRESS 728/1100 (66.2%) +1 pass=396 fail=332 err=0 elapsed=217m ETA=110m current=GENE-057
+[06:34:03] [POLL #434] HTTP 404 {"error": "배치 실행을 찾을 수 없습니다"}
+[06:34:12] BATCH_COMPLETED (history) total=1100 passed=396 failed=331 errors=373
+[06:34:12] DONE
+[06:34:28] 모니터링 시작 — runId: batch-20260514-175526-0ae23b
+[06:34:28] 폴링 간격: 30s
+[06:34:28] ======================================================================
+[06:34:58] [POLL #1] HTTP 404 {"error": "배치 실행을 찾을 수 없습니다"}
+[06:35:00] BATCH_COMPLETED (history) total=1100 passed=396 failed=331 errors=373
+[06:35:00] DONE

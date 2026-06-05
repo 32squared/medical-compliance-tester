@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>🔍 SKIX 검색 API 검증 도구 (Admin)</title>
+<style>
+:root {
+  --primary: #0ea5e9;
+  --accent: #6366f1;
+  --green: #22c55e;
+  --yellow: #eab308;
+  --red: #ef4444;
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --surface2: #334155;
+  --border: #334155;
+  --text: #f1f5f9;
+  --text-dim: #94a3b8;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.6; }
+.page { max-width: 1200px; margin: 0 auto; padding: 24px; }
+.header { border-bottom: 2px solid var(--accent); padding-bottom: 12px; margin-bottom: 20px; }
+.header h1 { font-size: 22px; font-weight: 700; }
+.header .sub { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+.nav { display: flex; gap: 10px; margin-bottom: 16px; font-size: 12px; }
+.nav a { color: var(--text-dim); text-decoration: none; padding: 4px 10px; border: 1px solid var(--border); border-radius: 4px; }
+.nav a:hover { color: var(--accent); border-color: var(--accent); }
+
+.input-section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+.input-section label { display: block; font-size: 12px; font-weight: 700; color: var(--text-dim); margin-bottom: 4px; }
+textarea, input[type=text] { width: 100%; padding: 8px 10px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; font-family: inherit; font-size: 13px; }
+textarea:focus, input[type=text]:focus { outline: none; border-color: var(--accent); }
+
+.mode-tabs { display: flex; gap: 6px; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+.mode-tab { padding: 6px 14px; background: var(--bg); color: var(--text-dim); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 700; }
+.mode-tab.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+.option-row { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; align-items: center; }
+.option-row select { padding: 6px 10px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; font-size: 12px; }
+.field-group { display: flex; flex-direction: column; gap: 4px; }
+.field-group.grow { flex: 1; min-width: 200px; }
+
+.btn-run { background: var(--accent); color: white; border: none; border-radius: 6px; padding: 10px 24px; font-size: 14px; font-weight: 700; cursor: pointer; }
+.btn-run:hover { background: #7c3aed; }
+.btn-run:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.status { padding: 10px 14px; border-radius: 6px; margin: 12px 0; font-size: 13px; }
+.status.loading { background: rgba(99, 102, 241, 0.15); border: 1px solid var(--accent); color: var(--accent); }
+.status.success { background: rgba(34, 197, 94, 0.15); border: 1px solid var(--green); color: var(--green); }
+.status.error { background: rgba(239, 68, 68, 0.15); border: 1px solid var(--red); color: var(--red); }
+
+.results-section { display: none; margin-top: 16px; }
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 12px; text-align: center; }
+.kpi-value { font-size: 20px; font-weight: 800; word-break: break-all; }
+.kpi-label { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+
+.section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 14px; }
+.section h2 { font-size: 15px; font-weight: 700; color: var(--accent); margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+.section h2 small { font-size: 11px; color: var(--text-dim); font-weight: 400; }
+
+.config-row { display: flex; gap: 6px; flex-wrap: wrap; font-size: 11px; color: var(--text-dim); }
+.config-row span { padding: 2px 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 3px; }
+.config-row b { color: var(--text); }
+
+.url-box { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 8px 12px; font-family: 'Menlo','Consolas',monospace; font-size: 12px; word-break: break-all; color: var(--green); margin-bottom: 8px; }
+
+.conv-card { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 8px; font-size: 13px; }
+.conv-card .cc-title { font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.conv-card .cc-meta { font-size: 11px; color: var(--text-dim); display: flex; gap: 10px; flex-wrap: wrap; }
+.conv-card .cc-meta span { background: var(--surface2); padding: 1px 6px; border-radius: 3px; }
+.conv-card .cc-strid { font-family: monospace; font-size: 10.5px; color: var(--accent); margin-top: 4px; }
+
+.raw-json { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 12px; font-family: 'Menlo','Consolas',monospace; font-size: 11.5px; line-height: 1.5; max-height: 600px; overflow: auto; color: var(--text); white-space: pre; }
+details > summary { cursor: pointer; padding: 6px 0; font-size: 12px; color: var(--text-dim); }
+details > summary:hover { color: var(--accent); }
+
+.empty { padding: 20px; text-align: center; color: var(--text-dim); font-size: 13px; }
+.hint { font-size: 11px; color: var(--text-dim); margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="nav">
+    <a href="/">🏠 채팅 테스터</a>
+    <a href="/manager">📋 시나리오</a>
+    <a href="/history">📊 이력</a>
+    <a href="/settings">⚙️ 설정</a>
+  </div>
+
+  <div class="header">
+    <h1>🔍 SKIX 검색 API 검증 도구</h1>
+    <div class="sub">Admin 전용 · SKIX의 <code>/api/data_management/conversations/*</code> 직접 호출 + raw 응답 검증 (정식 사용자 기능 아님)</div>
+  </div>
+
+  <!-- 입력 영역 -->
+  <div class="input-section">
+    <!-- 모드 탭 -->
+    <div class="mode-tabs">
+      <div class="mode-tab active" data-mode="search" onclick="switchMode('search')">🔍 search</div>
+      <div class="mode-tab" data-mode="list" onclick="switchMode('list')">📋 list</div>
+      <div class="mode-tab" data-mode="detail" onclick="switchMode('detail')">📄 detail</div>
+    </div>
+
+    <!-- search 모드 입력 -->
+    <div id="mode-search" class="mode-input">
+      <label>검색어 (search_query)</label>
+      <textarea id="queryInput" rows="2" placeholder="예) 두통"></textarea>
+      <div class="hint">GET /api/data_management/conversations/search?search_query=...</div>
+    </div>
+
+    <!-- list 모드 입력 -->
+    <div id="mode-list" class="mode-input" style="display:none">
+      <div class="hint">GET /api/data_management/conversations — 대화 목록을 가져옵니다 (추가 파라미터는 아래 'extraParams' 참고)</div>
+    </div>
+
+    <!-- detail 모드 입력 -->
+    <div id="mode-detail" class="mode-input" style="display:none">
+      <label>conversation_strid</label>
+      <input type="text" id="stridInput" placeholder="예) abc-def-1234">
+      <div class="hint">GET /api/data_management/conversations/{strid}</div>
+    </div>
+
+    <!-- 공통 옵션 -->
+    <div class="option-row" style="margin-top:14px">
+      <div class="field-group">
+        <label style="margin-bottom:0">환경</label>
+        <select id="envSelect">
+          <option value="">현재 설정 사용</option>
+          <option value="prod">prod</option>
+          <option value="stg">stg</option>
+          <option value="dev">dev</option>
+        </select>
+      </div>
+      <div class="field-group grow">
+        <label style="margin-bottom:0">추가 쿼리 파라미터 (key=value&key2=value2)</label>
+        <input type="text" id="extraParams" placeholder="예) limit=10&offset=0">
+      </div>
+      <button class="btn-run" id="btnRun" onclick="runProbe()">🚀 호출</button>
+    </div>
+    <div class="hint" style="margin-top:8px">⌨ Ctrl+Enter 로 실행 가능</div>
+  </div>
+
+  <!-- 상태 표시 -->
+  <div id="status"></div>
+
+  <!-- 결과 영역 -->
+  <div id="resultsSection" class="results-section">
+
+    <!-- KPI -->
+    <div class="kpi-grid" id="kpiGrid"></div>
+
+    <!-- 호출 URL + 설정 -->
+    <div class="section">
+      <h2>🌐 호출 URL</h2>
+      <div class="url-box" id="urlBox"></div>
+      <div class="config-row" id="configRow"></div>
+    </div>
+
+    <!-- 파싱된 결과 (있으면) -->
+    <div class="section" id="parsedSection">
+      <h2>📚 응답 파싱 결과 <small id="parsedCount"></small></h2>
+      <div id="parsedResults"></div>
+    </div>
+
+    <!-- Raw JSON -->
+    <div class="section">
+      <h2>📋 Raw 응답</h2>
+      <div class="raw-json" id="rawJson"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+var currentMode = 'search';
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function setStatus(type, message) {
+  var el = document.getElementById('status');
+  if (!type) { el.innerHTML = ''; return; }
+  el.innerHTML = '<div class="status ' + type + '">' + escapeHtml(message) + '</div>';
+}
+
+function switchMode(mode) {
+  currentMode = mode;
+  document.querySelectorAll('.mode-tab').forEach(function(el) {
+    el.classList.toggle('active', el.dataset.mode === mode);
+  });
+  document.querySelectorAll('.mode-input').forEach(function(el) {
+    el.style.display = el.id === 'mode-' + mode ? '' : 'none';
+  });
+}
+
+function parseExtraParams(str) {
+  var result = {};
+  if (!str || !str.trim()) return result;
+  var pairs = str.split('&');
+  for (var i = 0; i < pairs.length; i++) {
+    var p = pairs[i];
+    var idx = p.indexOf('=');
+    if (idx > 0) {
+      var k = p.substring(0, idx).trim();
+      var v = p.substring(idx + 1).trim();
+      if (k) result[k] = v;
+    } else if (p.trim()) {
+      result[p.trim()] = '';
+    }
+  }
+  return result;
+}
+
+async function runProbe() {
+  var env = document.getElementById('envSelect').value;
+  var extraParams = parseExtraParams(document.getElementById('extraParams').value);
+
+  var body = { mode: currentMode };
+  if (env) body.env = env;
+  if (Object.keys(extraParams).length > 0) body.extraParams = extraParams;
+
+  if (currentMode === 'search') {
+    var query = document.getElementById('queryInput').value.trim();
+    if (!query) { setStatus('error', '검색어를 입력하세요'); return; }
+    body.query = query;
+  } else if (currentMode === 'detail') {
+    var strid = document.getElementById('stridInput').value.trim();
+    if (!strid) { setStatus('error', 'conversation_strid 를 입력하세요'); return; }
+    body.strid = strid;
+  }
+
+  var btn = document.getElementById('btnRun');
+  btn.disabled = true;
+  btn.textContent = '⏳ 호출 중...';
+  setStatus('loading', '🔄 SKIX ' + currentMode + ' API 호출 중...');
+  document.getElementById('resultsSection').style.display = 'none';
+
+  var startTime = Date.now();
+
+  try {
+    var res = await fetch('/api/admin/search-probe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    var data = await res.json();
+    var elapsedSec = ((Date.now() - startTime) / 1000).toFixed(1);
+
+    if (!res.ok) {
+      setStatus('error', '오류: ' + (data.error || res.statusText));
+      return;
+    }
+    if (data.error) {
+      setStatus('error', 'SKIX 오류: ' + data.error);
+    } else if (data.ok) {
+      setStatus('success', '✓ 호출 성공 (' + elapsedSec + '초, HTTP ' + data.http_status + ')');
+    } else {
+      setStatus('error', '실패: HTTP ' + (data.http_status || '?'));
+    }
+    renderResults(data);
+  } catch(e) {
+    setStatus('error', '네트워크 오류: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🚀 호출';
+  }
+}
+
+function renderResults(data) {
+  document.getElementById('resultsSection').style.display = 'block';
+
+  // KPI
+  var httpColor = (data.http_status === 200) ? '#22c55e' : '#ef4444';
+  var kpiHtml = '';
+  kpiHtml += '<div class="kpi-card"><div class="kpi-value" style="color:' + httpColor + '">' + (data.http_status || '?') + '</div><div class="kpi-label">HTTP Status</div></div>';
+  kpiHtml += '<div class="kpi-card"><div class="kpi-value" style="color:#0ea5e9">' + escapeHtml(data.mode || '?') + '</div><div class="kpi-label">Mode</div></div>';
+  kpiHtml += '<div class="kpi-card"><div class="kpi-value" style="color:#f97316">' + ((data.elapsed_ms || 0) / 1000).toFixed(2) + 's</div><div class="kpi-label">응답 시간</div></div>';
+
+  // 응답 본문 분석
+  var resp = data.response;
+  var itemCount = 0;
+  var arrayItems = null;
+  if (resp && typeof resp === 'object') {
+    // 일반적 형식: { items: [...] } 또는 { results: [...] } 또는 배열
+    if (Array.isArray(resp)) {
+      arrayItems = resp;
+      itemCount = resp.length;
+    } else if (Array.isArray(resp.items)) {
+      arrayItems = resp.items;
+      itemCount = resp.items.length;
+    } else if (Array.isArray(resp.results)) {
+      arrayItems = resp.results;
+      itemCount = resp.results.length;
+    } else if (Array.isArray(resp.conversations)) {
+      arrayItems = resp.conversations;
+      itemCount = resp.conversations.length;
+    } else if (Array.isArray(resp.data)) {
+      arrayItems = resp.data;
+      itemCount = resp.data.length;
+    }
+  }
+
+  kpiHtml += '<div class="kpi-card"><div class="kpi-value" style="color:#a855f7">' + (itemCount || (arrayItems ? 0 : '—')) + '</div><div class="kpi-label">결과 항목</div></div>';
+  document.getElementById('kpiGrid').innerHTML = kpiHtml;
+
+  // URL + 설정
+  document.getElementById('urlBox').textContent = data.url || '';
+  var cfg = data.config || {};
+  var cfgHtml = '';
+  cfgHtml += '<span><b>env</b>: ' + escapeHtml(cfg.env || '?') + '</span>';
+  cfgHtml += '<span><b>api_url</b>: ' + escapeHtml(cfg.api_url || '?') + '</span>';
+  cfgHtml += '<span><b>tenant_domain</b>: ' + escapeHtml(cfg.tenant_domain || '?') + '</span>';
+  cfgHtml += '<span><b>api_uid</b>: ' + escapeHtml(cfg.api_uid || '?') + '</span>';
+  cfgHtml += '<span><b>api_key</b>: ' + escapeHtml(cfg.api_key_masked || '?') + '</span>';
+  cfgHtml += '<span><b>params</b>: ' + escapeHtml(JSON.stringify(data.params || {})) + '</span>';
+  document.getElementById('configRow').innerHTML = cfgHtml;
+
+  // ─── 자동 키 탐지 헬퍼들 ───
+  // string 타입의 가장 의미 있는 필드를 title로 추정
+  // 우선순위 키 → fallback: 가장 긴 string
+  function pickTitle(obj) {
+    if (!obj || typeof obj !== 'object') return '(제목 없음)';
+    var priorityKeys = ['title','name','summary','display_name','displayName',
+      'question','query','last_query','first_message','firstMessage',
+      'subject','headline','content_summary'];
+    for (var i = 0; i < priorityKeys.length; i++) {
+      var v = obj[priorityKeys[i]];
+      if (typeof v === 'string' && v.trim()) return v;
+    }
+    // messages[0].content 같은 중첩 시도
+    if (Array.isArray(obj.messages) && obj.messages.length > 0) {
+      var firstMsg = obj.messages[0];
+      if (firstMsg && typeof firstMsg.content === 'string' && firstMsg.content.trim()) {
+        return '[msg0] ' + firstMsg.content;
+      }
+      if (firstMsg && typeof firstMsg.query === 'string' && firstMsg.query.trim()) {
+        return '[msg0] ' + firstMsg.query;
+      }
+    }
+    // 가장 긴 string 값 찾기 (10자 이상 ~ 200자 이하)
+    var best = '', bestKey = '';
+    for (var k in obj) {
+      if (!obj.hasOwnProperty(k)) continue;
+      var val = obj[k];
+      if (typeof val === 'string' && val.length > best.length && val.length >= 10 && val.length <= 200) {
+        // 너무 긴 raw text 회피, ID-like 회피
+        if (!/^[0-9a-f-]{20,}$/i.test(val)) {
+          best = val; bestKey = k;
+        }
+      }
+    }
+    if (best) return '[' + bestKey + '] ' + best;
+    return '(제목 없음)';
+  }
+
+  function pickStrid(obj) {
+    if (!obj || typeof obj !== 'object') return '';
+    var keys = ['conversation_strid','strid','conversation_id','conversationId','id','uuid','uid'];
+    for (var i = 0; i < keys.length; i++) {
+      var v = obj[keys[i]];
+      if (v != null && (typeof v === 'string' || typeof v === 'number')) return String(v);
+    }
+    // 'strid' 또는 'id' 포함된 키 자동 탐지
+    for (var k in obj) {
+      if (!obj.hasOwnProperty(k)) continue;
+      if (/strid|_id$|^id$/i.test(k)) {
+        var v2 = obj[k];
+        if (typeof v2 === 'string' || typeof v2 === 'number') return String(v2);
+      }
+    }
+    return '';
+  }
+
+  function pickDate(obj, kind) {
+    if (!obj || typeof obj !== 'object') return '';
+    var patterns = kind === 'created'
+      ? [/^created_at$/i,/^createdAt$/i,/^create_time$/i,/^createTime$/i,/^date$/i,/created/i]
+      : [/^updated_at$/i,/^updatedAt$/i,/^update_time$/i,/^modified_at$/i,/updated/i,/modified/i];
+    for (var p = 0; p < patterns.length; p++) {
+      for (var k in obj) {
+        if (!obj.hasOwnProperty(k)) continue;
+        if (patterns[p].test(k)) {
+          var v = obj[k];
+          if (typeof v === 'string' && v) return v;
+        }
+      }
+    }
+    return '';
+  }
+
+  function pickMsgCount(obj) {
+    if (!obj || typeof obj !== 'object') return '';
+    var keys = ['message_count','messageCount','msg_count','msgCount','num_messages'];
+    for (var i = 0; i < keys.length; i++) {
+      if (typeof obj[keys[i]] === 'number') return String(obj[keys[i]]);
+    }
+    if (Array.isArray(obj.messages)) return String(obj.messages.length);
+    return '';
+  }
+
+  function summarizeKeys(obj) {
+    if (!obj || typeof obj !== 'object') return '';
+    var keys = Object.keys(obj);
+    return keys.slice(0, 12).join(', ') + (keys.length > 12 ? ' ...(+' + (keys.length-12) + ')' : '');
+  }
+
+  // 파싱된 결과 카드 (배열이면)
+  var parsedSection = document.getElementById('parsedSection');
+  var parsedDiv = document.getElementById('parsedResults');
+  var parsedCountLbl = document.getElementById('parsedCount');
+  if (arrayItems && arrayItems.length > 0) {
+    parsedSection.style.display = '';
+    parsedCountLbl.textContent = arrayItems.length + ' 건';
+
+    // 모든 항목의 키 합집합 (한 번에 보여주기)
+    var allKeys = {};
+    for (var ki = 0; ki < Math.min(arrayItems.length, 20); ki++) {
+      var it0 = arrayItems[ki] || {};
+      if (typeof it0 === 'object') {
+        for (var kk in it0) {
+          if (it0.hasOwnProperty(kk)) allKeys[kk] = true;
+        }
+      }
+    }
+    var keyList = Object.keys(allKeys);
+    var keyHint = '<div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;padding:6px 8px;background:var(--bg);border-radius:3px;border-left:2px solid var(--accent)">' +
+      '<b>🔑 항목 키:</b> ' + escapeHtml(keyList.join(', ')) +
+      '</div>';
+
+    var ph = keyHint;
+    for (var i = 0; i < arrayItems.length; i++) {
+      var it = arrayItems[i] || {};
+      var title = pickTitle(it);
+      var strid = pickStrid(it);
+      var createdAt = pickDate(it, 'created');
+      var updatedAt = pickDate(it, 'updated');
+      var msgCount = pickMsgCount(it);
+      var rawKeys = (typeof it === 'object') ? summarizeKeys(it) : '';
+      // title 길이 제한
+      var titleDisplay = title.length > 120 ? title.substring(0, 120) + '…' : title;
+      ph += '<div class="conv-card">' +
+        '<div class="cc-title">#' + (i+1) + ' · ' + escapeHtml(titleDisplay) + '</div>' +
+        '<div class="cc-meta">' +
+          (createdAt ? '<span>📅 ' + escapeHtml(String(createdAt).substring(0,19)) + '</span>' : '') +
+          (updatedAt ? '<span>📝 ' + escapeHtml(String(updatedAt).substring(0,19)) + '</span>' : '') +
+          (msgCount ? '<span>💬 msgs: ' + escapeHtml(msgCount) + '</span>' : '') +
+          (rawKeys ? '<span title="' + escapeHtml(rawKeys) + '">🔑 ' + escapeHtml(rawKeys.substring(0,60)) + (rawKeys.length>60?'…':'') + '</span>' : '') +
+        '</div>' +
+        (strid ? '<div class="cc-strid">strid/id: ' + escapeHtml(strid) + '</div>' : '') +
+        '</div>';
+    }
+    parsedDiv.innerHTML = ph;
+  } else if (resp && typeof resp === 'object' && !Array.isArray(resp)) {
+    // detail 모드 등 단일 객체
+    parsedSection.style.display = '';
+    parsedCountLbl.textContent = '1 건';
+    var title = pickTitle(resp);
+    var strid = pickStrid(resp);
+    var createdAt = pickDate(resp, 'created');
+    var updatedAt = pickDate(resp, 'updated');
+    var msgCount = pickMsgCount(resp);
+    var keyHint2 = '<div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;padding:6px 8px;background:var(--bg);border-radius:3px;border-left:2px solid var(--accent)">' +
+      '<b>🔑 응답 키:</b> ' + escapeHtml(summarizeKeys(resp)) +
+      '</div>';
+    var titleDisplay2 = title.length > 200 ? title.substring(0, 200) + '…' : title;
+    parsedDiv.innerHTML = keyHint2 + '<div class="conv-card">' +
+      '<div class="cc-title">' + escapeHtml(titleDisplay2) + '</div>' +
+      '<div class="cc-meta">' +
+        (createdAt ? '<span>📅 ' + escapeHtml(String(createdAt).substring(0,19)) + '</span>' : '') +
+        (updatedAt ? '<span>📝 ' + escapeHtml(String(updatedAt).substring(0,19)) + '</span>' : '') +
+        (msgCount ? '<span>💬 msgs: ' + escapeHtml(msgCount) + '</span>' : '') +
+      '</div>' +
+      (strid ? '<div class="cc-strid">strid/id: ' + escapeHtml(strid) + '</div>' : '') +
+    '</div>';
+  } else {
+    parsedSection.style.display = 'none';
+  }
+
+  // Raw JSON
+  document.getElementById('rawJson').textContent = JSON.stringify(data.response, null, 2);
+}
+
+// Ctrl+Enter on any input
+document.addEventListener('keydown', function(e) {
+  if (e.ctrlKey && e.key === 'Enter') runProbe();
+});
+</script>
+
+</body>
+</html>

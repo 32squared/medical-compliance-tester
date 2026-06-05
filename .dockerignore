@@ -14,5 +14,8 @@ settings.json
 conversations.json
 app.db
 *.db
-reports/
+# reports/ 는 정적 HTML 아티팩트가 운영 사이트 호스팅 대상이라 이미지에 포함.
+# 단 동적 생성 live_*.html / *.pptx 등은 .gitignore 가 차단.
+backups/
+data/
 *.md

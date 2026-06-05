@@ -1,0 +1,283 @@
+=== Medical Compliance Tester - DEV Cloud Run Deploy ===
+(?¥ÏòÅ ?úÎπÑ?? medical-compliance-tester)
+Project:      medical-compliance-tester
+Region:       asia-northeast3
+Service:      medical-compliance-tester-dev  [DEV]
+Cloud SQL:    medical-compliance-tester:asia-northeast3:medical-db
+DB:           medical_app_dev  [DEV ???¥ÏòÅÍ≥?Î∂ÑÎ¶¨]
+
+Secret Manager?êÏÑú DB ÎπÑÎ?Î≤àÌò∏Î•?Í∞Ä?∏Ïòµ?àÎã§...
+DB Password:  ****
+
+[0/3] DEV DB ?ïÏù∏/?ùÏÑ±...
+  'medical_app_dev' DB ?¥Î? Ï°¥Ïû¨?©Îãà??
+
+[1/3] Building Docker image (dev)...
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'storage.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'storage.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+Creating temporary archive of 71 file(s) totalling 2.6 MiB before compression.
+Some files were not included in the source upload.
+
+Check the gcloud log [C:\Users\20002652\AppData\Roaming\gcloud\logs\2026.05.15\02.48.33.759868.log] to see which files and the contents of the
+default gcloudignore file used (see `$ gcloud topic gcloudignore` to learn
+more).
+
+Uploading tarball of [.] to [gs://medical-compliance-tester_cloudbuild/source/1778780914.346499-eac73f75745f47b6aa33c2d34b5c066f.tgz]
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'storage.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'cloudbuild.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+Created [https://cloudbuild.googleapis.com/v1/projects/medical-compliance-tester/locations/global/builds/0d1474a4-327c-4129-bdc6-c4bdfc9ee10a].
+Logs are available at [ https://console.cloud.google.com/cloud-build/builds/0d1474a4-327c-4129-bdc6-c4bdfc9ee10a?project=716262961556 ].
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'cloudbuild.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+Waiting for build to complete. Polling interval: 1 second(s).
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'cloudbuild.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'storage.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'storage.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'cloudbuild.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'storage.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'cloudbuild.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'storage.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'cloudbuild.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'storage.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'storage.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'cloudbuild.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'storage.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'cloudbuild.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'storage.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'cloudbuild.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'storage.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'cloudbuild.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'storage.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'cloudbuild.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'storage.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'cloudbuild.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'storage.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'cloudbuild.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'storage.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'cloudbuild.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'storage.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'cloudbuild.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'storage.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'cloudbuild.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'storage.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'cloudbuild.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'storage.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'storage.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'storage.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+----------------------------- REMOTE BUILD OUTPUT ------------------------------
+starting build "0d1474a4-327c-4129-bdc6-c4bdfc9ee10a"
+
+FETCHSOURCE
+Fetching storage object: gs://medical-compliance-tester_cloudbuild/source/1778780914.346499-eac73f75745f47b6aa33c2d34b5c066f.tgz#1778780917409890
+Copying gs://medical-compliance-tester_cloudbuild/source/1778780914.346499-eac73f75745f47b6aa33c2d34b5c066f.tgz#1778780917409890...
+/ [0 files][    0.0 B/  1.1 MiB]                                                / [1 files][  1.1 MiB/  1.1 MiB]                                                
+Operation completed over 1 objects/1.1 MiB.                                      
+BUILD
+Already have image (with digest): gcr.io/cloud-builders/gcb-internal
+Sending build context to Docker daemon  2.685MB
+Step 1/11 : FROM python:3.12-slim
+3.12-slim: Pulling from library/python
+57fb71246055: Pulling fs layer
+797809503061: Pulling fs layer
+759e0c85a86e: Pulling fs layer
+b33ff618953d: Pulling fs layer
+b33ff618953d: Verifying Checksum
+b33ff618953d: Download complete
+797809503061: Verifying Checksum
+797809503061: Download complete
+759e0c85a86e: Verifying Checksum
+759e0c85a86e: Download complete
+57fb71246055: Verifying Checksum
+57fb71246055: Download complete
+57fb71246055: Pull complete
+797809503061: Pull complete
+759e0c85a86e: Pull complete
+b33ff618953d: Pull complete
+Digest: sha256:401f6e1a67dad31a1bd78e9ad22d0ee0a3b52154e6bd30e90be696bb6a3d7461
+Status: Downloaded newer image for python:3.12-slim
+ ---> c8e887bbf3b6
+Step 2/11 : WORKDIR /app
+ ---> Running in 8f7349bfa3b5
+Removing intermediate container 8f7349bfa3b5
+ ---> 49eb080ca57a
+Step 3/11 : COPY requirements.txt .
+ ---> ee2791a4715a
+Step 4/11 : RUN pip install --no-cache-dir -r requirements.txt
+ ---> Running in cfd3a66cc249
+Collecting requests>=2.28.0 (from -r requirements.txt (line 1))
+  Downloading requests-2.34.1-py3-none-any.whl.metadata (4.8 kB)
+Collecting psycopg2-binary>=2.9.0 (from -r requirements.txt (line 2))
+  Downloading psycopg2_binary-2.9.12-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (4.9 kB)
+Collecting charset_normalizer<4,>=2 (from requests>=2.28.0->-r requirements.txt (line 1))
+  Downloading charset_normalizer-3.4.7-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (40 kB)
+Collecting idna<4,>=2.5 (from requests>=2.28.0->-r requirements.txt (line 1))
+  Downloading idna-3.15-py3-none-any.whl.metadata (7.7 kB)
+Collecting urllib3<3,>=1.26 (from requests>=2.28.0->-r requirements.txt (line 1))
+  Downloading urllib3-2.7.0-py3-none-any.whl.metadata (6.9 kB)
+Collecting certifi>=2023.5.7 (from requests>=2.28.0->-r requirements.txt (line 1))
+  Downloading certifi-2026.4.22-py3-none-any.whl.metadata (2.5 kB)
+Downloading requests-2.34.1-py3-none-any.whl (73 kB)
+Downloading psycopg2_binary-2.9.12-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (4.3 MB)
+   ???????????????????????????????????????? 4.3/4.3 MB 105.7 MB/s eta 0:00:00
+Downloading certifi-2026.4.22-py3-none-any.whl (135 kB)
+Downloading charset_normalizer-3.4.7-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (216 kB)
+Downloading idna-3.15-py3-none-any.whl (72 kB)
+Downloading urllib3-2.7.0-py3-none-any.whl (131 kB)
+Installing collected packages: urllib3, psycopg2-binary, idna, charset_normalizer, certifi, requests
+Successfully installed certifi-2026.4.22 charset_normalizer-3.4.7 idna-3.15 psycopg2-binary-2.9.12 requests-2.34.1 urllib3-2.7.0
+[91mWARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+[0m[91m
+[notice] A new release of pip is available: 25.0.1 -> 26.1.1
+[notice] To update, run: pip install --upgrade pip
+[0mRemoving intermediate container cfd3a66cc249
+ ---> e65f5ef9d09b
+Step 5/11 : COPY . .
+ ---> adad23da5a3a
+Step 6/11 : RUN mkdir -p /data
+ ---> Running in b8665a3636b2
+Removing intermediate container b8665a3636b2
+ ---> 619c0b30384b
+Step 7/11 : ENV PORT=8080
+ ---> Running in 4f9dc39dd8a3
+Removing intermediate container 4f9dc39dd8a3
+ ---> 13cafb33aee2
+Step 8/11 : ENV DB_PATH=/data/app.db
+ ---> Running in 233700d61380
+Removing intermediate container 233700d61380
+ ---> 89efa050a848
+Step 9/11 : ENV DATA_DIR=/data
+ ---> Running in a69c366f3911
+Removing intermediate container a69c366f3911
+ ---> c7e8301dff2c
+Step 10/11 : EXPOSE 8080
+ ---> Running in 14ad1ae75309
+Removing intermediate container 14ad1ae75309
+ ---> c0f469d50512
+Step 11/11 : CMD ["python", "proxy_server.py", "--port", "8080"]
+ ---> Running in 2ed3c462d11c
+Removing intermediate container 2ed3c462d11c
+ ---> 68ec1171ea5b
+Successfully built 68ec1171ea5b
+Successfully tagged gcr.io/medical-compliance-tester/medical-compliance-tester-dev:latest
+PUSH
+Pushing gcr.io/medical-compliance-tester/medical-compliance-tester-dev
+The push refers to repository [gcr.io/medical-compliance-tester/medical-compliance-tester-dev]
+c9171968ba3f: Preparing
+cab7341c1010: Preparing
+0a27b4da861e: Preparing
+b9c90f10f2d5: Preparing
+158af28f9712: Preparing
+23ed4b6439ad: Preparing
+fae8529c7ef7: Preparing
+1361e0a963c6: Preparing
+79dd1f4c855c: Preparing
+fae8529c7ef7: Layer already exists
+23ed4b6439ad: Layer already exists
+79dd1f4c855c: Layer already exists
+1361e0a963c6: Layer already exists
+158af28f9712: Pushed
+b9c90f10f2d5: Pushed
+c9171968ba3f: Pushed
+cab7341c1010: Pushed
+0a27b4da861e: Pushed
+latest: digest: sha256:ca16db51d7130cfd88949f4fc3e670e7c770372d8f2e5de4ac5816d5be7b65e9 size: 2202
+DONE
+--------------------------------------------------------------------------------
+ID                                    CREATE_TIME                DURATION  SOURCE                                                                                                   IMAGES                                                                    STATUS
+0d1474a4-327c-4129-bdc6-c4bdfc9ee10a  2026-05-14T17:48:37+00:00  18S       gs://medical-compliance-tester_cloudbuild/source/1778780914.346499-eac73f75745f47b6aa33c2d34b5c066f.tgz  gcr.io/medical-compliance-tester/medical-compliance-tester-dev (+1 more)  SUCCESS
+Build done!
+
+[2/3] Deploying DEV service to Cloud Run...
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'serviceusage.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'asia-northeast3-run.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'serviceusage.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'serviceusage.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+Deploying container to Cloud Run service [medical-compliance-tester-dev] in project [medical-compliance-tester] region [asia-northeast3]
+Deploying...
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'asia-northeast3-run.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+Setting IAM Policy......C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'run.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+...C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'run.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+.....done
+Creating Revision.....C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'asia-northeast3-run.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+.......................................................................................................................C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'asia-northeast3-run.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+.....done
+Routing traffic.....done
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'asia-northeast3-run.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+C:\Users\20002652\AppData\Local\Google\Cloud SDK\google-cloud-sdk\lib\third_party\urllib3\connectionpool.py:1100: InsecureRequestWarning: Unverified HTTPS request is being made to host 'asia-northeast3-run.googleapis.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+Done.
+Service [medical-compliance-tester-dev] revision [medical-compliance-tester-dev-00037-8gv] has been deployed and is serving 100 percent of traffic.
+Service URL: https://medical-compliance-tester-dev-716262961556.asia-northeast3.run.app
+
+[3/3] DEV Deploy complete!
+
+============================================================
+  *** DEV Í≥µÏãù URL (gcloud Í≥µÏãù alias) ***
+      https://medical-compliance-tester-dev-cbtevhmzrq-du.a.run.app
+============================================================
+  Chat:       https://medical-compliance-tester-dev-cbtevhmzrq-du.a.run.app/
+  Scenario:   https://medical-compliance-tester-dev-cbtevhmzrq-du.a.run.app/manager
+  History:    https://medical-compliance-tester-dev-cbtevhmzrq-du.a.run.app/history
+  Settings:   https://medical-compliance-tester-dev-cbtevhmzrq-du.a.run.app/settings
+  Guidelines: https://medical-compliance-tester-dev-cbtevhmzrq-du.a.run.app/guidelines
+  RLHF:       https://medical-compliance-tester-dev-cbtevhmzrq-du.a.run.app/rlhf_manager.html
+  Arena:      https://medical-compliance-tester-dev-cbtevhmzrq-du.a.run.app/arena
+============================================================
+
+Ï∞∏Í≥†: gcloud run deploy??'Service URL' Ï∂úÎ†•?Ä ?§Î•∏ alias?¥Î©∞
+      ??Í≥µÏãù URLÍ≥?Í∞ôÏ? ?úÎπÑ?§Î? Í∞ÄÎ¶¨ÌÇµ?àÎã§
+
+Storage: Cloud SQL 'medical_app_dev' on medical-db (DEV DB)
+?¥ÏòÅ DB(medical_app)?Ä ?ÑÏ†Ñ??Î∂ÑÎ¶¨?©Îãà??
+
+?åÏä§???ÑÎ£å ???¥ÏòÅ Î∞òÏòÅ:
+  git checkout main && git merge feature/xxx && $env:DB_PASSWORD='...'; .\deploy.ps1
+

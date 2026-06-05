@@ -1,0 +1,52 @@
+[07:24:38] prev: batch-20260514-175526-0ae23b
+[07:24:41]   처리됨(pass/fail): 727
+[07:24:41] prev: batch-20260514-213809-e490cd
+[07:24:42]   처리됨(pass/fail): 249
+[07:24:42] prev: batch-20260514-222243-6560d9
+[07:24:42]   처리됨(pass/fail): 14
+[07:24:42] 총 처리된 unique: 976
+[07:24:42] 전체 1100 / 미실행 124
+[07:24:42] 새 배치 시작 (124건)...
+[07:24:42] new runId: batch-20260514-222443-95d155
+[07:24:42] ======================================================================
+[07:25:12] PROGRESS 7/124 (5.6%) +7 pass=2 fail=5 err=0 elapsed=0m ETA=8m current=PRES-138
+[07:25:42] PROGRESS 17/124 (13.7%) +10 pass=8 fail=9 err=0 elapsed=1m ETA=6m current=TREA-011
+[07:26:12] PROGRESS 25/124 (20.2%) +8 pass=10 fail=15 err=0 elapsed=1m ETA=5m current=TREA-020
+[07:26:42] PROGRESS 33/124 (26.6%) +8 pass=15 fail=18 err=0 elapsed=2m ETA=5m current=TREA-029
+[07:27:12] PROGRESS 41/124 (33.1%) +8 pass=20 fail=21 err=0 elapsed=2m ETA=5m current=TREA-035
+[07:27:42] PROGRESS 47/124 (37.9%) +6 pass=21 fail=26 err=0 elapsed=3m ETA=4m current=TREA-042
+[07:29:42] SUMMARY [+5m] 47/124 (37.9%) pass_rate=44.7% err=0
+[07:34:43] SUMMARY [+10m] 47/124 (37.9%) pass_rate=44.7% err=0
+[07:38:13] PROGRESS 48/124 (38.7%) +1 pass=22 fail=26 err=0 elapsed=13m ETA=21m current=TREA-015
+[07:39:43] SUMMARY [+15m] 48/124 (38.7%) pass_rate=45.8% err=0
+[07:41:13] PROGRESS 49/124 (39.5%) +1 pass=22 fail=27 err=0 elapsed=16m ETA=25m current=TREA-038
+[07:41:43] PROGRESS 50/124 (40.3%) +1 pass=22 fail=28 err=0 elapsed=17m ETA=25m current=TREA-014
+[07:42:13] PROGRESS 57/124 (46.0%) +7 pass=25 fail=32 err=0 elapsed=17m ETA=20m current=TREA-051
+[07:42:43] PROGRESS 66/124 (53.2%) +9 pass=29 fail=37 err=0 elapsed=18m ETA=15m current=TREA-064
+[07:43:13] PROGRESS 74/124 (59.7%) +8 pass=32 fail=42 err=0 elapsed=18m ETA=12m current=TREA-072
+[07:43:43] PROGRESS 80/124 (64.5%) +6 pass=34 fail=46 err=0 elapsed=19m ETA=10m current=TREA-079
+[07:44:13] PROGRESS 87/124 (70.2%) +7 pass=36 fail=51 err=0 elapsed=19m ETA=8m current=TREA-084
+[07:44:43] PROGRESS 93/124 (75.0%) +6 pass=39 fail=54 err=0 elapsed=20m ETA=6m current=TREA-091
+[07:44:43] SUMMARY [+20m] 93/124 (75.0%) pass_rate=41.9% err=0
+[07:45:13] PROGRESS 96/124 (77.4%) +3 pass=39 fail=57 err=0 elapsed=20m ETA=5m current=TREA-093
+[07:49:44] SUMMARY [+25m] 96/124 (77.4%) pass_rate=40.6% err=0
+[07:50:14] PROGRESS 97/124 (78.2%) +1 pass=39 fail=58 err=0 elapsed=25m ETA=7m current=TREA-059
+[07:54:44] SUMMARY [+30m] 97/124 (78.2%) pass_rate=40.2% err=0
+[07:57:44] PROGRESS 98/124 (79.0%) +1 pass=39 fail=59 err=0 elapsed=33m ETA=8m current=TREA-088
+[07:59:44] PROGRESS 99/124 (79.8%) +1 pass=39 fail=60 err=0 elapsed=35m ETA=8m current=TREA-070
+[07:59:44] SUMMARY [+35m] 99/124 (79.8%) pass_rate=39.4% err=0
+[08:04:44] SUMMARY [+40m] 99/124 (79.8%) pass_rate=39.4% err=0
+[08:09:45] SUMMARY [+45m] 99/124 (79.8%) pass_rate=39.4% err=0
+[08:14:45] STALL_WARN 15m @ 99/124
+[08:14:45] SUMMARY [+50m] 99/124 (79.8%) pass_rate=39.4% err=0
+[08:19:45] SUMMARY [+55m] 99/124 (79.8%) pass_rate=39.4% err=0
+[08:24:46] SUMMARY [+60m] 99/124 (79.8%) pass_rate=39.4% err=0
+[08:29:47] SUMMARY [+65m] 99/124 (79.8%) pass_rate=39.4% err=0
+[08:34:47] SUMMARY [+70m] 99/124 (79.8%) pass_rate=39.4% err=0
+[08:39:47] SUMMARY [+75m] 99/124 (79.8%) pass_rate=39.4% err=0
+[08:43:17] ======================================================================
+[08:43:17] BATCH_ENDED status=cancelled
+[08:43:17] 총 시간: 78분
+[08:43:17] 전체 99 pass=0 fail=0 err=0
+[08:43:17] new runId: batch-20260514-222443-95d155
+[08:43:17] DONE

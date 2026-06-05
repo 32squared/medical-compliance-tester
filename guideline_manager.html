@@ -173,6 +173,7 @@
   <a href="/arena" class="nav-btn">Arena</a>
   <a href="/manager" class="nav-btn">시나리오 관리</a>
   <a href="/history" class="nav-btn">테스트 이력</a>
+      <a href="/healthbench" class="nav-btn">🩺 HealthBench</a>
   <a href="/guidelines" class="nav-btn active">법률 평가 기준</a>
   <a href="/criteria" class="nav-btn">문진 평가 기준</a>
   <a href="/rlhf" class="nav-btn">RLHF 관리</a>
@@ -307,7 +308,7 @@
     </div>
     <div style="margin:8px 0;display:flex;align-items:center;gap:8px">
       <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer">
-        <input type="checkbox" id="includeGptEval"> GPT 평가 포함 (하이브리드 점수)
+        <input type="checkbox" id="includeGptEval"> 컴플라이언스 평가 포함 (하이브리드 점수)
       </label>
     </div>
     <button class="btn-save" onclick="runTest()">검증 실행</button>
@@ -677,7 +678,7 @@ async function runTest() {
   const panel = document.getElementById('testResult');
   panel.style.display = 'block';
   panel.className = 'test-panel';
-  panel.innerHTML = includeGptEval ? '검증 중 (GPT 평가 포함)...' : '검증 중...';
+  panel.innerHTML = includeGptEval ? '검증 중 (컴플라이언스 평가 포함)...' : '검증 중...';
   try {
     const bodyObj = includeGptEval ? { text, includeGptEval: true } : { text };
     const res = await fetch(`${API}/api/guidelines/test`, {
@@ -699,7 +700,7 @@ async function runTest() {
       const gradeColors = { A: '#22c55e', B: '#38bdf8', C: '#eab308', D: '#f97316', F: '#ef4444' };
       const gc = gradeColors[gptEval.grade] || '#94a3b8';
       html += '<div style="margin-bottom:12px;padding:12px;background:var(--surface2);border-radius:8px;border:1px solid ' + gc + '44">';
-      html += '<div style="font-weight:600;margin-bottom:6px;color:var(--purple)">\uD83E\uDD16 GPT 평가 (최종 판정 기준)</div>';
+      html += '<div style="font-weight:600;margin-bottom:6px;color:var(--purple)">\uD83E\uDD16 컴플라이언스 평가 (최종 판정 기준)</div>';
       html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">';
       html += '<span style="font-size:18px;font-weight:800;color:' + gc + ';background:' + gc + '22;padding:2px 10px;border-radius:6px">' + (gptEval.grade || '?') + '</span>';
       html += '<span style="font-weight:600">' + (gptEval.score != null ? gptEval.score + '점' : '') + ' — ' + (gptEval.passed ? '<span style="color:var(--green)">PASS</span>' : '<span style="color:var(--red)">FAIL</span>') + '</span>';

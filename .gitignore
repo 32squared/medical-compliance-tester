@@ -12,6 +12,7 @@ conversations.json
 *.db
 app_damaged.db
 app_recovered.db
+app_*.db
 
 # 백업 파일
 *.bak
@@ -28,3 +29,27 @@ app_recovered.db
 # Node (docs 매뉴얼 생성용)
 docs/node_modules/
 node_modules/
+
+# 분석/검증용 임시 스크립트 (Claude session 산출물)
+_*.py
+_*.txt
+_*.log
+*_state.json
+
+# 외부 데이터셋 (HealthBench 등) — 다운로드 스크립트로 재현 가능
+data/healthbench/
+
+# DB dump / 분석용 임시 JSON (대용량, 재생성 가능)
+data/*.json
+
+# 보고서 PPT 산출물 (소스 .js 만 추적)
+reports/*.pptx
+
+# 비용 모니터링 누적 로그 (로컬 보관, 시간 흐름 누적)
+logs/
+
+# cost_report.py 산출물 (매번 재생성, 추적 불필요)
+reports/cost_report*.md
+
+# 임시 deploy/test 로그 (다른 worktree 산출물)
+prod_deploy_*.log

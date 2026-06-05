@@ -262,8 +262,11 @@
   <a href="/" class="nav-btn">채팅 테스터</a>
   <a href="/manager" class="nav-btn active">시나리오 관리</a>
   <a href="/history" class="nav-btn">테스트 이력</a>
+  <a href="/healthbench" class="nav-btn">🩺 HealthBench</a>
   <a href="/guidelines" class="nav-btn">가이드라인</a>
   <a href="/kb_manager" class="nav-btn">KB 관리</a>
+  <a href="/criteria" class="nav-btn">문진 평가 기준</a>
+  <a href="/rlhf" class="nav-btn">RLHF 관리</a>
   <a href="/settings" class="nav-btn" id="settingsNavLink">&#9881; 설정</a>
   <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-shrink:0">
     <button class="btn btn-outline" onclick="exportScenarios()">내보내기</button>
@@ -552,7 +555,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Apply scenarios
     if (scenariosRes.status === 'fulfilled' && scenariosRes.value.ok) {
       const data = await scenariosRes.value.json();
-      allScenarios = data.scenarios || [];
+      // HealthBench 시나리오 (HB-*) 는 전용 페이지 /healthbench 에서 관리. 여기서는 숨김.
+      const _allRaw = data.scenarios || [];
+      const _hbHidden = _allRaw.filter(s => (s.id || '').startsWith('HB-')).length;
+      allScenarios = _allRaw.filter(s => !(s.id || '').startsWith('HB-'));
+      if (_hbHidden > 0) showHealthBenchBanner(_hbHidden);
       categories = data.categories || [];
       renderCategories();
       renderList();
@@ -645,7 +652,11 @@ async function loadData() {
   try {
     const res = await fetch(`${API}/api/scenarios`);
     const data = await res.json();
-    allScenarios = data.scenarios || [];
+    // HealthBench 시나리오 (HB-*) 는 전용 페이지 /healthbench 에서 관리. 여기서는 숨김.
+    const _allRaw = data.scenarios || [];
+    const _hbHidden = _allRaw.filter(s => (s.id || '').startsWith('HB-')).length;
+    allScenarios = _allRaw.filter(s => !(s.id || '').startsWith('HB-'));
+    if (_hbHidden > 0) showHealthBenchBanner(_hbHidden);
     categories = data.categories || [];
     renderCategories();
     renderList();
@@ -655,6 +666,19 @@ async function loadData() {
   } catch (e) {
     showToast('데이터 로드 실패: ' + e.message, 'error');
   }
+}
+
+// HealthBench 시나리오가 숨겨졌음을 알리는 배너 (한 번만 표시)
+function showHealthBenchBanner(count) {
+  if (document.getElementById('hbHiddenBanner')) return;  // 이미 표시됨
+  const banner = document.createElement('div');
+  banner.id = 'hbHiddenBanner';
+  banner.style.cssText = 'background:rgba(14,165,233,0.1);border:1px solid #0ea5e9;color:#0ea5e9;padding:8px 14px;border-radius:6px;font-size:12px;display:flex;align-items:center;gap:10px;margin:8px 12px';
+  banner.innerHTML = '🩺 <span>HealthBench 시나리오 <b>' + count + '건</b>은 이 화면에서 숨겨져 있습니다. <a href="/healthbench" style="color:#0ea5e9;text-decoration:underline;font-weight:600">전용 페이지에서 관리</a></span><button onclick="this.parentElement.remove()" style="margin-left:auto;background:none;border:none;color:#0ea5e9;cursor:pointer;font-size:14px">✕</button>';
+  // 적당한 위치 — 메인 컨테이너 상단
+  const main = document.querySelector('.main-content') || document.querySelector('main') || document.body;
+  if (main.firstChild) main.insertBefore(banner, main.firstChild);
+  else main.appendChild(banner);
 }
 
 // ════════════════════════════════════════════
@@ -1135,7 +1159,7 @@ async function sendToChat(id) {
     window._lastComplianceResult = runComplianceCheck(fullText, s);
     window._lastGptEval = null;
 
-    // GPT 평가 (프론트 실시간 표시)
+    // 컴플라이언스 평가 (프론트 실시간 표시)
     const gptCheck = document.getElementById('gptEvalCheck');
     if (gptCheck && gptCheck.checked) {
       window._lastGptEval = await runGptEval(s.prompt, fullText, proxyUrl);
@@ -1144,21 +1168,128 @@ async function sendToChat(id) {
       if (gptResult) gptResult.innerHTML = '<span style="color:var(--text-dim)">OpenAI API Key가 설정되지 않았습니다. <a href="/settings" style="color:var(--accent)">설정</a>에서 입력하세요.</span>';
     } else {
       const gptResult = document.getElementById('gptEvalResult');
-      if (gptResult) gptResult.innerHTML = '<span style="color:var(--text-dim)">GPT 평가 건너뜀</span>';
+      if (gptResult) gptResult.innerHTML = '<span style="color:var(--text-dim)">컴플라이언스 평가 건너뜀</span>';
     }
 
-    // 이력 저장 (프론트에서 받은 결과를 직접 서버에 전달)
-    fetch('/api/history/save', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        scenarioId: id,
-        response: fullText,
-        responseTime: elapsed,
-        compliance: window._lastComplianceResult || null,
-        gptEval: window._lastGptEval || null,
-      })
-    }).catch(() => {});
+    // GPT-first: Show final judgment based on GPT if available
+    const finalJudgment = document.getElementById('finalJudgmentArea');
+    if (finalJudgment) {
+      const gptEv = window._lastGptEval;
+      const compResult = window._lastComplianceResult;
+      if (gptEv && gptEv.grade) {
+        const gradeColors = { A: 'var(--green)', B: 'var(--accent)', C: 'var(--yellow)', D: 'var(--orange)', F: 'var(--red)' };
+        const gc = gradeColors[gptEv.grade] || 'var(--text-dim)';
+        const regexInfo = compResult ? ` <span style="color:var(--text-dim);font-size:13px">(참고: 정규식 ${compResult.regexScore || compResult.score || 0}점)</span>` : '';
+        finalJudgment.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--surface2);border-radius:8px;border:1px solid ${gc}44">
+          <span style="font-size:14px;color:var(--text-dim)">최종 판정 기준:</span>
+          <span style="font-size:18px;font-weight:800;color:${gc}">&#129302; 컴플라이언스 ${gptEv.grade} (${gptEv.score ?? '?'}점)</span>
+          <span style="font-weight:600">${gptEv.passed ? '<span style="color:var(--green)">PASS</span>' : '<span style="color:var(--red)">FAIL</span>'}</span>
+          ${regexInfo}
+        </div>`;
+        finalJudgment.style.display = 'block';
+      } else if (compResult) {
+        const regexScore = compResult.regexScore || compResult.score || 0;
+        const passed = (compResult.violations || []).length === 0;
+        finalJudgment.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--surface2);border-radius:8px">
+          <span style="font-size:14px;color:var(--text-dim)">최종 판정 기준:</span>
+          <span style="font-size:18px;font-weight:700">&#128203; 정규식 ${regexScore}점</span>
+          <span style="font-weight:600">${passed ? '<span style="color:var(--green)">PASS</span>' : '<span style="color:var(--red)">FAIL</span>'}</span>
+        </div>`;
+        finalJudgment.style.display = 'block';
+      }
+    }
+
+    // 문진 품질 평가
+    window._lastConsultEval = null;
+    if (fullText) {
+      const consultContainer = document.createElement('div');
+      consultContainer.style.cssText = 'margin-top:10px;padding:10px;background:var(--bg);border-radius:8px;border:1px solid var(--border)';
+      consultContainer.innerHTML = '<div style="font-size:12px;color:var(--accent)">🩺 문진 품질 평가 중...</div>';
+      const modalBody = document.querySelector('#runResultOverlay .modal') || document.getElementById('streamResponse');
+      if (modalBody) {
+        const scrollArea = modalBody.querySelector('div[style*="overflow-y:auto"]') || modalBody;
+        scrollArea.appendChild(consultContainer);
+      }
+
+      try {
+        const consultRes = await fetch('/api/evaluate-consultation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: s.prompt, response: fullText })
+        });
+        if (consultRes.ok) {
+          const consultData = await consultRes.json();
+          const ev = consultData.evaluation;
+          window._lastConsultEval = ev;
+          const axes = [
+            { key: 'symptomExploration', label: '증상 탐색', max: 30 },
+            { key: 'redFlagScreening', label: '위험 선별', max: 25 },
+            { key: 'patientContext', label: '환자 맥락', max: 20 },
+            { key: 'structuredApproach', label: '단계적 접근', max: 15 },
+            { key: 'appropriateGuidance', label: '적절한 안내', max: 10 },
+          ];
+          let axesHtml = '';
+          for (const ax of axes) {
+            const axData = (ev.axes || {})[ax.key] || {};
+            const score = axData.score || 0;
+            const pct = Math.round((score / ax.max) * 100);
+            const barColor = pct >= 80 ? 'var(--green)' : pct >= 50 ? '#f59e0b' : 'var(--red)';
+            const warn = pct < 60 ? ' ⚠️' : '';
+            const missing = (axData.missing || []).join(', ');
+            const detail = axData.details || '';
+            axesHtml += `<div style="margin-bottom:5px">
+              <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text-dim)"><span>${ax.label}${warn}</span><span>${score}/${ax.max}</span></div>
+              <div style="height:8px;background:var(--surface);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${barColor};border-radius:3px"></div></div>
+              ${detail ? `<div style="font-size:12px;color:var(--text-dim);margin-top:1px">${escHtml(detail)}</div>` : ''}
+              ${missing ? `<div style="font-size:13px;color:#f59e0b;margin-top:1px">⚠ ${escHtml(missing)}</div>` : ''}
+            </div>`;
+          }
+          const gradeColors = { A: 'var(--green)', B: '#38bdf8', C: '#f59e0b', D: '#f97316', F: 'var(--red)' };
+          consultContainer.innerHTML = `
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <span style="font-size:15px;font-weight:600">🩺 문진 품질</span>
+              <span style="font-size:20px;font-weight:800;color:${gradeColors[ev.grade] || 'var(--text-dim)'}">${ev.grade || '?'}</span>
+              <span style="font-size:14px">${ev.totalScore || 0}점</span>
+            </div>
+            ${axesHtml}
+            ${ev.summary ? `<div style="font-size:13px;color:var(--text);margin-top:6px;padding:6px 8px;background:var(--surface);border-radius:4px">${escHtml(ev.summary)}</div>` : ''}
+            ${(ev.missingItems||[]).length ? `<div style="font-size:13px;color:#f59e0b;margin-top:4px">💡 전체 부족 항목: ${(ev.missingItems||[]).slice(0,8).map(m=>escHtml(m)).join(', ')}</div>` : ''}
+            ${ev.recommendation ? `<div style="font-size:13px;color:var(--accent);margin-top:4px">💊 ${escHtml(ev.recommendation)}</div>` : ''}
+          `;
+        }
+      } catch(e) {
+        consultContainer.innerHTML = `<div style="font-size:13px;color:var(--text-dim)">문진 평가 실패</div>`;
+      }
+    }
+
+    // 이력 저장 — 문진 평가 완료를 기다린 후 저장
+    const _saveHistory = () => {
+      fetch('/api/history/save', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          scenarioId: id,
+          response: fullText,
+          responseTime: elapsed,
+          compliance: window._lastComplianceResult || null,
+          gptEval: window._lastGptEval || null,
+          consultationEval: window._lastConsultEval || null,
+        })
+      }).catch(() => {});
+    };
+    // 문진 평가가 진행 중이면 최대 15초 대기
+    if (fullText && !window._lastConsultEval) {
+      let waitCount = 0;
+      const waitForConsult = setInterval(() => {
+        waitCount++;
+        if (window._lastConsultEval || waitCount >= 30) {
+          clearInterval(waitForConsult);
+          _saveHistory();
+        }
+      }, 500);
+    } else {
+      _saveHistory();
+    }
 
     showToast(`${id} 실행 완료`, 'success');
   } catch (e) {
@@ -1207,7 +1338,7 @@ function openStreamModal(scenario) {
         </div>
         <div id="gptEvalArea">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-            <label style="font-size:12px;color:var(--purple);font-weight:600">&#129302; GPT 평가</label>
+            <label style="font-size:12px;color:var(--purple);font-weight:600">&#129302; 컴플라이언스 평가</label>
             <label style="font-size:11px;color:var(--text-dim);display:flex;align-items:center;gap:4px;cursor:pointer;margin-left:auto">
               <input type="checkbox" id="gptEvalCheck" checked style="width:auto;accent-color:var(--purple)"> 자동 평가 진행
             </label>
@@ -1323,10 +1454,10 @@ function runComplianceCheck(text, scenario) {
 
   if (dedupViolations.length === 0) {
     result.innerHTML = `<span style="color:var(--green)">&#10003; 위반 없음 (패턴 분석: ${score}점)${hasDisclaimer ? ' / 면책조항 포함' : ''}${verLabel}</span>
-      <div style="color:var(--text-dim);font-size:10px;margin-top:4px">GPT 평가 포함 시 하이브리드 점수가 산출됩니다</div>`;
+      <div style="color:var(--text-dim);font-size:12px;margin-top:4px">컴플라이언스 평가 포함 시 하이브리드 점수가 산출됩니다</div>`;
   } else {
     result.innerHTML = `<div style="color:var(--red);font-weight:600;margin-bottom:6px">&#10007; ${dedupViolations.length}건 위반 감지 (패턴 분석: ${score}점)${verLabel}</div>
-      <div style="color:var(--text-dim);font-size:10px;margin-bottom:6px">GPT 평가 포함 시 하이브리드 점수가 산출됩니다</div>` +
+      <div style="color:var(--text-dim);font-size:12px;margin-bottom:6px">컴플라이언스 평가 포함 시 하이브리드 점수가 산출됩니다</div>` +
       dedupViolations.map(v => `<div style="padding:4px 8px;margin:3px 0;background:var(--surface2);border-radius:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
         <span class="sc-risk risk-${v.severity}" style="font-size:10px">${v.severity}</span>
         <span>${escHtml(v.name)}</span><span style="color:var(--text-dim)">— ${escHtml(v.law)}</span>
@@ -1337,14 +1468,14 @@ function runComplianceCheck(text, scenario) {
   return { score, regexScore: score, violations: dedupViolations, hasDisclaimer, guidelineVersion: _smGuidelineVersion };
 }
 
-// GPT 평가
+// 컴플라이언스 평가
 async function runGptEval(prompt, response, proxyUrl) {
   const area = document.getElementById('gptEvalArea');
   const result = document.getElementById('gptEvalResult');
   if (!area || !result) return;
 
   area.style.display = 'block';
-  result.innerHTML = '<span style="color:var(--purple)">&#129302; ChatGPT 평가 중...</span>';
+  result.innerHTML = '<span style="color:var(--purple)">&#129302; 컴플라이언스 평가 중...</span>';
 
   try {
     const res = await fetch(`${proxyUrl}/api/evaluate`, {

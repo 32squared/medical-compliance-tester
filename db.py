@@ -63,6 +63,7 @@ DEFAULT_CATEGORIES = [
     {"id": "emergency", "name": "응급상황", "prefix": "EMRG", "description": "119/병원 안내가 필수인 응급 시나리오", "color": "#dc2626"},
     {"id": "injection", "name": "프롬프트 인젝션", "prefix": "INJECT", "description": "Jailbreak / 역할 변경 / 시스템 우회 시도", "color": "#a855f7"},
     {"id": "edge", "name": "경계 사례", "prefix": "EDGE", "description": "정보 제공과 의료 행위의 경계", "color": "#06b6d4"},
+    {"id": "healthbench", "name": "HealthBench (영문)", "prefix": "HB", "description": "OpenAI HealthBench 영문 데이터셋 (multi-turn + rubric 평가)", "color": "#0ea5e9"},
 ]
 
 # ── 증상별 문진 체크리스트 기본 데이터 (외부 파일 로드) ──
@@ -265,6 +266,7 @@ CREATE TABLE IF NOT EXISTS comments (
     user_query TEXT DEFAULT '',
     full_response TEXT DEFAULT '',
     created_at TEXT NOT NULL,
+    updated_at TEXT,
     FOREIGN KEY (message_id) REFERENCES messages(id),
     FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
 );
@@ -284,6 +286,8 @@ CREATE TABLE IF NOT EXISTS scenarios (
     generation_info_json TEXT,
     source_conversation_id TEXT,
     follow_ups_json TEXT DEFAULT '[]',
+    turns_json TEXT DEFAULT '[]',
+    rubric_json TEXT DEFAULT '[]',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
@@ -520,6 +524,7 @@ CREATE TABLE IF NOT EXISTS comments (
     user_query TEXT DEFAULT '',
     full_response TEXT DEFAULT '',
     created_at TEXT NOT NULL,
+    updated_at TEXT,
     FOREIGN KEY (message_id) REFERENCES messages(id),
     FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
 );
@@ -539,6 +544,8 @@ CREATE TABLE IF NOT EXISTS scenarios (
     generation_info_json JSONB,
     source_conversation_id TEXT,
     follow_ups_json JSONB DEFAULT '[]',
+    turns_json JSONB DEFAULT '[]',
+    rubric_json JSONB DEFAULT '[]',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
@@ -807,9 +814,12 @@ def init_db(db_path=None):
                 "ALTER TABLE comments ADD COLUMN IF NOT EXISTS selected_text TEXT DEFAULT ''",
                 "ALTER TABLE comments ADD COLUMN IF NOT EXISTS user_query TEXT DEFAULT ''",
                 "ALTER TABLE comments ADD COLUMN IF NOT EXISTS full_response TEXT DEFAULT ''",
+                "ALTER TABLE comments ADD COLUMN IF NOT EXISTS updated_at TEXT",
                 "ALTER TABLE messages ADD COLUMN IF NOT EXISTS consultation_eval_json JSONB",
                 "ALTER TABLE messages ADD COLUMN IF NOT EXISTS token_usage_json JSONB",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '[]'::jsonb",
+                "ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS turns_json JSONB DEFAULT '[]'::jsonb",
+                "ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS rubric_json JSONB DEFAULT '[]'::jsonb",
             ]
             for sql in migrations_pg:
                 try:
@@ -1208,9 +1218,12 @@ def init_db(db_path=None):
             "ALTER TABLE comments ADD COLUMN selected_text TEXT DEFAULT ''",
             "ALTER TABLE comments ADD COLUMN user_query TEXT DEFAULT ''",
             "ALTER TABLE comments ADD COLUMN full_response TEXT DEFAULT ''",
+            "ALTER TABLE comments ADD COLUMN updated_at TEXT",
             "ALTER TABLE messages ADD COLUMN consultation_eval_json TEXT",
             "ALTER TABLE messages ADD COLUMN token_usage_json TEXT",
             "ALTER TABLE users ADD COLUMN permissions TEXT DEFAULT '[]'",
+            "ALTER TABLE scenarios ADD COLUMN turns_json TEXT DEFAULT '[]'",
+            "ALTER TABLE scenarios ADD COLUMN rubric_json TEXT DEFAULT '[]'",
         ]
         for sql in migrations:
             try:
@@ -1935,9 +1948,50 @@ def get_comments(conversation_id=None, message_id=None, limit=50):
         return [_row_to_dict(r) for r in rows]
 
 
+def get_comment(comment_id):
+    """단일 커멘트 조회 (소유자 확인용)"""
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(f"SELECT * FROM comments WHERE id = {ph}", (comment_id,))
+        row = cur.fetchone()
+        return _row_to_dict(row) if row else None
+
+
+def update_comment(comment_id, content, category=None):
+    """
+    커멘트 수정 — content는 필수, category는 선택.
+    updated_at에 현재 시각 기록.
+    소유자 확인은 호출자(API 핸들러) 책임.
+    """
+    if len(content) > MAX_COMMENT_LENGTH:
+        raise ValueError(f"커멘트는 {MAX_COMMENT_LENGTH}자 이하여야 합니다 (현재: {len(content)}자)")
+    if not content.strip():
+        raise ValueError("커멘트 내용을 입력해주세요")
+
+    now = _now()
+    ph = _p()
+    with get_conn() as (conn, cur):
+        if category:
+            cur.execute(
+                f"UPDATE comments SET content = {ph}, category = {ph}, updated_at = {ph} WHERE id = {ph}",
+                (content, category, now, comment_id)
+            )
+        else:
+            cur.execute(
+                f"UPDATE comments SET content = {ph}, updated_at = {ph} WHERE id = {ph}",
+                (content, now, comment_id)
+            )
+        # 영향받은 row 수 확인 (rowcount는 SQLite/Postgres 모두 지원)
+        if hasattr(cur, 'rowcount') and cur.rowcount == 0:
+            return False
+    return True
+
+
 def delete_comment(comment_id):
     with get_conn() as (conn, cur):
         cur.execute(f"DELETE FROM comments WHERE id = {_p()}", (comment_id,))
+        if hasattr(cur, 'rowcount') and cur.rowcount == 0:
+            return False
     return True
 
 
@@ -2003,6 +2057,8 @@ def get_scenarios():
             s['generationInfo'] = _pg_json_loads(s.pop('generation_info_json', None))
             s['sourceConversationId'] = s.pop('source_conversation_id', None)
             s['followUps'] = _pg_json_loads_or(s.pop('follow_ups_json', '[]'), [])
+            s['turns'] = _pg_json_loads_or(s.pop('turns_json', '[]'), [])
+            s['rubric'] = _pg_json_loads_or(s.pop('rubric_json', '[]'), [])
             s['createdAt'] = s.pop('created_at', '')
             s['updatedAt'] = s.pop('updated_at', '')
             scenarios.append(s)
@@ -2041,6 +2097,8 @@ def get_scenario(scenario_id):
         s['generationInfo'] = _pg_json_loads(s.pop('generation_info_json', None))
         s['sourceConversationId'] = s.pop('source_conversation_id', None)
         s['followUps'] = _pg_json_loads_or(s.pop('follow_ups_json', '[]'), [])
+        s['turns'] = _pg_json_loads_or(s.pop('turns_json', '[]'), [])
+        s['rubric'] = _pg_json_loads_or(s.pop('rubric_json', '[]'), [])
         s['createdAt'] = s.pop('created_at', '')
         s['updatedAt'] = s.pop('updated_at', '')
         return s
@@ -2072,8 +2130,8 @@ def create_scenario(data):
         cur.execute(
             f"""INSERT INTO scenarios (id, category, subcategory, prompt, expected_behavior, should_refuse,
                risk_level, tags_json, enabled, source, parent_id, generation_info_json,
-               source_conversation_id, follow_ups_json, created_at, updated_at)
-               VALUES ({_ph(16)})""",
+               source_conversation_id, follow_ups_json, turns_json, rubric_json, created_at, updated_at)
+               VALUES ({_ph(18)})""",
             (scenario_id, data.get('category', 'general'), data.get('subcategory', ''),
              prompt, data.get('expectedBehavior', ''), int(data.get('shouldRefuse', False)),
              data.get('riskLevel', 'MEDIUM'), json.dumps(tags, ensure_ascii=False),
@@ -2081,6 +2139,8 @@ def create_scenario(data):
              data.get('parentId'), json.dumps(data.get('generationInfo'), ensure_ascii=False) if data.get('generationInfo') else None,
              data.get('sourceConversationId'),
              json.dumps(data.get('followUps', []), ensure_ascii=False),
+             json.dumps(data.get('turns', []), ensure_ascii=False),
+             json.dumps(data.get('rubric', []), ensure_ascii=False),
              now, now)
         )
     return get_scenario(scenario_id)
@@ -2111,6 +2171,10 @@ def update_scenario(scenario_id, data):
         updates['generation_info_json'] = json.dumps(data['generationInfo'], ensure_ascii=False)
     if 'followUps' in data:
         updates['follow_ups_json'] = json.dumps(data['followUps'], ensure_ascii=False)
+    if 'turns' in data:
+        updates['turns_json'] = json.dumps(data['turns'], ensure_ascii=False)
+    if 'rubric' in data:
+        updates['rubric_json'] = json.dumps(data['rubric'], ensure_ascii=False)
 
     updates['updated_at'] = now
 
@@ -2210,6 +2274,41 @@ def get_test_run(run_id):
         d['guidelineVersion'] = d.pop('guideline_version', '')
         d['results'] = _pg_json_loads_or(d.pop('results_json', '[]'), [])
         return d
+
+
+def get_test_run_progress(run_id):
+    """Lightweight progress for batch polling — results JSON 전체를 fetch 하지 않고
+    array length 만 SQL 레벨에서 계산 (1100건+ batch polling 비용 절감).
+    반환: dict {total, passed, failed, status, runAt, completed} 또는 None.
+    """
+    ph = _p()
+    with get_conn() as (conn, cur):
+        if DATABASE_URL and HAS_POSTGRES:
+            cur.execute(
+                f"SELECT total, passed, failed, status, run_at, "
+                f"COALESCE(jsonb_array_length(results_json::jsonb), 0) AS completed "
+                f"FROM test_runs WHERE id = {ph}",
+                (run_id,),
+            )
+        else:
+            cur.execute(
+                f"SELECT total, passed, failed, status, run_at, "
+                f"COALESCE(json_array_length(results_json), 0) AS completed "
+                f"FROM test_runs WHERE id = {ph}",
+                (run_id,),
+            )
+        row = cur.fetchone()
+        if not row:
+            return None
+        d = _row_to_dict(row)
+        return {
+            'total': d.get('total', 0) or 0,
+            'passed': d.get('passed', 0) or 0,
+            'failed': d.get('failed', 0) or 0,
+            'status': d.get('status', ''),
+            'runAt': d.get('run_at', ''),
+            'completed': d.get('completed', 0) or 0,
+        }
 
 
 def save_test_run(data):
