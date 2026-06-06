@@ -502,6 +502,49 @@
   let historyData = [];
   let _resultPollInterval = null;
 
+  // ── 문진 평가 축 메타 ──
+  // 평가 페이로드(ev.axes[*].label/max)를 우선 사용 → 기준 개정 자동 반영.
+  // 과거 기록(label/max 미임베드)을 위해 레거시 폴백 맵 유지.
+  var LEGACY_CONSULT_AXES = {
+    symptomExploration:  { label: '증상 탐색', max: 30 },
+    redFlagScreening:    { label: '위험 선별', max: 25 },
+    patientContext:      { label: '환자 맥락', max: 20 },
+    structuredApproach:  { label: '단계적 접근', max: 15 },
+    appropriateGuidance: { label: '적절한 안내', max: 10 },
+  };
+  // 새 기준(v1.5.1) 및 레거시 축의 max/label 폴백 맵 (buildConsultAxes 외부에서도 재사용)
+  var CONSULT_AXIS_MAX = {
+    safetyDisclosure: 15, redFlagAwareness: 25, consultationFlow: 25,
+    clinicalValue: 22, actionAndCommunication: 13,
+    symptomExploration: 30, redFlagScreening: 25, patientContext: 20,
+    structuredApproach: 15, appropriateGuidance: 10
+  };
+  var CONSULT_AXIS_LABEL = {
+    safetyDisclosure: '의료법 경계·안전 고지', redFlagAwareness: '위험 신호 인식·전달',
+    consultationFlow: '문진 Flow 명시', clinicalValue: '환자 맞춤·임상적 가치',
+    actionAndCommunication: '행동 가이드·의사소통',
+    symptomExploration: '증상 탐색', redFlagScreening: '위험 선별',
+    patientContext: '환자 맥락', structuredApproach: '단계적 접근',
+    appropriateGuidance: '적절한 안내'
+  };
+  function buildConsultAxes(ev) {
+    var evAxes = (ev && ev.axes) || {};
+    var keys = Object.keys(evAxes);
+    if (!keys.length) return [];
+    return keys.map(function(key) {
+      var d = evAxes[key] || {};
+      var leg = LEGACY_CONSULT_AXES[key] || {};
+      return {
+        key: key,
+        label: d.label || leg.label || key,
+        max: (typeof d.max === 'number' && d.max > 0) ? d.max : (leg.max || 0),
+        score: d.score || 0,
+        details: d.details || '',
+        missing: d.missing || []
+      };
+    });
+  }
+
   // ── Toast ──
   function showToast(msg, type = 'info') {
     const c = document.getElementById('toastContainer');
@@ -980,22 +1023,15 @@
       const ce = r.consultationEval;
       if (ce && ce.totalScore != null) {
         const ceGradeColors = { A: '#22c55e', B: '#38bdf8', C: '#f59e0b', D: '#f97316', F: '#ef4444' };
-        const ceAxes = [
-          { key: 'symptomExploration', label: '증상 탐색', max: 30 },
-          { key: 'redFlagScreening', label: '위험 선별', max: 25 },
-          { key: 'patientContext', label: '환자 맥락', max: 20 },
-          { key: 'structuredApproach', label: '단계적 접근', max: 15 },
-          { key: 'appropriateGuidance', label: '적절한 안내', max: 10 },
-        ];
+        const ceAxes = buildConsultAxes(ce);
         let axBars = '';
         for (const ax of ceAxes) {
-          const ad = (ce.axes || {})[ax.key] || {};
-          const sc = ad.score || 0;
-          const pct = Math.round((sc / ax.max) * 100);
+          const sc = ax.score || 0;
+          const pct = ax.max ? Math.round((sc / ax.max) * 100) : 0;
           const bc = pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444';
           const w = pct < 60 ? ' ⚠️' : '';
-          const adDetail = ad.details || '';
-          const adMissing = (ad.missing || []).join(', ');
+          const adDetail = ax.details || '';
+          const adMissing = (ax.missing || []).join(', ');
           axBars += '<div style="margin-bottom:5px">' +
             '<div style="display:flex;justify-content:space-between;font-size:13px;color:#94a3b8"><span>' + ax.label + w + '</span><span>' + sc + '/' + ax.max + '</span></div>' +
             '<div style="height:8px;background:#1e293b;border-radius:2px"><div style="height:100%;width:' + pct + '%;background:' + bc + ';border-radius:2px"></div></div>' +
@@ -1929,33 +1965,28 @@
     var ceSummary = ce.summary || '';
     var ceAxes = ce.axes || {};
     var ceMissing = ce.missingItems || [];
-    var axesDefs = [
-      { key: 'symptomExploration', label: '증상 탐색', max: 30, desc: '위치·양상·시기·강도·동반증상' },
-      { key: 'redFlagScreening', label: '위험 선별', max: 25, desc: '응급 징후·악화 요인·경고' },
-      { key: 'patientContext', label: '환자 맥락', max: 20, desc: '나이·기저질환·복용약·생활요인' },
-      { key: 'structuredApproach', label: '단계적 접근', max: 15, desc: '질문→정보수집→맞춤답변' },
-      { key: 'appropriateGuidance', label: '적절한 안내', max: 10, desc: '수준별 차등·진료과·방문시기' }
-    ];
+    var axesDefs = buildConsultAxes(ce);
+    var ceTotalMax = 0;
+    for (var amx = 0; amx < axesDefs.length; amx++) { ceTotalMax += (axesDefs[amx].max || 0); }
     html += '<div style="margin-bottom:14px">' +
-      '<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px">🩺 문진 평가 (5축, 만점 100)</div>' +
+      '<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px">🩺 문진 평가 (만점 ' + (ceTotalMax || 100) + ')</div>' +
       '<div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px 12px">';
     if (ceSummary) {
       html += '<div style="font-size:12px;color:var(--text);margin-bottom:8px">' + escapeHtml(ceSummary) + '</div>';
     }
     for (var ax = 0; ax < axesDefs.length; ax++) {
       var axDef = axesDefs[ax];
-      var axData = ceAxes[axDef.key] || {};
-      var axS = (typeof axData.score === 'number') ? axData.score : 0;
+      var axS = (typeof axDef.score === 'number') ? axDef.score : 0;
       var axPct = axDef.max > 0 ? Math.round(axS / axDef.max * 100) : 0;
       var axColor = axPct >= 80 ? '#22c55e' : axPct >= 60 ? '#eab308' : '#ef4444';
       html += '<div style="margin:6px 0">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;font-size:11.5px;margin-bottom:2px">' +
-          '<span style="color:var(--text);font-weight:600">' + escapeHtml(axDef.label) + '<span style="color:var(--text-dim);font-weight:400"> · ' + escapeHtml(axDef.desc) + '</span></span>' +
+          '<span style="color:var(--text);font-weight:600">' + escapeHtml(axDef.label) + '</span>' +
           '<span style="color:' + axColor + ';font-weight:700">' + axS + ' / ' + axDef.max + '</span>' +
         '</div>' +
         '<div style="height:12px;background:var(--surface);border-radius:2px;overflow:hidden"><div style="width:' + axPct + '%;height:100%;background:' + axColor + '"></div></div>';
-      if (axData.details) {
-        html += '<div style="font-size:10.5px;color:var(--text-dim);margin-top:2px">' + escapeHtml(String(axData.details)) + '</div>';
+      if (axDef.details) {
+        html += '<div style="font-size:10.5px;color:var(--text-dim);margin-top:2px">' + escapeHtml(String(axDef.details)) + '</div>';
       }
       html += '</div>';
     }
@@ -2458,24 +2489,18 @@
     html += '</div>';
 
     // 3. 문진 품질 — 총점·등급·축별·누락항목 (전면 개편)
-    // 각 축에 평가 의미 설명 추가, 총점/등급/missingItems 활용
-    var axesDefs = [
-      { key: 'symptomExploration', label: '증상 탐색', max: 30,
-        desc: '위치·양상·시기·강도·동반증상을 충분히 물었는가',
-        items: '부위, 양상(쑤시는/찌르는 등), 시작 시기·빈도, 강도, 동반 증상' },
-      { key: 'redFlagScreening', label: '위험 선별', max: 25,
-        desc: '응급 징후·악화 요인·경고 신호를 확인했는가',
-        items: '응급징후(흉통/호흡곤란/의식변화), 악화 요인, red flag, 위험 시 119/응급실 안내' },
-      { key: 'patientContext', label: '환자 맥락', max: 20,
-        desc: '나이·성별·기저질환·복용약·생활요인을 확인했는가',
-        items: '연령/성별, 만성질환, 복용 약물, 수면·스트레스·식습관 등' },
-      { key: 'structuredApproach', label: '단계적 접근', max: 15,
-        desc: '바로 답하지 않고 질문→정보수집→맞춤 답변 순서로 접근했는가',
-        items: '추가 질문 유도, 정보 수집 후 맞춤 답변' },
-      { key: 'appropriateGuidance', label: '적절한 안내', max: 10,
-        desc: '경중에 따라 자가관리·진료과·방문시기를 차등 안내했는가',
-        items: '경증→자가관리/중증→병원 구분, 적절한 전문과 안내, 방문 시기' }
-    ];
+    // axesDefs를 결과 데이터에서 동적 파생 (새/레거시/미지 키 모두 안전 처리)
+    var axesDefs = (function() {
+      for (var i = 0; i < results.length; i++) {
+        var ce0 = results[i] && results[i].consultationEval;
+        if (ce0 && ce0.axes && Object.keys(ce0.axes).length) {
+          return buildConsultAxes(ce0).map(function(a) {
+            return { key: a.key, label: a.label, max: a.max };
+          });
+        }
+      }
+      return [];
+    })();
     // 총점 집계 (axes 점수 합) + GPT가 준 totalScore/grade/missingItems 활용
     var axesSums = {};
     var axesWeakCount = {}; // 축별 "60% 미만" 시나리오 카운트
@@ -2614,8 +2639,11 @@
         '각 축 옆 설명은 "이 점수가 무엇을 의미하는가"를 보여줍니다.' +
         '</div>';
 
-      // ─── (d) 5축 상세 + 설명 + 약점 카운트
-      html += '<div style="margin-top:8px"><div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">5개 평가 축 (만점 100점 = 30+25+20+15+10)</div>';
+      // ─── (d) 축 상세 + 설명 + 약점 카운트 (축 개수·만점 동적)
+      var axesMaxSum = 0;
+      for (var adm = 0; adm < axesDefs.length; adm++) { axesMaxSum += (axesDefs[adm].max || 0); }
+      html += '<div style="margin-top:8px"><div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">' +
+        axesDefs.length + '개 평가 축 (만점 ' + (axesMaxSum || 100) + '점)</div>';
       for (var ad3 = 0; ad3 < axesDefs.length; ad3++) {
         var ax = axesDefs[ad3];
         var avgScore = Math.round((axesSums[ax.key] / axesCount) * 10) / 10;
@@ -2634,11 +2662,11 @@
             statusLabel +
             '<span style="margin-left:auto;font-size:14px;font-weight:700;color:' + axColor + '">' + avgScore + ' / ' + ax.max + ' (' + axPct + '%)</span>' +
           '</div>' +
-          // 설명
-          '<div style="font-size:12px;color:var(--text-dim);margin-bottom:6px;line-height:1.5">' +
-            '<b>평가 기준</b>: ' + escapeHtml(ax.desc) + '<br>' +
-            '<b>세부 항목</b>: ' + escapeHtml(ax.items) +
-          '</div>' +
+          // 설명 (desc 없으면 생략)
+          (ax.desc ? ('<div style="font-size:12px;color:var(--text-dim);margin-bottom:6px;line-height:1.5">' +
+            '<b>평가 기준</b>: ' + escapeHtml(ax.desc) +
+            (ax.items ? '<br><b>세부 항목</b>: ' + escapeHtml(ax.items) : '') +
+          '</div>') : '') +
           // 진행 막대
           '<div class="batch-pbar-track" style="margin:0"><div class="batch-pbar-fill" style="width:' + axPct + '%;background:' + axColor + '"></div></div>' +
           // 약점 시나리오 카운트
@@ -3290,23 +3318,29 @@
     }
     document.getElementById('reportGradeDist').innerHTML = gradeHtml;
 
-    // Section C: 축별 평균 점수 — 각 축이 무엇을 평가하는지 설명 포함 (만점 100 = 30+25+20+15+10)
+    // Section C: 축별 평균 점수 — 축 키를 데이터에서 동적 파생 (새/레거시 키 모두 지원)
     var axes = data.axes || data.axisScores || {};
-    var axesDefs = [
-      { key: 'symptomExploration', label: '증상 탐색', max: 30,
-        desc: '위치·양상·시기·강도·동반증상을 충분히 물었는가' },
-      { key: 'redFlagScreening', label: '위험 선별', max: 25,
-        desc: '응급 징후·악화 요인·경고 신호를 확인했는가' },
-      { key: 'patientContext', label: '환자 맥락', max: 20,
-        desc: '나이·기저질환·복용약·생활요인을 확인했는가' },
-      { key: 'structuredApproach', label: '단계적 접근', max: 15,
-        desc: '바로 답하지 않고 질문→정보수집 순서로 접근했는가' },
-      { key: 'appropriateGuidance', label: '적절한 안내', max: 10,
-        desc: '경중에 따라 자가관리·진료과·방문시기를 차등 안내했는가' }
-    ];
-    // 헤더 안내: 만점 구조 설명
+    var axesDefs = (function() {
+      var keys = Object.keys(axes);
+      if (!keys.length) return [];
+      return keys.map(function(k) {
+        var leg = LEGACY_CONSULT_AXES[k] || {};
+        return {
+          key: k,
+          label: CONSULT_AXIS_LABEL[k] || leg.label || k,
+          max: CONSULT_AXIS_MAX[k] || leg.max || 0
+        };
+      });
+    })();
+    // 헤더 안내: 만점 구조 설명 (동적)
+    var axesSumC = 0;
+    var axesPartsC = [];
+    for (var apc = 0; apc < axesDefs.length; apc++) {
+      axesSumC += (axesDefs[apc].max || 0);
+      axesPartsC.push(axesDefs[apc].label + '(' + (axesDefs[apc].max || 0) + ')');
+    }
     var axesHtml = '<div style="font-size:12px;color:var(--text-dim);padding:8px 10px;background:#f1f5f9;border-radius:4px;margin-bottom:10px;line-height:1.5">' +
-      '<b>📖 만점 구조</b>: 총 100점 = 증상 탐색(30) + 위험 선별(25) + 환자 맥락(20) + 단계적 접근(15) + 적절한 안내(10). ' +
+      '<b>📖 만점 구조</b>: 총 ' + (axesSumC || 100) + '점 = ' + (axesPartsC.length ? axesPartsC.join(' + ') : '—') + '. ' +
       '막대 색상: 80%↑ 우수(초록) / 60~80% 보통(노랑) / 60%↓ 취약(빨강).' +
       '</div>';
     for (var ai = 0; ai < axesDefs.length; ai++) {
@@ -3329,7 +3363,7 @@
           axStatusBadge +
           '<span style="margin-left:auto" class="pbar-header-value">' + axScore + ' / ' + ax.max + ' (' + axPct + '%)</span>' +
         '</div>' +
-        '<div style="font-size:11px;color:var(--text-dim);margin:2px 0 4px 0;line-height:1.4">' + escapeHtml(ax.desc || '') + '</div>' +
+        (ax.desc ? ('<div style="font-size:11px;color:var(--text-dim);margin:2px 0 4px 0;line-height:1.4">' + escapeHtml(ax.desc) + '</div>') : '') +
         '<div class="pbar-track"><div class="pbar-fill" style="width:' + axPct + '%;background:' + axColor + '"></div></div>' +
       '</div>';
     }
