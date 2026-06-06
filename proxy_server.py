@@ -39,6 +39,13 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # RAG가 master에 통합돼도 플래그 off면 /api/rag/chat 이 503으로 차단된다.
 RAG_ENABLED = os.environ.get("RAG_ENABLED", "false").lower() in ("true", "1", "yes", "on")
 
+# ── RAG 독립 서비스 분리 (Phase 3, additive) ──
+# RAG_SERVICE_URL 설정 시 /api/rag/* 를 해당 서비스로 리버스 프록시(SKIX X-Target-URL 패턴과 동일).
+# 미설정(기본) 이면 기존처럼 in-process(_handle_rag_route)로 처리 → 현재 동작 불변.
+# 프록시 시 호스트가 쿠키 세션을 검증해 신뢰헤더(X-User-*)로 변환 주입 → same-origin 유지(쿠키/CORS 회피).
+RAG_SERVICE_URL = os.environ.get("RAG_SERVICE_URL", "").rstrip("/")
+RAG_TRUST_SECRET = os.environ.get("RAG_TRUST_SECRET", "")
+
 # ── 권한 카탈로그 ──
 PERMISSION_CATALOG = [
     {'code': 'manage_scenarios',  'label': '시나리오 관리',        'description': '시나리오 추가/수정/삭제'},
@@ -1624,6 +1631,8 @@ class ProxyHandler(RagRoutesMixin, BaseHTTPRequestHandler):
 
         # ── RAG API (위임) ──
         if self.path.startswith('/api/rag/'):
+            if RAG_SERVICE_URL:
+                return self._proxy_to_rag('POST', body)
             return self._handle_rag_route('POST', self.path, None, body)
 
         # ── SKIX 프록시 ──
@@ -1690,6 +1699,8 @@ class ProxyHandler(RagRoutesMixin, BaseHTTPRequestHandler):
 
         # ── RAG API (위임) ──
         if self.path.startswith('/api/rag/'):
+            if RAG_SERVICE_URL:
+                return self._proxy_to_rag('PUT', body)
             return self._handle_rag_route('PUT', self.path, None, body)
 
         # ── 커멘트 수정 (본인 또는 admin) ──
@@ -1743,6 +1754,8 @@ class ProxyHandler(RagRoutesMixin, BaseHTTPRequestHandler):
 
         # ── RAG API (위임) ──
         if self.path.startswith('/api/rag/'):
+            if RAG_SERVICE_URL:
+                return self._proxy_to_rag('DELETE', None)
             return self._handle_rag_route('DELETE', self.path, None, None)
 
         self._send_error(404, 'Not Found')
@@ -1777,6 +1790,8 @@ class ProxyHandler(RagRoutesMixin, BaseHTTPRequestHandler):
 
         # ── RAG API (위임) ──
         if path.startswith('/api/rag/'):
+            if RAG_SERVICE_URL:
+                return self._proxy_to_rag('GET', None)
             return self._handle_rag_route('GET', path, parsed, None)
 
         if path == '/api/tester/list':
@@ -6746,6 +6761,89 @@ AI 건강상담 서비스의 응답이 한국 의료법을 준수하는지 평�
     # ════════════════════════════════════════════
     # 유틸리티
     # ════════════════════════════════════════════
+
+    def _rag_trust_headers(self):
+        """호스트 세션을 검증해 RAG 서비스로 전달할 신뢰헤더 생성(쿠키→헤더 변환)."""
+        h = {}
+        if self._is_admin():
+            h['X-User-Id'] = 'admin'
+            h['X-User-Name'] = 'admin'
+            h['X-User-Role'] = 'admin'
+            h['X-User-Permissions'] = '*'
+        else:
+            t = self._get_tester_info()
+            if t:
+                h['X-User-Id'] = t.get('id', '')
+                h['X-User-Name'] = t.get('name', '') or t.get('id', '')
+                h['X-User-Role'] = t.get('role', 'tester')
+                perms = self._get_current_user_perms().get('permissions', [])
+                h['X-User-Permissions'] = json.dumps(perms, ensure_ascii=False)
+        if RAG_TRUST_SECRET:
+            h['X-Rag-Trust'] = RAG_TRUST_SECRET
+        return h
+
+    def _proxy_to_rag(self, method, body):
+        """/api/rag/* 를 RAG_SERVICE_URL 로 리버스 프록시(SSE 스트리밍 패스스루).
+        RAG_SERVICE_URL 설정 시에만 호출됨(미설정이면 in-process 경로 유지)."""
+        target = RAG_SERVICE_URL + self.path  # path + querystring 포함
+        headers = {'Content-Type': self.headers.get('Content-Type', 'application/json')}
+        headers.update(self._rag_trust_headers())
+        data = body if method in ('POST', 'PUT', 'DELETE') else None
+        req = Request(target, data=data, headers=headers, method=method)
+        try:
+            resp = urlopen(req, timeout=900)
+        except HTTPError as e:
+            try:
+                err_body = e.read()
+            except Exception:
+                err_body = b'{"error":"RAG service error"}'
+            self.send_response(e.code)
+            self._set_cors_headers()
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Content-Length', str(len(err_body)))
+            self.end_headers()
+            try:
+                self.wfile.write(err_body)
+            except Exception:
+                pass
+            return
+        except Exception as e:
+            self._add_log(f"[RAG-PROXY] 연결 실패: {type(e).__name__}: {str(e)[:120]}")
+            return self._send_error(502, 'RAG 서비스 연결 실패')
+
+        # 응답 스트리밍 (SSE 포함)
+        try:
+            status = getattr(resp, 'status', None) or resp.getcode()
+        except Exception:
+            status = 200
+        ct = resp.headers.get('Content-Type', 'application/json; charset=utf-8')
+        is_sse = 'text/event-stream' in (ct or '')
+        self.send_response(status)
+        self._set_cors_headers()
+        self.send_header('Content-Type', ct or 'application/json; charset=utf-8')
+        if is_sse:
+            self.send_header('Cache-Control', 'no-cache')
+            self.send_header('X-Accel-Buffering', 'no')
+            self.send_header('Connection', 'keep-alive')
+        self.end_headers()
+        try:
+            self.connection.settimeout(120)
+        except Exception:
+            pass
+        try:
+            while True:
+                chunk = resp.read(1024)
+                if not chunk:
+                    break
+                self.wfile.write(chunk)
+                self.wfile.flush()
+        except (BrokenPipeError, ConnectionResetError, OSError) as e:
+            self._add_log(f"[RAG-PROXY] 스트리밍 중단: {type(e).__name__}")
+        finally:
+            try:
+                resp.close()
+            except Exception:
+                pass
 
     def _set_cors_headers(self):
         self.send_header('Access-Control-Allow-Origin', '*')
