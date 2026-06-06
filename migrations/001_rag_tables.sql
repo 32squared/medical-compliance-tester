@@ -215,13 +215,13 @@ CREATE TABLE IF NOT EXISTS embedding_migration_log (
 );
 
 -- ---------------------------------------------------------------------------
--- 10. 기존 conversations 테이블 ALTER (자문 반영 — EMERGENCY_REDIRECTED 상태머신)
+-- 10. (이전됨) conversations EMERGENCY_REDIRECTED 상태머신 컬럼
+--     conversations 는 호스트(테스트 시스템) 소유 테이블이므로, 이 컬럼 ALTER 는
+--     호스트 마이그레이션(db.py init_db 의 migrations_pg / migrations)으로 이전했다.
+--     RAG 마이그레이션은 호스트 테이블을 변형하지 않는다(저장소 분리 불변식).
 --     rag_architecture.md §5.7
+--     ※ Phase 1 에서 emergency_state 자체를 RAG 소유 테이블로 이관 예정.
 -- ---------------------------------------------------------------------------
-ALTER TABLE conversations
-    ADD COLUMN IF NOT EXISTS emergency_state        TEXT DEFAULT 'NORMAL';
-ALTER TABLE conversations
-    ADD COLUMN IF NOT EXISTS emergency_redirected_at TEXT;
 
 -- ---------------------------------------------------------------------------
 -- 11. 시드 데이터 — embedding_providers (ON CONFLICT DO NOTHING 으로 멱등)

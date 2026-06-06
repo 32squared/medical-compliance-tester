@@ -820,6 +820,10 @@ def init_db(db_path=None):
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '[]'::jsonb",
                 "ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS turns_json JSONB DEFAULT '[]'::jsonb",
                 "ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS rubric_json JSONB DEFAULT '[]'::jsonb",
+                # conversations EMERGENCY_REDIRECTED 상태머신 컬럼 — 호스트 소유.
+                # (RAG 마이그레이션 블록에서 이전: RAG 마이그레이션이 호스트 테이블을 변형하지 않도록)
+                "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS emergency_state TEXT DEFAULT 'NORMAL'",
+                "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS emergency_redirected_at TEXT",
             ]
             for sql in migrations_pg:
                 try:
@@ -1164,9 +1168,8 @@ def init_db(db_path=None):
                     metrics_json TEXT,
                     notes TEXT
                 )""",
-                # 10. conversations ALTER — EMERGENCY_REDIRECTED 상태머신
-                "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS emergency_state TEXT DEFAULT 'NORMAL'",
-                "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS emergency_redirected_at TEXT",
+                # (conversations ALTER 는 호스트 migrations_pg 로 이전됨 —
+                #  RAG 마이그레이션은 호스트 conversations 테이블을 변형하지 않는다)
             ]
             for _sql in _rag_migrations_pg:
                 try:
@@ -1224,6 +1227,10 @@ def init_db(db_path=None):
             "ALTER TABLE users ADD COLUMN permissions TEXT DEFAULT '[]'",
             "ALTER TABLE scenarios ADD COLUMN turns_json TEXT DEFAULT '[]'",
             "ALTER TABLE scenarios ADD COLUMN rubric_json TEXT DEFAULT '[]'",
+            # conversations EMERGENCY_REDIRECTED 상태머신 컬럼 — 호스트 소유.
+            # (RAG 마이그레이션 블록에서 이전. SQLite: IF NOT EXISTS 미지원 — OperationalError 무시)
+            "ALTER TABLE conversations ADD COLUMN emergency_state TEXT DEFAULT 'NORMAL'",
+            "ALTER TABLE conversations ADD COLUMN emergency_redirected_at TEXT",
         ]
         for sql in migrations:
             try:
@@ -1508,15 +1515,8 @@ def init_db(db_path=None):
                 conn.execute(_sql)
             except sqlite3.OperationalError:
                 pass
-        # conversations ALTER (SQLite: IF NOT EXISTS 미지원 — 오류 무시)
-        for _col_sql in [
-            "ALTER TABLE conversations ADD COLUMN emergency_state TEXT DEFAULT 'NORMAL'",
-            "ALTER TABLE conversations ADD COLUMN emergency_redirected_at TEXT",
-        ]:
-            try:
-                conn.execute(_col_sql)
-            except sqlite3.OperationalError:
-                pass
+        # (conversations ALTER 는 호스트 migrations 로 이전됨 —
+        #  RAG 마이그레이션은 호스트 conversations 테이블을 변형하지 않는다)
         # 시드 데이터 — embedding_providers
         try:
             conn.execute("""
