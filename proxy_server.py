@@ -6789,6 +6789,7 @@ AI 건강상담 서비스의 응답이 한국 의료법을 준수하는지 평�
         target = RAG_SERVICE_URL + self.path  # path + querystring 포함
         headers = {'Content-Type': self.headers.get('Content-Type', 'application/json')}
         headers.update(self._rag_trust_headers())
+        self._add_log(f"[RAG-PROXY] → {method} {self.path} user={headers.get('X-User-Id', '(none)')}")
         data = body if method in ('POST', 'PUT', 'DELETE') else None
         req = Request(target, data=data, headers=headers, method=method)
         try:
@@ -6828,18 +6829,28 @@ AI 건강상담 서비스의 응답이 한국 의료법을 준수하는지 평�
             self.send_header('Connection', 'keep-alive')
         self.end_headers()
         try:
-            self.connection.settimeout(120)
+            self.connection.settimeout(180)
         except Exception:
             pass
+        # SSE 스트리밍 relay: read1() 로 '도착 즉시' 전달(read(n) 은 n바이트 채울 때까지 블록 → 버퍼링).
+        nchunks = 0
+        nbytes = 0
         try:
             while True:
-                chunk = resp.read(1024)
+                try:
+                    chunk = resp.read1(65536)  # 가용 데이터 즉시 반환(블록 최소화)
+                except AttributeError:
+                    chunk = resp.read(1024)    # read1 미지원 폴백
                 if not chunk:
                     break
                 self.wfile.write(chunk)
                 self.wfile.flush()
+                nchunks += 1
+                nbytes += len(chunk)
         except (BrokenPipeError, ConnectionResetError, OSError) as e:
-            self._add_log(f"[RAG-PROXY] 스트리밍 중단: {type(e).__name__}")
+            self._add_log(f"[RAG-PROXY] 스트리밍 중단({type(e).__name__}) chunks={nchunks} bytes={nbytes}")
+        else:
+            self._add_log(f"[RAG-PROXY] relay 완료 status={status} sse={is_sse} chunks={nchunks} bytes={nbytes}")
         finally:
             try:
                 resp.close()
