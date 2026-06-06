@@ -21,15 +21,82 @@ from db import get_conn, _p, _row_to_dict
 #  스키마 훅 (향후 RAG 전용 DDL 추가 위치)
 # ════════════════════════════════════════
 
+# 스키마 보장 1회 가드 (프로세스 단위)
+_RAG_SCHEMA_ENSURED = False
+
+
 def ensure_rag_schema():
     """
     RAG 전용 스키마 변경 훅 (멱등 실행 가능).
     향후 RAG 전용 테이블/컬럼 추가는 여기에 idempotent ALTER/CREATE 문으로 작성한다.
-    기존 db.py 의 kb_sources / kb_documents / kb_chunks / rag_queries DDL 은
-    이 함수로 이동하지 말 것 (리스크).
-    현재는 아무 작업도 수행하지 않는다.
+    ※ 기존 db.py 의 kb_sources / kb_documents / kb_chunks / rag_queries DDL 은
+       이 함수로 이동하지 말 것 (리스크 — 별도 작업으로).
+
+    rag_conversation_state: RAG 응급 상태머신(emergency_state)을 RAG 소유 테이블에 보관.
+    (기존엔 호스트 conversations 테이블을 직접 SELECT/UPDATE 했다 → 런타임 결합 해제)
+    PG/SQLite 공용 DDL.
     """
-    pass
+    with get_conn() as (conn, cur):
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS rag_conversation_state (
+                   conversation_id         TEXT PRIMARY KEY,
+                   emergency_state         TEXT NOT NULL DEFAULT 'NORMAL',
+                   emergency_redirected_at TEXT,
+                   updated_at              TEXT NOT NULL
+               )"""
+        )
+        conn.commit()
+
+
+def _ensure_once():
+    """rag_conversation_state 스키마를 프로세스당 1회 보장(멱등, 비차단)."""
+    global _RAG_SCHEMA_ENSURED
+    if _RAG_SCHEMA_ENSURED:
+        return
+    try:
+        ensure_rag_schema()
+        _RAG_SCHEMA_ENSURED = True
+    except Exception:
+        pass  # 다음 호출에서 재시도
+
+
+def get_conversation_state(conversation_id: str) -> dict:
+    """RAG 소유 rag_conversation_state 에서 emergency_state 조회.
+    행이 없으면 {"emergency_state": "NORMAL"}. (예외 처리/로깅은 호출자 rag_engine 담당)"""
+    _ensure_once()
+    with get_conn() as (conn, cur):
+        cur.execute(
+            f"SELECT emergency_state FROM rag_conversation_state "
+            f"WHERE conversation_id = {_p()}",
+            (conversation_id,),
+        )
+        row = cur.fetchone()
+    if row:
+        rd = _row_to_dict(row)
+        return {"emergency_state": rd.get("emergency_state") or "NORMAL"}
+    return {"emergency_state": "NORMAL"}
+
+
+def set_conversation_state(conversation_id: str, state: str) -> None:
+    """RAG 소유 rag_conversation_state UPSERT.
+    state="EMERGENCY_REDIRECTED" 일 때만 emergency_redirected_at=now 기록.
+    NORMAL 전환 시 기존 redirected_at 은 COALESCE 로 보존(기존 동작 보존)."""
+    _ensure_once()
+    now = datetime.now(timezone.utc).isoformat()
+    redirected_at = now if state == "EMERGENCY_REDIRECTED" else None
+    with get_conn() as (conn, cur):
+        cur.execute(
+            f"INSERT INTO rag_conversation_state "
+            f"(conversation_id, emergency_state, emergency_redirected_at, updated_at) "
+            f"VALUES ({_p()},{_p()},{_p()},{_p()}) "
+            f"ON CONFLICT (conversation_id) DO UPDATE SET "
+            f"emergency_state = {_p()}, "
+            f"emergency_redirected_at = COALESCE({_p()}, rag_conversation_state.emergency_redirected_at), "
+            f"updated_at = {_p()}",
+            (conversation_id, state, redirected_at, now,
+             state, redirected_at, now),
+        )
+        conn.commit()
 
 
 # ════════════════════════════════════════

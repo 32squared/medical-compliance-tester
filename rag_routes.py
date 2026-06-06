@@ -205,7 +205,10 @@ class RagRoutesMixin:
                 "code": "RAG_REQUIRES_POSTGRES",
             })
 
-        # ── 4. conversation 행 보장 (없으면 INSERT, 있으면 그대로) ──
+        # ── 4. conversation 행 보장 (이력 표시용 — 없으면 INSERT, 있으면 그대로) ──
+        #     emergency_state 는 RAG 소유 rag_conversation_state 가 관리하므로 여기서
+        #     호스트 conversations 컬럼에 쓰지 않는다(컬럼 DEFAULT 'NORMAL' 사용).
+        #     conversation 행 생성 자체의 호스트 이관은 Phase 3(리버스 프록시)에서 처리.
         try:
             tester_info = self._get_tester_info()
             user_id = tester_info['id'] if tester_info else 'admin'
@@ -214,8 +217,8 @@ class RagRoutesMixin:
                 cur.execute(
                     f"INSERT INTO conversations "
                     f"(id, user_id, user_name, title, env, conversation_strid, "
-                    f"created_at, updated_at, emergency_state) "
-                    f"VALUES ({db._ph(9)}) "
+                    f"created_at, updated_at) "
+                    f"VALUES ({db._ph(8)}) "
                     f"ON CONFLICT (id) DO NOTHING",
                     (
                         conversation_id,
@@ -226,7 +229,6 @@ class RagRoutesMixin:
                         '',
                         now_ts,
                         now_ts,
-                        'NORMAL',
                     ),
                 )
                 conn.commit()

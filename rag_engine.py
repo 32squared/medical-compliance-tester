@@ -19,8 +19,8 @@ T5 추가 (generate_response):
   _ensure_disclaimer()          — 면책조항 자동 부착
   _ensure_four_section_structure() — 4단 응답 구조 헤더 검증
   _detect_emergency_signal()    — 응급 신호 감지
-  _get_conversation_state()     — conversations.emergency_state SELECT
-  _set_conversation_state()     — conversations.emergency_state UPDATE
+  _get_conversation_state()     — rag_conversation_state.emergency_state 조회(rag_db 위임)
+  _set_conversation_state()     — rag_conversation_state.emergency_state 갱신(rag_db 위임)
   _build_emergency_response()   — EMERGENCY_REDIRECTED 고정 응답
   _extract_citations()          — [N] 인용 마커 → chunk_id 매핑
   _insert_rag_query()           — rag_queries INSERT
@@ -1962,23 +1962,14 @@ def _detect_emergency_signal(text: str) -> bool:
 
 def _get_conversation_state(conversation_id: str) -> dict:
     """
-    conversations 테이블에서 emergency_state를 조회한다.
+    RAG 소유 rag_conversation_state 에서 emergency_state 를 조회한다.
+    (기존엔 호스트 conversations 테이블을 직접 SELECT 했다 → 결합 해제. rag_db 위임)
 
-    conversation이 존재하지 않으면 기본 상태 {"emergency_state": "NORMAL"} 반환.
-    (신규 conversation 생성은 T6 호출자가 담당하므로 여기서는 INSERT 안 함)
+    행이 존재하지 않으면 기본 상태 {"emergency_state": "NORMAL"} 반환.
     """
     try:
-        from db import get_conn, _p
-        with get_conn() as (conn, cur):
-            cur.execute(
-                f"SELECT emergency_state FROM conversations WHERE id = {_p()}",
-                (conversation_id,),
-            )
-            row = cur.fetchone()
-        if row:
-            row_dict = dict(row)
-            return {"emergency_state": row_dict.get("emergency_state") or "NORMAL"}
-        return {"emergency_state": "NORMAL"}
+        import rag_db
+        return rag_db.get_conversation_state(conversation_id)
     except Exception as e:
         logger.warning("[RAGEngine] conversation 상태 조회 오류: %s", e)
         return {"emergency_state": "NORMAL"}
@@ -1986,32 +1977,15 @@ def _get_conversation_state(conversation_id: str) -> dict:
 
 def _set_conversation_state(conversation_id: str, state: str) -> None:
     """
-    conversations.emergency_state를 갱신한다.
+    RAG 소유 rag_conversation_state 의 emergency_state 를 갱신한다.
+    (기존엔 호스트 conversations 테이블을 직접 UPDATE 했다 → 결합 해제. rag_db 위임)
 
     state: "NORMAL" | "EMERGENCY_REDIRECTED"
-    emergency_redirected_at: EMERGENCY_REDIRECTED 전환 시 현재 시각 기록.
+    emergency_redirected_at: EMERGENCY_REDIRECTED 전환 시 현재 시각 기록(NORMAL 전환 시 보존).
     """
-    from datetime import datetime, timezone
-    now = datetime.now(timezone.utc).isoformat()
-    redirected_at = now if state == "EMERGENCY_REDIRECTED" else None
-
     try:
-        from db import get_conn, _p
-        with get_conn() as (conn, cur):
-            if redirected_at:
-                cur.execute(
-                    f"UPDATE conversations SET emergency_state = {_p()}, "
-                    f"emergency_redirected_at = {_p()}, updated_at = {_p()} "
-                    f"WHERE id = {_p()}",
-                    (state, redirected_at, now, conversation_id),
-                )
-            else:
-                cur.execute(
-                    f"UPDATE conversations SET emergency_state = {_p()}, "
-                    f"updated_at = {_p()} WHERE id = {_p()}",
-                    (state, now, conversation_id),
-                )
-            conn.commit()
+        import rag_db
+        rag_db.set_conversation_state(conversation_id, state)
     except Exception as e:
         logger.error("[RAGEngine] conversation 상태 업데이트 오류: %s", e)
 
