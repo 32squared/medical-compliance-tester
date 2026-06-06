@@ -28,7 +28,7 @@ import logging
 import argparse
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
-from urllib.parse import urlparse
+from urllib.parse import urlparse, unquote
 
 from rag_routes import RagRoutesMixin
 
@@ -87,7 +87,8 @@ class RagHandler(RagRoutesMixin, BaseHTTPRequestHandler):
         uid = self.headers.get('X-User-Id', '')
         if not uid:
             return None
-        name = self.headers.get('X-User-Name', '') or uid
+        # X-User-Name 은 URL 인코딩되어 옴(한글 이름의 latin-1 헤더 인코딩 실패 회피)
+        name = unquote(self.headers.get('X-User-Name', '') or '') or uid
         return {
             'id': uid,
             'alias': name,

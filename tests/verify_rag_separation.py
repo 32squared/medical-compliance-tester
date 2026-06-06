@@ -23,6 +23,7 @@ import json
 import argparse
 import urllib.request
 import urllib.error
+from urllib.parse import quote
 
 
 def _req(url, method='GET', headers=None, data=None, timeout=120):
@@ -49,7 +50,7 @@ def main():
     else:
         # 독립 서비스 직접 호출 — 신뢰헤더 주입
         H['X-User-Id'] = args.user_id
-        H['X-User-Name'] = args.user_name
+        H['X-User-Name'] = quote(args.user_name)  # 한글 이름 헤더 인코딩
         H['X-User-Role'] = args.role
         H['X-User-Permissions'] = args.perms
         if args.trust_secret:

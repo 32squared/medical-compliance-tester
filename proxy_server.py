@@ -24,7 +24,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingMixIn
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, quote
 import ssl
 import os
 import threading
@@ -6774,7 +6774,8 @@ AI 건강상담 서비스의 응답이 한국 의료법을 준수하는지 평�
             t = self._get_tester_info()
             if t:
                 h['X-User-Id'] = t.get('id', '')
-                h['X-User-Name'] = t.get('name', '') or t.get('id', '')
+                # 한글 이름은 HTTP 헤더(latin-1) 인코딩 불가 → URL 인코딩(RAG 서버가 unquote)
+                h['X-User-Name'] = quote(t.get('name', '') or t.get('id', ''))
                 h['X-User-Role'] = t.get('role', 'tester')
                 perms = self._get_current_user_perms().get('permissions', [])
                 h['X-User-Permissions'] = json.dumps(perms, ensure_ascii=False)
