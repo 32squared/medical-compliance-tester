@@ -15,9 +15,17 @@
 | **0** | 선행 디커플링 (conversations ALTER 호스트 이전, 마이그레이션 러너, 배포 연결) | ✅ 완료 |
 | **1** | conversations 런타임 결합 해제 — emergency_state → RAG 소유 `rag_conversation_state` | ✅ 완료 (PG 실증 대기) |
 | **2-A** | 연결 레이어 `dbcommon` 추출 (facade 재export) | ✅ 완료 (PG 실증 대기) |
-| **2-B** | consultation_checklists.json 단일 로더 | ⏸ 보류 (아래 사유) |
+| **2-B** | consultation_checklists.json 단일 로더 | ✅ 완료 |
 | **2-C** | compliance-rules 경계 문서화 | ✅ 본 문서 |
-| **3** | RAG 독립 HTTP 서비스 + 호스트 리버스 프록시 (additive, 플래그) | ✅ 완료 (분리모드 검증 대기) |
+| **3** | RAG 독립 HTTP 서비스 + 호스트 리버스 프록시 (additive, 플래그) | ✅ 완료 + **dev PG 실증** |
+
+> **dev 실증 완료(2026-06-06):** 독립 RAG 서비스(medical-rag-dev) 배포 →
+> verify_rag_separation 하니스 **ALL PASS**(health/인증/chat SSE STOP+citations, 한글이름 포함).
+> 즉 Phase 1(rag_conversation_state)·Phase 2-A(dbcommon 풀)이 **실제 Postgres 에서 동작**.
+> 호스트(medical-compliance-tester-dev)는 RAG_SERVICE_URL 주입돼 **분리 모드 활성**.
+> 리버스 프록시 forwarding 확인(RAG 응답 relay). 인증된 SSE chat through 프록시는
+> 로그인 쿠키 필요 → 브라우저(로그인 상태)에서 최종 확인.
+> 롤백: `.\deploy-dev.ps1`(RagServiceUrl 없이) → in-process 복귀.
 | **4** | 저장소 분리 + 독립 배포 (dbcommon/compliance-rules 공유 패키지화) | ⬜ (GitHub/인프라 결정 필요) |
 
 ### Phase 3 구성 (additive — RAG_SERVICE_URL 미설정 시 현재 동작 불변)
