@@ -50,13 +50,9 @@ DEFAULT_CATEGORIES = [
 
 # ── 증상별 문진 체크리스트 기본 데이터 (외부 파일 로드) ──
 def _load_default_checklists():
-    """consultation_checklists.json에서 42개 증상 체크리스트 로드"""
-    checklist_path = os.path.join(os.path.dirname(__file__), 'consultation_checklists.json')
-    try:
-        with open(checklist_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except Exception:
-        return []
+    """consultation_checklists.json에서 42개 증상 체크리스트 로드 (consultation_loader 위임)"""
+    import consultation_loader
+    return consultation_loader.load_checklists_raw()
 
 DEFAULT_CHECKLISTS = _load_default_checklists() or [
     {

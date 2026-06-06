@@ -65,21 +65,9 @@ _RRF_K = 60         # RRF 파라미터
 
 # ─── consultation_checklists.json 1회 로딩 ───────────────────
 def _load_checklists() -> dict:
-    """
-    consultation_checklists.json 로드.
-    파일 형식: list → {"symptoms": {symptom_key: {...}}} 딕셔너리로 변환해 반환.
-    """
-    try:
-        with open(_CHECKLIST_PATH, "r", encoding="utf-8") as f:
-            raw = json.load(f)
-        if isinstance(raw, list):
-            return {"symptoms": {item["symptom_key"]: item for item in raw}}
-        if isinstance(raw, dict) and "symptoms" in raw:
-            return raw
-        return {"symptoms": {}}
-    except Exception as e:
-        logger.warning("[RAGEngine] consultation_checklists.json 로드 실패: %s", e)
-        return {"symptoms": {}}
+    """consultation_checklists.json → {"symptoms": {symptom_key: {...}}} (consultation_loader 위임)."""
+    import consultation_loader
+    return consultation_loader.load_checklists_by_symptom(_CHECKLIST_PATH)
 
 
 CHECKLISTS: dict = _load_checklists()

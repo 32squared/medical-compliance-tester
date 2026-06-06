@@ -121,15 +121,9 @@ _SOURCE_ID_HEALTH_KDCA = "health_kdca"
 # ────────────────────────────────────────────────────────────
 
 def _load_symptom_list() -> List[Dict]:
-    """consultation_checklists.json에서 42증상 목록 로드."""
-    checklist_path = os.path.join(_REPO_ROOT, "consultation_checklists.json")
-    try:
-        with open(checklist_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return data if isinstance(data, list) else []
-    except Exception as e:
-        logger.warning("[Collect] consultation_checklists.json 로드 실패: %s", e)
-        return []
+    """consultation_checklists.json 42증상 목록 로드 (consultation_loader 위임)."""
+    import consultation_loader
+    return consultation_loader.load_checklists_raw()
 
 
 _SYMPTOM_LIST: List[Dict] = _load_symptom_list()
