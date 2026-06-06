@@ -377,6 +377,31 @@ def _check_compliance(text, exclude_phr=None):
     }
 
 
+def _openai_chat_json(model, system_prompt, user_prompt, openai_key, temperature=0.1):
+    """OpenAI chat completion(JSON 응답) → content 문자열 반환.
+
+    raw urllib(urlopen) 대신 openai 클라이언트(httpx) 사용.
+    이유: dev 등 VPC 커넥터 환경에서 urllib 호출이 멈춰 평가가 None을 반환하던 문제 회피.
+    동일 모델·메시지·response_format → 평가 결과는 동일(전송 계층만 견고화).
+    """
+    from openai import OpenAI
+    client = OpenAI(api_key=openai_key, timeout=60)
+    params = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        "response_format": {"type": "json_object"},
+    }
+    m = (model or "").lower()
+    # gpt-5/o-시리즈는 temperature 미지원(1 고정) → 그 외만 지정
+    if not (m.startswith("gpt-5") or m.startswith("o1") or m.startswith("o3") or m.startswith("o4")):
+        params["temperature"] = temperature
+    resp = client.chat.completions.create(**params)
+    return resp.choices[0].message.content
+
+
 def _evaluate_gpt(prompt_text, response_text, openai_key, model=None, exclude_phr=None):
     """GPT 의료법 준수 평가 (독립 함수) — 성공 시 dict, 실패 시 None.
 
@@ -424,29 +449,7 @@ AI 건강상담 서비스의 응답이 한국 의료법을 준수하는지 평�
 
     gpt_model = model or 'gpt-4o-mini'
     try:
-        api_body = json.dumps({
-            "model": gpt_model,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            "temperature": 0.1,
-            "response_format": {"type": "json_object"}
-        }).encode('utf-8')
-        req = Request(
-            url="https://api.openai.com/v1/chat/completions",
-            data=api_body,
-            headers={"Content-Type": "application/json", "Authorization": f"Bearer {openai_key}"},
-            method='POST',
-        )
-        ctx = ssl.create_default_context()
-        resp = urlopen(req, context=ctx, timeout=60)
-        try:
-            resp.fp.raw._sock.settimeout(30)
-        except Exception:
-            pass
-        result = json.loads(resp.read().decode('utf-8'))
-        content = result['choices'][0]['message']['content']
+        content = _openai_chat_json(gpt_model, system_prompt, user_prompt, openai_key, temperature=0.1)
         return json.loads(content)
     except Exception:
         return None
@@ -602,29 +605,7 @@ def _evaluate_consultation(prompt_text, response_text, openai_key, model=None, c
 
     gpt_model = model or 'gpt-4o-mini'
     try:
-        api_body = json.dumps({
-            "model": gpt_model,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            "temperature": 0.1,
-            "response_format": {"type": "json_object"}
-        }).encode('utf-8')
-        req = Request(
-            url="https://api.openai.com/v1/chat/completions",
-            data=api_body,
-            headers={"Content-Type": "application/json", "Authorization": f"Bearer {openai_key}"},
-            method='POST',
-        )
-        ctx = ssl.create_default_context()
-        resp = urlopen(req, context=ctx, timeout=60)
-        try:
-            resp.fp.raw._sock.settimeout(30)
-        except Exception:
-            pass
-        result = json.loads(resp.read().decode('utf-8'))
-        content = result['choices'][0]['message']['content']
+        content = _openai_chat_json(gpt_model, system_prompt, user_prompt, openai_key, temperature=0.1)
         raw = json.loads(content)
 
         # GPT 응답 정규화: axes 안에 summary/missingItems/recommendation이 들어있으면 최상위로 이동
@@ -650,7 +631,7 @@ def _evaluate_consultation(prompt_text, response_text, openai_key, model=None, c
             'summary': axes.get('summary', '') or raw.get('summary', ''),
             'missingItems': axes.get('missingItems', []) or raw.get('missingItems', []),
             'recommendation': axes.get('recommendation', '') or raw.get('recommendation', ''),
-            '_model': result.get('model', gpt_model),
+            '_model': gpt_model,
         }
 
         # 등급 계산 (없으면)
@@ -2119,6 +2100,12 @@ class ProxyHandler(RagRoutesMixin, BaseHTTPRequestHandler):
                 elif full_path.endswith('.json'):
                     ct = 'application/json; charset=utf-8'
                 self.send_header('Content-Type', ct)
+                # HTML/JS/CSS는 항상 최신을 받도록 캐시 무력화 — 프론트 업데이트가
+                # 사용자 브라우저에 즉시 반영되도록(옛 캐시로 인한 '수정 미반영' 방지)
+                if ct.startswith('text/html') or ct.startswith('application/javascript') or ct.startswith('text/css'):
+                    self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                    self.send_header('Pragma', 'no-cache')
+                    self.send_header('Expires', '0')
                 self.send_header('Content-Length', str(len(data)))
                 self.end_headers()
                 self.wfile.write(data)
@@ -3875,6 +3862,12 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
             if safe.get('openaiKey'):
                 k = safe['openaiKey']
                 safe['openaiKey'] = k[:4] + '****' + k[-4:] if len(k) > 8 else '****'
+        # 프론트 자동평가 게이트용 — 서버가 평가에 사용할 OpenAI 키 보유 여부
+        # (설정 키가 비어 있어도 서버 환경변수 키로 평가 가능: dev 등)
+        safe['hasServerOpenaiKey'] = bool(
+            data.get('openaiKey') or data.get('openai_api_key')
+            or os.environ.get('OPENAI_API_KEY')
+        )
         self._send_json(200, safe)
 
     # ════════════════════════════════════════════
@@ -4769,8 +4762,10 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
         scenario_info = payload.get('scenario', {})
 
         # 항상 DB에서 키 로드 (프론트엔드 키는 마스킹되어 있으므로 무시)
+        # 설정 키가 비어 있으면 서버 환경변수(OPENAI_API_KEY, dev 시크릿) 폴백
         settings = db.get_settings()
-        openai_key = settings.get('openaiKey', '') or settings.get('openai_api_key', '')
+        openai_key = (settings.get('openaiKey', '') or settings.get('openai_api_key', '')
+                      or os.environ.get('OPENAI_API_KEY', ''))
 
         if not openai_key:
             return self._send_error(400, 'OpenAI API Key가 설정되지 않았습니다. 설정 패널에서 입력해주세요.')
@@ -5065,7 +5060,8 @@ AI 건강상담 서비스의 응답이 한국 의료법을 준수하는지 평�
             return self._send_error(400, '평가할 응답 텍스트가 필요합니다')
 
         settings = db.get_settings()
-        openai_key = settings.get('openaiKey', '')
+        openai_key = (settings.get('openaiKey', '') or settings.get('openai_api_key', '')
+                      or os.environ.get('OPENAI_API_KEY', ''))
         if not openai_key:
             return self._send_error(400, 'OpenAI API Key가 설정되지 않았습니다.')
         gpt_model = settings.get('openaiModel', 'gpt-4o-mini')

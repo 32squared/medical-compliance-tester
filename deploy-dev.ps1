@@ -73,18 +73,18 @@ gcloud run deploy $ServiceName `
     --region $Region `
     --platform managed `
     --allow-unauthenticated `
-    --memory 1Gi --cpu 1 `
+    --memory 2Gi --cpu 1 `
     --timeout 900 `
     --min-instances 0 --max-instances 3 `
     --concurrency 5 `
     --execution-environment gen2 `
-    --set-env-vars "DATABASE_URL=$DatabaseUrl,APP_ENV=development,RAG_ENABLED=true" `
+    --set-env-vars "DATABASE_URL=$DatabaseUrl,APP_ENV=development,RAG_ENABLED=true,RAG_LLM_MODEL=gpt-5.4-mini,RAG_LLM_FALLBACK_MODEL=gpt-5.4-mini,RAG_GUARDRAIL_FP_FILTER=true,LLM_REASONING_EFFORT=low" `
     --set-secrets "OPENAI_API_KEY=openai-api-key:latest,DB_PASSWORD=db-password:latest" `
     --add-cloudsql-instances $SqlConnection `
     --vpc-connector=medical-connector `
-    --vpc-egress=all-traffic `
+    --vpc-egress=private-ranges-only `
     --cpu-boost `
-    --cpu-throttling `
+    --no-cpu-throttling `
     --clear-volumes `
     --clear-volume-mounts
 if ($LASTEXITCODE -ne 0) {

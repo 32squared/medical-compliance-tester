@@ -111,6 +111,9 @@ class RagRoutesMixin:
 
         # ── GET ───────────────────────────────────────────────
         if method == 'GET':
+            if path == '/api/rag/result':
+                return self._rag_get_result(parsed)
+
             if path == '/api/rag/kb/sources':
                 if not self._require_auth():
                     return
@@ -239,10 +242,22 @@ class RagRoutesMixin:
         self._set_cors_headers()
         self.end_headers()
 
-        # ── 6. generate_response 스트리밍 ──
+        # ── 6. generate_response 스트리밍 (요청 스레드에서 실행) ──
+        # Cloud Run에서는 백그라운드 스레드가 진행되지 못하므로(요청 스레드만 CPU 확보)
+        # generate_response는 '요청 핸들러 스레드'에서 그대로 돌린다(diag로 40초 완주 확인).
+        # 진짜 '행(hang)' 원인 = self.wfile.write가 클라이언트 지연으로 무한 블록되면
+        # generate_response가 yield에서 멈춰 생성 자체가 정지했던 것.
+        # 해결: 클라이언트 소켓에 write 타임아웃을 걸어, 블록 시 OSError(timeout)로 빠져나와
+        # '드레인 모드'(쓰기 없이 생성만 끝까지 진행)로 전환 → 결과를 rag_queries에 저장.
+        # 프론트는 STOP을 못 받아도 /api/rag/result 폴링으로 항상 복구한다.
+        try:
+            self.connection.settimeout(30)  # write 블록 상한(클라이언트 지연 감지)
+        except Exception:
+            pass
         try:
             from rag_engine import generate_response
 
+            client_gone = False
             for event in generate_response(
                 query=query,
                 conversation_id=conversation_id,
@@ -250,21 +265,97 @@ class RagRoutesMixin:
                 top_k=top_k,
                 enable_guardrails=enable_guardrails,
             ):
-                line = "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"
-                self.wfile.write(line.encode('utf-8'))
-                self.wfile.flush()
+                if client_gone:
+                    continue  # 쓰기 없이 생성 완주까지 진행(결과 저장 보장)
+                try:
+                    line = "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"
+                    self.wfile.write(line.encode('utf-8'))
+                    self.wfile.flush()
+                except (BrokenPipeError, ConnectionResetError, OSError) as _we:
+                    # 끊김(BrokenPipe) 또는 지연으로 write 타임아웃(OSError) → 드레인 전환
+                    client_gone = True
+                    self._add_log(
+                        f"[RAG-CHAT] 전송 중단(끊김/지연: {type(_we).__name__}) — 생성은 끝까지 진행, 결과 저장→폴링 복구"
+                    )
+            if client_gone:
+                self._add_log("[RAG-CHAT] 생성 완주 — 결과 rag_queries 저장됨(폴링 복구 가능)")
 
-        except (BrokenPipeError, ConnectionResetError) as e:
-            self._add_log(f"[RAG-CHAT] 클라이언트 연결 끊김: {e}")
+        except (BrokenPipeError, ConnectionResetError, OSError) as e:
+            self._add_log(f"[RAG-CHAT] 연결 오류(생성은 진행 후 종료): {e}")
         except Exception as e:
             self._add_log(f"[RAG-CHAT] 스트리밍 오류: {e}")
-            error_event = {"type": "ERROR", "message": str(e)}
+
+    def _rag_get_result(self, parsed):
+        """GET /api/rag/result?conversation_id=X&query=...&since_sec=N
+
+        SSE truncation 복구용 엔드포인트. 클라이언트 연결이 중간에 끊겨도
+        서버는 generate_response를 끝까지 소비해 rag_queries에 결과를 저장하므로,
+        프론트는 이 엔드포인트를 폴링해 답변·인용(source_url 포함)·가드레일을 복구한다.
+
+        해당 conversation의 '최근 since_sec초 내' + (query 일치 시) 최신 1건을 반환.
+          - status=ready : 결과 있음
+          - status=pending : 아직 생성 중(또는 없음) → 프론트가 재폴링
+        """
+        if not RAG_ENABLED:
+            return self._send_json(503, {"error": "RAG 비활성", "code": "RAG_DISABLED"})
+        if not self._require_auth():
+            return
+        if not db._use_postgres:
+            return self._send_json(503, {
+                "error": "RAG requires PostgreSQL", "code": "RAG_REQUIRES_POSTGRES",
+            })
+        try:
+            from urllib.parse import parse_qs
+            qs = parse_qs(parsed.query or "")
+            conversation_id = (qs.get('conversation_id', [''])[0] or '').strip()
+            if not conversation_id:
+                return self._send_json(400, {"error": "conversation_id is required"})
+            query_text = (qs.get('query', [''])[0] or '').strip()
             try:
-                line = "data: " + json.dumps(error_event, ensure_ascii=False) + "\n\n"
-                self.wfile.write(line.encode('utf-8'))
-                self.wfile.flush()
+                since_sec = int(qs.get('since_sec', ['300'])[0])
             except Exception:
-                pass  # 클라이언트 연결 이미 끊김
+                since_sec = 300
+            since_sec = max(10, min(since_sec, 1800))
+
+            from datetime import datetime, timezone, timedelta
+            floor_iso = (datetime.now(timezone.utc) - timedelta(seconds=since_sec)).isoformat()
+
+            sql = (
+                f"SELECT id, response_text, citations_json, guardrail_action, "
+                f"evidence_quality, created_at FROM rag_queries "
+                f"WHERE conversation_id = {db._p()} AND created_at >= {db._p()} "
+            )
+            params = [conversation_id, floor_iso]
+            if query_text:
+                sql += f"AND query_text = {db._p()} "
+                params.append(query_text)
+            sql += "ORDER BY created_at DESC LIMIT 1"
+
+            with db.get_conn() as (conn, cur):
+                cur.execute(sql, tuple(params))
+                row = cur.fetchone()
+
+            if not row:
+                return self._send_json(200, {"status": "pending"})
+            rd = dict(row)
+            citations = []
+            try:
+                _c = rd.get('citations_json')
+                citations = json.loads(_c) if isinstance(_c, str) else (_c or [])
+            except Exception:
+                citations = []
+            return self._send_json(200, {
+                "status": "ready",
+                "rag_query_id": rd.get('id'),
+                "answer": rd.get('response_text') or '',
+                "citations": citations,
+                "guardrail_action": rd.get('guardrail_action') or 'pass',
+                "evidence_quality": rd.get('evidence_quality'),
+                "created_at": str(rd.get('created_at')),
+            })
+        except Exception as e:
+            self._add_log(f"[RAG-RESULT] 조회 오류: {e}")
+            return self._send_json(500, {"error": str(e)})
 
     # ────────────────────────────────────────────────────────────
     # RAG KB 관리 API

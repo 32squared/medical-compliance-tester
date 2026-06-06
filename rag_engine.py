@@ -1264,7 +1264,9 @@ def generate_response(
     system_prompt = _build_rag_system_prompt(query, chunks, gate_result=gate_result)
     user_prompt = _build_rag_user_prompt(query, chunks)
 
-    # ── 4. LLM 스트리밍 ──────────────────────────────────────
+    # ── 4. LLM 스트리밍 (단일 스레드 — diag로 0.7~0.9초 정상 확인됨) ──
+    # 리즈닝 침묵 동안 SSE가 끊겨도(truncation) 서버는 끝까지 생성·저장하고
+    # 프론트가 /api/rag/result 로 폴링 복구하므로 별도 스레드 keep-alive 불필요.
     llm_start = time.time()
     provider = get_llm_provider(provider_id)
     full_text = ""
@@ -1275,7 +1277,6 @@ def generate_response(
         if chunk_event["type"] == "GENERATION":
             full_text += chunk_event["text"]
             yield chunk_event
-            # LLM 청크 사이 30초 이상 침묵 시 KEEP_ALIVE 전송 (Cloud Run 연결 유지)
             now = time.time()
             if now - _last_keepalive >= 20:
                 yield {"type": "KEEP_ALIVE"}
@@ -1288,6 +1289,8 @@ def generate_response(
             return
 
     llm_ms = int((time.time() - llm_start) * 1000)
+    # 진단: 1차 LLM 스트리밍이 완료됐는지(여기 도달하면 스트리밍 OK, 행은 이후 단계)
+    logger.info("[RAGEngine] LLM1 스트리밍 완료 llm_ms=%d len=%d", llm_ms, len(full_text))
 
     # ── 5. 가드레일 후처리 ────────────────────────────────────
     guardrail_result = {"action": "pass", "violations": []}
@@ -1298,14 +1301,24 @@ def generate_response(
             analyzer = ComplianceAnalyzer()
             analysis = analyzer.analyze(full_text, user_input=query)
             violations = analysis.violations if hasattr(analysis, "violations") else []
-            # AnalysisResult 객체 → dict 리스트로 변환
+            # AnalysisResult 객체 → dict 리스트로 변환 (context 포함 — FP 필터용)
             violations_dicts = []
             for v in violations:
                 violations_dicts.append({
                     "rule_id": v.rule_id,
                     "severity": v.severity,
                     "matched_text": v.matched_text,
+                    "context": getattr(v, "context", "") or "",
                 })
+
+            # RAG 전용 오탐 필터 — 교육적/면책/부정 문맥 위반 제거 (재생성·오차단 감소)
+            # 공용 analyzer 무변경. 실제 지시/용량/단정진단은 보존.
+            violations_dicts, _fp_dropped = _filter_guardrail_false_positives(violations_dicts)
+            if _fp_dropped:
+                logger.info(
+                    "[RAGEngine] 가드레일 오탐 필터 제거=%s (재생성/차단 방지)",
+                    [(d.get("severity"), d.get("rule_id")) for d in _fp_dropped],
+                )
 
             # CRITICAL 차단
             critical = [v for v in violations_dicts if v.get("severity") == "CRITICAL"]
@@ -1326,16 +1339,18 @@ def generate_response(
             # HIGH 재생성 1회
             elif any(v.get("severity") == "HIGH" for v in violations_dicts):
                 high_violations = [v for v in violations_dicts if v.get("severity") == "HIGH"]
+                _regen_start = time.time()
                 full_text = _regenerate_with_warning(
                     provider, system_prompt, user_prompt, violations_dicts
                 )
+                _regen_ms = int((time.time() - _regen_start) * 1000)
                 guardrail_result = {
                     "action": "regenerated",
                     "violations": [v["rule_id"] for v in high_violations],
                 }
                 logger.info(
-                    "[RAGEngine] 가드레일 HIGH 재생성 violations=%s",
-                    guardrail_result["violations"],
+                    "[RAGEngine] 가드레일 HIGH 재생성 violations=%s 재생성=%dms (gen=%dms, 총지연 2배 영향)",
+                    guardrail_result["violations"], _regen_ms, llm_ms,
                 )
 
             # 인용 검증
@@ -1453,12 +1468,18 @@ def generate_response(
         logger.debug("[RAGEngine] 감사/검수 스킵: %s", _e)
 
     # ── 8. STOP 이벤트 ────────────────────────────────────────
+    _total_ms = int((time.time() - start_ts) * 1000)
+    # 지연/가드레일 측정용 요약 로그 (재생성 빈도·비용 추적)
+    logger.info(
+        "[RAGEngine] 응답완료 총=%dms gen=%dms 가드레일=%s 인용=%d",
+        _total_ms, llm_ms, guardrail_result["action"], len(citations),
+    )
     yield {
         "type": "STOP",
         "text": full_text,
         "rag_query_id": rag_query_id,
         "citations": citations,
-        "latency_ms": int((time.time() - start_ts) * 1000),
+        "latency_ms": _total_ms,
         "tokens": tokens,
         "guardrail_action": guardrail_result["action"],
         "evidence_quality": gate_result["evidence_quality"],
@@ -1667,6 +1688,91 @@ def _build_rag_user_prompt(query: str, chunks: List[dict]) -> str:
 # ════════════════════════════════════════════════════════════
 #  가드레일 헬퍼
 # ════════════════════════════════════════════════════════════
+
+# ── RAG 전용 가드레일 오탐(FP) 필터 ────────────────────────────
+# 목적: RAG '자기-생성' 답변에서 '명백히 지시(directive)가 아닌' 위반만 제거해
+#       불필요한 HIGH 재생성(2차 LLM 호출=지연 2배)과 CRITICAL 오차단을 줄인다.
+# 원칙: 공용 analyzer.py / violation_rules.json(기존 평가시스템)은 절대 변경하지 않고,
+#       RAG 응답 후처리 단계에서만 동작한다(평가/배치/SKIX 무영향).
+# 안전: 실제 지시('복용하세요','수술을 받으세요'), 구체적 용량(mg/정/회), 단정 진단
+#       ('~입니다')은 보존(KEEP)한다. 부정/면책/교육적 표현만 오탐으로 제거(DROP).
+# 토글: 환경변수 RAG_GUARDRAIL_FP_FILTER=false 로 비활성화 가능(기본 활성).
+
+# 지시형(directive) 규칙만 소프트-프레이밍 필터 대상으로 삼는다.
+_FP_DIRECTIVE_RULES = ("prescription", "diagnosis", "treatment", "medical_directive")
+
+# (a) 서비스 고정 면책/고지 문장 시그니처 — 이 안의 매칭은 '하지 않는다'는 설명
+_FP_DISCLAIMER_SIG = (
+    "의료행위를 하지 않", "진단·처방·치료", "진단ㆍ처방ㆍ치료",
+    "진단·치료는 의료진", "진단ㆍ치료는 의료진", "건강정보·교육 목적",
+    "건강정보ㆍ교육 목적", "참고용으로 제공", "의료인에 의해", "의학적 판단과 치료는",
+)
+# (b) 매칭된 행위가 '직접 부정'됨 (매칭 직후)
+_FP_DIRECT_NEG = (
+    "하지 않", "하지않", "하지 마", "하지는 않", "하지 못",
+    "권하지 않", "권장하지 않", "권유하지 않", "삼가", "않습니다", "않으며",
+)
+# (c) 소프트/교육적 프레이밍 — 가능성·일반정보(지시 아님)
+_FP_SOFT_EDU = (
+    "수 있습니다", "수 있어요", "도움이 될", "도움이 됩니다", "고려",
+    "일반적으로", "흔히", "보통", "대개", "알려져", "권장되기도",
+    "사용되기도", "쓰이기도", "경우가 많", "할 수도",
+)
+# 하드 명령형 — 하나라도 있으면 실제 지시로 보고 보존(KEEP)
+_FP_HARD_IMPERATIVE = (
+    "하세요", "하십시오", "하셔야", "받으세요", "받으셔야", "받아야",
+    "드세요", "드십시오", "드셔야", "맞으세요", "찍으세요", "바랍니다",
+    "해야 합니다", "복용하세요", "투여하세요", "중단하세요", "시작하세요",
+)
+import re as _re_fp
+# 구체적 용량/용법 — 있으면 실제 처방으로 보고 보존(KEEP)
+_FP_DOSAGE_RE = _re_fp.compile(
+    r"(?:\d+\s*(?:mg|밀리그램|마이크로그램|IU|cc|㏄|ml|㎖|정|알|캡슐|포)|"
+    r"하루\s*\d+\s*(?:번|회)|\d+\s*시간마다)"
+)
+
+
+def _filter_guardrail_false_positives(violations_dicts):
+    """RAG 답변 가드레일 오탐 필터. (kept, dropped) 반환.
+
+    analyzer/violation_rules 미변경 — RAG 후처리에서만 동작.
+    각 위반의 context(±30자)를 보고 아래 중 하나면 오탐으로 제거:
+      (a) 서비스 고정 면책/고지 문장 내부
+      (b) 매칭 행위가 직접 부정됨('~하지 않' 등)
+      (c) 지시형 규칙인데 소프트/교육 프레이밍이고 하드 명령형이 없음
+    단, 구체적 용량(mg/정/회)이 있으면 (실제 처방) 무조건 보존.
+    """
+    if not violations_dicts:
+        return violations_dicts, []
+    if os.environ.get("RAG_GUARDRAIL_FP_FILTER", "true").lower() in ("false", "0", "no", "off"):
+        return violations_dicts, []
+    kept, dropped = [], []
+    for v in violations_dicts:
+        ctx = v.get("context") or ""
+        mt = v.get("matched_text") or ""
+        rid = v.get("rule_id") or ""
+        # 구체적 용량/용법 → 실제 처방 가능성 높음 → 보존
+        if _FP_DOSAGE_RE.search(ctx):
+            kept.append(v)
+            continue
+        is_fp = False
+        # (a) 면책/고지 시그니처
+        if any(sig in ctx for sig in _FP_DISCLAIMER_SIG):
+            is_fp = True
+        # (b) 직접 부정 (매칭 직후 8자 내)
+        if not is_fp and mt and mt in ctx:
+            after = ctx.split(mt, 1)[1][:8]
+            if any(neg in after for neg in _FP_DIRECT_NEG):
+                is_fp = True
+        # (c) 지시형 규칙 + 소프트 프레이밍 + 하드 명령형 없음
+        if not is_fp and rid in _FP_DIRECTIVE_RULES:
+            has_soft = any(s in ctx for s in _FP_SOFT_EDU)
+            has_hard = any(h in ctx for h in _FP_HARD_IMPERATIVE)
+            if has_soft and not has_hard:
+                is_fp = True
+        (dropped if is_fp else kept).append(v)
+    return kept, dropped
+
 
 def _regenerate_with_warning(
     provider,

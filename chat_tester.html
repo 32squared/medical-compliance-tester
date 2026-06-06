@@ -2024,7 +2024,7 @@ function renderAssistantEvaluation(msgDiv, evalData) {
     });
 
     // Auto-eval (isLive only)
-    if (isLive && savedSettings.enableLlmEval !== false && savedSettings.openaiKey) {
+    if (isLive && savedSettings.enableLlmEval !== false && (savedSettings.openaiKey || savedSettings.hasServerOpenaiKey)) {
       var gptLlmEl = gptSection.querySelector('.llm-eval');
       if (gptLlmEl) gptLlmEl.style.display = 'block';
       gptBtn.style.display = 'none';
@@ -2122,7 +2122,7 @@ function renderAssistantEvaluation(msgDiv, evalData) {
     });
 
     // Auto-eval (isLive only)
-    if (isLive && savedSettings.enableLlmEval !== false && savedSettings.openaiKey) {
+    if (isLive && savedSettings.enableLlmEval !== false && (savedSettings.openaiKey || savedSettings.hasServerOpenaiKey)) {
       conBtn.style.display = 'none';
       var conEvalEl = consultSection.querySelector('[id^="consultation-eval-"]');
       if (conEvalEl) conEvalEl.style.display = 'block';
@@ -3128,12 +3128,48 @@ function renderEvidenceBadge(bubbleEl, quality, meta) {
   }
 }
 
+// SSE truncation 복구: 서버가 백그라운드로 끝까지 생성해 저장한 결과를 폴링한다.
+// (긴 RAG 응답을 네트워크가 못 버텨 STOP 전에 끊기는 환경 대응)
+async function pollRagResult(conversationId, query, sinceSec, onTick) {
+  var maxMs = 150000;     // 최대 2.5분 폴링
+  var intervalMs = 3000;  // 3초 간격
+  var start = Date.now();
+  while (Date.now() - start < maxMs) {
+    if (cancelRequested) return null;
+    await new Promise(function(r) { setTimeout(r, intervalMs); });
+    var elapsed = Math.round((Date.now() - start) / 1000);
+    if (typeof onTick === 'function') { try { onTick(elapsed); } catch(e) {} }
+    try {
+      var since = sinceSec + Math.ceil((Date.now() - start) / 1000);
+      var url = '/api/rag/result?conversation_id=' + encodeURIComponent(conversationId) +
+                '&query=' + encodeURIComponent(query) +
+                '&since_sec=' + encodeURIComponent(since);
+      var r = await fetch(url, { method: 'GET' });
+      if (!r.ok) continue;
+      var data = await r.json();
+      if (data && data.status === 'ready' &&
+          (data.answer || (data.citations && data.citations.length))) {
+        return data;
+      }
+    } catch (e) { /* 일시 오류 → 재시도 */ }
+  }
+  return null;
+}
+
 // /api/rag/chat SSE 호출
 async function callRag(query, { onGeneration, onInfo, onDone, onError, conversationId }) {
+  // conversation_id는 폴링 복구(/api/rag/result)의 키이므로 항상 확보한다
+  var convId = (conversationId || getCurrentConversationId() || '').trim();
+  if (!convId) {
+    convId = (window.crypto && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : ('rag-' + Date.now() + '-' + Math.random().toString(16).slice(2));
+  }
   var body = {
     query: query,
-    conversation_id: conversationId || getCurrentConversationId(),
+    conversation_id: convId,
   };
+  var reqStartMs = Date.now();
 
   var resp;
   try {
@@ -3177,6 +3213,7 @@ async function callRag(query, { onGeneration, onInfo, onDone, onError, conversat
   var searchResults = [];
   var guardrailAction = 'pass';
   var lastEvidenceCheck = null;  // EVIDENCE_CHECK 이벤트 저장
+  var gotStop = false;           // STOP 수신 여부 (미수신=truncation → 폴링 복구)
 
   while (true) {
     if (cancelRequested) { reader.cancel(); break; }
@@ -3224,6 +3261,7 @@ async function callRag(query, { onGeneration, onInfo, onDone, onError, conversat
         onInfo({ data: data, searchResults: searchResults, followUps: [] });
 
       } else if (type === 'STOP') {
+        gotStop = true;
         if (event.citations) ragCitations = event.citations;
         if (event.rag_query_id) ragQueryId = event.rag_query_id;
         if (event.guardrail_action) guardrailAction = event.guardrail_action;
@@ -3236,6 +3274,34 @@ async function callRag(query, { onGeneration, onInfo, onDone, onError, conversat
       } else if (type === 'KEEP_ALIVE') {
         continue;
       }
+    }
+  }
+
+  // STOP 미수신(스트림 truncation) → 서버는 백그라운드로 끝까지 생성해 결과를
+  // rag_queries에 저장한다. /api/rag/result 를 폴링해 답변·인용(source_url 포함)을 복구.
+  if (!gotStop && !cancelRequested) {
+    var baseSince = Math.ceil((Date.now() - reqStartMs) / 1000) + 30;
+    var recovered = await pollRagResult(convId, query, baseSince, function(elapsed) {
+      var b = document.getElementById('streamBubble');
+      if (b) {
+        var partialHtml = fullText ? marked.parse(fullText) : '';
+        b.innerHTML = partialHtml +
+          '<div style="color:var(--text-dim);font-size:12px;margin-top:8px">' +
+          '&#9203; 응답 생성 마무리 중… 서버에서 결과를 가져오는 중 (' + elapsed + '초)</div>';
+      }
+    });
+    if (recovered) {
+      fullText = recovered.answer || fullText;
+      onGeneration(fullText, '');  // 버블·finalText에 실제 답변 반영
+      if (recovered.citations && recovered.citations.length) ragCitations = recovered.citations;
+      if (recovered.rag_query_id) ragQueryId = recovered.rag_query_id;
+      if (recovered.guardrail_action) guardrailAction = recovered.guardrail_action;
+      if (recovered.evidence_quality && !lastEvidenceCheck) {
+        lastEvidenceCheck = { quality: recovered.evidence_quality };
+      }
+    } else if (!fullText) {
+      onError('응답을 받아오지 못했습니다 (시간 초과). 잠시 후 다시 시도해 주세요.');
+      return null;
     }
   }
 
