@@ -17,15 +17,24 @@
 | **2-A** | 연결 레이어 `dbcommon` 추출 (facade 재export) | ✅ 완료 (PG 실증 대기) |
 | **2-B** | consultation_checklists.json 단일 로더 | ✅ 완료 |
 | **2-C** | compliance-rules 경계 문서화 | ✅ 본 문서 |
-| **3** | RAG 독립 HTTP 서비스 + 호스트 리버스 프록시 (additive, 플래그) | ✅ 완료 + **dev PG 실증** |
+| **3** | RAG 독립 HTTP 서비스 + 호스트 리버스 프록시 (additive, 플래그) | ✅ 완료 + **dev PG 실증 + 브라우저 e2e 확인** |
 
 > **dev 실증 완료(2026-06-06):** 독립 RAG 서비스(medical-rag-dev) 배포 →
 > verify_rag_separation 하니스 **ALL PASS**(health/인증/chat SSE STOP+citations, 한글이름 포함).
 > 즉 Phase 1(rag_conversation_state)·Phase 2-A(dbcommon 풀)이 **실제 Postgres 에서 동작**.
 > 호스트(medical-compliance-tester-dev)는 RAG_SERVICE_URL 주입돼 **분리 모드 활성**.
-> 리버스 프록시 forwarding 확인(RAG 응답 relay). 인증된 SSE chat through 프록시는
-> 로그인 쿠키 필요 → 브라우저(로그인 상태)에서 최종 확인.
+> **브라우저 인증 경로 최종 확인(2026-06-06, rev 00098):** 로그인 상태에서 RAG 채팅 1회 →
+> 답변 본문 + 인용 + 평가(컴플라이언스/문진) 전부 정상 표시. 초기 "답변 안 달림"은
+> 호스트→브라우저 SSE relay 가 `resp.read(1024)`(버퍼 채워질 때까지 블록)였던 것이 원인 →
+> `resp.read1(65536)` 로 수정해 즉시 패스스루(commit 3995ea3)되며 해소.
 > 롤백: `.\deploy-dev.ps1`(RagServiceUrl 없이) → in-process 복귀.
+>
+> **지연 관찰(보류 — 지금 고치지 않음):** 동일 테스트 타이밍 분해 →
+> RAG 총 39.9s 중 **LLM 생성 33.25s**(1785자 스트리밍)가 지배적 + RAG 서비스 **콜드 스타트**
+> (min-instances=0). 그 위에 호스트 프록시 relay + GPT 컴플라이언스/문진 평가가 직렬 누적.
+> 향후 개선 후보(미착수): ① RAG `min-instances=1` 로 콜드스타트 제거,
+> ② `[RAG-PROXY]` 진단 print 에 `flush=True`(현재 stdout 버퍼링으로 로그 누락),
+> ③ 평가(컴플라이언스/문진)를 답변 스트리밍과 병렬화. **사용자 지시로 지연 수정은 보류.**
 | **4** | 저장소 분리 + 독립 배포 (dbcommon/compliance-rules 공유 패키지화) | ⬜ (GitHub/인프라 결정 필요) |
 
 ### Phase 3 구성 (additive — RAG_SERVICE_URL 미설정 시 현재 동작 불변)
