@@ -21,6 +21,12 @@ import db as _db_module
 _TEST_DB = tempfile.mktemp(suffix='_test_rlhf.db')
 atexit.register(lambda: os.unlink(_TEST_DB) if os.path.exists(_TEST_DB) else None)
 
+# 연결 레이어(dbcommon)에 테스트 DB 주입 — get_conn 은 dbcommon 의 DB_PATH/_use_postgres 를 읽는다
+# (Phase 2: 연결 원시함수가 db.py → dbcommon 으로 이동. 런타임 재설정 대상은 dbcommon).
+import dbcommon as _dbcommon
+_dbcommon._use_postgres = False
+_dbcommon._pg_pool = None
+_dbcommon.DB_PATH = _TEST_DB
 _db_module._use_postgres = False
 _db_module.DB_PATH = _TEST_DB
 _db_module.init_db(_TEST_DB)
