@@ -17,8 +17,24 @@
 | **2-A** | 연결 레이어 `dbcommon` 추출 (facade 재export) | ✅ 완료 (PG 실증 대기) |
 | **2-B** | consultation_checklists.json 단일 로더 | ⏸ 보류 (아래 사유) |
 | **2-C** | compliance-rules 경계 문서화 | ✅ 본 문서 |
-| **3** | RAG 를 독립 HTTP 서비스로 승격 (RagRoutesMixin 제거, 호스트 리버스 프록시) | ⬜ |
-| **4** | 저장소 분리 + 독립 배포 (dbcommon/compliance-rules 공유 패키지화) | ⬜ |
+| **3** | RAG 독립 HTTP 서비스 + 호스트 리버스 프록시 (additive, 플래그) | ✅ 완료 (분리모드 검증 대기) |
+| **4** | 저장소 분리 + 독립 배포 (dbcommon/compliance-rules 공유 패키지화) | ⬜ (GitHub/인프라 결정 필요) |
+
+### Phase 3 구성 (additive — RAG_SERVICE_URL 미설정 시 현재 동작 불변)
+- `rag_server.py`: RagRoutesMixin 재사용 독립 BaseHTTPServer. 8개 헬퍼 자체 구현,
+  인증은 신뢰헤더(X-User-*) + 선택 RAG_TRUST_SECRET. 믹스인 무변경.
+- `proxy_server.py`: RAG_SERVICE_URL 설정 시 /api/rag/* 4개 디스패치를 `_proxy_to_rag`
+  로 리버스 프록시(SSE 스트리밍 패스스루, 쿠키→신뢰헤더 변환 = same-origin 유지).
+- `entrypoint.sh`: RUN_MODE=rag → rag_server.py.
+- `deploy-rag.ps1`: 독립 RAG Cloud Run 서비스 배포.
+- 프론트(chat_tester.html): **변경 불필요** — 리버스 프록시라 same-origin 유지.
+
+### 분리 모드 활성화 (검증은 나중에)
+1. `$env:DB_PASSWORD='...'; .\deploy-rag.ps1`  → 독립 RAG 서비스 배포(URL 획득).
+2. `.\deploy-dev.ps1 -RagServiceUrl <rag-url> [-RagTrustSecret <secret>]`
+   → 호스트가 /api/rag/* 를 그 서비스로 프록시(분리 모드).
+3. `python tests/verify_rag_separation.py --rag-url <url> ...` → 분리 경로 스모크 검증.
+4. 롤백: deploy-dev.ps1 을 -RagServiceUrl 없이 재배포 → in-process 복귀.
 
 ---
 
@@ -69,8 +85,12 @@ violation_rules.json + consultation_checklists.json`.
 3. **Phase 2-B 보류 사유** — consultation_checklists.json 의 4개 로더가 반환 형태가
    상이(raw list vs `{"symptoms":{...}}` vs db 시드용). 단일 로더화는 호출처별 어댑터가
    필요해 in-repo 가치 대비 위험이 있어, **Phase 4 패키징과 함께** 처리 권장.
-4. **Phase 3 하드블로커** — 인증(동일-origin 쿠키 → 리버스 프록시 + 신뢰헤더 변환),
-   RagRoutesMixin 의 ProxyHandler 8개 메서드 + SSE 소켓 이식, CORS.
+4. **Phase 3 하드블로커 — 해소됨** — 리버스 프록시 채택으로 same-origin 유지(쿠키/CORS
+   블로커 회피), 8개 메서드는 rag_server 에서 자체 구현, SSE 는 프록시 스트리밍 패스스루.
+   남은 건 분리 모드 end-to-end 라이브 검증(deploy-rag + RAG_SERVICE_URL 후).
+5. **Phase 4 (저장소 분리)** — git filter-repo 로 RAG 모듈군 + 마이그레이션 + Dockerfile 을
+   새 repo 로 이동, dbcommon/compliance-rules 공유 패키지화, 서비스 간 IAM 인증.
+   GitHub 저장소 생성·CI/CD 등 인프라 결정이 필요해 자동 수행하지 않음.
 
 ---
 
@@ -81,3 +101,5 @@ violation_rules.json + consultation_checklists.json`.
 - `feat(deploy)` 러너 배포 연결 (Phase 0)
 - `feat(rag)` emergency 상태머신 RAG 이관 (Phase 1)
 - `refactor(db)` 연결 레이어 dbcommon 추출 (Phase 2-A)
+- `docs(rag)` 분리 로드맵 문서 (Phase 2-C)
+- `feat(rag)` RAG 독립 서비스 + 리버스 프록시 (Phase 3, additive)

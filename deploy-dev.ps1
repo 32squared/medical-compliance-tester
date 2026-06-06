@@ -5,7 +5,9 @@ param(
     [string]$SqlInstance = "medical-db",
     [string]$DbName = "medical_app_dev",
     [string]$DbPassword = "",
-    [switch]$SkipMigrate
+    [switch]$SkipMigrate,
+    [string]$RagServiceUrl = "",
+    [string]$RagTrustSecret = ""
 )
 
 Write-Host "=== Medical Compliance Tester - DEV Cloud Run Deploy ===" -ForegroundColor Cyan
@@ -86,6 +88,15 @@ if (-not $SkipMigrate) {
 # [2/3] Cloud Run DEV 배포
 Write-Host ""
 Write-Host "[2/3] Deploying DEV service to Cloud Run..." -ForegroundColor Yellow
+
+# Build env vars. If RagServiceUrl is set, reverse-proxy /api/rag/* to the standalone RAG service.
+$DevEnvVars = "DATABASE_URL=$DatabaseUrl,APP_ENV=development,RAG_ENABLED=true,RAG_LLM_MODEL=gpt-5.4-mini,RAG_LLM_FALLBACK_MODEL=gpt-5.4-mini,RAG_GUARDRAIL_FP_FILTER=true,LLM_REASONING_EFFORT=low"
+if ($RagServiceUrl) {
+    $DevEnvVars = "$DevEnvVars,RAG_SERVICE_URL=$RagServiceUrl"
+    Write-Host "  [split mode] reverse-proxy /api/rag/* -> $RagServiceUrl" -ForegroundColor Cyan
+}
+if ($RagTrustSecret) { $DevEnvVars = "$DevEnvVars,RAG_TRUST_SECRET=$RagTrustSecret" }
+
 gcloud run deploy $ServiceName `
     --image "gcr.io/$ProjectId/$ServiceName" `
     --region $Region `
@@ -96,7 +107,7 @@ gcloud run deploy $ServiceName `
     --min-instances 0 --max-instances 3 `
     --concurrency 5 `
     --execution-environment gen2 `
-    --set-env-vars "DATABASE_URL=$DatabaseUrl,APP_ENV=development,RAG_ENABLED=true,RAG_LLM_MODEL=gpt-5.4-mini,RAG_LLM_FALLBACK_MODEL=gpt-5.4-mini,RAG_GUARDRAIL_FP_FILTER=true,LLM_REASONING_EFFORT=low" `
+    --set-env-vars $DevEnvVars `
     --set-secrets "OPENAI_API_KEY=openai-api-key:latest,DB_PASSWORD=db-password:latest" `
     --add-cloudsql-instances $SqlConnection `
     --vpc-connector=medical-connector `
