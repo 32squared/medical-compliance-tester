@@ -145,6 +145,36 @@ def test_baseline_no_execution():
         cleanup()
 
 
+def test_sync_first_then_incremental():
+    """--sync: 최초엔 baseline(무실행 채택), 이후 새 마이그레이션만 apply."""
+    mig, db_path, cleanup = _tmp_env()
+    try:
+        # 최초 sync: schema_migrations 비어있음 → baseline 3 채택, apply 0
+        be = mr._SqliteBackend(db_path)
+        done = mr.cmd_sync(be, mig)
+        be.close()
+        assert done == [], done  # baseline 채택이라 실제 적용 0
+        # 무실행이므로 toy_a/toy_c 미생성
+        tabs = _tables(db_path)
+        assert "toy_a" not in tabs and "toy_c" not in tabs, tabs
+        c = sqlite3.connect(db_path)
+        n = c.execute("SELECT count(*) FROM schema_migrations").fetchone()[0]
+        c.close()
+        assert n == 3, n
+
+        # 새 마이그레이션 010 추가 후 sync → 010 만 실제 apply
+        (mig / "010_toy.sql").write_text("CREATE TABLE toy_d (id INTEGER);", encoding="utf-8")
+        (mig / "010_toy_sqlite.sql").write_text("CREATE TABLE toy_d (id INTEGER);", encoding="utf-8")
+        be2 = mr._SqliteBackend(db_path)
+        done2 = mr.cmd_sync(be2, mig)
+        be2.close()
+        assert done2 == ["010_toy"], done2
+        assert "toy_d" in _tables(db_path)
+        print("test_sync_first_then_incremental: OK")
+    finally:
+        cleanup()
+
+
 def test_apply_file_idempotent_existing():
     """이미 존재하는 객체를 만드는 statement 는 멱등 처리(예외 없이 통과)."""
     mig, db_path, cleanup = _tmp_env()

@@ -303,12 +303,32 @@ def cmd_apply(backend, migrations_dir: Path = MIGRATIONS_DIR, target: str = None
     return done
 
 
+def cmd_sync(backend, migrations_dir: Path = MIGRATIONS_DIR) -> list:
+    """배포 친화 명령: 최초 1회 baseline(현재 스키마를 HEAD 로 채택) 후 apply(대기분 실행).
+
+    schema_migrations 가 비어있으면 = 최초 실행 → 현재 존재하는 모든 마이그레이션을
+    무실행 baseline 채택(기존 DB 의 현재 스키마를 HEAD 로 인정). 이후 실행에선 apply 만 동작.
+
+    ※ 도입 시점 주의: 새 마이그레이션(010+)을 추가하기 '전에' 최초 --sync 를 1회 돌려
+       현재 상태(009)를 baseline 으로 고정해야 한다. 그 뒤 추가되는 010+ 만 apply 된다.
+    """
+    backend.ensure_tracking()
+    applied = backend.applied_versions()
+    if not applied:
+        print("[sync] schema_migrations 비어있음 → 최초 실행: 현재 스키마를 baseline 채택")
+        cmd_baseline(backend, migrations_dir)
+    else:
+        print(f"[sync] 기존 적용 {len(applied)}개 - 대기분만 apply")
+    return cmd_apply(backend, migrations_dir)
+
+
 def main():
     parser = argparse.ArgumentParser(description="통합 스키마 마이그레이션 러너")
     g = parser.add_mutually_exclusive_group(required=True)
     g.add_argument("--status", action="store_true", help="적용/대기 목록 출력")
     g.add_argument("--baseline", action="store_true", help="현재 마이그레이션을 무실행 채택")
     g.add_argument("--apply", action="store_true", help="대기 마이그레이션 실행·기록")
+    g.add_argument("--sync", action="store_true", help="배포용: 최초 baseline 후 apply (멱등)")
     parser.add_argument("--baseline-through", default=None, help="이 version 까지만 baseline")
     parser.add_argument("--target", default=None, help="이 version 까지만 apply")
     parser.add_argument("--db-path", default=str(REPO_ROOT / "app.db"), help="SQLite 경로")
@@ -327,6 +347,8 @@ def main():
             cmd_baseline(backend, through=args.baseline_through)
         elif args.apply:
             cmd_apply(backend, target=args.target)
+        elif args.sync:
+            cmd_sync(backend)
     finally:
         backend.close()
     print("=" * 60)

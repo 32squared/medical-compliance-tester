@@ -4,7 +4,8 @@ param(
     [string]$ServiceName = "medical-compliance-tester-dev",
     [string]$SqlInstance = "medical-db",
     [string]$DbName = "medical_app_dev",
-    [string]$DbPassword = ""
+    [string]$DbPassword = "",
+    [switch]$SkipMigrate
 )
 
 Write-Host "=== Medical Compliance Tester - DEV Cloud Run Deploy ===" -ForegroundColor Cyan
@@ -64,6 +65,23 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 Write-Host "Build done!" -ForegroundColor Green
+
+# [1.5/3] DB 스키마 마이그레이션 (migrate_runner.py --sync, Cloud Run Job)
+#   방금 빌드한 DEV 이미지로 db-migrate-dev Job 을 만들고 실행한다.
+#   현재는 db.py init_db() 가 여전히 스키마 소스라, 마이그레이션 실패해도 비차단(경고)으로 둔다.
+#   향후 RAG DDL 을 db.py 에서 떼어내면 이 단계를 fatal(실패 시 배포 중단)로 승격할 것.
+if (-not $SkipMigrate) {
+    Write-Host ""
+    Write-Host "[1.5/3] DB 마이그레이션 (db-migrate-dev Job, --sync)..." -ForegroundColor Yellow
+    & "$PSScriptRoot\deploy-migrate.ps1" -ServiceName $ServiceName -DbName $DbName -DbPassword $DbPassword -Execute -Wait
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "[WARN] 마이그레이션 Job 실패 - init_db 가 스키마를 보장하므로 배포는 계속합니다." -ForegroundColor Yellow
+    } else {
+        Write-Host "마이그레이션 완료." -ForegroundColor Green
+    }
+} else {
+    Write-Host "[1.5/3] 마이그레이션 생략 (-SkipMigrate)." -ForegroundColor DarkGray
+}
 
 # [2/3] Cloud Run DEV 배포
 Write-Host ""
