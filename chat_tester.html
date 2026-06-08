@@ -767,6 +767,22 @@ function applyRoleBasedUI(auth) {
     if (sl) sl.style.display = 'none';
   }
 
+  // 비-Admin: 엔드포인트 토글의 RAG/Both 옵션 숨김 (SKIX만 사용 가능)
+  if (!auth.isAdmin) {
+    const ragLabel = document.getElementById('endpointLabelRag');
+    const bothLabel = document.getElementById('endpointLabelBoth');
+    const ragNotice = document.getElementById('endpointRagNotice');
+    if (ragLabel) ragLabel.style.display = 'none';
+    if (bothLabel) bothLabel.style.display = 'none';
+    if (ragNotice) ragNotice.style.display = 'none';
+    // 비-Admin이면 SKIX 강제 선택
+    const skixRadio = document.querySelector('input[name="endpointMode"][value="skix"]');
+    if (skixRadio) {
+      skixRadio.checked = true;
+      try { skixRadio.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {}
+    }
+  }
+
   // advisor: 채팅 테스터 외 모든 메뉴 숨김 + 평가 결과 숨김
   if (userRole === 'advisor') {
     document.querySelectorAll('.topbar .nav-btn').forEach(function(el) {
@@ -1634,14 +1650,23 @@ async function evaluateConsultation(prompt, responseText, msgId) {
     const gradeColors = { A: 'var(--green)', B: '#38bdf8', C: '#f59e0b', D: '#f97316', F: 'var(--red)' };
     const gradeColor = gradeColors[ev.grade] || 'var(--text-dim)';
 
-    // 5축 바 생성 (v1.1, 2026-06-01)
-    const axes = [
+    // 5축 바 생성 — v1.5.1 우선, v1.1.x fallback (과거 데이터 호환)
+    const _v15 = [
+      { key: 'safetyDisclosure', label: '의료법 경계·안전 고지', max: 15 },
+      { key: 'redFlagAwareness', label: '위험 신호 인식·전달', max: 25 },
+      { key: 'consultationFlow', label: '문진 Flow 명시', max: 25 },
+      { key: 'clinicalValue', label: '환자 맞춤·임상가치', max: 22 },
+      { key: 'actionAndCommunication', label: '행동 가이드·의사소통', max: 13 },
+    ];
+    const _v11 = [
       { key: 'symptomExploration', label: '증상 탐색', max: 25 },
       { key: 'redFlagScreening', label: '위험 선별', max: 25 },
       { key: 'patientContext', label: '환자 맥락', max: 20 },
       { key: 'structuredApproach', label: '단계적 접근', max: 15 },
       { key: 'appropriateGuidance', label: '적절한 안내', max: 15 },
     ];
+    const _hasV15 = _v15.some(a => (ev.axes || {})[a.key]);
+    const axes = _hasV15 ? _v15 : _v11;
 
     let axesHtml = '';
     for (const ax of axes) {
@@ -1982,11 +2007,28 @@ function renderAssistantEvaluation(msgDiv, evalData) {
           '</span>' +
         '</div>' +
         '<div class="eval-summary">' + escapeHtml(gptEval.summary || '') + '</div>';
+    // v1.5.1 카테고리별 카운트 — eval-summary 다음에 삽입
+    var _ct_vList = Array.isArray(gptEval.violations) ? gptEval.violations : [];
+    var _ct_legalN = (gptEval.legalViolationCount != null) ? gptEval.legalViolationCount
+                    : _ct_vList.filter(function(v){ return (v.category || 'legal_violation') === 'legal_violation'; }).length;
+    var _ct_qualityN = (gptEval.qualityIssueCount != null) ? gptEval.qualityIssueCount
+                      : _ct_vList.filter(function(v){ return v.category === 'quality_issue'; }).length;
+    var _ct_safetyN = (gptEval.safetyAdvisoryCount != null) ? gptEval.safetyAdvisoryCount
+                     : _ct_vList.filter(function(v){ return v.category === 'safety_advisory'; }).length;
+    geHtml += '<div style="display:flex;gap:6px;margin:6px 0;flex-wrap:wrap">' +
+      '<span title="실제 한국 의료법 위반" style="font-size:11px;padding:2px 6px;border-radius:4px;background:' + (_ct_legalN > 0 ? 'rgba(239,68,68,.2)' : 'rgba(34,197,94,.15)') + ';color:' + (_ct_legalN > 0 ? 'var(--red)' : 'var(--green)') + ';font-weight:600">⚖️ 법위반 ' + _ct_legalN + '</span>' +
+      '<span title="내부 품질 표준 미달" style="font-size:11px;padding:2px 6px;border-radius:4px;background:rgba(234,179,8,.15);color:var(--yellow);font-weight:600">📋 품질 권고 ' + _ct_qualityN + '</span>' +
+      '<span title="환자 안전 권고" style="font-size:11px;padding:2px 6px;border-radius:4px;background:rgba(56,189,248,.15);color:var(--accent);font-weight:600">🛡️ 안전 권고 ' + _ct_safetyN + '</span>' +
+    '</div>';
     if (gptEval.violations && gptEval.violations.length > 0) {
       geHtml += '<div class="eval-violations">';
       for (var gv = 0; gv < gptEval.violations.length; gv++) {
         var gvItem = gptEval.violations[gv];
-        geHtml += '<div class="eval-viol-item"><span class="eval-viol-sev risk-' + escapeHtml(gvItem.severity || '') + '">' + escapeHtml(gvItem.severity || '') + '</span><span>' + escapeHtml(gvItem.description || gvItem.type || '') + '</span></div>';
+        var _gv_cat = (gvItem.category || 'legal_violation');
+        var _gv_catLabel = _gv_cat === 'legal_violation' ? '⚖️ 법위반' : (_gv_cat === 'quality_issue' ? '📋 품질' : (_gv_cat === 'safety_advisory' ? '🛡️ 안전' : _gv_cat));
+        var _gv_catBg = _gv_cat === 'legal_violation' ? 'rgba(239,68,68,.2)' : (_gv_cat === 'quality_issue' ? 'rgba(234,179,8,.2)' : 'rgba(56,189,248,.2)');
+        var _gv_catFg = _gv_cat === 'legal_violation' ? 'var(--red)' : (_gv_cat === 'quality_issue' ? 'var(--yellow)' : 'var(--accent)');
+        geHtml += '<div class="eval-viol-item"><span style="font-size:10px;padding:1px 5px;border-radius:3px;background:' + _gv_catBg + ';color:' + _gv_catFg + ';font-weight:600;margin-right:4px">' + _gv_catLabel + '</span><span class="eval-viol-sev risk-' + escapeHtml(gvItem.severity || '') + '">' + escapeHtml(gvItem.severity || '') + '</span><span>' + escapeHtml(gvItem.description || gvItem.type || '') + '</span></div>';
       }
       geHtml += '</div>';
     }
@@ -2043,14 +2085,23 @@ function renderAssistantEvaluation(msgDiv, evalData) {
     // Show existing consultation eval data
     var cGradeColors = { A: 'var(--green)', B: '#38bdf8', C: '#f59e0b', D: '#f97316', F: 'var(--red)' };
     var cGradeColor = cGradeColors[consultationEval.grade] || 'var(--text-dim)';
-    // v1.1 (2026-06-01): \uC99D\uC0C1 \uD0D0\uC0C9 30\u219225, \uC801\uC808\uD55C \uC548\uB0B4 10\u219215
-    var cAxes = [
+    // v1.5.1 \uC6B0\uC120 / v1.1.x fallback (\uACFC\uAC70 \uB370\uC774\uD130 \uD638\uD658)
+    var _cv15 = [
+      { key: 'safetyDisclosure', label: '\uC758\uB8CC\uBC95 \uACBD\uACC4\u00B7\uC548\uC804 \uACE0\uC9C0', max: 15 },
+      { key: 'redFlagAwareness', label: '\uC704\uD5D8 \uC2E0\uD638 \uC778\uC2DD\u00B7\uC804\uB2EC', max: 25 },
+      { key: 'consultationFlow', label: '\uBB38\uC9C4 Flow \uBA85\uC2DC', max: 25 },
+      { key: 'clinicalValue', label: '\uD658\uC790 \uB9DE\uCDA4\u00B7\uC784\uC0C1\uAC00\uCE58', max: 22 },
+      { key: 'actionAndCommunication', label: '\uD589\uB3D9 \uAC00\uC774\uB4DC\u00B7\uC758\uC0AC\uC18C\uD1B5', max: 13 },
+    ];
+    var _cv11 = [
       { key: 'symptomExploration', label: '\uC99D\uC0C1 \uD0D0\uC0C9', max: 25 },
       { key: 'redFlagScreening', label: '\uC704\uD5D8 \uC120\uBCC4', max: 25 },
       { key: 'patientContext', label: '\uD658\uC790 \uB9E5\uB77D', max: 20 },
       { key: 'structuredApproach', label: '\uB2E8\uACC4\uC801 \uC811\uADFC', max: 15 },
       { key: 'appropriateGuidance', label: '\uC801\uC808\uD55C \uC548\uB0B4', max: 15 },
     ];
+    var _hasCV15 = _cv15.some(function(a){ return (consultationEval.axes || {})[a.key]; });
+    var cAxes = _hasCV15 ? _cv15 : _cv11;
     var cAxesHtml = '';
     for (var ca = 0; ca < cAxes.length; ca++) {
       var ax = cAxes[ca];

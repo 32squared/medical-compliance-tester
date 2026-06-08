@@ -274,15 +274,32 @@ function renderGptLegalCard(gptData) {
   const grade = e.grade || '?';
   const passed = !!e.passed;
   const violations = e.violations || [];
+  // v1.5.1 카테고리별 카운트
+  const _legalN = (e.legalViolationCount != null) ? e.legalViolationCount
+                 : violations.filter(v => (v.category || 'legal_violation') === 'legal_violation').length;
+  const _qualityN = (e.qualityIssueCount != null) ? e.qualityIssueCount
+                   : violations.filter(v => v.category === 'quality_issue').length;
+  const _safetyN = (e.safetyAdvisoryCount != null) ? e.safetyAdvisoryCount
+                  : violations.filter(v => v.category === 'safety_advisory').length;
+  const catBadges = `<div style="display:flex;gap:6px;margin:8px 0;flex-wrap:wrap">
+    <span title="실제 한국 의료법 위반 (확진/처방/치료지시/과대효능)" style="font-size:11px;padding:3px 8px;border-radius:4px;background:${_legalN > 0 ? '#ef444433' : '#22c55e22'};color:${_legalN > 0 ? '#ef4444' : '#22c55e'};font-weight:700">⚖️ 법위반 ${_legalN}</span>
+    <span title="내부 품질 표준 미달 (법위반 아님)" style="font-size:11px;padding:3px 8px;border-radius:4px;background:#eab30822;color:#a16207;font-weight:700">📋 품질 권고 ${_qualityN}</span>
+    <span title="환자 안전 권고 (법위반 아님)" style="font-size:11px;padding:3px 8px;border-radius:4px;background:#38bdf822;color:#0284c7;font-weight:700">🛡️ 안전 권고 ${_safetyN}</span>
+  </div>`;
   const violHtml = violations.length ? violations.map(v => {
     const sev = (v.severity || 'LOW').toUpperCase();
+    const cat = (v.category || 'legal_violation');
+    const catLabel = cat === 'legal_violation' ? '⚖️ 법위반' : (cat === 'quality_issue' ? '📋 품질' : (cat === 'safety_advisory' ? '🛡️ 안전' : cat));
+    const catColor = cat === 'legal_violation' ? '#ef4444' : (cat === 'quality_issue' ? '#a16207' : '#0284c7');
     const sevColor = {CRITICAL:'#ef4444',HIGH:'#f97316',MEDIUM:'#eab308',LOW:'#38bdf8'}[sev] || '#94a3b8';
-    return `<div class="vio"><span class="sev" style="background:${sevColor}22;color:${sevColor}">${sev}</span>
-      <b>${escapeHtml(v.name || v.type || '위반')}</b>${v.law ? ' · ' + escapeHtml(v.law) : ''}
+    return `<div class="vio">
+      <span class="sev" style="background:${catColor}22;color:${catColor};margin-right:4px">${catLabel}</span>
+      <span class="sev" style="background:${sevColor}22;color:${sevColor}">${sev}</span>
+      <b>${escapeHtml(v.name || v.type || '항목')}</b>${v.law ? ' · ' + escapeHtml(v.law) : ''}
       ${(v.matched || v.matched_text) ? `<div class="match">「${escapeHtml(v.matched || v.matched_text)}」</div>` : ''}
       ${v.description ? `<div class="desc">${escapeHtml(v.description)}</div>` : ''}
     </div>`;
-  }).join('') : '<div class="text-box good"><span class="lbl">결과</span>✓ 의료법 위반 없음</div>';
+  }).join('') : '<div class="text-box good"><span class="lbl">결과</span>✓ 법위반·품질·안전 권고 없음</div>';
   return `
     <div class="eval-card">
       <div class="ec-header">
@@ -290,6 +307,7 @@ function renderGptLegalCard(gptData) {
         <span class="ec-badge ${passed ? 'pass' : 'fail'}">${passed ? '✓ 통과' : '✗ 미달'} · 등급 ${grade}</span>
         <span class="ec-meta">점수 <b>${score}</b> / 100</span>
       </div>
+      ${catBadges}
       ${e.summary ? `<div class="text-box"><div class="lbl">평가 요약</div>${escapeHtml(e.summary)}</div>` : ''}
       ${violHtml}
       ${e.recommendation ? `<div class="text-box good"><div class="lbl">개선 권고</div>${escapeHtml(e.recommendation)}</div>` : ''}

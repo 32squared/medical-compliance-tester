@@ -1,0 +1,38 @@
+# gcloud builds submit 업로드 시 제외 (런타임 이미지엔 .dockerignore가 추가 적용됨)
+.git
+.gitignore
+.gitattributes
+__pycache__/
+*.pyc
+.claude/
+node_modules/
+.venv/
+venv/
+*.log
+*.tgz
+
+# Local dev artifacts (런타임 불필요)
+test_history.json
+settings.json
+conversations.json
+*.db
+backups/
+data/
+.gcs/
+
+# reports/는 일부 HTML/DOCX가 런타임에서 서빙되므로 폴더 자체는 포함.
+# 빌드 무관한 중간 산출물만 선별 제외:
+reports/_make_*.js
+reports/lrslide-*.jpg
+reports/a_grade_violations.xlsx
+docs_review/
+
+# 문서
+*.md
+WORK_PLAN.md
+SCENARIO_MANAGER_PLAN.md
+
+# Local PowerShell helpers
+start.sh
+start.ps1
+deploy*.ps1

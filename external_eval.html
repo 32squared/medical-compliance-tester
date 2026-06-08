@@ -639,12 +639,20 @@ function renderGptLegal(data) {
   const passed = !!evaluation.passed;
   const model = data.model || evaluation.model || '';
 
+  // v1.5.1 카테고리별 카운트
+  const _legalN = (evaluation.legalViolationCount != null) ? evaluation.legalViolationCount
+                 : violations.filter(v => (v.category || 'legal_violation') === 'legal_violation').length;
+  const _qualityN = (evaluation.qualityIssueCount != null) ? evaluation.qualityIssueCount
+                   : violations.filter(v => v.category === 'quality_issue').length;
+  const _safetyN = (evaluation.safetyAdvisoryCount != null) ? evaluation.safetyAdvisoryCount
+                  : violations.filter(v => v.category === 'safety_advisory').length;
+
   // 종합
   const gradeEl = document.getElementById('sm_gpt_grade');
   gradeEl.textContent = grade;
   applyGradeClass(gradeEl, grade);
   document.getElementById('sm_gpt_score').innerHTML = (score != null ? score : '?') + '<span class="out-of"> / 100</span>';
-  document.getElementById('sm_gpt_extra').textContent = `위반 ${violations.length}건 · ${passed ? '통과' : '미달'}`;
+  document.getElementById('sm_gpt_extra').textContent = `법위반 ${_legalN} · 품질 ${_qualityN} · 안전 ${_safetyN} · ${passed ? '통과' : '미달'}`;
 
   // 카드
   const badge = document.getElementById('gpt_badge');
@@ -659,8 +667,20 @@ function renderGptLegal(data) {
   }
 
   const vbox = document.getElementById('gpt_violations');
+  // 카테고리 카운트 배지 (항상 표시)
+  const catBadgeRow = document.createElement('div');
+  catBadgeRow.style.cssText = 'display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap';
+  catBadgeRow.innerHTML =
+    `<span title="실제 한국 의료법 위반" style="font-size:11px;padding:3px 8px;border-radius:4px;background:${_legalN > 0 ? '#ef444433' : '#22c55e22'};color:${_legalN > 0 ? '#ef4444' : '#22c55e'};font-weight:700">⚖️ 법위반 ${_legalN}</span>` +
+    `<span title="내부 품질 표준 미달" style="font-size:11px;padding:3px 8px;border-radius:4px;background:#eab30822;color:#a16207;font-weight:700">📋 품질 권고 ${_qualityN}</span>` +
+    `<span title="환자 안전 권고" style="font-size:11px;padding:3px 8px;border-radius:4px;background:#38bdf822;color:#0284c7;font-weight:700">🛡️ 안전 권고 ${_safetyN}</span>`;
+  vbox.appendChild(catBadgeRow);
+
   if (violations.length === 0) {
-    vbox.innerHTML = '<div style="font-size:12.5px;color:var(--green);padding:10px;background:rgba(34,197,94,.08);border-radius:6px">✓ 의료법 위반 없음</div>';
+    const okBox = document.createElement('div');
+    okBox.style.cssText = 'font-size:12.5px;color:var(--green);padding:10px;background:rgba(34,197,94,.08);border-radius:6px';
+    okBox.textContent = '✓ 법위반·품질·안전 권고 모두 없음';
+    vbox.appendChild(okBox);
   } else {
     violations.forEach(v => vbox.appendChild(buildViolItem(v)));
   }
@@ -848,11 +868,16 @@ function buildViolItem(v) {
   div.className = 'viol-item';
   const sev = (v.severity || 'LOW').toUpperCase();
   const law = v.law || '';
-  const name = v.name || v.type || v.rule_name || '의료법 위반';
+  const name = v.name || v.type || v.rule_name || '항목';
   const matched = v.matched || v.matched_text || '';
   const desc = v.description || '';
+  // v1.5.1 카테고리
+  const cat = (v.category || 'legal_violation');
+  const catLabel = cat === 'legal_violation' ? '⚖️ 법위반' : (cat === 'quality_issue' ? '📋 품질' : (cat === 'safety_advisory' ? '🛡️ 안전' : cat));
+  const catColor = cat === 'legal_violation' ? '#ef4444' : (cat === 'quality_issue' ? '#a16207' : '#0284c7');
   div.innerHTML = `
     <div class="vi-line">
+      <span style="font-size:10.5px;padding:1px 6px;border-radius:3px;background:${catColor}22;color:${catColor};font-weight:700;margin-right:6px">${catLabel}</span>
       <span class="vi-sev ${sev}">${sev}</span>
       <span class="vi-name">${escapeHtml(name)}</span>
       ${law ? `<span class="vi-law">· ${escapeHtml(law)}</span>` : ''}
