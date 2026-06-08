@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>외부 답변 평가 — 공유 페이지</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root {
+    --bg:#f8fafc; --surface:#fff; --surface2:#f1f5f9; --border:#e2e8f0;
+    --text:#0f172a; --text-dim:#64748b; --accent:#0ea5e9; --accent-dim:#eff6ff;
+    --green:#22c55e; --red:#ef4444; --yellow:#eab308; --orange:#f97316; --radius:10px;
+  }
+  body{font-family:'Pretendard','Malgun Gothic','Apple SD Gothic Neo',system-ui,sans-serif;
+       background:var(--bg);color:var(--text);min-height:100vh;line-height:1.65;padding:20px}
+  .container{max-width:1100px;margin:0 auto;background:var(--surface);padding:32px 36px;
+             border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+  /* 헤더 */
+  .header{margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid var(--border)}
+  .header h1{font-size:22px;color:var(--text);margin-bottom:4px}
+  .header .sub{font-size:12.5px;color:var(--text-dim)}
+  .header .badge-public{display:inline-block;background:var(--accent);color:white;
+                        padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;margin-right:8px}
+  h2{font-size:15px;font-weight:700;margin:20px 0 10px;padding-bottom:6px;
+     border-bottom:2px solid var(--border)}
+  h3{font-size:13.5px;font-weight:700;color:#334155;margin:14px 0 8px}
+  /* Q/A 블록 */
+  .qa-block{background:#f8fafc;padding:18px 22px;border-radius:8px;margin-bottom:10px;
+            font-size:13.5px;line-height:1.75;border-left:4px solid var(--accent);
+            word-break:keep-all;overflow-wrap:break-word}
+  .qa-block.response{border-left-color:var(--green);background:#f7fdf9}
+  .qa-label{font-size:11px;font-weight:700;color:var(--text-dim);margin-bottom:10px;
+            text-transform:uppercase;letter-spacing:.5px}
+  /* 마크다운 */
+  .md-p{margin:6px 0;line-height:1.75;color:#1e293b}
+  .md-h{font-weight:800;margin:14px 0 8px;line-height:1.4;color:var(--text)}
+  .md-h1{font-size:18px;padding-bottom:4px;border-bottom:2px solid #cbd5e1}
+  .md-h2{font-size:16px;color:#1e40af}
+  .md-h3{font-size:14px;color:#334155}
+  .md-h4,.md-h5,.md-h6{font-size:13px;color:#475569}
+  .md-ol{counter-reset:item;list-style:none;padding-left:0;margin:8px 0}
+  .md-ol > .md-li{counter-increment:item;position:relative;padding:8px 12px 8px 38px;
+                  margin:4px 0;background:white;border-radius:6px;border:1px solid var(--border);line-height:1.7}
+  .md-ol > .md-li::before{content:counter(item);position:absolute;left:8px;top:8px;width:22px;height:22px;
+                          background:var(--accent);color:white;border-radius:50%;font-size:12px;font-weight:700;
+                          display:flex;align-items:center;justify-content:center}
+  .md-ul{list-style:none;padding-left:0;margin:6px 0}
+  .md-ul > .md-li{position:relative;padding:3px 6px 3px 22px;line-height:1.7}
+  .md-ul > .md-li::before{content:'▸';position:absolute;left:6px;color:var(--accent);font-weight:700}
+  .md-bq{border-left:3px solid #94a3b8;background:var(--surface2);padding:8px 14px;
+         margin:10px 0;border-radius:0 6px 6px 0;color:#475569;font-style:italic}
+  .md-hr{border:none;border-top:1.5px dashed #cbd5e1;margin:14px 0}
+  .md-emoji-header{margin:14px 0 8px;padding:10px 14px;
+                   background:linear-gradient(90deg,var(--accent-dim),white);
+                   border-left:4px solid var(--accent);border-radius:0 6px 6px 0;
+                   font-weight:700;font-size:14.5px;color:#1e40af;
+                   display:flex;align-items:center;gap:8px}
+  .md-emoji-header .me-icon{font-size:18px;flex-shrink:0}
+  code{background:var(--surface2);padding:1px 7px;border-radius:4px;font-size:12.5px;
+       font-family:'JetBrains Mono','Menlo','Consolas',monospace}
+  strong{font-weight:700;color:var(--text)}
+  em{font-style:italic;color:#475569}
+  /* 평가 카드 */
+  .eval-card{background:#fafbfc;border:1px solid var(--border);border-radius:10px;
+             padding:16px 18px;margin:10px 0}
+  .eval-card .ec-header{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .ec-title{font-size:14px;font-weight:700;color:var(--text)}
+  .ec-badge{display:inline-block;padding:3px 10px;border-radius:8px;font-size:11px;font-weight:700}
+  .ec-badge.pass{background:#dcfce7;color:#15803d}
+  .ec-badge.fail{background:#fee2e2;color:#b91c1c}
+  .ec-meta{font-size:11.5px;color:var(--text-dim)}
+  .grade-A{background:#dcfce7;color:#15803d}
+  .grade-B{background:#dbeafe;color:#1e40af}
+  .grade-C{background:#fef3c7;color:#854d0e}
+  .grade-D{background:#fed7aa;color:#9a3412}
+  .grade-F{background:#fee2e2;color:#b91c1c}
+  /* 문진 2열 비교 */
+  .cons-2col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .cons-col{background:white;padding:14px 16px;border-radius:8px;border:1px solid var(--border)}
+  .cons-col[data-ver="v15"]{border-color:var(--accent);border-width:2px}
+  .cons-card-h{font-size:13px;font-weight:700;margin-bottom:8px;padding-bottom:6px;
+               border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+  .cons-mode{font-size:10px;color:var(--text-dim);font-weight:400}
+  .cons-total{padding:8px;background:var(--surface2);border-radius:6px;
+              text-align:center;font-size:12.5px;font-weight:700;margin-bottom:10px}
+  .grade{display:inline-block;width:24px;height:24px;line-height:24px;border-radius:6px;
+         font-weight:800;margin-right:4px;text-align:center}
+  .axis-row{margin:6px 0;padding:5px 0;border-bottom:1px dashed #f1f5f9}
+  .axis-head{display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:3px}
+  .axis-name{font-weight:600;color:#334155}
+  .axis-val{color:var(--text-dim)}
+  .bar-bg{height:7px;background:var(--surface2);border-radius:4px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:4px}
+  .axis-detail{font-size:11px;color:var(--text-dim);margin-top:4px;padding:4px 8px;
+               background:#fafbfc;border-radius:4px;line-height:1.55}
+  .axis-detail.missing{color:#9a3412;background:#fff7ed}
+  .text-box{padding:10px 14px;background:var(--surface2);border-left:3px solid var(--accent);
+            border-radius:0 6px 6px 0;font-size:12px;line-height:1.65;margin:8px 0}
+  .text-box.warn{border-left-color:var(--orange);background:#fff7ed}
+  .text-box.good{border-left-color:var(--green);background:#f0fdf4}
+  .text-box .lbl{font-size:10.5px;font-weight:700;color:var(--text-dim);margin-bottom:4px;
+                 text-transform:uppercase;letter-spacing:.3px}
+  /* 위반 사항 */
+  .vio{padding:8px 12px;background:white;border:1px solid var(--border);
+       border-radius:6px;margin:6px 0;font-size:12.5px}
+  .sev{display:inline-block;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:700;margin-right:6px}
+  .match{font-size:12px;color:#475569;background:var(--surface2);padding:5px 9px;
+         border-radius:5px;margin-top:5px;word-break:break-word}
+  .desc{font-size:11.5px;color:var(--text-dim);margin-top:4px;line-height:1.5}
+  /* 의견 영역 */
+  .feedback-section{margin-top:20px;background:#fffbeb;border:2px solid #fcd34d;
+                    border-radius:12px;padding:18px 22px}
+  .feedback-section.criteria{background:#eff6ff;border-color:#93c5fd}
+  .feedback-section h3{font-size:14.5px;color:#92400e;margin-bottom:6px;margin-top:0}
+  .feedback-section.criteria h3{color:#1e40af}
+  .feedback-section .fb-desc{font-size:12px;color:var(--text-dim);margin-bottom:14px;line-height:1.7}
+  /* 의견 작성 폼 */
+  .fb-form{background:white;border:1px solid var(--border);border-radius:8px;
+           padding:14px 16px;margin-bottom:14px}
+  .fb-form-row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center}
+  .fb-form input[type="text"], .fb-form select{
+    background:white;border:1px solid var(--border);padding:8px 12px;border-radius:6px;
+    font-size:13px;font-family:inherit;outline:none;color:var(--text)}
+  .fb-form input[type="text"]{flex:1;min-width:120px}
+  .fb-form input:focus, .fb-form textarea:focus, .fb-form select:focus{border-color:var(--accent)}
+  .fb-form textarea{width:100%;background:white;border:1px solid var(--border);
+                    padding:10px 12px;border-radius:6px;font-size:13px;font-family:inherit;
+                    resize:vertical;min-height:80px;outline:none;line-height:1.65;color:var(--text)}
+  .fb-form .btn-submit{background:var(--accent);color:white;border:none;padding:9px 18px;
+                       border-radius:6px;font-size:12.5px;font-weight:700;cursor:pointer}
+  .fb-form .btn-submit:hover{opacity:.9}
+  .fb-form .btn-submit:disabled{opacity:.5;cursor:not-allowed}
+  .fb-form .fb-err{color:var(--red);font-size:11.5px;margin-top:6px}
+  /* 의견 목록 */
+  .fb-list{display:flex;flex-direction:column;gap:8px}
+  .fb-item{background:white;border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+  .fb-item-head{display:flex;align-items:baseline;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+  .fb-item-author{font-weight:700;font-size:13px;color:var(--text)}
+  .fb-item-time{font-size:10.5px;color:var(--text-dim)}
+  .fb-item-target{font-size:10px;padding:1px 7px;background:var(--accent-dim);color:#1e40af;
+                  border-radius:4px;font-weight:700;margin-left:auto}
+  .fb-item-content{font-size:12.5px;color:#334155;line-height:1.65;white-space:pre-wrap;word-break:break-word}
+  .fb-empty{text-align:center;padding:18px;font-size:12.5px;color:var(--text-dim);
+            background:white;border-radius:8px}
+  /* 로딩/오류 */
+  .loading{text-align:center;padding:40px;color:var(--text-dim);font-size:13px}
+  .error-page{text-align:center;padding:60px 20px;color:var(--red);font-size:14px}
+  /* 푸터 */
+  .footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--border);
+          font-size:11px;color:var(--text-dim);text-align:center}
+  /* 반응형 */
+  @media(max-width:768px){
+    body{padding:10px}
+    .container{padding:18px 16px}
+    .cons-2col{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="container" id="root">
+  <div class="loading" id="loading">⏳ 평가 결과를 불러오는 중...</div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+// Mini Markdown 렌더러 (외부 답변 가시성)
+// ════════════════════════════════════════════════════════════
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                  .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function renderMarkdownLite(rawText) {
+  if (!rawText) return '';
+  const escapeBase = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                                     .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  const formatInline = (s) => s
+    .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/(?:^|(?<=\s))\*([^*\n]+)\*(?=\s|$|[.,!?])/g, '<em>$1</em>')
+    .replace(/`([^`\n]+)`/g, '<code>$1</code>');
+  const lines = escapeBase(rawText).split('\n');
+  const out = [];
+  let listStack = [];
+  const closeListsUpTo = (target) => {
+    while (listStack.length && listStack[listStack.length-1].indent >= target) {
+      out.push(`</${listStack.pop().type}>`);
+    }
+  };
+  const closeAllLists = () => { while (listStack.length) out.push(`</${listStack.pop().type}>`); };
+  let inBq = false;
+  const closeBq = () => { if (inBq) { out.push('</blockquote>'); inBq = false; } };
+  for (const rawLine of lines) {
+    if (!rawLine.trim()) { closeAllLists(); closeBq(); out.push(''); continue; }
+    const im = rawLine.match(/^(\s*)/);
+    const indent = im[1].replace(/\t/g, '    ').length;
+    const stripped = rawLine.slice(im[1].length);
+    let m;
+    if (m = stripped.match(/^(#{1,6})\s+(.+)$/)) {
+      closeAllLists(); closeBq();
+      out.push(`<div class="md-h md-h${Math.min(6, m[1].length)}">${formatInline(m[2])}</div>`);
+      continue;
+    }
+    if (/^([-*_]\s*){3,}$/.test(stripped)) { closeAllLists(); closeBq(); out.push('<hr class="md-hr">'); continue; }
+    if (m = stripped.match(/^&gt;\s*(.+)$/)) {
+      closeAllLists();
+      if (!inBq) { out.push('<blockquote class="md-bq">'); inBq = true; }
+      out.push(`<div>${formatInline(m[1])}</div>`); continue;
+    }
+    if (m = stripped.match(/^(\d+)\.\s+(.+)$/)) {
+      closeBq(); closeListsUpTo(indent + 1);
+      if (!listStack.length || listStack[listStack.length-1].type !== 'ol' || listStack[listStack.length-1].indent !== indent) {
+        if (listStack.length && listStack[listStack.length-1].indent === indent) out.push(`</${listStack.pop().type}>`);
+        out.push(`<ol class="md-ol" start="${m[1]}">`);
+        listStack.push({type:'ol', indent});
+      }
+      out.push(`<li class="md-li">${formatInline(m[2])}</li>`); continue;
+    }
+    if (m = stripped.match(/^[-*•▸▪◦●]\s+(.+)$/)) {
+      closeBq(); closeListsUpTo(indent + 1);
+      if (!listStack.length || listStack[listStack.length-1].type !== 'ul' || listStack[listStack.length-1].indent !== indent) {
+        if (listStack.length && listStack[listStack.length-1].indent === indent) out.push(`</${listStack.pop().type}>`);
+        out.push(`<ul class="md-ul">`);
+        listStack.push({type:'ul', indent});
+      }
+      out.push(`<li class="md-li">${formatInline(m[1])}</li>`); continue;
+    }
+    // 이모지 헤더
+    if (!listStack.length && stripped.length <= 80) {
+      const em = stripped.match(/^([\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F100}-\u{1F1FF}]️?(?:\u{200D}[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F100}-\u{1F1FF}]️?)*)\s+(.+)$/u);
+      if (em) {
+        closeBq();
+        out.push(`<div class="md-emoji-header"><span class="me-icon">${em[1]}</span><span>${formatInline(em[2])}</span></div>`);
+        continue;
+      }
+    }
+    if (indent === 0) closeAllLists(); else closeListsUpTo(indent + 1);
+    closeBq();
+    const ind = indent > 0 ? `<span style="display:inline-block;width:${indent * 7}px"></span>` : '';
+    out.push(`<div class="md-p">${ind}${formatInline(stripped)}</div>`);
+  }
+  closeAllLists(); closeBq();
+  return out.join('\n');
+}
+
+// 등급 클래스 추출
+function gradeClass(g) {
+  g = (g || '').toString().toUpperCase();
+  return ['A','B','C','D','F'].includes(g) ? 'grade-' + g : '';
+}
+
+// 시간 포맷
+function fmtTime(iso) {
+  if (!iso) return '';
+  try { return new Date(iso).toLocaleString('ko-KR'); } catch(e) { return iso; }
+}
+
+// 영문 axis → 한글 라벨 폴백
+const AXIS_LABELS = {
+  symptomExploration: '증상 탐색', redFlagScreening: '위험 선별', patientContext: '환자 맥락',
+  structuredApproach: '단계적 접근', appropriateGuidance: '적절한 안내',
+  safetyDisclosure: '의료법경계·안전고지', redFlagAwareness: '위험신호 인식·전달',
+  consultationFlow: '문진 Flow 명시', clinicalValue: '환자맞춤·임상가치',
+  actionAndCommunication: '행동가이드·의사소통',
+};
+
+// ════════════════════════════════════════════════════════════
+// 렌더링
+// ════════════════════════════════════════════════════════════
+function renderGptLegalCard(gptData) {
+  if (!gptData) return '';
+  const e = gptData.evaluation || gptData;
+  const score = e.score != null ? e.score : '?';
+  const grade = e.grade || '?';
+  const passed = !!e.passed;
+  const violations = e.violations || [];
+  // v1.5.1 카테고리별 카운트
+  const _legalN = (e.legalViolationCount != null) ? e.legalViolationCount
+                 : violations.filter(v => (v.category || 'legal_violation') === 'legal_violation').length;
+  const _qualityN = (e.qualityIssueCount != null) ? e.qualityIssueCount
+                   : violations.filter(v => v.category === 'quality_issue').length;
+  const _safetyN = (e.safetyAdvisoryCount != null) ? e.safetyAdvisoryCount
+                  : violations.filter(v => v.category === 'safety_advisory').length;
+  const catBadges = `<div style="display:flex;gap:6px;margin:8px 0;flex-wrap:wrap">
+    <span title="실제 한국 의료법 위반 (확진/처방/치료지시/과대효능)" style="font-size:11px;padding:3px 8px;border-radius:4px;background:${_legalN > 0 ? '#ef444433' : '#22c55e22'};color:${_legalN > 0 ? '#ef4444' : '#22c55e'};font-weight:700">⚖️ 법위반 ${_legalN}</span>
+    <span title="내부 품질 표준 미달 (법위반 아님)" style="font-size:11px;padding:3px 8px;border-radius:4px;background:#eab30822;color:#a16207;font-weight:700">📋 품질 권고 ${_qualityN}</span>
+    <span title="환자 안전 권고 (법위반 아님)" style="font-size:11px;padding:3px 8px;border-radius:4px;background:#38bdf822;color:#0284c7;font-weight:700">🛡️ 안전 권고 ${_safetyN}</span>
+  </div>`;
+  const violHtml = violations.length ? violations.map(v => {
+    const sev = (v.severity || 'LOW').toUpperCase();
+    const cat = (v.category || 'legal_violation');
+    const catLabel = cat === 'legal_violation' ? '⚖️ 법위반' : (cat === 'quality_issue' ? '📋 품질' : (cat === 'safety_advisory' ? '🛡️ 안전' : cat));
+    const catColor = cat === 'legal_violation' ? '#ef4444' : (cat === 'quality_issue' ? '#a16207' : '#0284c7');
+    const sevColor = {CRITICAL:'#ef4444',HIGH:'#f97316',MEDIUM:'#eab308',LOW:'#38bdf8'}[sev] || '#94a3b8';
+    return `<div class="vio">
+      <span class="sev" style="background:${catColor}22;color:${catColor};margin-right:4px">${catLabel}</span>
+      <span class="sev" style="background:${sevColor}22;color:${sevColor}">${sev}</span>
+      <b>${escapeHtml(v.name || v.type || '항목')}</b>${v.law ? ' · ' + escapeHtml(v.law) : ''}
+      ${(v.matched || v.matched_text) ? `<div class="match">「${escapeHtml(v.matched || v.matched_text)}」</div>` : ''}
+      ${v.description ? `<div class="desc">${escapeHtml(v.description)}</div>` : ''}
+    </div>`;
+  }).join('') : '<div class="text-box good"><span class="lbl">결과</span>✓ 법위반·품질·안전 권고 없음</div>';
+  return `
+    <div class="eval-card">
+      <div class="ec-header">
+        <div class="ec-title">[1] GPT 법률 평가</div>
+        <span class="ec-badge ${passed ? 'pass' : 'fail'}">${passed ? '✓ 통과' : '✗ 미달'} · 등급 ${grade}</span>
+        <span class="ec-meta">점수 <b>${score}</b> / 100</span>
+      </div>
+      ${catBadges}
+      ${e.summary ? `<div class="text-box"><div class="lbl">평가 요약</div>${escapeHtml(e.summary)}</div>` : ''}
+      ${violHtml}
+      ${e.recommendation ? `<div class="text-box good"><div class="lbl">개선 권고</div>${escapeHtml(e.recommendation)}</div>` : ''}
+    </div>`;
+}
+
+function renderConsCard(block, verLabel, modeLabel, ver) {
+  if (!block) return `<div class="cons-col" data-ver="${ver}"><div class="cons-card-h">${verLabel}<span class="cons-mode">${modeLabel}</span></div><div class="text-box">평가 데이터 없음</div></div>`;
+  const e = block.evaluation || block;
+  const total = e.totalScore || e.total_score || e.score || 0;
+  const grade = e.grade || '?';
+  const axes = e.axes || {};
+  let axisHtml = '';
+  Object.entries(axes).forEach(([key, ax]) => {
+    if (typeof ax !== 'object' || !ax) return;
+    const sc = ax.score != null ? ax.score : 0;
+    const max = ax.maxScore != null ? ax.maxScore : 100;
+    const name = ax.name || AXIS_LABELS[key] || key;
+    const pct = max > 0 ? (sc / max) * 100 : 0;
+    const color = pct >= 80 ? '#22c55e' : (pct >= 60 ? '#0ea5e9' : (pct >= 40 ? '#eab308' : '#ef4444'));
+    const details = ax.details || '';
+    const missing = Array.isArray(ax.missing) ? ax.missing.join(', ') : '';
+    axisHtml += `
+      <div class="axis-row">
+        <div class="axis-head"><span class="axis-name">${escapeHtml(name)}</span>
+          <span class="axis-val"><b>${sc}</b> / ${max}</span></div>
+        <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+        ${details ? `<div class="axis-detail">▸ ${escapeHtml(details)}</div>` : ''}
+        ${missing ? `<div class="axis-detail missing">⚠ 누락: ${escapeHtml(missing)}</div>` : ''}
+      </div>`;
+  });
+  const recommendation = e.recommendation || '';
+  return `
+    <div class="cons-col" data-ver="${ver}">
+      <div class="cons-card-h">
+        <span>${verLabel}<span class="cons-mode" style="display:block">${modeLabel}</span></span>
+        <span class="grade ${gradeClass(grade)}">${grade}</span>
+      </div>
+      <div class="cons-total"><b>${total}</b> / 100</div>
+      ${axisHtml}
+      ${e.summary ? `<div class="text-box"><div class="lbl">📝 평가 요약</div>${escapeHtml(e.summary)}</div>` : ''}
+      ${(e.missingItems && e.missingItems.length) ? `<div class="text-box warn"><div class="lbl">⚠ 누락 핵심</div>${e.missingItems.map(s=>'• '+escapeHtml(s)).join('<br>')}</div>` : ''}
+      ${recommendation ? `<div class="text-box good"><div class="lbl">💡 권고</div>${escapeHtml(Array.isArray(recommendation) ? recommendation.join(', ') : recommendation)}</div>` : ''}
+    </div>`;
+}
+
+// ════════════════════════════════════════════════════════════
+// 의견 영역
+// ════════════════════════════════════════════════════════════
+function renderFeedbackSection(type, comments, targetVersion) {
+  // type: 'answer_feedback' | 'criteria_feedback'
+  // criteria_feedback은 targetVersion 무시하고 전체를 통합 표시 (사용자 요청: v1.1.1/v1.5 분리 X)
+  const filtered = (comments || []).filter(c => c.type === type);
+  const cls = type === 'criteria_feedback' ? 'criteria' : '';
+  const title = type === 'answer_feedback'
+    ? '💬 외부 답변에 대한 의견'
+    : '🩺 평가 기준에 대한 의견 (v1.1.1 · v1.5 통합)';
+  const desc = type === 'answer_feedback'
+    ? '답변 내용의 임상적 적정성, 사용자 가치 등에 대한 자유로운 의견을 남겨주세요.'
+    : '평가 기준 자체(축 구성, 점수 비중, 누락된 관점 등)에 대한 의견을 남겨주세요.';
+  const listKey = type;
+  const itemsHtml = filtered.length ? filtered.map(c => `
+    <div class="fb-item">
+      <div class="fb-item-head">
+        <span class="fb-item-author">👤 ${escapeHtml(c.author)}</span>
+        <span class="fb-item-time">${fmtTime(c.createdAt)}</span>
+      </div>
+      <div class="fb-item-content">${escapeHtml(c.content)}</div>
+    </div>
+  `).join('') : '<div class="fb-empty">아직 의견이 없습니다. 첫 의견을 남겨주세요.</div>';
+
+  return `
+    <div class="feedback-section ${cls}">
+      <h3>${title}</h3>
+      <div class="fb-desc">${desc}</div>
+      <div class="fb-form" data-fb-type="${type}" data-fb-ver="${targetVersion || ''}">
+        <div class="fb-form-row">
+          <input type="text" placeholder="작성자 이름 (필수)" data-fb-author maxlength="100">
+        </div>
+        <textarea placeholder="의견을 입력하세요... (필수, 최대 5000자)" data-fb-content maxlength="5000"></textarea>
+        <div class="fb-form-row" style="justify-content:flex-end;margin-top:8px">
+          <button class="btn-submit" data-fb-submit>의견 등록</button>
+        </div>
+        <div class="fb-err" data-fb-err style="display:none"></div>
+      </div>
+      <div class="fb-list" data-fb-list="${listKey}">${itemsHtml}</div>
+    </div>`;
+}
+
+// ════════════════════════════════════════════════════════════
+// 페이지 빌드
+// ════════════════════════════════════════════════════════════
+let _shareData = null;
+let _shareId = '';
+
+function getShareIdFromUrl() {
+  const m = location.pathname.match(/^\/share\/eval\/([a-zA-Z0-9_-]+)$/);
+  return m ? m[1] : '';
+}
+
+async function loadShare() {
+  _shareId = getShareIdFromUrl();
+  if (!_shareId) {
+    showError('잘못된 URL입니다.');
+    return;
+  }
+  try {
+    const res = await fetch('/api/share/' + _shareId);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'HTTP ' + res.status);
+    }
+    _shareData = await res.json();
+    renderPage();
+  } catch (e) {
+    console.error(e);
+    showError('평가 데이터를 불러올 수 없습니다: ' + (e.message || e));
+  }
+}
+
+function showError(msg) {
+  document.getElementById('root').innerHTML = `<div class="error-page">⚠ ${escapeHtml(msg)}</div>`;
+}
+
+function renderPage() {
+  const r = _shareData;
+  const comments = r.comments || [];
+  const html = `
+    <div class="header">
+      <h1>📋 외부 AI 답변 평가 — 공유 페이지</h1>
+      <div class="sub">
+        <span class="badge-public">PUBLIC</span>
+        공유 일시: ${fmtTime(r.createdAt)} · 등록자: ${escapeHtml(r.createdBy || '익명')} · ID: ${escapeHtml(r.id)}
+      </div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-label">① 사용자 질문 (prompt)</div>
+      ${renderMarkdownLite(r.prompt)}
+    </div>
+    <div class="qa-block response">
+      <div class="qa-label">② 외부 AI 답변</div>
+      ${renderMarkdownLite(r.response)}
+    </div>
+
+    <!-- 의견: 답변에 대한 평가 -->
+    ${renderFeedbackSection('answer_feedback', comments, '')}
+
+    <h2>🎯 평가 결과</h2>
+    ${renderGptLegalCard(r.evalGpt)}
+
+    <h3>[2] GPT 문진 품질 평가 — 2개 기준 비교</h3>
+    <div class="cons-2col">
+      ${renderConsCard(r.evalV11, 'v1.1.1 (운영)', '멀티턴 문진 평가', 'v11')}
+      ${renderConsCard(r.evalV15, 'v1.5 (문진Flow표현)', '단일턴 응답 내 문진 Flow 표현', 'v15')}
+    </div>
+
+    <!-- 의견: 평가 기준에 대한 의견 (통합 — v1.1.1·v1.5 분리 X) -->
+    ${renderFeedbackSection('criteria_feedback', comments, '')}
+
+    <div class="footer">
+      나만의 주치의 — AI 건강상담 의료법 준수 테스트 도구<br>
+      이 페이지는 누구나 열람·의견 작성이 가능합니다. 의견은 즉시 저장되어 모두에게 공유됩니다.
+    </div>
+  `;
+  document.getElementById('root').innerHTML = html;
+
+  // 의견 제출 핸들러 바인딩
+  document.querySelectorAll('[data-fb-submit]').forEach(btn => {
+    btn.addEventListener('click', onSubmitFeedback);
+  });
+}
+
+async function onSubmitFeedback(ev) {
+  const btn = ev.currentTarget;
+  const form = btn.closest('[data-fb-type]');
+  const type = form.getAttribute('data-fb-type');
+  const ver = form.getAttribute('data-fb-ver') || '';
+  const author = (form.querySelector('[data-fb-author]').value || '').trim();
+  const content = (form.querySelector('[data-fb-content]').value || '').trim();
+  const errBox = form.querySelector('[data-fb-err]');
+  errBox.style.display = 'none';
+  errBox.textContent = '';
+  if (!author) { errBox.textContent = '작성자 이름을 입력해주세요.'; errBox.style.display = 'block'; return; }
+  if (!content) { errBox.textContent = '의견 내용을 입력해주세요.'; errBox.style.display = 'block'; return; }
+  btn.disabled = true;
+  btn.textContent = '⏳ 등록 중...';
+  try {
+    const res = await fetch('/api/share/' + _shareId + '/comments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, targetVersion: ver, author, content }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'HTTP ' + res.status);
+    // _shareData에 추가하고 페이지 부분 새로 그림
+    _shareData.comments = _shareData.comments || [];
+    _shareData.comments.push(data.comment);
+    renderPage();
+    // 같은 섹션으로 scroll 복귀
+    setTimeout(() => {
+      const el = document.querySelector(`[data-fb-list="${type}"]`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+  } catch (e) {
+    errBox.textContent = '등록 실패: ' + (e.message || e);
+    errBox.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = '의견 등록';
+  }
+}
+
+// 초기화
+loadShare();
+</script>
+</body>
+</html>

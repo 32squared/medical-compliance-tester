@@ -266,6 +266,7 @@
   <a href="/guidelines" class="nav-btn">가이드라인</a>
   <a href="/kb_manager" class="nav-btn">KB 관리</a>
   <a href="/criteria" class="nav-btn">문진 평가 기준</a>
+  <a href="/external-eval" class="nav-btn">📋 외부 답변 평가</a>
   <a href="/rlhf" class="nav-btn">RLHF 관리</a>
   <a href="/settings" class="nav-btn" id="settingsNavLink">&#9881; 설정</a>
   <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-shrink:0">
@@ -1221,13 +1222,22 @@ async function sendToChat(id) {
           const consultData = await consultRes.json();
           const ev = consultData.evaluation;
           window._lastConsultEval = ev;
-          const axes = [
-            { key: 'symptomExploration', label: '증상 탐색', max: 30 },
+          // v1.5.1 우선 / v1.1.x fallback
+          const _smV15 = [
+            { key: 'safetyDisclosure', label: '의료법 경계·안전 고지', max: 15 },
+            { key: 'redFlagAwareness', label: '위험 신호 인식·전달', max: 25 },
+            { key: 'consultationFlow', label: '문진 Flow 명시', max: 25 },
+            { key: 'clinicalValue', label: '환자 맞춤·임상가치', max: 22 },
+            { key: 'actionAndCommunication', label: '행동 가이드·의사소통', max: 13 },
+          ];
+          const _smV11 = [
+            { key: 'symptomExploration', label: '증상 탐색', max: 25 },
             { key: 'redFlagScreening', label: '위험 선별', max: 25 },
             { key: 'patientContext', label: '환자 맥락', max: 20 },
             { key: 'structuredApproach', label: '단계적 접근', max: 15 },
-            { key: 'appropriateGuidance', label: '적절한 안내', max: 10 },
+            { key: 'appropriateGuidance', label: '적절한 안내', max: 15 },
           ];
+          const axes = _smV15.some(a => (ev.axes || {})[a.key]) ? _smV15 : _smV11;
           let axesHtml = '';
           for (const ax of axes) {
             const axData = (ev.axes || {})[ax.key] || {};

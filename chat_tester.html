@@ -436,6 +436,7 @@
       <a href="/healthbench" class="nav-btn">🩺 HealthBench</a>
   <a href="/guidelines" class="nav-btn">법률 평가 기준</a>
   <a href="/criteria" class="nav-btn">문진 평가 기준</a>
+  <a href="/external-eval" class="nav-btn">📋 외부 답변 평가</a>
   <a href="/rlhf" class="nav-btn">RLHF 관리</a>
   <a href="/kb_manager" class="nav-btn">KB 관리</a>
   <a href="/settings" class="nav-btn" id="settingsNavLink">&#9881; 설정</a>
@@ -764,6 +765,22 @@ function applyRoleBasedUI(auth) {
   if (!auth.isAdmin) {
     const sl = document.getElementById('settingsNavLink');
     if (sl) sl.style.display = 'none';
+  }
+
+  // 비-Admin: 엔드포인트 토글의 RAG/Both 옵션 숨김 (SKIX만 사용 가능)
+  if (!auth.isAdmin) {
+    const ragLabel = document.getElementById('endpointLabelRag');
+    const bothLabel = document.getElementById('endpointLabelBoth');
+    const ragNotice = document.getElementById('endpointRagNotice');
+    if (ragLabel) ragLabel.style.display = 'none';
+    if (bothLabel) bothLabel.style.display = 'none';
+    if (ragNotice) ragNotice.style.display = 'none';
+    // 비-Admin이면 SKIX 강제 선택
+    const skixRadio = document.querySelector('input[name="endpointMode"][value="skix"]');
+    if (skixRadio) {
+      skixRadio.checked = true;
+      try { skixRadio.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {}
+    }
   }
 
   // advisor: 채팅 테스터 외 모든 메뉴 숨김 + 평가 결과 숨김
@@ -1660,6 +1677,8 @@ async function evaluateConsultation(prompt, responseText, msgId) {
     const gradeColor = gradeColors[ev.grade] || 'var(--text-dim)';
 
     // 평가 축 바 생성 (평가 페이로드의 label/max 사용 → 기준 개정 자동 반영)
+    // 백엔드가 v1.5.1/v1.1.x 어느 쪽이든 axes를 label/max 와 함께 응답;
+    // legacy 매핑은 buildConsultAxes() 안에 보존되어 과거 데이터 호환.
     const axes = buildConsultAxes(ev);
 
     let axesHtml = '';
@@ -2000,11 +2019,28 @@ function renderAssistantEvaluation(msgDiv, evalData) {
           '</span>' +
         '</div>' +
         '<div class="eval-summary">' + escapeHtml(gptEval.summary || '') + '</div>';
+    // v1.5.1 카테고리별 카운트 — eval-summary 다음에 삽입
+    var _ct_vList = Array.isArray(gptEval.violations) ? gptEval.violations : [];
+    var _ct_legalN = (gptEval.legalViolationCount != null) ? gptEval.legalViolationCount
+                    : _ct_vList.filter(function(v){ return (v.category || 'legal_violation') === 'legal_violation'; }).length;
+    var _ct_qualityN = (gptEval.qualityIssueCount != null) ? gptEval.qualityIssueCount
+                      : _ct_vList.filter(function(v){ return v.category === 'quality_issue'; }).length;
+    var _ct_safetyN = (gptEval.safetyAdvisoryCount != null) ? gptEval.safetyAdvisoryCount
+                     : _ct_vList.filter(function(v){ return v.category === 'safety_advisory'; }).length;
+    geHtml += '<div style="display:flex;gap:6px;margin:6px 0;flex-wrap:wrap">' +
+      '<span title="실제 한국 의료법 위반" style="font-size:11px;padding:2px 6px;border-radius:4px;background:' + (_ct_legalN > 0 ? 'rgba(239,68,68,.2)' : 'rgba(34,197,94,.15)') + ';color:' + (_ct_legalN > 0 ? 'var(--red)' : 'var(--green)') + ';font-weight:600">⚖️ 법위반 ' + _ct_legalN + '</span>' +
+      '<span title="내부 품질 표준 미달" style="font-size:11px;padding:2px 6px;border-radius:4px;background:rgba(234,179,8,.15);color:var(--yellow);font-weight:600">📋 품질 권고 ' + _ct_qualityN + '</span>' +
+      '<span title="환자 안전 권고" style="font-size:11px;padding:2px 6px;border-radius:4px;background:rgba(56,189,248,.15);color:var(--accent);font-weight:600">🛡️ 안전 권고 ' + _ct_safetyN + '</span>' +
+    '</div>';
     if (gptEval.violations && gptEval.violations.length > 0) {
       geHtml += '<div class="eval-violations">';
       for (var gv = 0; gv < gptEval.violations.length; gv++) {
         var gvItem = gptEval.violations[gv];
-        geHtml += '<div class="eval-viol-item"><span class="eval-viol-sev risk-' + escapeHtml(gvItem.severity || '') + '">' + escapeHtml(gvItem.severity || '') + '</span><span>' + escapeHtml(gvItem.description || gvItem.type || '') + '</span></div>';
+        var _gv_cat = (gvItem.category || 'legal_violation');
+        var _gv_catLabel = _gv_cat === 'legal_violation' ? '⚖️ 법위반' : (_gv_cat === 'quality_issue' ? '📋 품질' : (_gv_cat === 'safety_advisory' ? '🛡️ 안전' : _gv_cat));
+        var _gv_catBg = _gv_cat === 'legal_violation' ? 'rgba(239,68,68,.2)' : (_gv_cat === 'quality_issue' ? 'rgba(234,179,8,.2)' : 'rgba(56,189,248,.2)');
+        var _gv_catFg = _gv_cat === 'legal_violation' ? 'var(--red)' : (_gv_cat === 'quality_issue' ? 'var(--yellow)' : 'var(--accent)');
+        geHtml += '<div class="eval-viol-item"><span style="font-size:10px;padding:1px 5px;border-radius:3px;background:' + _gv_catBg + ';color:' + _gv_catFg + ';font-weight:600;margin-right:4px">' + _gv_catLabel + '</span><span class="eval-viol-sev risk-' + escapeHtml(gvItem.severity || '') + '">' + escapeHtml(gvItem.severity || '') + '</span><span>' + escapeHtml(gvItem.description || gvItem.type || '') + '</span></div>';
       }
       geHtml += '</div>';
     }
@@ -2061,6 +2097,7 @@ function renderAssistantEvaluation(msgDiv, evalData) {
     // Show existing consultation eval data
     var cGradeColors = { A: 'var(--green)', B: '#38bdf8', C: '#f59e0b', D: '#f97316', F: 'var(--red)' };
     var cGradeColor = cGradeColors[consultationEval.grade] || 'var(--text-dim)';
+    // buildConsultAxes: \uBC31\uC5D4\uB4DC \uC751\uB2F5\uC758 label/max\uB97C \uADF8\uB300\uB85C \uC0AC\uC6A9 (v1.5.1/v1.1.x \uC790\uB3D9 \uB300\uC751)
     var cAxes = buildConsultAxes(consultationEval);
     var cAxesHtml = '';
     for (var ca = 0; ca < cAxes.length; ca++) {
@@ -4423,10 +4460,22 @@ async function saveExtractedScenario() {
 }
 
 // 카테고리 목록 로드 (추출 시 선택용)
+// 성능 개선: /api/scenarios 응답에 categories 가 포함되므로 그쪽에서 가져옴
+// (별도 /api/categories 호출 제거 — 0.5초 단축)
 (async function loadCategories() {
   try {
-    const res = await fetch('/api/categories');
-    if (res.ok) window._categories = (await res.json()).categories || [];
+    // 이미 캐시된 시나리오 목록이 있으면 즉시 사용
+    if (window._scenariosCache && Array.isArray(window._scenariosCache.categories)) {
+      window._categories = window._scenariosCache.categories;
+      return;
+    }
+    // 첫 진입 시 light 모드로 시나리오 + 카테고리 한 번에
+    const res = await fetch('/api/scenarios?fields=summary');
+    if (res.ok) {
+      const data = await res.json();
+      window._scenariosCache = data;
+      window._categories = data.categories || [];
+    }
   } catch(e) {}
 })();
 

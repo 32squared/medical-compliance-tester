@@ -308,7 +308,11 @@ CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_comments_msg ON comments(message_id);
 CREATE INDEX IF NOT EXISTS idx_comments_conv ON comments(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_scenarios_category ON scenarios(category);
+CREATE INDEX IF NOT EXISTS idx_scenarios_enabled ON scenarios(enabled);
+CREATE INDEX IF NOT EXISTS idx_scenarios_risk ON scenarios(risk_level);
+CREATE INDEX IF NOT EXISTS idx_scenarios_source ON scenarios(source);
 CREATE INDEX IF NOT EXISTS idx_test_runs_date ON test_runs(run_at);
+CREATE INDEX IF NOT EXISTS idx_test_runs_env_status ON test_runs(env, status);
 
 CREATE TABLE IF NOT EXISTS consultation_checklists (
     symptom_key TEXT PRIMARY KEY,
@@ -443,6 +447,29 @@ CREATE INDEX IF NOT EXISTS idx_arena_sessions_evaluator ON arena_sessions(evalua
 CREATE INDEX IF NOT EXISTS idx_arena_sessions_status ON arena_sessions(status);
 CREATE INDEX IF NOT EXISTS idx_arena_evals_session ON arena_evaluations(session_id);
 CREATE INDEX IF NOT EXISTS idx_arena_evals_evaluator ON arena_evaluations(evaluator_id);
+
+-- 공유 평가 (external-eval 결과 공유 + 의견 수렴)
+CREATE TABLE IF NOT EXISTS shared_evaluations (
+    id TEXT PRIMARY KEY,
+    created_at TEXT NOT NULL,
+    created_by TEXT DEFAULT '',
+    title TEXT DEFAULT '',
+    prompt TEXT NOT NULL,
+    response TEXT NOT NULL,
+    eval_gpt_json TEXT DEFAULT '',
+    eval_v11_json TEXT DEFAULT '',
+    eval_v15_json TEXT DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS shared_eval_comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    eval_id TEXT NOT NULL,
+    comment_type TEXT NOT NULL,
+    target_version TEXT DEFAULT '',
+    author TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_shared_comments_eval ON shared_eval_comments(eval_id, created_at);
 """
 
 # ── 스키마 (PostgreSQL) ──
@@ -566,7 +593,11 @@ CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_comments_msg ON comments(message_id);
 CREATE INDEX IF NOT EXISTS idx_comments_conv ON comments(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_scenarios_category ON scenarios(category);
+CREATE INDEX IF NOT EXISTS idx_scenarios_enabled ON scenarios(enabled);
+CREATE INDEX IF NOT EXISTS idx_scenarios_risk ON scenarios(risk_level);
+CREATE INDEX IF NOT EXISTS idx_scenarios_source ON scenarios(source);
 CREATE INDEX IF NOT EXISTS idx_test_runs_date ON test_runs(run_at);
+CREATE INDEX IF NOT EXISTS idx_test_runs_env_status ON test_runs(env, status);
 
 CREATE TABLE IF NOT EXISTS consultation_checklists (
     symptom_key TEXT PRIMARY KEY,
@@ -701,6 +732,29 @@ CREATE INDEX IF NOT EXISTS idx_arena_sessions_evaluator ON arena_sessions(evalua
 CREATE INDEX IF NOT EXISTS idx_arena_sessions_status ON arena_sessions(status);
 CREATE INDEX IF NOT EXISTS idx_arena_evals_session ON arena_evaluations(session_id);
 CREATE INDEX IF NOT EXISTS idx_arena_evals_evaluator ON arena_evaluations(evaluator_id);
+
+-- 공유 평가 (external-eval 결과 공유 + 의견 수렴)
+CREATE TABLE IF NOT EXISTS shared_evaluations (
+    id TEXT PRIMARY KEY,
+    created_at TEXT NOT NULL,
+    created_by TEXT DEFAULT '',
+    title TEXT DEFAULT '',
+    prompt TEXT NOT NULL,
+    response TEXT NOT NULL,
+    eval_gpt_json TEXT DEFAULT '',
+    eval_v11_json TEXT DEFAULT '',
+    eval_v15_json TEXT DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS shared_eval_comments (
+    id SERIAL PRIMARY KEY,
+    eval_id TEXT NOT NULL,
+    comment_type TEXT NOT NULL,
+    target_version TEXT DEFAULT '',
+    author TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_shared_comments_eval ON shared_eval_comments(eval_id, created_at);
 """
 
 # Keep backward compat alias
@@ -2151,6 +2205,214 @@ def get_test_runs(limit=50):
         return result
 
 
+def get_test_runs_summary(limit=50, offset=0):
+    """이력 목록용 — results_json 제외하고 메타데이터만 조회 (빠름).
+
+    /api/history 처럼 목록 보기만 필요할 때 사용. results_json (거대 JSONB) 컬럼을
+    SELECT 하지 않으므로 응답 시간이 10초+ → 0.1초 수준으로 감소.
+    상세 보기는 get_test_run(id)로 results_json 포함 조회.
+    """
+    with get_conn() as (conn, cur):
+        if offset:
+            ph = _p()
+            sql = (
+                "SELECT id, run_at, total, passed, failed, env, status, "
+                "tester, guideline_version "
+                f"FROM test_runs ORDER BY run_at DESC LIMIT {ph} OFFSET {ph}"
+            )
+            cur.execute(sql, (limit, offset))
+        else:
+            ph = _p()
+            sql = (
+                "SELECT id, run_at, total, passed, failed, env, status, "
+                "tester, guideline_version "
+                f"FROM test_runs ORDER BY run_at DESC LIMIT {ph}"
+            )
+            cur.execute(sql, (limit,))
+        rows = cur.fetchall()
+        result = []
+        for r in rows:
+            d = _row_to_dict(r)
+            d['runAt'] = d.pop('run_at', '')
+            d['guidelineVersion'] = d.pop('guideline_version', '')
+            # results는 빈 배열 (상세 조회 시에만 채워짐)
+            d['results'] = []
+            result.append(d)
+        return result
+
+
+def count_test_runs():
+    """이력 전체 건수 (페이지네이션용)."""
+    with get_conn() as (conn, cur):
+        cur.execute("SELECT COUNT(*) AS cnt FROM test_runs")
+        row = cur.fetchone()
+        if row is None:
+            return 0
+        try:
+            return row['cnt']
+        except (KeyError, TypeError):
+            return row[0]
+
+
+def get_healthbench_runs_summary(limit=300):
+    """HealthBench 시나리오가 포함된 배치만 메타데이터로 반환.
+
+    기존: SELECT * → results_json 풀로드 → Python에서 HB- 필터 (30초+)
+    개선: SQL JSONB 집계 → DB 내부 처리, 결과 메타만 전송 (1초 이하)
+
+    SQLite는 JSONB 미지원 → 기존 풀로드 방식 폴백.
+    """
+    is_pg = _is_postgres()
+    ph = _p()
+
+    if is_pg:
+        # PostgreSQL JSONB 집계: results_json 풀로드 없이 HB 통계만 추출
+        sql = (
+            "SELECT id, run_at, total, passed, failed, env, status, tester, "
+            "       guideline_version, "
+            "       (SELECT COUNT(*) FROM jsonb_array_elements(results_json) AS e "
+            "        WHERE e->>'scenarioId' LIKE 'HB-%') AS hb_total, "
+            "       (SELECT COUNT(*) FROM jsonb_array_elements(results_json) AS e "
+            "        WHERE e->>'scenarioId' LIKE 'HB-%' AND e->>'status' = 'pass') AS hb_passed, "
+            "       (SELECT COUNT(*) FROM jsonb_array_elements(results_json) AS e "
+            "        WHERE e->>'scenarioId' LIKE 'HB-%' AND e->>'status' = 'fail') AS hb_failed, "
+            "       (SELECT COUNT(*) FROM jsonb_array_elements(results_json) AS e "
+            "        WHERE e->>'scenarioId' LIKE 'HB-%' AND e->>'status' = 'error') AS hb_errors, "
+            "       (SELECT AVG((e->'rubricEval'->>'score')::numeric) "
+            "        FROM jsonb_array_elements(results_json) AS e "
+            "        WHERE e->>'scenarioId' LIKE 'HB-%' "
+            "          AND e->'rubricEval'->>'score' IS NOT NULL) AS hb_avg_score "
+            "FROM test_runs "
+            "WHERE results_json::text LIKE '%\"HB-%' "
+            f"ORDER BY run_at DESC LIMIT {ph}"
+        )
+        with get_conn() as (conn, cur):
+            cur.execute(sql, (limit,))
+            rows = cur.fetchall()
+            result = []
+            for r in rows:
+                d = _row_to_dict(r)
+                if int(d.get('hb_total') or 0) <= 0:
+                    continue  # 안전망: 텍스트 LIKE 가 false positive 잡으면 제외
+                d['runAt'] = d.pop('run_at', '')
+                d['guidelineVersion'] = d.pop('guideline_version', '')
+                d['results'] = []
+                result.append(d)
+            return result
+
+    # SQLite 폴백 — 기존 풀로드 후 Python 필터
+    runs = get_test_runs(limit=limit)
+    out = []
+    for r in runs:
+        results = r.get('results') or []
+        hb = [x for x in results if (x.get('scenarioId') or '').startswith('HB-')]
+        if not hb:
+            continue
+        hb_passed = sum(1 for x in hb if x.get('status') == 'pass')
+        hb_failed = sum(1 for x in hb if x.get('status') == 'fail')
+        hb_errors = sum(1 for x in hb if x.get('status') == 'error')
+        scores = [x.get('rubricEval', {}).get('score') for x in hb
+                  if (x.get('rubricEval') or {}).get('score') is not None]
+        avg_score = (sum(scores) / len(scores)) if scores else None
+        r2 = dict(r)
+        r2['hb_total'] = len(hb)
+        r2['hb_passed'] = hb_passed
+        r2['hb_failed'] = hb_failed
+        r2['hb_errors'] = hb_errors
+        r2['hb_avg_score'] = avg_score
+        r2['results'] = []
+        out.append(r2)
+    return out
+
+
+def _is_postgres():
+    """현재 연결이 PostgreSQL 인지 — _ph(n) 함수 구현으로 판단."""
+    try:
+        return _p() == '%s'
+    except Exception:
+        return False
+
+
+def get_scenarios_summary(limit=None, offset=0, light=True):
+    """시나리오 목록 — 무거운 JSON 컬럼(turns/rubric/follow_ups) 제외 모드.
+
+    light=True (기본): 채팅테스터/시나리오 매니저 목록용. ~7개 JSON 파싱 제거.
+    light=False: 기존 get_scenarios() 와 동일 (호환).
+    """
+    if not light:
+        return get_scenarios()
+
+    ph = _p()
+    with get_conn() as (conn, cur):
+        if limit is not None and offset:
+            cur.execute(
+                "SELECT id, category, subcategory, prompt, risk_level, "
+                "should_refuse, expected_behavior, tags_json, enabled, "
+                "parent_id, source, source_conversation_id, created_at, updated_at "
+                f"FROM scenarios ORDER BY id LIMIT {ph} OFFSET {ph}",
+                (limit, offset),
+            )
+        elif limit is not None:
+            cur.execute(
+                "SELECT id, category, subcategory, prompt, risk_level, "
+                "should_refuse, expected_behavior, tags_json, enabled, "
+                "parent_id, source, source_conversation_id, created_at, updated_at "
+                f"FROM scenarios ORDER BY id LIMIT {ph}",
+                (limit,),
+            )
+        else:
+            cur.execute(
+                "SELECT id, category, subcategory, prompt, risk_level, "
+                "should_refuse, expected_behavior, tags_json, enabled, "
+                "parent_id, source, source_conversation_id, created_at, updated_at "
+                "FROM scenarios ORDER BY id"
+            )
+        rows = cur.fetchall()
+        scenarios = []
+        for r in rows:
+            s = _row_to_dict(r)
+            s['shouldRefuse'] = bool(s.pop('should_refuse', 0))
+            s['riskLevel'] = s.pop('risk_level', 'MEDIUM')
+            s['expectedBehavior'] = s.pop('expected_behavior', '')
+            s['tags'] = _pg_json_loads_or(s.pop('tags_json', '[]'), [])
+            s['enabled'] = bool(s.pop('enabled', 1))
+            s['parentId'] = s.pop('parent_id', None)
+            s['sourceConversationId'] = s.pop('source_conversation_id', None)
+            s['createdAt'] = s.pop('created_at', '')
+            s['updatedAt'] = s.pop('updated_at', '')
+            # turns/rubric/follow_ups/generationInfo 는 제외 (목록에서 불필요)
+            scenarios.append(s)
+
+        # 카테고리도 같이 (chat_tester가 따로 호출하지 않게 합쳐서 반환)
+        cur.execute(f"SELECT value FROM settings WHERE key = {ph}", ('categories',))
+        cat_row = cur.fetchone()
+        if cat_row:
+            categories = _pg_json_loads_or(_row_to_dict(cat_row).get('value'), DEFAULT_CATEGORIES)
+        else:
+            categories = DEFAULT_CATEGORIES
+
+    return {
+        'version': '1.0',
+        'lastModified': _now(),
+        'categories': categories,
+        'scenarios': scenarios,
+        'light': True,
+    }
+
+
+def count_scenarios():
+    """시나리오 전체 건수 (페이지네이션용)."""
+    with get_conn() as (conn, cur):
+        cur.execute("SELECT COUNT(*) AS cnt FROM scenarios")
+        row = cur.fetchone()
+        if row is None:
+            return 0
+        try:
+            return row['cnt']
+        except (KeyError, TypeError):
+            return row[0]
+
+
 def get_test_run(run_id):
     ph = _p()
     with get_conn() as (conn, cur):
@@ -3319,6 +3581,122 @@ def get_arena_stats(evaluator_id: str = None, days: int = 30) -> dict:
         'median_latency': median_latency,
         'agreement_rate': None,  # κ 플레이스홀더 — 복수 평가자 데이터 필요
     }
+
+
+# ════════════════════════════════════════
+#  공유 평가 (external-eval 결과 공유 페이지)
+# ════════════════════════════════════════
+def _new_share_id():
+    import secrets, string
+    alphabet = string.ascii_lowercase + string.digits
+    return ''.join(secrets.choice(alphabet) for _ in range(10))
+
+
+def create_shared_eval(prompt, response, eval_gpt, eval_v11, eval_v15, created_by='', title=''):
+    """평가 결과를 공유 페이지로 등록. id 반환."""
+    from datetime import datetime, timezone
+    sid = _new_share_id()
+    now_iso = datetime.now(timezone.utc).isoformat()
+    ph = _p()
+    with get_conn() as (conn, cur):
+        # 중복 방지
+        for _ in range(3):
+            cur.execute(f"SELECT id FROM shared_evaluations WHERE id = {ph}", (sid,))
+            if not cur.fetchone():
+                break
+            sid = _new_share_id()
+        cur.execute(
+            f"""INSERT INTO shared_evaluations
+            (id, created_at, created_by, title, prompt, response, eval_gpt_json, eval_v11_json, eval_v15_json)
+            VALUES ({_ph(9)})""",
+            (sid, now_iso, created_by or '', title or '',
+             prompt or '', response or '',
+             json.dumps(eval_gpt or {}, ensure_ascii=False),
+             json.dumps(eval_v11 or {}, ensure_ascii=False),
+             json.dumps(eval_v15 or {}, ensure_ascii=False)),
+        )
+    return sid
+
+
+def get_shared_eval(sid):
+    """공유 평가 조회 (의견 포함). PG(RealDictCursor) + SQLite(Row) 모두 컬럼명으로 접근."""
+    ph = _p()
+    def _j(s):
+        if s is None:
+            return None
+        # PG JSONB가 이미 dict/list로 디코드된 경우
+        if isinstance(s, (dict, list)):
+            return s
+        try:
+            return json.loads(s) if s else None
+        except Exception:
+            return None
+    with get_conn() as (conn, cur):
+        cur.execute(
+            f"""SELECT id, created_at, created_by, title, prompt, response,
+                eval_gpt_json, eval_v11_json, eval_v15_json
+                FROM shared_evaluations WHERE id = {ph}""", (sid,))
+        row = cur.fetchone()
+        if not row:
+            return None
+        rd = _row_to_dict(row)
+        data = {
+            'id': rd.get('id'),
+            'createdAt': rd.get('created_at'),
+            'createdBy': rd.get('created_by') or '',
+            'title': rd.get('title') or '',
+            'prompt': rd.get('prompt') or '',
+            'response': rd.get('response') or '',
+            'evalGpt': _j(rd.get('eval_gpt_json')),
+            'evalV11': _j(rd.get('eval_v11_json')),
+            'evalV15': _j(rd.get('eval_v15_json')),
+        }
+        cur.execute(
+            f"""SELECT id, comment_type, target_version, author, content, created_at
+                FROM shared_eval_comments WHERE eval_id = {ph}
+                ORDER BY created_at ASC""", (sid,))
+        comments_rows = cur.fetchall() or []
+    data['comments'] = []
+    for c in comments_rows:
+        cd = _row_to_dict(c)
+        data['comments'].append({
+            'id': cd.get('id'),
+            'type': cd.get('comment_type'),
+            'targetVersion': cd.get('target_version') or '',
+            'author': cd.get('author'),
+            'content': cd.get('content'),
+            'createdAt': cd.get('created_at'),
+        })
+    return data
+
+
+def add_shared_comment(eval_id, comment_type, author, content, target_version=''):
+    """의견 추가. (eval_id 존재 시에만 추가)"""
+    from datetime import datetime, timezone
+    if comment_type not in ('answer_feedback', 'criteria_feedback'):
+        raise ValueError('comment_type 은 answer_feedback 또는 criteria_feedback 이어야 합니다')
+    author = (author or '').strip()[:100]
+    content = (content or '').strip()
+    if not author:
+        raise ValueError('작성자 이름을 입력해주세요')
+    if not content:
+        raise ValueError('의견 내용을 입력해주세요')
+    if len(content) > 5000:
+        raise ValueError('의견은 5000자 이내로 입력해주세요')
+    now_iso = datetime.now(timezone.utc).isoformat()
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(f"SELECT id FROM shared_evaluations WHERE id = {ph}", (eval_id,))
+        if not cur.fetchone():
+            raise ValueError('공유 평가를 찾을 수 없습니다')
+        cur.execute(
+            f"""INSERT INTO shared_eval_comments
+            (eval_id, comment_type, target_version, author, content, created_at)
+            VALUES ({_ph(6)})""",
+            (eval_id, comment_type, target_version or '', author, content, now_iso),
+        )
+    return {'author': author, 'content': content, 'createdAt': now_iso,
+            'type': comment_type, 'targetVersion': target_version or ''}
 
 
 # ════════════════════════════════════════

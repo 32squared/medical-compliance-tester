@@ -273,6 +273,7 @@
       <a href="/healthbench" class="nav-btn">🩺 HealthBench</a>
   <a href="/guidelines" class="nav-btn">법률 평가 기준</a>
   <a href="/criteria" class="nav-btn">문진 평가 기준</a>
+  <a href="/external-eval" class="nav-btn">📋 외부 답변 평가</a>
   <a href="/rlhf" class="nav-btn">RLHF 관리</a>
   <a href="/kb_manager" class="nav-btn">KB 관리</a>
   <a href="/settings" class="nav-btn" id="settingsNavLink">&#9881; 설정</a>
@@ -566,7 +567,7 @@
       if (!r.ok) throw new Error('환경 변경 실패');
       setEnvChips(env);
       showToast('환경이 ' + env.toUpperCase() + '(으)로 변경되었습니다.', 'success');
-      loadHistory();
+      invalidateHistoryCache(); loadHistory();
     }).catch(e => showToast(e.message, 'error'));
   }
 
@@ -601,17 +602,80 @@
   // 필터 상태: 'all' | 'hb' | 'normal'
   let _runFilter = (typeof localStorage !== 'undefined' && localStorage.getItem('historyRunFilter')) || 'all';
 
+  // 페이지네이션 상태
+  let _historyLimit = 50;
+  let _historyOffset = 0;
+  let _historyHasMore = false;
+  let _historyTotal = 0;
+
+  // ── /api/history 중복 호출 통합 + 30초 캐싱 ──
+  // 페이지 로딩 시 4곳에서 호출하던 것을 1번으로 줄여 성능 ↑
+  let _historyCache = null;
+  let _historyCachePromise = null;
+  let _historyCacheTs = 0;
+  const HISTORY_CACHE_TTL_MS = 30000;
+  function fetchHistory(opts) {
+    opts = opts || {};
+    const force = !!opts.force;
+    const limit = opts.limit != null ? opts.limit : _historyLimit;
+    const offset = opts.offset != null ? opts.offset : 0;
+    const now = Date.now();
+    // offset>0 (더보기)는 캐싱 안 함 — 매번 신선한 데이터
+    if (!force && offset === 0 && _historyCache && (now - _historyCacheTs) < HISTORY_CACHE_TTL_MS) {
+      return Promise.resolve(_historyCache);
+    }
+    if (!force && offset === 0 && _historyCachePromise) {
+      return _historyCachePromise;
+    }
+    const url = '/api/history?limit=' + encodeURIComponent(limit) + '&offset=' + encodeURIComponent(offset);
+    const p = fetch(url)
+      .then(r => r.ok ? r.json() : { runs: [], pagination: {} })
+      .catch(() => ({ runs: [], pagination: {} }))
+      .then(data => {
+        if (offset === 0) {
+          _historyCache = data;
+          _historyCacheTs = Date.now();
+          _historyCachePromise = null;
+        }
+        return data;
+      });
+    if (offset === 0) _historyCachePromise = p;
+    return p;
+  }
+  function invalidateHistoryCache() {
+    _historyCache = null;
+    _historyCachePromise = null;
+    _historyCacheTs = 0;
+  }
+
   // ── Load History ──
-  function loadHistory() {
-    // /api/history (전체) + /api/healthbench/runs (HB 만) 병렬 로드
+  function loadHistory(append) {
+    const offset = append ? _historyOffset : 0;
+    // 통합 캐시 + HealthBench runs (작아서 별도 캐싱 불필요)
     Promise.all([
-      fetch('/api/history').then(r => r.ok ? r.json() : { runs: [] }).catch(() => ({ runs: [] })),
+      fetchHistory({ limit: _historyLimit, offset }),
       fetch('/api/healthbench/runs').then(r => r.ok ? r.json() : { runs: [] }).catch(() => ({ runs: [] })),
     ]).then(([all, hb]) => {
-      historyData = Array.isArray(all) ? all : (all.runs || []);
+      const newRuns = Array.isArray(all) ? all : (all.runs || []);
+      const pg = (all && all.pagination) || {};
+      _historyHasMore = !!pg.hasMore;
+      _historyTotal = pg.total || newRuns.length;
+      _historyOffset = (pg.offset || 0) + newRuns.length;
+      if (append && Array.isArray(historyData)) {
+        // 더보기 — 기존 목록에 추가 (중복 제거)
+        const existingIds = new Set(historyData.map(r => r.runId));
+        for (const nr of newRuns) {
+          if (!existingIds.has(nr.runId)) historyData.push(nr);
+        }
+      } else {
+        historyData = newRuns;
+      }
       _hbRunIds = new Set((hb.runs || []).map(r => r.runId || r.id).filter(Boolean));
       renderRunList();
     });
+  }
+  function loadMoreHistory() {
+    if (_historyHasMore) loadHistory(true);
   }
 
   function setRunFilter(f) {
@@ -686,12 +750,14 @@
       const runByName = run.runBy || run.tester || '';
       const runByBadge = runByName ? '<span style="font-size:10px;color:var(--text-dim);background:rgba(255,255,255,.08);padding:1px 6px;border-radius:4px;margin-left:4px">👤 ' + escapeHtml(runByName) + '</span>' : '';
       const hbBadge = _hbRunIds.has(rid) ? '<span style="font-size:10px;color:#0ea5e9;background:rgba(14,165,233,0.15);padding:1px 6px;border-radius:4px;margin-left:4px;font-weight:600" title="HealthBench batch">🩺 HB</span>' : '';
+      const reEvalBadge = run.reEvalCount ? '<span style="font-size:10px;color:#22c55e;background:rgba(34,197,94,0.15);padding:1px 6px;border-radius:4px;margin-left:4px;font-weight:700" title="재평가됨 ' + run.reEvalCount + '회 · v' + (run.reEvaluatedCriteriaVersion || '?') + '">🔄 v' + (run.reEvaluatedCriteriaVersion || '?') + '</span>' : '';
 
       return '<div class="run-item' + (isActive ? ' active' : '') + (isRunning ? ' running' : '') + '" onclick="selectRun(\'' + rid + '\')" data-runid="' + rid + '">' +
         '<div class="run-item-top">' +
           '<span class="run-type-icon">' + (isBatch ? '&#128230;' : '&#9654;') + '</span>' +
           '<span class="run-env-badge ' + env + '">' + env.toUpperCase() + '</span>' +
           hbBadge +
+          reEvalBadge +
           runByBadge +
           '<span class="run-timestamp">' + formatTimestamp(run.startedAt || run.timestamp) + '</span>' +
           statusBadge +
@@ -704,6 +770,23 @@
             '<div class="run-passbar"><div class="run-passbar-fill" style="width:' + rate + '%;background:' + barColor + '"></div></div>') +
       '</div>';
     }).join('');
+
+    // ── 더보기 버튼 (페이지네이션) ──
+    if (_historyHasMore) {
+      const remaining = Math.max(0, _historyTotal - historyData.length);
+      const moreBtn = document.createElement('div');
+      moreBtn.style.cssText = 'padding:12px 8px;text-align:center;border-top:1px solid var(--border);background:var(--surface)';
+      moreBtn.innerHTML =
+        '<button onclick="loadMoreHistory()" ' +
+        'style="width:100%;padding:8px 12px;background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">' +
+        '더보기 (남은 ' + remaining + '건)</button>';
+      list.appendChild(moreBtn);
+    } else if (historyData.length > 0 && _historyTotal > 0) {
+      const allLoadedTag = document.createElement('div');
+      allLoadedTag.style.cssText = 'padding:8px;text-align:center;font-size:11px;color:var(--text-dim);border-top:1px solid var(--border)';
+      allLoadedTag.textContent = '전체 ' + _historyTotal + '건 로드 완료';
+      list.appendChild(allLoadedTag);
+    }
 
     // running 상태 배치가 있으면 자동 폴링 시작
     historyData.filter(r => r.status === 'running').forEach(r => {
@@ -735,7 +818,7 @@
         if (detail.status !== 'running') {
           clearInterval(_resultPollInterval);
           _resultPollInterval = null;
-          loadHistory(); // full refresh
+          invalidateHistoryCache(); loadHistory(); // full refresh
         }
       } catch(e) { /* ignore */ }
     }, 30000);
@@ -832,7 +915,19 @@
       envBadge.className = 'run-env-badge ' + env;
     }
     var _dTs = document.getElementById('detailTimestamp');
-    if (_dTs) _dTs.textContent = formatTimestamp(run.startedAt || run.completedAt || run.timestamp);
+    if (_dTs) {
+      var tsBase = formatTimestamp(run.startedAt || run.completedAt || run.timestamp);
+      if (run.reEvalCount && run.reEvaluatedAt) {
+        var reTs = formatTimestamp(run.reEvaluatedAt);
+        var cv = run.reEvaluatedCriteriaVersion ? ('v' + run.reEvaluatedCriteriaVersion) : '';
+        _dTs.innerHTML = tsBase +
+          ' <span style="display:inline-block;margin-left:8px;padding:2px 8px;background:#22c55e22;color:#22c55e;border-radius:6px;font-size:11px;font-weight:700;border:1px solid #22c55e">' +
+          '🔄 재평가 ' + run.reEvalCount + '회 · ' + cv + ' · ' + reTs +
+          '</span>';
+      } else {
+        _dTs.textContent = tsBase;
+      }
+    }
     const runByEl = document.getElementById('detailRunBy');
     if (runByEl) {
       const who = run.runBy || run.tester || '익명';
@@ -852,6 +947,8 @@
 
     const rawResults = run.results || [];
     const area = document.getElementById('resultsArea');
+    // 페이지 이동 함수에서 재렌더 위해 보관
+    window._currentRunData = run;
     if (!area) return;  // 결과 영역 없으면 종료 (페이지 전환 중)
 
     // P1-6: 세그먼트 필터
@@ -904,6 +1001,35 @@
       return true;
     });
 
+    // ── 이슈 우선 정렬 (fail > error > pass, 같은 status면 위반 많음/점수 낮음 순) ──
+    const _stPri = { 'fail': 0, 'error': 1, 'pass': 2 };
+    results.sort((a, b) => {
+      const sa = _stPri[(a.status || '').toLowerCase()] != null ? _stPri[(a.status || '').toLowerCase()] : 3;
+      const sb = _stPri[(b.status || '').toLowerCase()] != null ? _stPri[(b.status || '').toLowerCase()] : 3;
+      if (sa !== sb) return sa - sb;
+      // 위반 건수 많은 것 위로
+      const va = ((a.gptEval && a.gptEval.violations) || (a.compliance && a.compliance.violations) || []).length;
+      const vb = ((b.gptEval && b.gptEval.violations) || (b.compliance && b.compliance.violations) || []).length;
+      if (vb !== va) return vb - va;
+      // CRITICAL/HIGH 심각도 위반 우선
+      const _sev = { 'CRITICAL': 0, 'HIGH': 1, 'MEDIUM': 2, 'LOW': 3 };
+      const sevA = Math.min(...((a.gptEval && a.gptEval.violations) || []).map(v => _sev[(v.severity || '').toUpperCase()] != null ? _sev[(v.severity || '').toUpperCase()] : 4), 5);
+      const sevB = Math.min(...((b.gptEval && b.gptEval.violations) || []).map(v => _sev[(v.severity || '').toUpperCase()] != null ? _sev[(v.severity || '').toUpperCase()] : 4), 5);
+      if (sevA !== sevB) return sevA - sevB;
+      // 점수 낮은 것 위로
+      const scoreA = (a.gptEval && a.gptEval.score != null) ? a.gptEval.score : (a.finalScore != null ? a.finalScore : 100);
+      const scoreB = (b.gptEval && b.gptEval.score != null) ? b.gptEval.score : (b.finalScore != null ? b.finalScore : 100);
+      return scoreA - scoreB;
+    });
+
+    // ── 페이지네이션 (50건/페이지) ──
+    const _PAGE_SIZE = 50;
+    if (window._segPage == null) window._segPage = 0;
+    const _totalPages = Math.max(1, Math.ceil(results.length / _PAGE_SIZE));
+    if (window._segPage >= _totalPages) window._segPage = 0;
+    const _pageStart = window._segPage * _PAGE_SIZE;
+    const _pagedResults = results.slice(_pageStart, _pageStart + _PAGE_SIZE);
+
     const _statusOpts = '<option value="">\uC0C1\uD0DC: \uC804\uCCB4</option>' + ['pass','fail','error'].map(s => '<option value="' + s + '"' + (F.status === s ? ' selected' : '') + '>' + s.toUpperCase() + '</option>').join('');
     const _gradeOpts  = '<option value="">\uB4F1\uAE09: \uC804\uCCB4</option>' + ['A','B','C','D','F','N/A'].map(g => '<option value="' + g + '"' + (F.grade === g ? ' selected' : '') + '>' + g + '</option>').join('');
     const _riskOpts   = riskList.length ? ('<option value="">\uB9AC\uC2A4\uD06C: \uC804\uCCB4</option>' + riskList.map(r => '<option value="' + r + '"' + (F.risk === r ? ' selected' : '') + '>' + r + '</option>').join('')) : '';
@@ -928,7 +1054,23 @@
       return;
     }
 
-    area.innerHTML = progressHtml + filterBar + results.map((r, idx) => {
+    // \u2500\u2500 \uD398\uC774\uC9C0 \uCEE8\uD2B8\uB864 (\uC774\uC288 \uC6B0\uC120 \uC815\uB82C\uB428 \uC548\uB0B4 + \uD398\uC774\uC9C0 \uC774\uB3D9) \u2500\u2500
+    const _ptopHtml = '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;font-size:11.5px">' +
+      '<div style="color:var(--text-dim)">' +
+        '<span style="color:#f97316;font-weight:700">\u26A0 \uC774\uC288 \uC6B0\uC120 \uC815\uB82C</span>' +
+        ' \u00B7 fail/error \uC704 \u2192 \uC704\uBC18 \uB9CE\uC74C \u2192 \uC2EC\uAC01\uB3C4 \u2192 \uC810\uC218 \uB0AE\uC74C \uC21C' +
+      '</div>' +
+      '<div style="display:flex;gap:6px;align-items:center;color:var(--text-dim)">' +
+        '<span>' + (results.length === 0 ? 0 : (_pageStart + 1)) + '\u2013' + Math.min(_pageStart + _PAGE_SIZE, results.length) + ' / ' + results.length + '\uAC74</span>' +
+        '<button onclick="changeSegPage(0)" ' + (window._segPage === 0 ? 'disabled' : '') + ' style="padding:3px 7px;background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;cursor:pointer;font-size:11px">\u23EE</button>' +
+        '<button onclick="changeSegPage(' + (window._segPage - 1) + ')" ' + (window._segPage === 0 ? 'disabled' : '') + ' style="padding:3px 7px;background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;cursor:pointer;font-size:11px">\u25C0</button>' +
+        '<span style="font-weight:700;color:var(--accent);min-width:50px;text-align:center">' + (window._segPage + 1) + ' / ' + _totalPages + '</span>' +
+        '<button onclick="changeSegPage(' + (window._segPage + 1) + ')" ' + (window._segPage >= _totalPages - 1 ? 'disabled' : '') + ' style="padding:3px 7px;background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;cursor:pointer;font-size:11px">\u25B6</button>' +
+        '<button onclick="changeSegPage(' + (_totalPages - 1) + ')" ' + (window._segPage >= _totalPages - 1 ? 'disabled' : '') + ' style="padding:3px 7px;background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;cursor:pointer;font-size:11px">\u23ED</button>' +
+      '</div>' +
+    '</div>';
+
+    area.innerHTML = progressHtml + filterBar + _ptopHtml + _pagedResults.map((r, idx) => {
       const st = (r.status || '').toLowerCase();
       let statusLabel, statusClass;
       if (st === 'pass') { statusLabel = '\u2705 PASS'; statusClass = 'pass'; }
@@ -986,6 +1128,19 @@
         const regexRef = (compliance && compliance.score != null)
           ? ' <span style="color:var(--text-dim);font-size:12px">(참고: 정규식 ' + (compliance.regexScore || compliance.score || 0) + '점)</span>'
           : '';
+        // v1.5.1 — 카테고리별 카운트 배지
+        const _vList = Array.isArray(gptEval.violations) ? gptEval.violations : [];
+        const _legalN = (gptEval.legalViolationCount != null) ? gptEval.legalViolationCount
+                       : _vList.filter(v => (v.category || 'legal_violation') === 'legal_violation').length;
+        const _qualityN = (gptEval.qualityIssueCount != null) ? gptEval.qualityIssueCount
+                         : _vList.filter(v => (v.category || '') === 'quality_issue').length;
+        const _safetyN = (gptEval.safetyAdvisoryCount != null) ? gptEval.safetyAdvisoryCount
+                        : _vList.filter(v => (v.category || '') === 'safety_advisory').length;
+        const _catBadges = '<div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap">' +
+          '<span title="실제 한국 의료법 위반 (확진/처방/치료지시/과대효능)" style="font-size:11px;padding:2px 6px;border-radius:4px;background:' + (_legalN > 0 ? '#ef444433' : '#22c55e22') + ';color:' + (_legalN > 0 ? '#ef4444' : '#22c55e') + ';font-weight:600">&#9878;&#65039; 법위반 ' + _legalN + '</span>' +
+          '<span title="내부 품질 표준 미달 (법위반 아님)" style="font-size:11px;padding:2px 6px;border-radius:4px;background:#eab30822;color:#eab308;font-weight:600">&#128203; 품질 권고 ' + _qualityN + '</span>' +
+          '<span title="환자 안전 권고 (법위반 아님)" style="font-size:11px;padding:2px 6px;border-radius:4px;background:#38bdf822;color:#38bdf8;font-weight:600">&#128737;&#65039; 안전 권고 ' + _safetyN + '</span>' +
+        '</div>';
         gptHtml = '<div class="result-section">' +
           '<div class="result-section-title" style="color:var(--purple)">&#129302; 컴플라이언스 평가 (최종 판정 기준)</div>' +
           '<div class="result-section-body">' +
@@ -995,7 +1150,8 @@
                 (gptEval.passed ? '<span style="color:var(--green)">PASS</span>' : '<span style="color:var(--red)">FAIL</span>') +
               '</span>' + regexRef +
             '</div>' +
-            (gptEval.summary ? '<div style="color:var(--text-dim);font-size:13px">' + escapeHtml(gptEval.summary) + '</div>' : '') +
+            _catBadges +
+            (gptEval.summary ? '<div style="color:var(--text-dim);font-size:13px;margin-top:6px">' + escapeHtml(gptEval.summary) + '</div>' : '') +
             (gptEval.recommendation ? '<div style="margin-top:4px;padding:6px;background:var(--accent-dim);border-radius:4px;color:var(--accent);font-size:13px">&#128161; ' + escapeHtml(gptEval.recommendation) + '</div>' : '') +
           '</div></div>';
       }
@@ -1021,8 +1177,21 @@
       // Consultation eval display
       let consultHtml = '';
       const ce = r.consultationEval;
-      if (ce && ce.totalScore != null) {
+      // 진단: 왜 안 보이는지 사용자에게 명시
+      if (!ce || (ce.totalScore == null && !ce.grade && !ce.axes)) {
+        // 응답이 아예 없는 경우 (fail/error) 또는 평가 안 된 경우
+        const reason = !r.response ? '응답 없음 (fail/error 시나리오)' :
+                       (r.status === 'error' ? '오류 시나리오' :
+                       '평가 데이터 없음 (재평가하면 채워짐)');
+        consultHtml = '<div style="margin-top:8px;padding:8px;background:#0f172a;border-radius:6px;border:1px solid #334155">' +
+          '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">' +
+            '<span style="font-size:15px;font-weight:600">🩺 문진 품질</span>' +
+            '<span style="font-size:12px;color:var(--text-dim);background:var(--surface2);padding:2px 8px;border-radius:4px">⚠ ' + reason + '</span>' +
+          '</div>' +
+        '</div>';
+      } else if (ce && ce.totalScore != null) {
         const ceGradeColors = { A: '#22c55e', B: '#38bdf8', C: '#f59e0b', D: '#f97316', F: '#ef4444' };
+        // buildConsultAxes: 백엔드 페이로드의 label/max 사용 (v1.5.1/v1.1.x 자동 + legacy 매핑 보존)
         const ceAxes = buildConsultAxes(ce);
         let axBars = '';
         for (const ax of ceAxes) {
@@ -1171,11 +1340,29 @@
           detailSections +
         '</div>' +
       '</div>';
-    }).join('');
+    }).join('') + (_totalPages > 1 ? '<div style="display:flex;align-items:center;justify-content:center;padding:10px;margin-top:10px;gap:6px;font-size:11.5px">' +
+      '<button onclick="changeSegPage(0)" ' + (window._segPage === 0 ? 'disabled' : '') + ' style="padding:4px 10px;background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;cursor:pointer">⏮ 처음</button>' +
+      '<button onclick="changeSegPage(' + (window._segPage - 1) + ')" ' + (window._segPage === 0 ? 'disabled' : '') + ' style="padding:4px 10px;background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;cursor:pointer">◀ 이전</button>' +
+      '<span style="font-weight:700;color:var(--accent);padding:4px 12px">' + (window._segPage + 1) + ' / ' + _totalPages + '</span>' +
+      '<button onclick="changeSegPage(' + (window._segPage + 1) + ')" ' + (window._segPage >= _totalPages - 1 ? 'disabled' : '') + ' style="padding:4px 10px;background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;cursor:pointer">다음 ▶</button>' +
+      '<button onclick="changeSegPage(' + (_totalPages - 1) + ')" ' + (window._segPage >= _totalPages - 1 ? 'disabled' : '') + ' style="padding:4px 10px;background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:4px;cursor:pointer">마지막 ⏭</button>' +
+    '</div>' : '');
 
     // P1-6: 필터 변경 시 재렌더 위해 이벤트 바인딩
     bindSegFilterEvents();
   }
+
+  // 페이지 이동 함수
+  function changeSegPage(page) {
+    const total = window._currentRunData;
+    if (!total) return;
+    window._segPage = Math.max(0, page);
+    renderDetail(window._currentRunData);
+    // 결과 영역 상단으로 스크롤
+    const area = document.getElementById('resultsArea') || document.querySelector('.run-detail');
+    if (area) area.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  window.changeSegPage = changeSegPage;
 
   // ── Toggle Result Card ──
   function toggleResult(idx) {
@@ -1198,6 +1385,7 @@
       el.addEventListener('change', function() {
         window._segFilter = window._segFilter || {};
         window._segFilter[mapEl[elId]] = el.value;
+        window._segPage = 0;  // 필터 변경 시 1페이지로 리셋
         _rerenderFilteredResults();
       });
     });
@@ -1209,6 +1397,7 @@
         _t = setTimeout(function() {
           window._segFilter = window._segFilter || {};
           window._segFilter.search = srch.value;
+          window._segPage = 0;  // 검색 변경 시 1페이지로 리셋
           _rerenderFilteredResults();
         }, 300);
       });
@@ -1232,8 +1421,8 @@
     if (!modal) return;
     modal.style.display = 'flex';
     document.getElementById('compareResultArea').innerHTML = '';
-    // 최근 run 목록 가져와 두 셀렉트 채우기
-    fetch('/api/history').then(r => r.json()).then(data => {
+    // 최근 run 목록 가져와 두 셀렉트 채우기 (캐시 사용)
+    fetchHistory().then(data => {
       var runs = (data.runs || []).filter(r => r.type === 'batch');
       var aSel = document.getElementById('compareRunA');
       var bSel = document.getElementById('compareRunB');
@@ -1419,17 +1608,19 @@
   // ── Re-evaluate Run with current guidelines ──
   function reEvaluateRun() {
     if (!currentRunId) return;
-    if (!confirm('현재 가이드라인 버전으로 이 이력을 재평가하시겠습니까?')) return;
+    if (!confirm('현재 가이드라인 + 문진 평가 기준(v1.5.1)으로 이 이력을 재평가하시겠습니까?\n법률 평가 + 문진 평가가 모두 다시 실행됩니다 (OpenAI 호출 비용 발생).')) return;
+    showToast('재평가 중... (수십초~수분 소요)', 'info');
     fetch('/api/history/re-evaluate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ runId: currentRunId })
+      body: JSON.stringify({ runId: currentRunId, includeGpt: true, includeConsultation: true })
     })
       .then(r => r.json())
       .then(d => {
         if (d.success) {
-          showToast(`재평가 완료: ${d.reEvaluated}건 (가이드라인 v${d.guidelineVersion})`, 'success');
-          loadHistory();
+          const msg = d.message || `법률 ${d.gptReEvaluated || 0}건 + 문진 ${d.consultationReEvaluated || 0}건 재평가 완료`;
+          showToast(msg, 'success');
+          invalidateHistoryCache(); loadHistory();
           // 현재 선택된 이력 다시 로드
           setTimeout(() => {
             const link = document.querySelector('.run-item.active');
@@ -1456,7 +1647,7 @@
         var _dc = document.getElementById('detailContent');
         if (_es) _es.style.display = '';
         if (_dc) _dc.style.display = 'none';
-        loadHistory();
+        invalidateHistoryCache(); loadHistory();
       })
       .catch(e => showToast(e.message, 'error'));
   }
@@ -1540,8 +1731,16 @@
             '<div style="font-size:11px;color:var(--text-dim);margin:12px 0 4px 0;text-transform:uppercase;letter-spacing:.5px">AI 응답 <span style="color:var(--text-dim);text-transform:none;letter-spacing:0">(' + respLen + ' chars)</span></div>' +
             '<div style="font-size:13px;background:var(--bg);padding:10px 12px;border-radius:6px;white-space:pre-wrap;line-height:1.55;max-height:380px;overflow-y:auto">' + escapeHtml(respText || '(응답 없음)') + '</div>' +
             (summary ? '<div style="font-size:11px;color:var(--text-dim);margin:12px 0 4px 0;text-transform:uppercase;letter-spacing:.5px">LLM 평가 요약</div><div style="font-size:12px;background:var(--bg);padding:8px 10px;border-radius:6px;color:var(--text);line-height:1.5">' + escapeHtml(summary) + '</div>' : '') +
-            (violations.length > 0 ? '<div style="font-size:11px;color:var(--text-dim);margin:12px 0 4px 0;text-transform:uppercase;letter-spacing:.5px">감지된 위반 (' + violations.length + ')</div><div style="font-size:12px;background:var(--bg);padding:8px 10px;border-radius:6px;line-height:1.6">' +
-              violations.map(v => '· <b style="color:#ef4444">' + escapeHtml(v.type || v.law || '?') + '</b>' + (v.severity ? ' [' + escapeHtml(v.severity) + ']' : '') + (v.description ? ' — ' + escapeHtml(v.description) : '')).join('<br>') + '</div>' : '') +
+            (violations.length > 0 ? '<div style="font-size:11px;color:var(--text-dim);margin:12px 0 4px 0;text-transform:uppercase;letter-spacing:.5px">감지된 항목 (' + violations.length + ') — 법위반/품질/안전 구분</div><div style="font-size:12px;background:var(--bg);padding:8px 10px;border-radius:6px;line-height:1.6">' +
+              violations.map(v => {
+                const cat = (v.category || 'legal_violation');
+                const catLabel = cat === 'legal_violation' ? '⚖️ 법위반' : (cat === 'quality_issue' ? '📋 품질' : (cat === 'safety_advisory' ? '🛡️ 안전' : '?'));
+                const catColor = cat === 'legal_violation' ? '#ef4444' : (cat === 'quality_issue' ? '#eab308' : '#38bdf8');
+                return '· <span style="background:' + catColor + '22;color:' + catColor + ';padding:1px 6px;border-radius:3px;font-size:11px;font-weight:600;margin-right:4px">' + catLabel + '</span>' +
+                  '<b style="color:' + catColor + '">' + escapeHtml(v.type || v.law || '?') + '</b>' +
+                  (v.severity ? ' [' + escapeHtml(v.severity) + ']' : '') +
+                  (v.description ? ' — ' + escapeHtml(v.description) : '');
+              }).join('<br>') + '</div>' : '') +
           '</div>' +
         '</details>';
       }
@@ -1686,9 +1885,11 @@
     const bar = document.getElementById('loaderBar');
     if (bar) bar.style.width = '10%';
     try {
-      const [settingsRes, historyRes, authRes] = await Promise.allSettled([
+      // /api/history는 fetchHistory()로 통합 캐싱
+      const historyPromise = fetchHistory({ limit: _historyLimit, offset: 0 });
+      const [settingsRes, historyData_, authRes] = await Promise.allSettled([
         fetch('/api/settings'),
-        fetch('/api/history'),
+        historyPromise,
         fetch('/api/auth/status')
       ]);
       if (bar) bar.style.width = '60%';
@@ -1701,9 +1902,13 @@
       if (bar) bar.style.width = '70%';
 
       // Apply history
-      if (historyRes.status === 'fulfilled' && historyRes.value.ok) {
-        const data = await historyRes.value.json();
+      if (historyData_.status === 'fulfilled' && historyData_.value) {
+        const data = historyData_.value;
         historyData = Array.isArray(data) ? data : (data.runs || []);
+        const pg = (data && data.pagination) || {};
+        _historyHasMore = !!pg.hasMore;
+        _historyTotal = pg.total || historyData.length;
+        _historyOffset = (pg.offset || 0) + historyData.length;
       } else {
         historyData = [];
       }
@@ -1826,7 +2031,7 @@
           clearInterval(_pollingIntervals[runId]);
           delete _pollingIntervals[runId];
           delete _pollingStartTimes[runId];
-          loadHistory();
+          invalidateHistoryCache(); loadHistory();
         }
       } catch(e) { /* 네트워크 오류 무시 */ }
     }, 3000);
@@ -1945,26 +2150,43 @@
       html += '<div style="color:var(--text);margin-bottom:8px">' + escapeHtml(geSummary) + '</div>';
     }
     if (geViolations.length > 0) {
-      html += '<div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;font-weight:700">위반 사항 ' + geViolations.length + '건:</div>';
+      // v1.5.1 카테고리 분리 카운트
+      var _ge_legalN = (ge.legalViolationCount != null) ? ge.legalViolationCount
+                      : geViolations.filter(function(v){ return (v.category || 'legal_violation') === 'legal_violation'; }).length;
+      var _ge_qualityN = (ge.qualityIssueCount != null) ? ge.qualityIssueCount
+                        : geViolations.filter(function(v){ return v.category === 'quality_issue'; }).length;
+      var _ge_safetyN = (ge.safetyAdvisoryCount != null) ? ge.safetyAdvisoryCount
+                       : geViolations.filter(function(v){ return v.category === 'safety_advisory'; }).length;
+      html += '<div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">' +
+        '<span style="font-size:11px;padding:2px 6px;border-radius:4px;background:' + (_ge_legalN > 0 ? '#ef444433' : '#22c55e22') + ';color:' + (_ge_legalN > 0 ? '#ef4444' : '#22c55e') + ';font-weight:600">⚖️ 법위반 ' + _ge_legalN + '</span>' +
+        '<span style="font-size:11px;padding:2px 6px;border-radius:4px;background:#eab30822;color:#eab308;font-weight:600">📋 품질 권고 ' + _ge_qualityN + '</span>' +
+        '<span style="font-size:11px;padding:2px 6px;border-radius:4px;background:#38bdf822;color:#38bdf8;font-weight:600">🛡️ 안전 권고 ' + _ge_safetyN + '</span>' +
+        '</div>';
+      html += '<div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;font-weight:700">감지된 항목 ' + geViolations.length + '건 (카테고리별):</div>';
       for (var vi = 0; vi < geViolations.length; vi++) {
         var v = geViolations[vi];
         if (typeof v !== 'object') continue;
         var sev = (v.severity || '').toUpperCase();
+        var cat = (v.category || 'legal_violation');
+        var catLabel = cat === 'legal_violation' ? '⚖️ 법위반' : (cat === 'quality_issue' ? '📋 품질 권고' : (cat === 'safety_advisory' ? '🛡️ 안전 권고' : cat));
+        var catColor = cat === 'legal_violation' ? '#ef4444' : (cat === 'quality_issue' ? '#eab308' : '#38bdf8');
         var sevColor = sev === 'CRITICAL' ? '#dc2626' : sev === 'HIGH' ? '#f97316' : sev === 'MEDIUM' ? '#eab308' : '#22c55e';
-        html += '<div style="padding:6px 8px;border-left:3px solid ' + sevColor + ';background:var(--surface);margin:4px 0;border-radius:3px">' +
-          '<div style="font-size:10.5px;color:' + sevColor + ';font-weight:700">' + escapeHtml(sev || '?') + ' · ' + escapeHtml(v.law || '') + ' · ' + escapeHtml(v.type || '') + '</div>' +
+        var borderColor = cat === 'legal_violation' ? sevColor : catColor;  // 법위반만 severity 색, 나머지는 카테고리 색
+        html += '<div style="padding:6px 8px;border-left:3px solid ' + borderColor + ';background:var(--surface);margin:4px 0;border-radius:3px">' +
+          '<div style="font-size:10.5px;font-weight:700"><span style="background:' + catColor + '22;color:' + catColor + ';padding:1px 5px;border-radius:3px;margin-right:4px">' + catLabel + '</span>' +
+          '<span style="color:' + sevColor + '">' + escapeHtml(sev || '?') + '</span> · ' + escapeHtml(v.law || '') + ' · ' + escapeHtml(v.type || '') + '</div>' +
           '<div style="color:var(--text);margin-top:2px;font-size:12px">' + escapeHtml(v.description || '') + '</div>' +
           '</div>';
       }
     } else {
-      html += '<div style="color:#22c55e;font-size:12px">✓ 법률 위반 없음</div>';
+      html += '<div style="color:#22c55e;font-size:12px">✓ 법위반·품질·안전 권고 모두 없음</div>';
     }
     html += '</div></div>';
 
     // 5. 문진 평가 (consultationEval)
     var ceSummary = ce.summary || '';
     var ceAxes = ce.axes || {};
-    var ceMissing = ce.missingItems || [];
+    // buildConsultAxes: 백엔드 페이로드의 label/max/details 사용 (v1.5.1/v1.1.x 자동)
     var axesDefs = buildConsultAxes(ce);
     var ceTotalMax = 0;
     for (var amx = 0; amx < axesDefs.length; amx++) { ceTotalMax += (axesDefs[amx].max || 0); }
@@ -2489,7 +2711,7 @@
     html += '</div>';
 
     // 3. 문진 품질 — 총점·등급·축별·누락항목 (전면 개편)
-    // axesDefs를 결과 데이터에서 동적 파생 (새/레거시/미지 키 모두 안전 처리)
+    // axesDefs를 결과 데이터에서 동적 파생 (백엔드 페이로드의 label/max 사용; v1.5.1/v1.1.x 자동)
     var axesDefs = (function() {
       for (var i = 0; i < results.length; i++) {
         var ce0 = results[i] && results[i].consultationEval;
@@ -3318,7 +3540,7 @@
     }
     document.getElementById('reportGradeDist').innerHTML = gradeHtml;
 
-    // Section C: 축별 평균 점수 — 축 키를 데이터에서 동적 파생 (새/레거시 키 모두 지원)
+    // Section C: 축별 평균 점수 — 축 키를 데이터에서 동적 파생 (v1.5.1/v1.1.x 자동, 레거시·신규 키 모두 지원)
     var axes = data.axes || data.axisScores || {};
     var axesDefs = (function() {
       var keys = Object.keys(axes);
@@ -3576,7 +3798,7 @@
       var histData = [];
       var results = await Promise.all([
         fetch('/api/rlhf/stats').then(function(r) { return r.ok ? r.json() : {}; }).catch(function() { return {}; }),
-        fetch('/api/history').then(function(r) { return r.ok ? r.json() : []; }).catch(function() { return []; })
+        fetchHistory().catch(function() { return { runs: [] }; })
       ]);
       statsData = results[0] || {};
       histData = Array.isArray(results[1]) ? results[1] : (results[1].runs || []);
