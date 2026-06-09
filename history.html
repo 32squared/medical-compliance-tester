@@ -1093,10 +1093,22 @@
                          : _vList.filter(v => (v.category || '') === 'quality_issue').length;
         const _safetyN = (gptEval.safetyAdvisoryCount != null) ? gptEval.safetyAdvisoryCount
                         : _vList.filter(v => (v.category || '') === 'safety_advisory').length;
-        const _catBadges = '<div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap">' +
-          '<span title="실제 한국 의료법 위반 (확진/처방/치료지시/과대효능)" style="font-size:11px;padding:2px 6px;border-radius:4px;background:' + (_legalN > 0 ? '#ef444433' : '#22c55e22') + ';color:' + (_legalN > 0 ? '#ef4444' : '#22c55e') + ';font-weight:600">&#9878;&#65039; 법위반 ' + _legalN + '</span>' +
+        // v1.5.2 — 상단/하단 면책 표시 (상단은 필수)
+        const _topDisc = (gptEval.has_top_disclaimer === true);
+        const _topDiscKnown = (typeof gptEval.has_top_disclaimer === 'boolean');
+        const _botDisc = (gptEval.has_bottom_disclaimer === true);
+        const _botDiscKnown = (typeof gptEval.has_bottom_disclaimer === 'boolean');
+        const _catBadges = '<div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap;align-items:center">' +
+          '<span title="실제 한국 의료법 위반 (확진/처방/치료지시/과대효능/상단 면책 누락)" style="font-size:11px;padding:2px 6px;border-radius:4px;background:' + (_legalN > 0 ? '#ef444433' : '#22c55e22') + ';color:' + (_legalN > 0 ? '#ef4444' : '#22c55e') + ';font-weight:600">&#9878;&#65039; 법위반 ' + _legalN + '</span>' +
           '<span title="내부 품질 표준 미달 (법위반 아님)" style="font-size:11px;padding:2px 6px;border-radius:4px;background:#eab30822;color:#eab308;font-weight:600">&#128203; 품질 권고 ' + _qualityN + '</span>' +
           '<span title="환자 안전 권고 (법위반 아님)" style="font-size:11px;padding:2px 6px;border-radius:4px;background:#38bdf822;color:#38bdf8;font-weight:600">&#128737;&#65039; 안전 권고 ' + _safetyN + '</span>' +
+          '<span style="margin-left:6px;width:1px;height:14px;background:var(--border)"></span>' +
+          (_topDiscKnown
+            ? '<span title="상단 면책 (필수). 누락 시 법위반" style="font-size:11px;padding:2px 6px;border-radius:4px;background:' + (_topDisc ? '#22c55e22' : '#ef444433') + ';color:' + (_topDisc ? '#22c55e' : '#ef4444') + ';font-weight:600">&#128220; 상단 면책 ' + (_topDisc ? '✓' : '✗') + '</span>'
+            : '<span title="상단 면책 정보 없음 (구 데이터)" style="font-size:11px;padding:2px 6px;border-radius:4px;background:#94a3b822;color:#94a3b8;font-weight:600">&#128220; 상단 면책 ?</span>') +
+          (_botDiscKnown
+            ? '<span title="하단 면책 (권장). 누락은 quality_issue" style="font-size:11px;padding:2px 6px;border-radius:4px;background:' + (_botDisc ? '#22c55e22' : '#eab30822') + ';color:' + (_botDisc ? '#22c55e' : '#eab308') + ';font-weight:600">&#128220; 하단 면책 ' + (_botDisc ? '✓' : '✗') + '</span>'
+            : '') +
         '</div>';
         gptHtml = '<div class="result-section">' +
           '<div class="result-section-title" style="color:var(--purple)">&#129302; 컴플라이언스 평가 (최종 판정 기준)</div>' +
@@ -1163,22 +1175,62 @@
           { key: 'structuredApproach', label: '단계적 접근', max: 15 },
           { key: 'appropriateGuidance', label: '적절한 안내', max: 15 },
         ];
-        const ceAxes = _ceV15.some(a => (ce.axes || {})[a.key]) ? _ceV15 : _ceV11;
+        // v1.5.1 키 → v1.1.x 키 → 동적 fallback (실제 ce.axes 키 사용)
+        const _ceRawAxes = (ce.axes && typeof ce.axes === 'object') ? ce.axes : {};
+        const _ceRawKeys = Object.keys(_ceRawAxes);
+        // ✱ 헬퍼: axes[key] 가 숫자 또는 객체 모두 처리
+        const _axGet = (raw) => {
+          if (typeof raw === 'number') return { score: raw, details: '', missing: [] };
+          if (raw && typeof raw === 'object') {
+            return {
+              score: (typeof raw.score === 'number') ? raw.score : 0,
+              details: raw.details || '',
+              missing: Array.isArray(raw.missing) ? raw.missing : []
+            };
+          }
+          return { score: 0, details: '', missing: [] };
+        };
+        let ceAxes;
+        if (_ceV15.some(a => _ceRawAxes[a.key] !== undefined)) {
+          ceAxes = _ceV15;
+        } else if (_ceV11.some(a => _ceRawAxes[a.key] !== undefined)) {
+          ceAxes = _ceV11;
+        } else if (_ceRawKeys.length > 0) {
+          // 데이터의 실제 키로 동적 구성 (구버전 호환)
+          ceAxes = _ceRawKeys.map(k => {
+            const d = _ceRawAxes[k];
+            const isObj = d && typeof d === 'object';
+            return {
+              key: k,
+              label: (isObj && (d.name || d.label)) || k,
+              max: isObj
+                ? ((typeof d.maxScore === 'number') ? d.maxScore : (typeof d.max === 'number') ? d.max : 100)
+                : 100
+            };
+          });
+        } else {
+          ceAxes = [];
+        }
         let axBars = '';
-        for (const ax of ceAxes) {
-          const ad = (ce.axes || {})[ax.key] || {};
-          const sc = ad.score || 0;
-          const pct = Math.round((sc / ax.max) * 100);
-          const bc = pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444';
-          const w = pct < 60 ? ' ⚠️' : '';
-          const adDetail = ad.details || '';
-          const adMissing = (ad.missing || []).join(', ');
-          axBars += '<div style="margin-bottom:5px">' +
-            '<div style="display:flex;justify-content:space-between;font-size:13px;color:#94a3b8"><span>' + ax.label + w + '</span><span>' + sc + '/' + ax.max + '</span></div>' +
-            '<div style="height:8px;background:#1e293b;border-radius:2px"><div style="height:100%;width:' + pct + '%;background:' + bc + ';border-radius:2px"></div></div>' +
-            (adDetail ? '<div style="font-size:12px;color:#94a3b8;margin-top:1px">' + escapeHtml(adDetail) + '</div>' : '') +
-            (adMissing ? '<div style="font-size:13px;color:#f59e0b;margin-top:1px">⚠ ' + escapeHtml(adMissing) + '</div>' : '') +
-          '</div>';
+        if (ceAxes.length === 0) {
+          // axes 데이터 자체가 없음 — 안내
+          axBars = '<div style="font-size:12px;color:#f59e0b;padding:6px 8px;background:#1e293b;border-radius:4px">⚠ 축별 점수 데이터가 없습니다 (totalScore만 저장됨). 재평가하면 채워집니다.</div>';
+        } else {
+          for (const ax of ceAxes) {
+            const ad = _axGet(_ceRawAxes[ax.key]);
+            const sc = ad.score;
+            const pct = ax.max > 0 ? Math.max(0, Math.min(100, Math.round((sc / ax.max) * 100))) : 0;
+            const bc = pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444';
+            const w = pct < 60 ? ' ⚠️' : '';
+            const adDetail = ad.details;
+            const adMissing = ad.missing.join(', ');
+            axBars += '<div style="margin-bottom:5px">' +
+              '<div style="display:flex;justify-content:space-between;font-size:13px;color:#94a3b8"><span>' + escapeHtml(String(ax.label)) + w + '</span><span>' + sc + '/' + ax.max + '</span></div>' +
+              '<div style="height:8px;background:#1e293b;border-radius:2px;overflow:hidden;border:1px solid #334155"><div style="height:100%;width:' + pct + '%;background:' + bc + ';border-radius:2px;min-width:' + (pct > 0 ? '2px' : '0') + '"></div></div>' +
+              (adDetail ? '<div style="font-size:12px;color:#94a3b8;margin-top:1px">' + escapeHtml(adDetail) + '</div>' : '') +
+              (adMissing ? '<div style="font-size:13px;color:#f59e0b;margin-top:1px">⚠ ' + escapeHtml(adMissing) + '</div>' : '') +
+            '</div>';
+          }
         }
         consultHtml = '<div style="margin-top:8px;padding:8px;background:#0f172a;border-radius:6px;border:1px solid #334155">' +
           '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">' +
@@ -2129,10 +2181,22 @@
                         : geViolations.filter(function(v){ return v.category === 'quality_issue'; }).length;
       var _ge_safetyN = (ge.safetyAdvisoryCount != null) ? ge.safetyAdvisoryCount
                        : geViolations.filter(function(v){ return v.category === 'safety_advisory'; }).length;
-      html += '<div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">' +
+      // v1.5.2 — 상단/하단 면책 표시
+      var _ge_topDisc = (ge.has_top_disclaimer === true);
+      var _ge_topDiscKnown = (typeof ge.has_top_disclaimer === 'boolean');
+      var _ge_botDisc = (ge.has_bottom_disclaimer === true);
+      var _ge_botDiscKnown = (typeof ge.has_bottom_disclaimer === 'boolean');
+      html += '<div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;align-items:center">' +
         '<span style="font-size:11px;padding:2px 6px;border-radius:4px;background:' + (_ge_legalN > 0 ? '#ef444433' : '#22c55e22') + ';color:' + (_ge_legalN > 0 ? '#ef4444' : '#22c55e') + ';font-weight:600">⚖️ 법위반 ' + _ge_legalN + '</span>' +
         '<span style="font-size:11px;padding:2px 6px;border-radius:4px;background:#eab30822;color:#eab308;font-weight:600">📋 품질 권고 ' + _ge_qualityN + '</span>' +
         '<span style="font-size:11px;padding:2px 6px;border-radius:4px;background:#38bdf822;color:#38bdf8;font-weight:600">🛡️ 안전 권고 ' + _ge_safetyN + '</span>' +
+        '<span style="margin-left:6px;width:1px;height:14px;background:var(--border)"></span>' +
+        (_ge_topDiscKnown
+          ? '<span title="상단 면책 (필수)" style="font-size:11px;padding:2px 6px;border-radius:4px;background:' + (_ge_topDisc ? '#22c55e22' : '#ef444433') + ';color:' + (_ge_topDisc ? '#22c55e' : '#ef4444') + ';font-weight:600">📜 상단 면책 ' + (_ge_topDisc ? '✓' : '✗') + '</span>'
+          : '<span title="상단 면책 정보 없음 (구 데이터)" style="font-size:11px;padding:2px 6px;border-radius:4px;background:#94a3b822;color:#94a3b8;font-weight:600">📜 상단 면책 ?</span>') +
+        (_ge_botDiscKnown
+          ? '<span title="하단 면책 (권장)" style="font-size:11px;padding:2px 6px;border-radius:4px;background:' + (_ge_botDisc ? '#22c55e22' : '#eab30822') + ';color:' + (_ge_botDisc ? '#22c55e' : '#eab308') + ';font-weight:600">📜 하단 면책 ' + (_ge_botDisc ? '✓' : '✗') + '</span>'
+          : '') +
         '</div>';
       html += '<div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;font-weight:700">감지된 항목 ' + geViolations.length + '건 (카테고리별):</div>';
       for (var vi = 0; vi < geViolations.length; vi++) {
@@ -2174,25 +2238,62 @@
       { key: 'structuredApproach', label: '단계적 접근', max: 15, desc: '핵심 질문 우선·부담 낮춤·기존 발화 반영' },
       { key: 'appropriateGuidance', label: '적절한 안내', max: 15, desc: '수준별 차등·진료과·방문시기·응답 구조' }
     ];
-    var axesDefs = _axV15.some(function(a){ return ceAxes[a.key]; }) ? _axV15 : _axV11;
+    // v1.5.1 → v1.1.x → 동적 fallback (실제 ce.axes 키 사용)
+    var _rawKeys = (ceAxes && typeof ceAxes === 'object') ? Object.keys(ceAxes) : [];
+    // ✱ 헬퍼: axes[key] 가 숫자 또는 객체 모두 처리
+    var _axGet2 = function(raw) {
+      if (typeof raw === 'number') return { score: raw, details: '' };
+      if (raw && typeof raw === 'object') {
+        return {
+          score: (typeof raw.score === 'number') ? raw.score : 0,
+          details: raw.details || ''
+        };
+      }
+      return { score: 0, details: '' };
+    };
+    var axesDefs;
+    if (_axV15.some(function(a){ return ceAxes[a.key] !== undefined; })) {
+      axesDefs = _axV15;
+    } else if (_axV11.some(function(a){ return ceAxes[a.key] !== undefined; })) {
+      axesDefs = _axV11;
+    } else if (_rawKeys.length > 0) {
+      axesDefs = _rawKeys.map(function(k){
+        var d = ceAxes[k];
+        var isObj = d && typeof d === 'object';
+        return {
+          key: k,
+          label: (isObj && (d.name || d.label)) || k,
+          max: isObj
+            ? ((typeof d.maxScore === 'number') ? d.maxScore : (typeof d.max === 'number') ? d.max : 100)
+            : 100,
+          desc: isObj ? (d.description || '') : ''
+        };
+      });
+    } else {
+      axesDefs = [];
+    }
     html += '<div style="margin-bottom:14px">' +
       '<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px">🩺 문진 평가 (5축, 만점 100)</div>' +
       '<div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px 12px">';
     if (ceSummary) {
       html += '<div style="font-size:12px;color:var(--text);margin-bottom:8px">' + escapeHtml(ceSummary) + '</div>';
     }
+    if (axesDefs.length === 0) {
+      html += '<div style="font-size:12px;color:#f59e0b;padding:6px 8px;background:var(--surface);border-radius:4px">⚠ 축별 점수 데이터가 없습니다 (totalScore만 저장됨). 재평가하면 채워집니다.</div>';
+    }
     for (var ax = 0; ax < axesDefs.length; ax++) {
       var axDef = axesDefs[ax];
-      var axData = ceAxes[axDef.key] || {};
-      var axS = (typeof axData.score === 'number') ? axData.score : 0;
-      var axPct = axDef.max > 0 ? Math.round(axS / axDef.max * 100) : 0;
+      var axData = _axGet2(ceAxes[axDef.key]);
+      var axS = axData.score;
+      var axPct = axDef.max > 0 ? Math.max(0, Math.min(100, Math.round(axS / axDef.max * 100))) : 0;
       var axColor = axPct >= 80 ? '#22c55e' : axPct >= 60 ? '#eab308' : '#ef4444';
+      var axDescStr = axDef.desc || '';
       html += '<div style="margin:6px 0">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;font-size:11.5px;margin-bottom:2px">' +
-          '<span style="color:var(--text);font-weight:600">' + escapeHtml(axDef.label) + '<span style="color:var(--text-dim);font-weight:400"> · ' + escapeHtml(axDef.desc) + '</span></span>' +
+          '<span style="color:var(--text);font-weight:600">' + escapeHtml(String(axDef.label)) + (axDescStr ? '<span style="color:var(--text-dim);font-weight:400"> · ' + escapeHtml(axDescStr) + '</span>' : '') + '</span>' +
           '<span style="color:' + axColor + ';font-weight:700">' + axS + ' / ' + axDef.max + '</span>' +
         '</div>' +
-        '<div style="height:12px;background:var(--surface);border-radius:2px;overflow:hidden"><div style="width:' + axPct + '%;height:100%;background:' + axColor + '"></div></div>';
+        '<div style="height:12px;background:var(--surface);border-radius:2px;overflow:hidden;border:1px solid var(--border)"><div style="width:' + axPct + '%;height:100%;background:' + axColor + ';min-width:' + (axPct > 0 ? '2px' : '0') + '"></div></div>';
       if (axData.details) {
         html += '<div style="font-size:10.5px;color:var(--text-dim);margin-top:2px">' + escapeHtml(String(axData.details)) + '</div>';
       }
@@ -2754,6 +2855,12 @@
       axesSums[axesDefs[ad].key] = 0;
       axesWeakCount[axesDefs[ad].key] = 0;
     }
+    // ✱ 헬퍼: axes[key] 가 숫자 또는 객체 모두 처리
+    var _reportAxScore = function(raw) {
+      if (typeof raw === 'number') return raw;
+      if (raw && typeof raw === 'object' && typeof raw.score === 'number') return raw.score;
+      return null;  // null = 미정의 (집계 제외)
+    };
     for (var ri2 = 0; ri2 < results.length; ri2++) {
       var ce = results[ri2].consultationEval;
       if (!ce || !ce.axes) continue;
@@ -2763,8 +2870,8 @@
       if (ts === null) {
         ts = 0;
         for (var ad2x = 0; ad2x < axesDefs.length; ad2x++) {
-          var axD = ce.axes[axesDefs[ad2x].key];
-          if (axD && typeof axD === 'object') ts += (axD.score || 0);
+          var axSc = _reportAxScore(ce.axes[axesDefs[ad2x].key]);
+          if (axSc !== null) ts += axSc;
         }
       }
       totalScoreSum += ts;
@@ -2785,9 +2892,8 @@
       // 축별 점수 + 약점 카운트
       for (var ad2 = 0; ad2 < axesDefs.length; ad2++) {
         var axKey = axesDefs[ad2].key;
-        var axData = ce.axes[axKey];
-        if (axData && typeof axData === 'object') {
-          var sc = axData.score || 0;
+        var sc = _reportAxScore(ce.axes[axKey]);
+        if (sc !== null) {
           axesSums[axKey] += sc;
           if (axesDefs[ad2].max > 0 && (sc / axesDefs[ad2].max) < 0.6) {
             axesWeakCount[axKey]++;
