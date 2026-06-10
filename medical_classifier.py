@@ -20,10 +20,14 @@ Question Classifier — 의료 질문 분류기 (작업지시서 §5.1, §7.1 / 
 from __future__ import annotations
 
 import json
+import os
 import re
 import ssl
 from typing import Dict, List
 from urllib.request import Request, urlopen
+
+# OpenAI API 베이스 URL (env화, P4) — 미설정 시 공식 엔드포인트 사용
+OPENAI_API_BASE = os.environ.get("OPENAI_API_BASE", "https://api.openai.com")
 
 INTENTS = [
     "general_health", "symptom_info", "drug_safety", "lab_interpretation",
@@ -198,7 +202,7 @@ def _classify_llm(text: str, openai_key: str, model: str = None) -> Dict:
         "response_format": {"type": "json_object"},
     }).encode("utf-8")
     req = Request(
-        url="https://api.openai.com/v1/chat/completions",
+        url=f"{OPENAI_API_BASE}/v1/chat/completions",
         data=body,
         headers={"Content-Type": "application/json", "Authorization": f"Bearer {openai_key}"},
         method="POST",
