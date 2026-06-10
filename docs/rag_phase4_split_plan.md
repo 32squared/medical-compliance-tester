@@ -42,7 +42,7 @@
 
 부수 결정(권고 그대로 진행, 이견 시 변경):
 - kb_manager.html 등 **모든 UI 는 호스트 잔류**(프록시 경유라 변경 불필요). RAG repo 는 UI 없음.
-- rag_legal_eval/rag_consultation_eval/medical_rag_pipeline 은 RAG repo 이동(자체 품질도구). 호스트 배치평가는 proxy_server 평가함수 단일화(D3).
+- ~~rag_legal_eval/rag_consultation_eval 은 RAG repo 이동~~ → **호스트 잔류로 정정(2026-06-10, P1 사실확인)**: 둘 다 stdlib-only 순수 평가기(RAG/호스트 모듈 import 전무)로, RAG 트랙 분리 평가 기준(v1.5.1)을 구현한 **테스트 시스템의 평가 자산**. batch_eval_rag 의 주 평가기이며 호스트 평가함수는 폴백 — 이 동작을 P1 에서 그대로 보존(비교성 유지). medical_rag_pipeline 은 RAG repo 이동 유지.
 - conversations INSERT(감사기록)는 **현상 유지**(공유 DB, 충돌무해) — 수용된 부채로 문서화.
 - `RAG_ENABLED` 레거시 플래그: 호스트에서 의미 재정의(문서화) 후 단계적 제거, 신규 repo 에는 미반입.
 
@@ -51,9 +51,12 @@
 ## 2. 작업 단계
 
 ### 4-A. 분리 전 결합 절단 (in-repo, 1~2일) — 코드만, 인프라 불변
-1. **C1 절단**: batch_eval_rag 에서 proxy_server import/monkey-patch 제거.
-   - 생성: `rag_engine.generate_response` 직접 호출 → `RAG_SERVICE_URL` 의 `/api/rag/chat` HTTP 호출로 전환(미설정 시 명시 에러 — 무음 폴백 금지).
-   - 평가: 호스트 평가 함수를 **명시 의존성 주입**(batch_executor 패턴과 동일: callable 주입)으로 전환하거나, 호스트 `/api/evaluate*` HTTP 호출로 통일.
+1. **C1 절단** (P1 설계 확정 2026-06-10): batch_eval_rag 는 HOST 잔류(D3). 절단 대상 3가지만 —
+   - 생성: `rag_engine.generate_response` 직접 호출 → `RAG_SERVICE_URL` 의 `/api/rag/chat` HTTP(SSE) 호출로 전환(미설정 시 명시 에러 — 무음 폴백 금지).
+   - 무음 폴백 제거: proxy_server import 실패 시 None 폴백 → 명시 에러.
+   - monkey-patch 제거: `ProxyHandler._add_log` 클래스 패치 → 명시 주입(log_fn 파라미터 등).
+   - **평가 로직은 무변경**: rag_legal_eval/rag_consultation_eval(주) + 호스트 함수(폴백) 구성 그대로 — 셋 다 HOST 소속이 되므로 import 적법. 비교성 100% 보존.
+   - 검사기 동기화: RAG_MODULES 에서 batch_eval_rag/rag_legal_eval/rag_consultation_eval 제거, ALLOWED_COUPLINGS 항목 삭제, MAX_ALLOWED_COUPLINGS 2→1.
 2. **job_runner 확인**: proxy_server 평가함수 import 는 호스트 내부 결합(잔류 파일)이므로 유지. 단 RAG 모듈 import 이 없음을 테스트로 고정.
 3. **rag_server 기동 검증 강화**: RUN_MODE=rag + DATABASE_URL 미설정 시 기동 실패(명시 에러). health 응답에 `service/version/schema` 포함.
 4. **운영 하드닝(저비용 묶음)**: SIGTERM graceful shutdown(rag_server/proxy_server), `[RAG-PROXY]` 등 진단 print `flush=True`, `OPENAI_API_BASE` env 도입(api.openai.com 하드코딩 제거), `RAG_REQUEST_TIMEOUT` env, env 변수 전체 README 표(게이트 임계값 10여 개 포함).
