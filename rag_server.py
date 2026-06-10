@@ -26,6 +26,8 @@ import io
 import json
 import logging
 import argparse
+import signal
+import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
 from urllib.parse import urlparse, unquote
@@ -36,6 +38,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger("rag_server")
 
 RAG_TRUST_SECRET = os.environ.get('RAG_TRUST_SECRET', '')
+
+# schema_migrations 최신 버전 캐시 (기동 시 1회 조회, health 호출마다 DB 접근 방지)
+_SCHEMA_VERSION_CACHE = "unknown"
 
 
 class RagHandler(RagRoutesMixin, BaseHTTPRequestHandler):
@@ -133,7 +138,12 @@ class RagHandler(RagRoutesMixin, BaseHTTPRequestHandler):
         path = parsed.path
         # 헬스체크 (Cloud Run startup probe)
         if path in ('/', '/health', '/healthz'):
-            return self._send_json(200, {"status": "ok", "service": "rag"})
+            return self._send_json(200, {
+                "status": "ok",
+                "service": "rag",
+                "version": os.environ.get('K_REVISION', 'local'),
+                "schema": _SCHEMA_VERSION_CACHE,
+            })
         if not path.startswith('/api/rag/'):
             return self._send_error(404, 'RAG 서비스는 /api/rag/* 만 처리합니다')
         body = None
@@ -177,13 +187,52 @@ class _ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     daemon_threads = True
 
 
+def _query_schema_version() -> str:
+    """schema_migrations 테이블의 최신 적용 버전을 조회해 반환.
+    조회 실패/테이블 없음이면 "unknown"."""
+    try:
+        from db import get_conn, _p
+        with get_conn() as (conn, cur):
+            cur.execute(
+                "SELECT version FROM schema_migrations "
+                "ORDER BY version DESC LIMIT 1"
+            )
+            row = cur.fetchone()
+        if row:
+            return str(row[0]) if not hasattr(row, 'keys') else str(row['version'])
+        return "unknown"
+    except Exception as e:
+        logger.warning("schema_version query failed: %s", e)
+        return "unknown"
+
+
 def main():
+    global _SCHEMA_VERSION_CACHE
+
     # 한글 출력 (entrypoint 로 실행될 때만 — import 부작용 방지)
     try:
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
         sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
     except Exception:
         pass
+
+    # DATABASE_URL 기동 가드: Cloud Run에서 누락 시 무음 SQLite 사용 사고 방지
+    database_url = os.environ.get('DATABASE_URL', '')
+    allow_sqlite = os.environ.get('RAG_ALLOW_SQLITE', '')
+    if not database_url:
+        if allow_sqlite:
+            print(
+                '[RAG-STARTUP] WARNING: DATABASE_URL 미설정 - RAG_ALLOW_SQLITE=1 로 SQLite 모드 허용',
+                flush=True,
+            )
+        else:
+            print(
+                '[RAG-STARTUP] ERROR: DATABASE_URL 환경변수가 설정되지 않았습니다. '
+                'Cloud Run 배포 시 필수입니다. '
+                '로컬 개발 시 RAG_ALLOW_SQLITE=1 을 설정하면 SQLite 모드로 기동할 수 있습니다.',
+                flush=True,
+            )
+            sys.exit(1)
 
     parser = argparse.ArgumentParser(description='RAG 독립 HTTP 서비스')
     parser.add_argument('--port', type=int, default=int(os.environ.get('PORT', 8080)))
@@ -196,10 +245,30 @@ def main():
     except Exception as e:
         logger.warning("ensure_rag_schema skip: %s", e)
 
+    # schema_migrations 최신 버전 1회 조회 후 캐시 (health 호출마다 DB 접근 방지)
+    _SCHEMA_VERSION_CACHE = _query_schema_version()
+    print(f"[RAG-STARTUP] schema version: {_SCHEMA_VERSION_CACHE}", flush=True)
+
     print(f"[RAG-STARTUP] binding 0.0.0.0:{args.port}", flush=True)
     server = _ThreadedHTTPServer(('0.0.0.0', args.port), RagHandler)
+
+    # SIGTERM graceful shutdown (Cloud Run 종료 시 in-flight SSE 정리)
+    # serve_forever 스레드(메인)에서 server.shutdown() 직접 호출 시 데드락 발생
+    # → 핸들러에서 별도 스레드로 shutdown 호출
+    def _graceful(signum, frame):
+        print('[RAG-SHUTDOWN] signal %s - graceful shutdown' % signum, flush=True)
+        threading.Thread(target=server.shutdown, daemon=True).start()
+
+    try:
+        signal.signal(signal.SIGTERM, _graceful)
+        signal.signal(signal.SIGINT, _graceful)
+    except Exception as _e:
+        logger.warning("signal handler 등록 실패 (무시): %s", _e)
+
     print(f"[RAG-STARTUP] RAG service ready on port {args.port}", flush=True)
     server.serve_forever()
+    server.server_close()
+    print('[RAG-SHUTDOWN] server closed', flush=True)
 
 
 if __name__ == '__main__':
