@@ -2784,6 +2784,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
                     ct = 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
                 elif full_path.endswith('.pdf'):
                     ct = 'application/pdf'
+                self.send_header('Content-Type', ct)
                 # 다운로드 자산은 Content-Disposition + 캐시 안 함
                 if full_path.endswith(('.docx', '.pptx', '.pdf')):
                     fname = os.path.basename(full_path)
