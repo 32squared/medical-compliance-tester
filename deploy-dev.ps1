@@ -90,6 +90,7 @@ Write-Host ""
 Write-Host "[2/3] Deploying DEV service to Cloud Run..." -ForegroundColor Yellow
 
 # Build env vars. If RagServiceUrl is set, reverse-proxy /api/rag/* to the standalone RAG service.
+# 전체 env 변수 레퍼런스: docs/env_reference.md
 $DevEnvVars = "DATABASE_URL=$DatabaseUrl,APP_ENV=development,RAG_ENABLED=true,RAG_LLM_MODEL=gpt-5.4-mini,RAG_LLM_FALLBACK_MODEL=gpt-5.4-mini,RAG_GUARDRAIL_FP_FILTER=true,LLM_REASONING_EFFORT=low"
 if ($RagServiceUrl) {
     $DevEnvVars = "$DevEnvVars,RAG_SERVICE_URL=$RagServiceUrl"

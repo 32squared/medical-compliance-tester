@@ -47,6 +47,7 @@ if ($LASTEXITCODE -ne 0) { Write-Host "Build failed!" -ForegroundColor Red; exit
 
 # ── 배포 (RUN_MODE=rag) ──
 Write-Host "[2/2] Deploying RAG service..." -ForegroundColor Yellow
+# 전체 env 변수 레퍼런스: docs/env_reference.md (섹션 3 — RAG 서비스)
 $EnvVars = "DATABASE_URL=$DatabaseUrl,RUN_MODE=rag,RAG_ENABLED=true,RAG_LLM_MODEL=gpt-5.4-mini,RAG_LLM_FALLBACK_MODEL=gpt-5.4-mini,RAG_GUARDRAIL_FP_FILTER=true,LLM_REASONING_EFFORT=low"
 if ($TrustSecret) { $EnvVars = "$EnvVars,RAG_TRUST_SECRET=$TrustSecret" }
 
