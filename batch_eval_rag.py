@@ -1,6 +1,6 @@
 """
 RAG 배치 평가기 — 1100개 시나리오를 RAG 응답 + 컴플라이언스/문진 평가.
-Cloud Run Job에서 rag_engine 직접 호출 (HTTP 인증 우회).
+RAG 생성은 RAG_SERVICE_URL 의 /api/rag/chat HTTP SSE 엔드포인트를 경유한다.
 목표: 모든 시나리오 컴플라이언스 A + 문진 A 달성 측정.
 """
 import os
@@ -13,6 +13,8 @@ import argparse
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
 
 # ── 경로 설정 ───────────────────────────────────────────────────────────────
 _DIR = os.path.dirname(os.path.abspath(__file__))
@@ -26,47 +28,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger("batch_eval_rag")
 
-# ── ProxyHandler._add_log no-op monkey-patch (import 전에 먼저 수행) ─────────
-# proxy_server 모듈 내 _evaluate_gpt / _evaluate_consultation 이
-# ProxyHandler._add_log 를 직접 참조하므로 미리 패치해둔다.
-import types
-
-_FAKE_LOG_LOCK = threading.Lock()
-_FAKE_LOG_BUFFER: list = []
-
-def _noop_add_log(msg: str) -> None:
-    """ProxyHandler._add_log no-op: 로그를 logger로 리다이렉트."""
-    logger.debug("[proxy_log] %s", msg)
-
-# proxy_server를 import 하기 전에 ProxyHandler 클래스가 없으므로
-# import 이후에 패치 — 아래 import 블록 직후에서 처리.
+# ── RAG HTTP 클라이언트 설정 ─────────────────────────────────────────────────
+_RAG_SERVICE_URL = os.environ.get("RAG_SERVICE_URL", "").rstrip("/")
+_RAG_TRUST = os.environ.get("RAG_TRUST_SECRET", "")
+_RAG_TIMEOUT = int(os.environ.get("RAG_REQUEST_TIMEOUT", "900"))
 
 # ── proxy_server 평가 함수 import ────────────────────────────────────────────
 try:
     import proxy_server as _ps
-
-    # _add_log classmethod no-op 패치
-    from http.server import BaseHTTPRequestHandler
-    _ps.ProxyHandler._add_log = classmethod(lambda cls, msg: logger.debug("[proxy_log] %s", msg))
-
     _evaluate_gpt = _ps._evaluate_gpt
     _evaluate_consultation = _ps._evaluate_consultation
     _evaluate_consultation_checklist = _ps._evaluate_consultation_checklist
     logger.info("proxy_server 평가 함수 import 성공")
 except Exception as _e:
-    logger.error("proxy_server import 실패: %s — 평가 함수 미사용 모드", _e)
-    _evaluate_gpt = None
-    _evaluate_consultation = None
-    _evaluate_consultation_checklist = None
-
-# ── rag_engine import ────────────────────────────────────────────────────────
-try:
-    import rag_engine as _rag
-    _generate_response = _rag.generate_response
-    logger.info("rag_engine import 성공")
-except Exception as _e:
-    logger.error("rag_engine import 실패: %s", _e)
-    _generate_response = None
+    logger.error("proxy_server import 실패: %s", _e)
+    sys.exit(1)
 
 # ── db import ────────────────────────────────────────────────────────────────
 try:
@@ -167,7 +143,7 @@ def load_scenarios(source: str = "db", limit: int = None) -> list:
 
 def run_rag(query: str) -> dict:
     """
-    generate_response 호출 → 응답 텍스트 + evidence_quality + citations 수집.
+    RAG_SERVICE_URL /api/rag/chat SSE 호출 → 응답 텍스트 + evidence_quality + citations 수집.
 
     Returns:
         {
@@ -178,16 +154,24 @@ def run_rag(query: str) -> dict:
             'error': str or None,
         }
     """
-    if _generate_response is None:
-        return {
-            "text": "",
-            "evidence_quality": "UNAVAILABLE",
-            "citations": [],
-            "latency_ms": 0,
-            "error": "rag_engine 미설치",
-        }
-
     conv_id = f"batch_eval_{uuid.uuid4().hex[:12]}"
+    url = f"{_RAG_SERVICE_URL}/api/rag/chat"
+    payload = json.dumps({
+        "query": query,
+        "conversation_id": conv_id,
+        "top_k": 5,
+        "enable_guardrails": True,
+    }).encode("utf-8")
+
+    headers = {
+        "Content-Type": "application/json",
+        "X-User-Id": "batch-eval",
+        "X-User-Name": "batch-eval",
+        "X-User-Role": "admin",
+    }
+    if _RAG_TRUST:
+        headers["X-Rag-Trust"] = _RAG_TRUST
+
     start = time.time()
     text_parts: list = []
     evidence_quality = "UNKNOWN"
@@ -195,21 +179,41 @@ def run_rag(query: str) -> dict:
     error_msg = None
 
     try:
-        for event in _generate_response(query, conversation_id=conv_id, top_k=5, enable_guardrails=True):
-            etype = event.get("type", "")
-            if etype == "GENERATION":
-                text_parts.append(event.get("text", ""))
-            elif etype == "STOP":
-                # STOP 이벤트의 text가 전체 응답 (GENERATION 조각의 합)
-                stop_text = event.get("text", "")
-                if stop_text:
-                    text_parts = [stop_text]
-                citations = event.get("citations", [])
-            elif etype == "EVIDENCE_CHECK":
-                evidence_quality = event.get("data", {}).get("quality", "UNKNOWN")
-            elif etype == "ERROR":
-                error_msg = event.get("message", "RAG 오류")
-                break
+        req = Request(url, data=payload, headers=headers, method="POST")
+        with urlopen(req, timeout=_RAG_TIMEOUT) as resp:
+            for raw_line in resp:
+                line = raw_line.decode("utf-8").rstrip("\r\n") if isinstance(raw_line, bytes) else raw_line.rstrip("\r\n")
+                if not line.startswith("data:"):
+                    continue
+                data_str = line[5:].strip()
+                if not data_str:
+                    continue
+                try:
+                    event = json.loads(data_str)
+                except Exception:
+                    continue
+                etype = event.get("type", "")
+                if etype == "GENERATION":
+                    text_parts.append(event.get("text", ""))
+                elif etype == "STOP":
+                    stop_text = event.get("text", "")
+                    if stop_text:
+                        text_parts = [stop_text]
+                    citations = event.get("citations", [])
+                elif etype == "EVIDENCE_CHECK":
+                    evidence_quality = event.get("data", {}).get("quality", "UNKNOWN")
+                elif etype == "ERROR":
+                    error_msg = event.get("message", "RAG 오류")
+                    break
+    except HTTPError as e:
+        body = ""
+        try:
+            body = e.read(200).decode("utf-8", errors="replace")
+        except Exception:
+            pass
+        error_msg = f"RAG HTTP {e.code}: {body}"
+    except URLError as e:
+        error_msg = f"RAG 연결 실패: {e.reason}"
     except Exception as e:
         error_msg = str(e)
 
@@ -305,10 +309,16 @@ def evaluate_one(scenario: dict, openai_key: str, model: str) -> dict:
         # ── 3. 문진 평가 (GPT) ────────────────────────────────────
         # RAG 트랙: rag_consultation_eval(분리 기준) 우선, 없거나 비활성 시 라이브 폴백.
         cons = None
-        _consult_fn = _evaluate_consult_rag if (_USE_RAG_CONSULT and _evaluate_consult_rag) else _evaluate_consultation
+        _use_rag_consult_fn = _USE_RAG_CONSULT and _evaluate_consult_rag
+        _consult_fn = _evaluate_consult_rag if _use_rag_consult_fn else _evaluate_consultation
         if _consult_fn and openai_key:
             try:
-                cons = _consult_fn(prompt, response_text, openai_key, model=model)
+                if _use_rag_consult_fn:
+                    # rag_consultation_eval: log_fn 파라미터 없음
+                    cons = _consult_fn(prompt, response_text, openai_key, model=model)
+                else:
+                    # 호스트 _evaluate_consultation: log_fn 주입으로 monkey-patch 없이 동작
+                    cons = _consult_fn(prompt, response_text, openai_key, model=model, log_fn=logger.debug)
             except Exception as e:
                 logger.warning("[%s] consultation eval 오류: %s", sid, e)
 
@@ -491,6 +501,15 @@ def main() -> None:
         help="평가용 GPT 모델 (default: env EVAL_MODEL 또는 gpt-4o-mini)"
     )
     args = parser.parse_args()
+
+    # RAG_SERVICE_URL 필수 체크
+    if not _RAG_SERVICE_URL:
+        logger.error(
+            "RAG_SERVICE_URL 환경변수가 설정되지 않았습니다. "
+            "dev: python rag_server.py --port 9100 기동 후 "
+            "$env:RAG_SERVICE_URL='http://localhost:9100' 로 주입하세요. 종료."
+        )
+        sys.exit(1)
 
     # OPENAI_API_KEY 필수 체크
     openai_key = os.environ.get("OPENAI_API_KEY", "")

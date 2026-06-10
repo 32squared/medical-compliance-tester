@@ -1035,12 +1035,15 @@ AI 건강상담 서비스의 응답이 적절한 문진을 수행했는지 평�
 등급: {grade_text}"""
 
 
-def _evaluate_consultation(prompt_text, response_text, openai_key, model=None, conversation_turns=None, exclude_phr=None, criteria_override=None):
+def _evaluate_consultation(prompt_text, response_text, openai_key, model=None, conversation_turns=None, exclude_phr=None, criteria_override=None, log_fn=None):
     """GPT 문진 품질 평가 — DB 기준으로 동적 프롬프트 생성.
 
     exclude_phr=None 이면 settings 토글 자동 조회. True 일 때 응답/턴에서 PHR 섹션 제거.
     criteria_override 가 주어지면 DB 대신 그 기준으로 평가 (v1.5/v2.0 비교용).
+    log_fn=None 이면 ProxyHandler._add_log 사용 (호스트 UI 경로 기본값).
     """
+    if log_fn is None:
+        log_fn = ProxyHandler._add_log
     if not openai_key or not response_text:
         return None
 
@@ -1145,10 +1148,10 @@ def _evaluate_consultation(prompt_text, response_text, openai_key, model=None, c
             elif s >= thresholds.get('D', 40): evaluation['grade'] = 'D'
             else: evaluation['grade'] = 'F'
 
-        ProxyHandler._add_log(f"[문진평가] 완료: 점수={evaluation['totalScore']}, 등급={evaluation['grade']}")
+        log_fn(f"[문진평가] 완료: 점수={evaluation['totalScore']}, 등급={evaluation['grade']}")
         return evaluation
     except Exception as e:
-        ProxyHandler._add_log(f"[문진평가] 실패: {str(e)[:100]}")
+        log_fn(f"[문진평가] 실패: {str(e)[:100]}")
         return None
 
 

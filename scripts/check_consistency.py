@@ -31,7 +31,7 @@ RAG_MODULES = {
     'seed_kb_phase1', 'seed_faq_kb', 'seed_emergency_kb', 'seed_consultation_kb',
     'seed_legal_kb', 'seed_dur', 'seed_kb_external',
     'collect_public_kb', 'backfill_evidence_topic', 'medical_rag_pipeline',
-    'batch_eval_rag', 'rag_legal_eval', 'rag_consultation_eval', 'rag_gap_analysis',
+    'rag_gap_analysis',
     'debug_rag', 'diagnose_rag_env', 'verify_kb_health_kdca', 'copy_kb_to_dev',
     'verify_db_005', 'reembed_missing', 'dur_collector',
 }
@@ -44,10 +44,9 @@ SHARED_MODULES = {
 # (importing_file, imported_module): 사유 + 제거 시점
 ALLOWED_COUPLINGS = {
     ('proxy_server', 'rag_routes'): 'in-process mode mixin (remove in 4-E)',
-    ('batch_eval_rag', 'proxy_server'): 'host eval functions + monkey-patch (remove in 4-A)',
 }
 # 래칫: 이 수를 넘으면 FAIL (결합 절단 완료 시 함께 줄인다. 늘리기 금지)
-MAX_ALLOWED_COUPLINGS = 2
+MAX_ALLOWED_COUPLINGS = 1
 
 # ── tests/, scripts/ 경계 (qa-gate 감사 P1/P2 반영) ──
 # RAG 와 HOST '비공유' 모듈을 동시에 import 하는 테스트 = repo 분리 시 양쪽 어디서도
