@@ -34,6 +34,7 @@ RAG_MODULES = {
     'rag_gap_analysis',
     'debug_rag', 'diagnose_rag_env', 'verify_kb_health_kdca', 'copy_kb_to_dev',
     'verify_db_005', 'reembed_missing', 'dur_collector',
+    'reindex_korean_tsv',  # kb_chunks content_tsv 재색인 도구 (4-E 사전조사에서 분류)
 }
 SHARED_MODULES = {
     'db',  # 과도기 facade (4-B 이후 dbcommon 직접 import 로 수렴)

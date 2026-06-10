@@ -91,9 +91,11 @@
 
 ### 4-E. 저장소 분리 실행 (1~2일)
 1. GitHub: `medical-shared`(D1), `medical-rag-service`(D4) 생성.
-2. `git filter-repo` 로 이력 보존 이식:
-   - **신규 RAG repo 로 이동**: rag_server/routes/engine/db, llm_router, citation_verifier, embedding_provider, retrieval_router, pii_masker, medical_classifier, evidence_pack, review_queue, kb_ingest, kb_stats, kb_rag_audit, seed_*(RAG 계열 7종), collect_public_kb, backfill_evidence_topic, medical_rag_pipeline, rag_legal_eval, rag_consultation_eval, rag_gap_analysis, debug_rag/diagnose_rag_env, **migrations/ 전체**, tests/(RAG 13종), deploy-rag.ps1, Dockerfile(rag 고정·RUN_MODE 제거), entrypoint, .dockerignore(테스트/문서 제외), README(env 표).
-   - **호스트 잔류**: proxy_server, db, batch_executor, job_runner, runner, batch_eval_rag(D3), 모든 HTML, scripts/(운영분석), 호스트 테스트 20종.
+2. `git filter-repo` 로 이력 보존 이식 (✏ 2026-06-10 사전조사로 매니페스트 정정 — 진실 소스는 검사기 RAG_MODULES):
+   - **신규 RAG repo 로 이동 (루트 33파일 = 검사기 RAG_MODULES)**: rag_server/routes/engine/db, llm_router, citation_verifier, embedding_provider, retrieval_router, pii_masker, medical_classifier, evidence_pack, review_queue, kb_ingest, kb_stats, kb_rag_audit, seed_*(7종), collect_public_kb, backfill_evidence_topic, medical_rag_pipeline, rag_gap_analysis, debug_rag, **verify_db_005, reembed_missing, dur_collector, reindex_korean_tsv, copy_kb_to_dev, verify_kb_health_kdca**(사전조사 보강), **migrations/ 전체**(001~009 + 러너 + test_migrate_runner), tests/ RAG 그룹(RAG-only 20종 + diagnose_rag_env/validate_rag_direct/test_rag_chat_endpoint/test_rag_kb_api/auto_validate_rag/verify_rag_separation), deploy-rag.ps1, Dockerfile(rag 고정·RUN_MODE 제거), entrypoint, .dockerignore, **.gitignore에 !__init__.py 예외 포함**, README(env 표 RAG 행 이동).
+   - **호스트 잔류 (루트 15파일)**: proxy_server, db, batch_executor, job_runner, runner, **batch_eval_rag/rag_consultation_eval/rag_legal_eval**(P1 결정), dashboard, main, migrate 도구류, create_*_excel, 모든 HTML, scripts/(운영분석), 호스트 테스트(test_rlhf_*, test_guardrail_false_positives, test_rag_consultation_eval/test_rag_legal_eval 등).
+   - **판단 보류 항목**: test_host_rag_isolation(분리 후 의미 소멸 — 호스트 잔류 후 제거 검토), conftest.py(양쪽 복제), test_phase1_integration(내용 확인 필요).
+   - **검사기 거취**: import-boundary/mixin-contract는 분리 후 "상대 모듈 import 금지"로 단순화해 양쪽 CI 이식. json-bundle-sync는 루트 JSON 제거와 함께 삭제.
    - **medical-shared**: packages/medical_shared (4-B 산출물).
 3. 호스트 repo 정리(D2 경로 A): RagRoutesMixin import/상속 제거, in-process 디스패치 4곳 제거 → RAG_SERVICE_URL 필수(미설정 시 503 + 명시 메시지), `_handle_rag_route` 제거.
 4. 신규 repo CI(D6): GitHub Actions — py_compile / pytest(SQLite, DATABASE_URL 없이) / migrate_runner --status.
