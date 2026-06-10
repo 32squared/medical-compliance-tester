@@ -53,3 +53,20 @@ reports/cost_report*.md
 
 # 임시 deploy/test 로그 (다른 worktree 산출물)
 prod_deploy_*.log
+
+# Office 임시 파일 (열려있는 doc/xlsx의 잠금 파일)
+~$*
+*.~lock*
+
+# 보고서 슬라이드 이미지 (PPT→JPG 변환 산출물 — 소스 .js / .pptx 만 추적)
+reports/slide-*.jpg
+reports/lrslide-*.jpg
+reports/v11slide-*.jpg
+reports/*slide-*.jpg
+
+# 보고서 분석 산출물 (수동 생성, 매번 다름)
+reports/a_grade_violations.xlsx
+reports/*_violations.xlsx
+
+# 로컬 데이터 디렉토리 (267MB, 재현 가능)
+data/

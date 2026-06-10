@@ -2682,15 +2682,16 @@ class ProxyHandler(RagRoutesMixin, BaseHTTPRequestHandler):
                 elif full_path.endswith('.pdf'):
                     ct = 'application/pdf'
                 self.send_header('Content-Type', ct)
-                # 정적 자원 Cache-Control: HTML 5분(짧게), JS/CSS 1시간 (배포 시 새 revision URL로 자연 무효화)
-                # 다운로드 자산은 캐시 안 함
+                # 다운로드 자산은 Content-Disposition + 캐시 안 함
                 if full_path.endswith(('.docx', '.pptx', '.pdf')):
                     fname = os.path.basename(full_path)
                     self.send_header('Content-Disposition', f'attachment; filename="{fname}"')
-                elif full_path.endswith('.html'):
-                    self.send_header('Cache-Control', 'public, max-age=300')
-                elif full_path.endswith(('.js', '.css')):
-                    self.send_header('Cache-Control', 'public, max-age=3600')
+                # HTML/JS/CSS는 항상 최신을 받도록 캐시 무력화 — 프론트 업데이트가
+                # 사용자 브라우저에 즉시 반영되도록(옛 캐시로 인한 '수정 미반영' 방지)
+                elif ct.startswith('text/html') or ct.startswith('application/javascript') or ct.startswith('text/css'):
+                    self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                    self.send_header('Pragma', 'no-cache')
+                    self.send_header('Expires', '0')
                 elif full_path.endswith('.json'):
                     self.send_header('Cache-Control', 'public, max-age=600')
                 self.send_header('Content-Length', str(len(data)))
