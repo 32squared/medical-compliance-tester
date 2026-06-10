@@ -1,10 +1,14 @@
-# Host repo CI — medical-compliance-tester (monorepo, refactor/rag-modular branch)
+# Host repo CI — medical-compliance-tester (RAG 분리 후 호스트 전용 repo)
 # D6 결정: CI only (GitHub Actions). 배포는 PowerShell 수동 유지.
 # trigger: push / PR on master or refactor/** branches.
 #
 # jobs:
-#   lint   — check_consistency.py (py-compile + js-syntax + import-boundary + test-boundary)
-#   pytest — host-stable 테스트 선별 실행 (DB/서버 불필요 목록, pre-existing 실패 제외)
+#   lint   — check_no_cross_import(--forbid rag) + py_compile + js-syntax
+#   pytest — 호스트 안정 테스트 (DB/서버/키 불필요)
+#
+# ※ medical-shared 는 git submodule (packages/medical_shared). private repo 이므로
+#    checkout 시 PAT 토큰이 필요하다 — repo Secrets 에 SHARED_REPO_TOKEN 추가 후
+#    아래 token 주석을 해제할 것. (미설정 시 submodule checkout 단계에서 실패)
 
 name: CI
 
@@ -19,12 +23,15 @@ on:
       - "refactor/**"
 
 jobs:
-  # ── job (a): check_consistency ────────────────────────────────────────────
+  # ── job (a): 경계검사 + 컴파일 + JS 문법 ───────────────────────────────────
   lint:
-    name: "consistency-gate"
+    name: "host-lint"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          # token: ${{ secrets.SHARED_REPO_TOKEN }}   # private submodule 인증용
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
@@ -36,58 +43,52 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install Python deps (packages/medical_shared only — no prod DB)
+      - name: Install shared package (submodule)
         run: |
-          pip install --quiet -e "packages/medical_shared[dev]" 2>/dev/null || \
           pip install --quiet -e "packages/medical_shared" 2>/dev/null || true
 
-      - name: Run check_consistency.py
-        run: python scripts/check_consistency.py
+      - name: Boundary — 호스트가 RAG 모듈을 import 하지 않음
+        run: python scripts/check_no_cross_import.py --forbid rag
 
-  # ── job (b): pytest — host-stable 테스트 ─────────────────────────────────
-  # 선별 근거 (tests/ 스캔 결과):
-  #
+      - name: py_compile — 루트 + tests + scripts + packages
+        run: |
+          python - <<'PYEOF'
+          import py_compile, glob, os, sys
+          targets = (sorted(glob.glob("*.py")) + sorted(glob.glob("tests/*.py"))
+              + sorted(glob.glob("scripts/*.py"))
+              + sorted(glob.glob("packages/**/*.py", recursive=True)))
+          bad = 0
+          for p in targets:
+              try:
+                  py_compile.compile(p, doraise=True)
+              except Exception as e:
+                  print(f"ERR {p}: {e}"); bad += 1
+          print(f"py_compile: {len(targets)} files, {bad} errors")
+          sys.exit(1 if bad else 0)
+          PYEOF
+
+      - name: JS syntax — HTML 인라인 스크립트
+        run: |
+          node -e "const fs=require('fs');const files=fs.readdirSync('.').filter(f=>f.endsWith('.html'));let bad=0;for(const f of files){const html=fs.readFileSync(f,'utf8');const m=html.match(/<script>([\s\S]*?)<\/script>/g)||[];for(const t of m){const c=t.replace(/<\/?script>/g,'');if(c.length<500)continue;try{new Function(c)}catch(e){console.log(f+': '+e.message);bad++}}}console.log('js-syntax checked '+files.length+' html, '+bad+' errors');process.exit(bad?1:0)"
+
+  # ── job (b): pytest — 호스트 안정 테스트 ──────────────────────────────────
   # PASS (포함):
-  #   test_host_rag_isolation   — ast 분석 전용, DB/서버/API키 불필요
-  #   test_rlhf_db              — SQLite 임시파일 DB, DATABASE_URL='' 강제
-  #   test_migrate_runner       — 임시 SQLite + 임시 migrations dir, DB/서버 불필요
-  #   test_rag_legal_eval       — 순수 프롬프트 빌더 테스트, 네트워크 불필요
-  #   test_rag_consultation_eval — 순수 프롬프트 빌더 테스트
-  #   test_guardrail_false_positives — ComplianceAnalyzer 정규식만, DB 불필요
-  #   test_medical_classifier   — 규칙 기반 분류, 네트워크 불필요
-  #   test_router_evidence      — retrieval_router + evidence_pack 순수 로직
-  #   test_dur_collector        — fixture 기반 파싱, 네트워크 불필요
-  #   test_review_queue         — should_review 결정 로직, 네트워크 불필요
-  #   test_seed_consultation_kb — build_consultation_documents, 키/DB 불필요
-  #   test_seed_dur             — build_dur_documents, 키/DB 불필요
-  #   test_pii_masker           — 정규식 마스킹, 네트워크 불필요
-  #   test_citation_verifier    — 규칙 기반 검증, 네트워크 불필요
-  #   test_sparse_tokens        — _korean_meaningful_tokens 단위, DB 불필요
-  #   test_rag_guardrail_fp_filter — _filter_guardrail_false_positives 로직, DB 불필요
-  #   test_medical_rag_pipeline — MockLLM + mock retrieve, OpenAI/DB 불필요
+  #   test_guardrail_false_positives — ComplianceAnalyzer(shim) 정규식, DB 불필요
+  #   test_rag_consultation_eval     — 호스트 rag_consultation_eval 프롬프트 빌더, 키/네트워크 불필요
+  #   test_rag_legal_eval            — 호스트 rag_legal_eval 프롬프트 빌더, 키/네트워크 불필요
+  #   test_rlhf_db                   — SQLite 임시파일 DB, DATABASE_URL='' 강제
   #
-  # EXCLUDED (pre-existing failures / server-required / API-key-required):
-  #   test_llm_router           — gpt-5-mini vs gpt-5.4-mini 모델명 불일치 실패
-  #   test_kb_ingest            — source_checksum 컬럼 누락(SQLite migration 미적용) 실패
-  #   test_rag_engine           — TestEvidenceTopicAlignment 3건 실패 (pre-existing)
-  #   test_generate_response    — guardrail/emergency 7건 실패 (pre-existing)
-  #   test_embedding_provider   — OPENAI_API_KEY 있을 때만 실행 (skip은 괜찮으나 포함 불필요)
-  #   test_phase1_integration   — pytestmark=integration, 실서버 필요
-  #   test_rlhf_api             — DEV 서버 URL 필요
-  #   test_rag_chat_endpoint    — 로컬 서버 기동 (subprocess)
-  #   test_rag_kb_api           — 로컬 서버 기동 (subprocess)
-  #   auto_validate_rag         — DEV 서버 + API키 필요
-  #   diagnose_rag_env          — 직접 실행 스크립트, pytest 아님
-  #   validate_rag_direct       — 직접 실행 스크립트
-  #   verify_rag_separation     — 직접 실행 스크립트
-  #   test_precheck_violations  — proxy_server stdout 래핑 충돌로 pytest I/O 에러
-  #   test_rag_conversation_state — dbcommon 전역 상태 오염 시 rag_conversation_state
-  #                                테이블 미생성 에러 발생(단독 실행 시 PASS, 연속 실행 시 FAIL)
+  # EXCLUDED (서버/키 필요):
+  #   test_rag_kb_api / test_phase1_integration / test_rlhf_api — 로컬 서버 기동 필요
+  #   verify_rag_separation — 라이브 RAG URL 필요한 직접 실행 하니스
   pytest:
-    name: "pytest-host-stable"
+    name: "host-pytest"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          # token: ${{ secrets.SHARED_REPO_TOKEN }}   # private submodule 인증용
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
@@ -104,21 +105,8 @@ jobs:
           DATABASE_URL: ""
         run: |
           python -m pytest \
-            tests/test_host_rag_isolation.py \
-            tests/test_rlhf_db.py \
-            tests/test_migrate_runner.py \
-            tests/test_rag_legal_eval.py \
-            tests/test_rag_consultation_eval.py \
             tests/test_guardrail_false_positives.py \
-            tests/test_medical_classifier.py \
-            tests/test_router_evidence.py \
-            tests/test_dur_collector.py \
-            tests/test_review_queue.py \
-            tests/test_seed_consultation_kb.py \
-            tests/test_seed_dur.py \
-            tests/test_pii_masker.py \
-            tests/test_citation_verifier.py \
-            tests/test_sparse_tokens.py \
-            tests/test_rag_guardrail_fp_filter.py \
-            tests/test_medical_rag_pipeline.py \
+            tests/test_rag_consultation_eval.py \
+            tests/test_rag_legal_eval.py \
+            tests/test_rlhf_db.py \
             -v --tb=short -q

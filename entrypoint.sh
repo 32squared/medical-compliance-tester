@@ -1,22 +1,13 @@
 #!/bin/sh
-# Cloud Run 서비스/Job 공용 진입점.
-# RUN_MODE=job 이면 Cloud Run Jobs (batch 1회 실행 후 종료),
-# 그 외엔 Cloud Run Service (HTTP 서버 상주).
+# medical-compliance-tester (호스트) Cloud Run 진입점.
+# RUN_MODE=job 이면 Cloud Run Jobs (batch 1회 실행 후 종료), 그 외엔 HTTP 서버 상주.
+# ※ RAG 서비스 모드(rag)와 DB 마이그레이션 모드(migrate)는 medical-rag-service repo 로
+#    분리됨 (4-E). 호스트 이미지엔 rag_server.py/migrations/ 가 더 이상 존재하지 않는다.
 set -e
 
 if [ "$RUN_MODE" = "job" ]; then
     echo "[entrypoint] mode=job → python /app/job_runner.py"
     exec python /app/job_runner.py
-elif [ "$RUN_MODE" = "migrate" ]; then
-    # DB 스키마 마이그레이션 1회 실행 후 종료 (Cloud Run Job 용).
-    # --sync: 최초 baseline(현재 스키마 채택) 후 대기 마이그레이션 apply (멱등).
-    echo "[entrypoint] mode=migrate → python /app/migrations/migrate_runner.py --sync"
-    exec python /app/migrations/migrate_runner.py --sync
-elif [ "$RUN_MODE" = "rag" ]; then
-    # RAG 독립 HTTP 서비스 (Phase 3) — /api/rag/* 단독 서빙.
-    PORT_USED="${PORT:-8080}"
-    echo "[entrypoint] mode=rag → python /app/rag_server.py --port ${PORT_USED}"
-    exec python /app/rag_server.py --port "${PORT_USED}"
 else
     PORT_USED="${PORT:-8080}"
     echo "[entrypoint] mode=service → python /app/proxy_server.py --port ${PORT_USED}"

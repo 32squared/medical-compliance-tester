@@ -1,0 +1,3 @@
+[submodule "packages/medical_shared"]
+	path = packages/medical_shared
+	url = https://github.com/32squared/medical-shared.git
