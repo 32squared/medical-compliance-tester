@@ -30,7 +30,7 @@ import os
 import signal
 import threading
 import db
-from rag_routes import RagRoutesMixin
+# rag_routes import 제거 — 4-E Phase: in-process RAG 모드 완전 제거
 
 # 스크립트가 있는 폴더 기준으로 파일 경로 설정
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -42,7 +42,7 @@ RAG_ENABLED = os.environ.get("RAG_ENABLED", "false").lower() in ("true", "1", "y
 
 # ── RAG 독립 서비스 분리 (Phase 3, additive) ──
 # RAG_SERVICE_URL 설정 시 /api/rag/* 를 해당 서비스로 리버스 프록시(SKIX X-Target-URL 패턴과 동일).
-# 미설정(기본) 이면 기존처럼 in-process(_handle_rag_route)로 처리 → 현재 동작 불변.
+# 미설정 시 /api/rag/* → 503 응답 (Phase 4-E: in-process 모드 제거, RAG_SERVICE_URL 필수).
 # 프록시 시 호스트가 쿠키 세션을 검증해 신뢰헤더(X-User-*)로 변환 주입 → same-origin 유지(쿠키/CORS 회피).
 RAG_SERVICE_URL = os.environ.get("RAG_SERVICE_URL", "").rstrip("/")
 RAG_TRUST_SECRET = os.environ.get("RAG_TRUST_SECRET", "")
@@ -1878,7 +1878,7 @@ def _generate_enhanced_prompt(original_query, gpt_eval=None, consultation_eval=N
     return enhanced, instructions
 
 
-class ProxyHandler(RagRoutesMixin, BaseHTTPRequestHandler):
+class ProxyHandler(BaseHTTPRequestHandler):
     """SKIX API 프록시 + 시나리오 관리 API 핸들러"""
 
     protocol_version = 'HTTP/1.1'
@@ -2276,7 +2276,7 @@ class ProxyHandler(RagRoutesMixin, BaseHTTPRequestHandler):
         if self.path.startswith('/api/rag/'):
             if RAG_SERVICE_URL:
                 return self._proxy_to_rag('POST', body)
-            return self._handle_rag_route('POST', self.path, None, body)
+            return self._send_json(503, {"error": "RAG_SERVICE_URL not configured - in-process mode removed in Phase 4-E. See docs/env_reference.md"})
 
         # ── SKIX 프록시 ──
         self._proxy_post(body)
@@ -2344,7 +2344,7 @@ class ProxyHandler(RagRoutesMixin, BaseHTTPRequestHandler):
         if self.path.startswith('/api/rag/'):
             if RAG_SERVICE_URL:
                 return self._proxy_to_rag('PUT', body)
-            return self._handle_rag_route('PUT', self.path, None, body)
+            return self._send_json(503, {"error": "RAG_SERVICE_URL not configured - in-process mode removed in Phase 4-E. See docs/env_reference.md"})
 
         # ── 커멘트 수정 (본인 또는 admin) ──
         m_cmt_put = re.match(r'^/api/conversations/([^/]+)/comments/([^/]+)$', self.path)
@@ -2399,7 +2399,7 @@ class ProxyHandler(RagRoutesMixin, BaseHTTPRequestHandler):
         if self.path.startswith('/api/rag/'):
             if RAG_SERVICE_URL:
                 return self._proxy_to_rag('DELETE', None)
-            return self._handle_rag_route('DELETE', self.path, None, None)
+            return self._send_json(503, {"error": "RAG_SERVICE_URL not configured - in-process mode removed in Phase 4-E. See docs/env_reference.md"})
 
         self._send_error(404, 'Not Found')
 
@@ -2435,7 +2435,7 @@ class ProxyHandler(RagRoutesMixin, BaseHTTPRequestHandler):
         if path.startswith('/api/rag/'):
             if RAG_SERVICE_URL:
                 return self._proxy_to_rag('GET', None)
-            return self._handle_rag_route('GET', path, parsed, None)
+            return self._send_json(503, {"error": "RAG_SERVICE_URL not configured - in-process mode removed in Phase 4-E. See docs/env_reference.md"})
 
         if path == '/api/tester/list':
             return self._tester_list()

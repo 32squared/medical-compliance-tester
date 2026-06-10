@@ -43,11 +43,10 @@ SHARED_MODULES = {
 
 # ── 허용된 경계 결합 (줄어들기만 해야 함) ──
 # (importing_file, imported_module): 사유 + 제거 시점
-ALLOWED_COUPLINGS = {
-    ('proxy_server', 'rag_routes'): 'in-process mode mixin (remove in 4-E)',
-}
+# 4-E 완료 — 결합 0: proxy_server→rag_routes in-process 모드 제거됨
+ALLOWED_COUPLINGS = {}
 # 래칫: 이 수를 넘으면 FAIL (결합 절단 완료 시 함께 줄인다. 늘리기 금지)
-MAX_ALLOWED_COUPLINGS = 1
+MAX_ALLOWED_COUPLINGS = 0
 
 # ── tests/, scripts/ 경계 (qa-gate 감사 P1/P2 반영) ──
 # RAG 와 HOST '비공유' 모듈을 동시에 import 하는 테스트 = repo 분리 시 양쪽 어디서도
@@ -57,10 +56,11 @@ ALLOWED_TEST_BOTH = {
 }
 
 # ── RagRoutesMixin 헬퍼 계약: rag_routes 가 self._xxx 로 기대하는 메서드는
-#    proxy_server(ProxyHandler) 와 rag_server(RagHandler) 양쪽에 있어야 함 ──
+#    rag_server(RagHandler) 에 있어야 함 ──
+# 4-E 완료: proxy_server 는 더 이상 RagRoutesMixin 호스트가 아님 — rag_server 만 잔류.
 # 알려진 한계(qa-gate 감사 2-B): 직접 호출(self._x(...))만 탐지. getattr/property 등
 # 동적 접근은 미탐지 — rag_routes 에 동적 디스패치 도입 금지(프로토콜 규칙).
-MIXIN_HOSTS = ['proxy_server.py', 'rag_server.py']
+MIXIN_HOSTS = ['rag_server.py']
 
 # ── 공유 패키지 공개 심볼 계약 (4-B 패키지화 시 __init__ 재export 목록의 원본) ──
 SHARED_SYMBOL_CONTRACT = {
