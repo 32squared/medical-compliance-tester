@@ -49,6 +49,12 @@
 3. 패키지 DoD 충족 (orchestrator 가 정의한 것)
 4. 판정 리포트: PASS / FAIL+사유표(Issue·Severity·File·Line)
 
+## 커밋 권한 (운영 중 추가 — P2/P4 위반 교훈)
+
+- **커밋은 메인 세션만 수행한다.** 워커는 git add/commit 자체를 실행하지 않는다.
+- 사유: 게이트 판정 전 커밋은 FAIL 시 revert 비용·이력 오염 발생. 워커 지시서에 "절대 커밋 금지 — git add/commit 명령 자체를 실행하지 마라"를 굵게 명시할 것.
+- 워커 보고는 반드시 SendMessage 도구로 — 턴 마지막 일반 텍스트는 메인에 전달되지 않는다(orchestrator/dev-p4 누락 사례 2회).
+
 ## 에스컬레이션
 
 - 워커 2회 재작업에도 FAIL → orchestrator 가 패키지 재설계
