@@ -12,12 +12,21 @@ verify_rag_separation.py — RAG 분리(Phase 3) 검증 하니스 ("나중에 �
   # 호스트 리버스 프록시 경유 (호스트가 쿠키→신뢰헤더 변환; 쿠키 필요)
   python tests/verify_rag_separation.py --rag-url https://<host>/  --cookie "tester_token=..."
 
+  # --no-allow-unauthenticated Cloud Run (IAM 인증 필요)
+  python tests/verify_rag_separation.py --rag-url https://...run.app --id-token "$(gcloud auth print-identity-token)"
+  python tests/verify_rag_separation.py --rag-url https://...run.app --auto-id-token
+
+주의: --id-token / --auto-id-token 은 IAM 플랫폼 인증(Authorization: Bearer)이며,
+      X-User-* 신뢰헤더(앱 인가)와 직교하므로 함께 사용해도 무방하다.
+
 검증 항목:
   1) GET /health → 200 {status: ok}
   2) GET /api/rag/result?conversation_id=__verify__ → 200(JSON, 인증 통과)
   3) POST /api/rag/chat (SSE) → STOP 이벤트 수신 + citations 키 존재(스트리밍 패스스루)
 """
 
+import shutil
+import subprocess
 import sys
 import json
 import argparse
@@ -31,6 +40,42 @@ def _req(url, method='GET', headers=None, data=None, timeout=120):
     return urllib.request.urlopen(req, timeout=timeout)
 
 
+def _get_id_token(rag_url):
+    """gcloud auth print-identity-token 으로 IAM 토큰을 취득한다.
+
+    실패(gcloud 부재, 인증 오류 등)시 메시지 출력 후 sys.exit(1).
+    audiences 는 rag_url 베이스 URL 을 그대로 사용한다.
+
+    Windows 에서는 gcloud 가 .cmd 래퍼로 설치되므로 shutil.which 로
+    전체 경로를 먼저 탐색하고, 없으면 명시 에러로 종료한다.
+    """
+    gcloud_bin = shutil.which('gcloud')
+    if not gcloud_bin:
+        print('[ERROR] gcloud not found - install Google Cloud CLI or pass --id-token manually')
+        sys.exit(1)
+    audiences = rag_url.rstrip('/')
+    cmd = [gcloud_bin, 'auth', 'print-identity-token', '--audiences=' + audiences]
+    print('[auto-id-token] running: ' + ' '.join(cmd))
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30, shell=False)
+    except FileNotFoundError:
+        print('[ERROR] gcloud not found - install Google Cloud CLI or pass --id-token manually')
+        sys.exit(1)
+    except subprocess.TimeoutExpired:
+        print('[ERROR] gcloud timed out after 30s')
+        sys.exit(1)
+    if result.returncode != 0:
+        stderr = (result.stderr or '').strip()
+        print('[ERROR] gcloud failed (rc=%d): %s' % (result.returncode, stderr[:300]))
+        sys.exit(1)
+    token = (result.stdout or '').strip()
+    if not token:
+        print('[ERROR] gcloud returned empty token')
+        sys.exit(1)
+    print('[auto-id-token] token acquired (length=%d)' % len(token))
+    return token
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--rag-url', required=True, help='RAG 서비스 또는 호스트 베이스 URL')
@@ -41,10 +86,29 @@ def main():
     ap.add_argument('--trust-secret', default='')
     ap.add_argument('--cookie', default='', help='리버스 프록시 경유 시 쿠키')
     ap.add_argument('--query', default='3일째 기침이 나고 가래가 나와요')
+    ap.add_argument('--id-token', default=None,
+                    help='Cloud Run IAM 인증용 identity token (Authorization: Bearer). '
+                         'X-User-* 신뢰헤더와 독립적으로 동작한다.')
+    ap.add_argument('--auto-id-token', action='store_true',
+                    help='gcloud auth print-identity-token 으로 토큰 자동 취득. '
+                         'gcloud 부재/실패 시 에러로 종료.')
     args = ap.parse_args()
+
+    # IAM 토큰 결정: --auto-id-token > --id-token > None
+    id_token = None
+    if args.auto_id_token:
+        id_token = _get_id_token(args.rag_url)
+    elif args.id_token:
+        id_token = args.id_token
 
     base = args.rag_url.rstrip('/')
     H = {}
+
+    # IAM 플랫폼 인증 (Cloud Run --no-allow-unauthenticated 대응)
+    # X-User-* 앱 인가 헤더와 직교 — 함께 사용 가능
+    if id_token:
+        H['Authorization'] = 'Bearer ' + id_token
+
     if args.cookie:
         H['Cookie'] = args.cookie
     else:
