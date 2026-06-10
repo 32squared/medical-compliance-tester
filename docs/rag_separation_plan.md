@@ -35,7 +35,7 @@
 > 향후 개선 후보(미착수): ① RAG `min-instances=1` 로 콜드스타트 제거,
 > ② `[RAG-PROXY]` 진단 print 에 `flush=True`(현재 stdout 버퍼링으로 로그 누락),
 > ③ 평가(컴플라이언스/문진)를 답변 스트리밍과 병렬화. **사용자 지시로 지연 수정은 보류.**
-| **4** | 저장소 분리 + 독립 배포 (dbcommon/compliance-rules 공유 패키지화) | ⬜ (GitHub/인프라 결정 필요) |
+| **4** | 저장소 분리 + 독립 배포 (dbcommon/compliance-rules 공유 패키지화) | 📋 **계획 수립 완료** → [rag_phase4_split_plan.md](rag_phase4_split_plan.md) (2026-06-10 전수조사 기반, 착수 전 결정 D1~D7 대기) |
 
 ### Phase 3 구성 (additive — RAG_SERVICE_URL 미설정 시 현재 동작 불변)
 - `rag_server.py`: RagRoutesMixin 재사용 독립 BaseHTTPServer. 8개 헬퍼 자체 구현,
