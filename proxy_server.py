@@ -27,6 +27,7 @@ from urllib.error import URLError, HTTPError
 from urllib.parse import urlparse, parse_qs, quote
 import ssl
 import os
+import signal
 import threading
 import db
 from rag_routes import RagRoutesMixin
@@ -45,6 +46,16 @@ RAG_ENABLED = os.environ.get("RAG_ENABLED", "false").lower() in ("true", "1", "y
 # 프록시 시 호스트가 쿠키 세션을 검증해 신뢰헤더(X-User-*)로 변환 주입 → same-origin 유지(쿠키/CORS 회피).
 RAG_SERVICE_URL = os.environ.get("RAG_SERVICE_URL", "").rstrip("/")
 RAG_TRUST_SECRET = os.environ.get("RAG_TRUST_SECRET", "")
+
+# ── RAG 프록시 타임아웃 (env화, P4) ──
+# RAG_REQUEST_TIMEOUT: urlopen 전체 타임아웃 (batch_eval_rag와 동일 env명)
+# RAG_STREAM_IDLE_TIMEOUT: SSE 스트리밍 소켓 idle 타임아웃
+RAG_REQUEST_TIMEOUT = int(os.environ.get("RAG_REQUEST_TIMEOUT", "900"))
+RAG_STREAM_IDLE_TIMEOUT = int(os.environ.get("RAG_STREAM_IDLE_TIMEOUT", "180"))
+
+# ── OpenAI API 베이스 URL (env화, P4) ──
+# OPENAI_API_BASE: 프록시/테스트 환경 대체 허용. 미설정 시 공식 OpenAI 엔드포인트 사용.
+OPENAI_API_BASE = os.environ.get("OPENAI_API_BASE", "https://api.openai.com")
 
 # ── 권한 카탈로그 ──
 PERMISSION_CATALOG = [
@@ -1239,7 +1250,7 @@ Include ALL {len(rubric_items)} items in order."""
             "response_format": {"type": "json_object"}
         }).encode('utf-8')
         req = Request(
-            url="https://api.openai.com/v1/chat/completions",
+            url=f"{OPENAI_API_BASE}/v1/chat/completions",
             data=api_body,
             headers={"Content-Type": "application/json", "Authorization": f"Bearer {openai_key}"},
             method='POST',
@@ -3291,7 +3302,7 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
             }).encode('utf-8')
 
             req = Request(
-                url="https://api.openai.com/v1/chat/completions",
+                url=f"{OPENAI_API_BASE}/v1/chat/completions",
                 data=api_body,
                 headers={
                     "Content-Type": "application/json",
@@ -3998,7 +4009,7 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
     @classmethod
     def _add_log(cls, msg):
         line = f"[{datetime.now().strftime('%H:%M:%S')}] {msg}"
-        print(line)
+        print(line, flush=True)
         with cls._log_lock:
             cls._log_buffer.append(line)
 
@@ -5611,7 +5622,7 @@ has_top_disclaimer=false 인데 legal_violation 미부여 시 평가 오류로 �
             }).encode('utf-8')
 
             req = Request(
-                url="https://api.openai.com/v1/chat/completions",
+                url=f"{OPENAI_API_BASE}/v1/chat/completions",
                 data=api_body,
                 headers={
                     "Content-Type": "application/json",
@@ -6444,7 +6455,7 @@ has_top_disclaimer=false 인데 legal_violation 미부여 시 평가 오류로 �
                         "response_format": {"type": "json_object"}
                     }).encode('utf-8')
                     req = Request(
-                        'https://api.openai.com/v1/chat/completions',
+                        f"{OPENAI_API_BASE}/v1/chat/completions",
                         data=classify_body,
                         headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {openai_key}'},
                         method='POST'
@@ -7756,7 +7767,7 @@ has_top_disclaimer=false 인데 legal_violation 미부여 시 평가 오류로 �
         data = body if method in ('POST', 'PUT', 'DELETE') else None
         req = Request(target, data=data, headers=headers, method=method)
         try:
-            resp = urlopen(req, timeout=900)
+            resp = urlopen(req, timeout=RAG_REQUEST_TIMEOUT)
         except HTTPError as e:
             try:
                 err_body = e.read()
@@ -7792,7 +7803,7 @@ has_top_disclaimer=false 인데 legal_violation 미부여 시 평가 오류로 �
             self.send_header('Connection', 'keep-alive')
         self.end_headers()
         try:
-            self.connection.settimeout(180)
+            self.connection.settimeout(RAG_STREAM_IDLE_TIMEOUT)
         except Exception:
             pass
         # SSE 스트리밍 relay: read1() 로 '도착 즉시' 전달(read(n) 은 n바이트 채울 때까지 블록 → 버퍼링).
@@ -7847,7 +7858,7 @@ has_top_disclaimer=false 인데 legal_violation 미부여 시 평가 오류로 �
 
     def log_message(self, format, *args):
         msg = f"[{datetime.now().strftime('%H:%M:%S')}] [프록시] {args[0]}"
-        print(msg)
+        print(msg, flush=True)
         with ProxyHandler._log_lock:
             ProxyHandler._log_buffer.append(msg)
 
@@ -7881,10 +7892,22 @@ def main():
 ║  Ctrl+C 로 종료                                   ║
 ╚══════════════════════════════════════════════════╝
 """)
+    def _shutdown_handler(signum, frame):
+        print(f"[SHUTDOWN] 신호 수신({signum}) — graceful shutdown 시작", flush=True)
+        # serve_forever 스레드 내에서 server.shutdown()을 직접 호출하면 데드락 발생 —
+        # 별도 daemon 스레드에서 호출해 블록 해제.
+        threading.Thread(target=server.shutdown, daemon=True).start()
+
+    try:
+        signal.signal(signal.SIGTERM, _shutdown_handler)
+        signal.signal(signal.SIGINT, _shutdown_handler)
+    except (OSError, ValueError):
+        pass  # Windows 환경에서 SIGTERM 등록 불가 시 무시
+
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        print("\n서버를 종료합니다.")
+        print("\n서버를 종료합니다.", flush=True)
         server.server_close()
 
 
