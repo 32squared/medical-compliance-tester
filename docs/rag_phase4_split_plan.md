@@ -90,7 +90,18 @@
 3. 검증 게이트: prod 스모크(health + 인증 + chat 1회). **이 단계 전체가 사용자 승인 후 진행.**
 
 ### 4-E. 저장소 분리 실행 (1~2일)
-1. GitHub: `medical-shared`(D1), `medical-rag-service`(D4) 생성.
+> ✅ **E-1/E-2 완료 (2026-06-10)**: `medical-shared` main@960ec15(이력 2커밋, packages/medical_shared→루트),
+> `medical-rag-service` main@b3819da(이력 84커밋+CI 배치+submodule 연결 = 86커밋). filter-repo는
+> `--no-local` 클론 필수. 신규 repo 단독 검증: py_compile 80파일 0에러 + cross-import(--forbid host) OK +
+> migrate_runner --status 동작 + pytest 97 passed(분리 환경에선 test_rag_conversation_state 도 통과).
+> **사전 수렴(4f533f2)**: RAG 16모듈 db facade→dbcommon 직접 import, init_db→ensure_rag_schema(7곳) —
+> db.py(호스트 164KB) 신규 repo 유입 차단.
+> **매니페스트 정정 2건**: test_rag_kb_api(save_session=호스트 세션 함수 의존)·test_phase1_integration
+> (호스트 9000 대상) → 호스트 잔류. rag ci.yml 에서 호스트 평가 테스트 2건 제거(P1 준수).
+> **잔여**: ① 호스트 모노레포의 in-tree packages→submodule 전환은 E-6 검증 후(보류),
+> ② medical-rag-service GitHub Actions 는 private submodule 인증 필요 — 사용자가 PAT 시크릿
+> (medical-shared 읽기 권한) 추가 후 checkout `token:` 지정해야 그린(그 전까지 checkout 단계 실패).
+1. GitHub: `medical-shared`(D1), `medical-rag-service`(D4) 생성. — ✅ 사용자 생성 완료(2026-06-10)
 2. `git filter-repo` 로 이력 보존 이식 (✏ 2026-06-10 사전조사로 매니페스트 정정 — 진실 소스는 검사기 RAG_MODULES):
    - **신규 RAG repo 로 이동 (루트 33파일 = 검사기 RAG_MODULES)**: rag_server/routes/engine/db, llm_router, citation_verifier, embedding_provider, retrieval_router, pii_masker, medical_classifier, evidence_pack, review_queue, kb_ingest, kb_stats, kb_rag_audit, seed_*(7종), collect_public_kb, backfill_evidence_topic, medical_rag_pipeline, rag_gap_analysis, debug_rag, **verify_db_005, reembed_missing, dur_collector, reindex_korean_tsv, copy_kb_to_dev, verify_kb_health_kdca**(사전조사 보강), **migrations/ 전체**(001~009 + 러너 + test_migrate_runner), tests/ RAG 그룹(RAG-only 20종 + diagnose_rag_env/validate_rag_direct/test_rag_chat_endpoint/test_rag_kb_api/auto_validate_rag/verify_rag_separation), deploy-rag.ps1, Dockerfile(rag 고정·RUN_MODE 제거), entrypoint, .dockerignore, **.gitignore에 !__init__.py 예외 포함**, README(env 표 RAG 행 이동).
    - **호스트 잔류 (루트 15파일)**: proxy_server, db, batch_executor, job_runner, runner, **batch_eval_rag/rag_consultation_eval/rag_legal_eval**(P1 결정), dashboard, main, migrate 도구류, create_*_excel, 모든 HTML, scripts/(운영분석), 호스트 테스트(test_rlhf_*, test_guardrail_false_positives, test_rag_consultation_eval/test_rag_legal_eval 등).
