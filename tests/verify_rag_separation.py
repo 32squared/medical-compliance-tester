@@ -122,9 +122,10 @@ def main():
 
     results = []
 
-    # 1) health
+    # 1) health (IAM 강제 시 플랫폼 레벨에서 토큰 필요 — Authorization만 첨부)
+    health_h = {'Authorization': H['Authorization']} if 'Authorization' in H else {}
     try:
-        r = _req(base + '/health', timeout=15)
+        r = _req(base + '/health', headers=health_h, timeout=15)
         body = json.loads(r.read().decode('utf-8'))
         ok = r.status == 200 and body.get('status') == 'ok'
         results.append(('health', ok, f"status={r.status} body={body}"))

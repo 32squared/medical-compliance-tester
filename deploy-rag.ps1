@@ -55,7 +55,7 @@ gcloud run deploy $ServiceName `
     --image $ImageUri `
     --region $Region `
     --platform managed `
-    --allow-unauthenticated `
+    --no-allow-unauthenticated `
     --memory 2Gi --cpu 1 `
     --timeout 900 `
     --min-instances 0 --max-instances 3 `
