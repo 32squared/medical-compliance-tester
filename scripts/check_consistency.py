@@ -46,9 +46,20 @@ ALLOWED_COUPLINGS = {
     ('proxy_server', 'rag_routes'): 'in-process mode mixin (remove in 4-E)',
     ('batch_eval_rag', 'proxy_server'): 'host eval functions + monkey-patch (remove in 4-A)',
 }
+# 래칫: 이 수를 넘으면 FAIL (결합 절단 완료 시 함께 줄인다. 늘리기 금지)
+MAX_ALLOWED_COUPLINGS = 2
+
+# ── tests/, scripts/ 경계 (qa-gate 감사 P1/P2 반영) ──
+# RAG 와 HOST '비공유' 모듈을 동시에 import 하는 테스트 = repo 분리 시 양쪽 어디서도
+# 실행 불가. 신규 발생 즉시 FAIL. (db facade 동시 사용은 4-B 에서 dbcommon 으로 수렴 — WARN)
+ALLOWED_TEST_BOTH = {
+    # 'tests/xxx.py': '사유 + 해소 시점',
+}
 
 # ── RagRoutesMixin 헬퍼 계약: rag_routes 가 self._xxx 로 기대하는 메서드는
 #    proxy_server(ProxyHandler) 와 rag_server(RagHandler) 양쪽에 있어야 함 ──
+# 알려진 한계(qa-gate 감사 2-B): 직접 호출(self._x(...))만 탐지. getattr/property 등
+# 동적 접근은 미탐지 — rag_routes 에 동적 디스패치 도입 금지(프로토콜 규칙).
 MIXIN_HOSTS = ['proxy_server.py', 'rag_server.py']
 
 # ── 공유 패키지 공개 심볼 계약 (4-B 패키지화 시 __init__ 재export 목록의 원본) ──
@@ -185,8 +196,11 @@ def check_mixin_contract():
 
 # ── [6] import 경계 (핵심: 줄어들기만 해야 하는 결합) ──
 def _imports_of(path):
+    import warnings as _w
     try:
-        tree = ast.parse(_read(path))
+        with _w.catch_warnings():
+            _w.simplefilter('ignore', SyntaxWarning)
+            tree = ast.parse(_read(path))
     except SyntaxError:
         return set()
     mods = set()
@@ -227,9 +241,54 @@ def check_import_boundary():
         else:
             warn('import-boundary',
                  'stale allowlist entry %s -> %s (coupling gone - remove it): %s' % (a, b, reason))
+    if len(ALLOWED_COUPLINGS) > MAX_ALLOWED_COUPLINGS:
+        fail('import-boundary',
+             'ALLOWED_COUPLINGS grew to %d (max %d) - couplings may only be removed'
+             % (len(ALLOWED_COUPLINGS), MAX_ALLOWED_COUPLINGS))
     if not violations:
         ok('import-boundary', '%d root modules scanned, %d allowed couplings remain'
            % (len(root_py), len(used_allow)))
+
+
+# ── [6b] tests/, scripts/ 경계 (분리 시 실행 불가 파일 조기 탐지) ──
+def check_test_boundary():
+    files = (glob.glob(os.path.join(ROOT, 'tests', '*.py')) +
+             glob.glob(os.path.join(ROOT, 'scripts', '*.py')))
+    root_local = {os.path.splitext(os.path.basename(q))[0]
+                  for q in glob.glob(os.path.join(ROOT, '*.py'))}
+    host_local = root_local - RAG_MODULES - SHARED_MODULES
+    both, rag_only, facade_users = [], [], []
+    for p in sorted(files):
+        rel = os.path.relpath(p, ROOT).replace('\\', '/')
+        imps = _imports_of(p)
+        has_rag = bool(imps & RAG_MODULES)
+        has_host = bool(imps & host_local)
+        if has_rag and has_host:
+            both.append(rel)
+        elif has_rag:
+            rag_only.append(rel)
+            if 'db' in imps:
+                facade_users.append(rel)
+    bad = 0
+    for rel in both:
+        if rel in ALLOWED_TEST_BOTH:
+            print('       allowed: %s  [%s]' % (rel, ALLOWED_TEST_BOTH[rel]))
+        else:
+            bad += 1
+            fail('test-boundary',
+                 '%s imports both RAG and HOST modules - unrunnable after split' % rel)
+    for rel in sorted(ALLOWED_TEST_BOTH):
+        if rel not in both:
+            warn('test-boundary', 'stale ALLOWED_TEST_BOTH entry: ' + rel)
+    if facade_users:
+        warn('test-boundary',
+             '%d RAG test(s) import db facade (migrate to dbcommon in 4-B): %s'
+             % (len(facade_users), ', '.join(facade_users[:6])
+                + (' ...' if len(facade_users) > 6 else '')))
+    if not bad:
+        ok('test-boundary',
+           '%d files scanned: %d RAG-only (move in 4-E), %d both-allowed'
+           % (len(files), len(rag_only), len(both) - bad))
 
 
 # ── [7] 마이그레이션 파일 규약 ──
@@ -259,6 +318,7 @@ def main():
     check_shared_symbols()
     check_mixin_contract()
     check_import_boundary()
+    check_test_boundary()
     check_migrations()
     print('=== result: %d failure(s), %d warning(s) ===' % (len(failures), len(warnings)))
     sys.exit(1 if failures else 0)
