@@ -115,6 +115,14 @@
 3. 호스트 repo 정리(D2 경로 A): RagRoutesMixin import/상속 제거, in-process 디스패치 4곳 제거 → RAG_SERVICE_URL 필수(미설정 시 503 + 명시 메시지), `_handle_rag_route` 제거.
 4. 신규 repo CI(D6): GitHub Actions — py_compile / pytest(SQLite, DATABASE_URL 없이) / migrate_runner --status.
 5. 검증 게이트: 신규 repo 에서 deploy-rag.ps1 → dev RAG 서비스 교체 → verify_rag_separation ALL PASS + 브라우저 e2e + 배치평가 스모크. 호스트 repo 단독 배포 검증(RAG 코드 없는 이미지).
+> 🔄 **E-6 부분 완료 (2026-06-11)**: 신규 repo(medical-rag-service@5af8625)에서 Cloud Build →
+> `medical-rag-dev-00004-fl9` 100% 서빙. **verify_rag_separation ALL PASS**(health version=00004-fl9
+> schema=009 + rag_result(auth)=200 + chat SSE STOP+citations). 빌드 보강: requirements.txt(매니페스트
+> 누락분), entrypoint RAG 전용화(job/service 호스트분기 제거), Dockerfile ENV RUN_MODE=rag.
+> 호스트 dev 배선: RAG_SERVICE_URL 설정됨 + RAG_USE_IAM 기본 auto(Cloud Run metadata 토큰 자동) → 별도주입 불요.
+> **잔여**: ① 호스트 경유 브라우저 e2e(사용자) — 직접경로는 입증, 리버스프록시 경로 최종확인,
+> ② 배치 스모크(로컬 OPENAI_API_KEY/dev DB private-IP 부재로 보류 — RAG 생성/citations 는 verify 로 입증됨),
+> ③ 호스트 모노레포 RAG 파일 물리 제거 + packages in-tree→submodule 전환(되돌리기 어려운 큰 변경 — 사용자 결정 후).
 
 ### 4-F. 마무리 (0.5일)
 1. 문서 갱신: rag_separation_plan.md Phase 4 완료 표기, CLAUDE.md 파일구조/명령 갱신, 운영 런북(롤백 절차: 신규 repo 이전 마지막 모놀리스 이미지 태그 보존).
