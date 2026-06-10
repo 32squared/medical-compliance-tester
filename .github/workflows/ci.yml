@@ -1,0 +1,124 @@
+# Host repo CI — medical-compliance-tester (monorepo, refactor/rag-modular branch)
+# D6 결정: CI only (GitHub Actions). 배포는 PowerShell 수동 유지.
+# trigger: push / PR on master or refactor/** branches.
+#
+# jobs:
+#   lint   — check_consistency.py (py-compile + js-syntax + import-boundary + test-boundary)
+#   pytest — host-stable 테스트 선별 실행 (DB/서버 불필요 목록, pre-existing 실패 제외)
+
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+      - "refactor/**"
+  pull_request:
+    branches:
+      - master
+      - "refactor/**"
+
+jobs:
+  # ── job (a): check_consistency ────────────────────────────────────────────
+  lint:
+    name: "consistency-gate"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js (js-syntax check)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Python deps (packages/medical_shared only — no prod DB)
+        run: |
+          pip install --quiet -e "packages/medical_shared[dev]" 2>/dev/null || \
+          pip install --quiet -e "packages/medical_shared" 2>/dev/null || true
+
+      - name: Run check_consistency.py
+        run: python scripts/check_consistency.py
+
+  # ── job (b): pytest — host-stable 테스트 ─────────────────────────────────
+  # 선별 근거 (tests/ 스캔 결과):
+  #
+  # PASS (포함):
+  #   test_host_rag_isolation   — ast 분석 전용, DB/서버/API키 불필요
+  #   test_rlhf_db              — SQLite 임시파일 DB, DATABASE_URL='' 강제
+  #   test_migrate_runner       — 임시 SQLite + 임시 migrations dir, DB/서버 불필요
+  #   test_rag_legal_eval       — 순수 프롬프트 빌더 테스트, 네트워크 불필요
+  #   test_rag_consultation_eval — 순수 프롬프트 빌더 테스트
+  #   test_guardrail_false_positives — ComplianceAnalyzer 정규식만, DB 불필요
+  #   test_medical_classifier   — 규칙 기반 분류, 네트워크 불필요
+  #   test_router_evidence      — retrieval_router + evidence_pack 순수 로직
+  #   test_dur_collector        — fixture 기반 파싱, 네트워크 불필요
+  #   test_review_queue         — should_review 결정 로직, 네트워크 불필요
+  #   test_seed_consultation_kb — build_consultation_documents, 키/DB 불필요
+  #   test_seed_dur             — build_dur_documents, 키/DB 불필요
+  #   test_pii_masker           — 정규식 마스킹, 네트워크 불필요
+  #   test_citation_verifier    — 규칙 기반 검증, 네트워크 불필요
+  #   test_sparse_tokens        — _korean_meaningful_tokens 단위, DB 불필요
+  #   test_rag_guardrail_fp_filter — _filter_guardrail_false_positives 로직, DB 불필요
+  #   test_medical_rag_pipeline — MockLLM + mock retrieve, OpenAI/DB 불필요
+  #
+  # EXCLUDED (pre-existing failures / server-required / API-key-required):
+  #   test_llm_router           — gpt-5-mini vs gpt-5.4-mini 모델명 불일치 실패
+  #   test_kb_ingest            — source_checksum 컬럼 누락(SQLite migration 미적용) 실패
+  #   test_rag_engine           — TestEvidenceTopicAlignment 3건 실패 (pre-existing)
+  #   test_generate_response    — guardrail/emergency 7건 실패 (pre-existing)
+  #   test_embedding_provider   — OPENAI_API_KEY 있을 때만 실행 (skip은 괜찮으나 포함 불필요)
+  #   test_phase1_integration   — pytestmark=integration, 실서버 필요
+  #   test_rlhf_api             — DEV 서버 URL 필요
+  #   test_rag_chat_endpoint    — 로컬 서버 기동 (subprocess)
+  #   test_rag_kb_api           — 로컬 서버 기동 (subprocess)
+  #   auto_validate_rag         — DEV 서버 + API키 필요
+  #   diagnose_rag_env          — 직접 실행 스크립트, pytest 아님
+  #   validate_rag_direct       — 직접 실행 스크립트
+  #   verify_rag_separation     — 직접 실행 스크립트
+  #   test_precheck_violations  — proxy_server stdout 래핑 충돌로 pytest I/O 에러
+  #   test_rag_conversation_state — dbcommon 전역 상태 오염 시 rag_conversation_state
+  #                                테이블 미생성 에러 발생(단독 실행 시 PASS, 연속 실행 시 FAIL)
+  pytest:
+    name: "pytest-host-stable"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python deps
+        run: |
+          pip install --quiet pytest
+          pip install --quiet -e "packages/medical_shared" 2>/dev/null || true
+
+      - name: Run host-stable tests
+        env:
+          DATABASE_URL: ""
+        run: |
+          python -m pytest \
+            tests/test_host_rag_isolation.py \
+            tests/test_rlhf_db.py \
+            tests/test_migrate_runner.py \
+            tests/test_rag_legal_eval.py \
+            tests/test_rag_consultation_eval.py \
+            tests/test_guardrail_false_positives.py \
+            tests/test_medical_classifier.py \
+            tests/test_router_evidence.py \
+            tests/test_dur_collector.py \
+            tests/test_review_queue.py \
+            tests/test_seed_consultation_kb.py \
+            tests/test_seed_dur.py \
+            tests/test_pii_masker.py \
+            tests/test_citation_verifier.py \
+            tests/test_sparse_tokens.py \
+            tests/test_rag_guardrail_fp_filter.py \
+            tests/test_medical_rag_pipeline.py \
+            -v --tb=short -q

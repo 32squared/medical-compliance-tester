@@ -1,0 +1,146 @@
+# RAG repo CI — medical-rag-service (분리 후 repo)
+# E-1 filter-repo 이식 후 repo 루트로 이동
+#
+# D6 결정: CI only (GitHub Actions). 배포는 deploy-rag.ps1 수동 유지.
+# trigger: push / PR on main or develop/** branches.
+#
+# jobs:
+#   lint   — py_compile (전 파일) + migrate_runner --status (SQLite 로컬)
+#   pytest — RAG 테스트 중 DB/서버 불필요 목록 선별 실행
+
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - "develop/**"
+  pull_request:
+    branches:
+      - main
+      - "develop/**"
+
+jobs:
+  # ── job (a): py_compile + migrate_runner --status ─────────────────────────
+  lint:
+    name: "rag-lint"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install shared package (git submodule)
+        # medical-shared submodule이 packages/medical_shared 에 있다고 가정.
+        # submodule 미초기화 시에도 pip install이 없어 조용히 continue.
+        run: |
+          pip install --quiet -e "packages/medical_shared" 2>/dev/null || true
+
+      - name: py_compile — all Python files
+        run: |
+          python - <<'PYEOF'
+          import py_compile, glob, os, sys
+          root = os.path.dirname(os.path.abspath(__file__)) if False else os.getcwd()
+          # RAG repo 루트 *.py + migrations/ + packages/ 전체
+          targets = (
+              sorted(glob.glob(os.path.join(root, "*.py")))
+              + sorted(glob.glob(os.path.join(root, "migrations", "*.py")))
+              + sorted(glob.glob(os.path.join(root, "packages", "**", "*.py"), recursive=True))
+          )
+          bad = 0
+          for p in targets:
+              try:
+                  py_compile.compile(p, doraise=True)
+              except Exception as e:
+                  print(f"ERR {os.path.relpath(p, root)}: {e}")
+                  bad += 1
+          print(f"py_compile: {len(targets)} files, {bad} errors")
+          sys.exit(1 if bad else 0)
+          PYEOF
+
+      - name: migrate_runner --status (SQLite local, read-only)
+        # DATABASE_URL 미설정 → SQLite 모드. --status 는 읽기 전용(DB 변경 없음).
+        # SQLite 파일이 없으면 schema_migrations 테이블만 생성(app.db).
+        # 참고: migrate_runner.py get_backend()는 DATABASE_URL 없으면 SQLiteBackend를 반환하며
+        #       --status 경로에서 CREATE TABLE IF NOT EXISTS 만 실행하고 종료한다.
+        env:
+          DATABASE_URL: ""
+        run: python migrations/migrate_runner.py --status
+
+  # ── job (b): pytest — RAG 테스트 선별 실행 ──────────────────────────────
+  # 선별 근거:
+  #
+  # PASS (포함):
+  #   test_rag_legal_eval        — 순수 프롬프트 빌더, 키/네트워크 불필요
+  #   test_rag_consultation_eval — 순수 프롬프트 빌더, 키/네트워크 불필요
+  #   test_medical_classifier    — 규칙 기반 분류, 네트워크 불필요
+  #   test_router_evidence       — retrieval_router + evidence_pack 순수 로직
+  #   test_dur_collector         — fixture 기반 파싱, 네트워크 불필요
+  #   test_review_queue          — should_review 결정 로직, 네트워크 불필요
+  #   test_seed_consultation_kb  — build_consultation_documents, 키/DB 불필요
+  #   test_seed_dur              — build_dur_documents, 키/DB 불필요
+  #   test_pii_masker            — 정규식 마스킹, 네트워크 불필요
+  #   test_citation_verifier     — 규칙 기반 검증, 네트워크 불필요
+  #   test_sparse_tokens         — _korean_meaningful_tokens 단위, DB 불필요
+  #   test_rag_guardrail_fp_filter — _filter_guardrail_false_positives, DB 불필요
+  #   test_medical_rag_pipeline  — MockLLM + mock retrieve, OpenAI/DB 불필요
+  #   test_migrate_runner        — 임시 SQLite + 임시 migrations dir, 완전 독립
+  #
+  # EXCLUDED (pre-existing failures / server-required / API-key-required):
+  #   test_llm_router            — gpt-5-mini vs gpt-5.4-mini 모델명 불일치 실패
+  #   test_kb_ingest             — source_checksum 컬럼 누락(SQLite migration 미적용) 실패
+  #   test_rag_engine            — TestEvidenceTopicAlignment 3건 실패 (pre-existing)
+  #   test_generate_response     — guardrail/emergency 7건 실패 (pre-existing)
+  #   test_embedding_provider    — OPENAI_API_KEY 없으면 대부분 skip (불필요)
+  #   test_rag_chat_endpoint     — 로컬 RAG 서버 기동 (subprocess)
+  #   test_rag_kb_api            — 로컬 RAG 서버 기동 (subprocess)
+  #   auto_validate_rag          — DEV 서버 + API 키 필요
+  #   diagnose_rag_env           — 직접 실행 스크립트
+  #   validate_rag_direct        — 직접 실행 스크립트
+  #   verify_rag_separation      — 직접 실행 스크립트
+  #   test_rag_conversation_state — dbcommon 전역 상태 오염 시 테이블 미생성 에러(단독 PASS,
+  #                                연속 FAIL) — 분리 후 RAG repo 에서 dbcommon 직접 의존으로
+  #                                재작성 시 재포함
+  pytest:
+    name: "pytest-rag-stable"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python deps
+        run: |
+          pip install --quiet pytest
+          pip install --quiet -e "packages/medical_shared" 2>/dev/null || true
+
+      - name: Run RAG-stable tests
+        env:
+          DATABASE_URL: ""
+        run: |
+          python -m pytest \
+            tests/test_rag_legal_eval.py \
+            tests/test_rag_consultation_eval.py \
+            tests/test_medical_classifier.py \
+            tests/test_router_evidence.py \
+            tests/test_dur_collector.py \
+            tests/test_review_queue.py \
+            tests/test_seed_consultation_kb.py \
+            tests/test_seed_dur.py \
+            tests/test_pii_masker.py \
+            tests/test_citation_verifier.py \
+            tests/test_sparse_tokens.py \
+            tests/test_rag_guardrail_fp_filter.py \
+            tests/test_medical_rag_pipeline.py \
+            tests/test_migrate_runner.py \
+            -v --tb=short -q
