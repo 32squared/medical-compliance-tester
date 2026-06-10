@@ -9,8 +9,9 @@ def main():
     # 1. DB 연결 검증
     print("\n[1] DB 연결 검증...", flush=True)
     try:
-        import db
-        db.init_db()
+        import dbcommon as db  # 4-E 수렴: db facade 대신 dbcommon 직접 사용
+        from rag_db import ensure_rag_schema
+        ensure_rag_schema()  # RAG 소유 스키마 보장 + 연결 검증
         if not db._use_postgres:
             print("ERROR: PostgreSQL 모드 아님. DATABASE_URL 확인.", flush=True)
             return

@@ -191,7 +191,7 @@ def _query_schema_version() -> str:
     """schema_migrations 테이블의 최신 적용 버전을 조회해 반환.
     조회 실패/테이블 없음이면 "unknown"."""
     try:
-        from db import get_conn, _p
+        from dbcommon import get_conn, _p
         with get_conn() as (conn, cur):
             cur.execute(
                 "SELECT version FROM schema_migrations "

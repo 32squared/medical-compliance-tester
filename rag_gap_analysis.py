@@ -104,7 +104,7 @@ def aggregate_gaps(rows: List[Dict], sym_kw: Dict[str, List[str]] = None) -> Dic
 
 
 def run(limit: int = 2000) -> Dict:
-    import db
+    import dbcommon as db  # 4-E 수렴: db facade 대신 dbcommon 직접 사용
     rows: List[Dict] = []
     with db.get_conn() as (conn, cur):
         cur.execute(

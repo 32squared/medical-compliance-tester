@@ -51,7 +51,7 @@ _REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-from db import get_conn, _p, _ph, _now, _use_postgres
+from dbcommon import get_conn, _p, _ph, _now, _use_postgres
 
 logger = logging.getLogger(__name__)
 
@@ -866,8 +866,8 @@ def _cli_main():
                         help="kb_sources 초기 시드 INSERT 실행")
     args = parser.parse_args()
 
-    from db import init_db
-    init_db()
+    from rag_db import ensure_rag_schema
+    ensure_rag_schema()  # RAG 소유 스키마 보장 — 전체 KB 스키마는 migrations/migrate_runner.py --sync 선행
 
     if args.seed_sources:
         n = seed_kb_sources()

@@ -1531,8 +1531,8 @@ def _cli_main():
     if not args.dry_run:
         # DB 초기화 (로컬 SQLite 환경 대비)
         try:
-            from db import init_db
-            init_db()
+            from rag_db import ensure_rag_schema
+            ensure_rag_schema()  # RAG 소유 스키마 보장 — 전체 KB 스키마는 migrations/migrate_runner.py --sync 선행
         except Exception as e:
             logger.warning("[Collect] DB 초기화 오류 (무시): %s", e)
 

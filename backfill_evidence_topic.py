@@ -14,7 +14,7 @@ import logging
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from db import get_conn, _p, _use_postgres
+from dbcommon import get_conn, _p, _use_postgres
 
 # collect_public_kb.py의 라벨링 함수 재사용
 # label_evidence_topic(text: str, title: str = "") -> str

@@ -16,7 +16,7 @@ import re
 from datetime import datetime, timezone
 from urllib.parse import parse_qs
 
-import db
+import dbcommon as db  # 4-E 수렴: db facade 대신 dbcommon 직접 사용 (db.X 속성 참조 호환 alias)
 
 # ── RAG 피처 플래그 (proxy_server 와 동일 로직, 독립 정의) ──
 # 순환 임포트를 피하기 위해 proxy_server.RAG_ENABLED 를 import 하지 않고

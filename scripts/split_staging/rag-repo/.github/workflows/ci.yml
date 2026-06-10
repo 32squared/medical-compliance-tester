@@ -76,8 +76,6 @@ jobs:
   # 선별 근거:
   #
   # PASS (포함):
-  #   test_rag_legal_eval        — 순수 프롬프트 빌더, 키/네트워크 불필요
-  #   test_rag_consultation_eval — 순수 프롬프트 빌더, 키/네트워크 불필요
   #   test_medical_classifier    — 규칙 기반 분류, 네트워크 불필요
   #   test_router_evidence       — retrieval_router + evidence_pack 순수 로직
   #   test_dur_collector         — fixture 기반 파싱, 네트워크 불필요
@@ -92,6 +90,7 @@ jobs:
   #   test_migrate_runner        — 임시 SQLite + 임시 migrations dir, 완전 독립
   #
   # EXCLUDED (pre-existing failures / server-required / API-key-required):
+  #   test_rag_legal_eval / test_rag_consultation_eval — 평가 모듈은 호스트 잔류(P1 결정), RAG repo 에 없음
   #   test_llm_router            — gpt-5-mini vs gpt-5.4-mini 모델명 불일치 실패
   #   test_kb_ingest             — source_checksum 컬럼 누락(SQLite migration 미적용) 실패
   #   test_rag_engine            — TestEvidenceTopicAlignment 3건 실패 (pre-existing)
@@ -129,8 +128,6 @@ jobs:
           DATABASE_URL: ""
         run: |
           python -m pytest \
-            tests/test_rag_legal_eval.py \
-            tests/test_rag_consultation_eval.py \
             tests/test_medical_classifier.py \
             tests/test_router_evidence.py \
             tests/test_dur_collector.py \

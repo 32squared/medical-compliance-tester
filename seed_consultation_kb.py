@@ -133,7 +133,7 @@ def _register_source() -> None:
     from kb_ingest import seed_kb_sources
     seed_kb_sources([_CONSULT_SOURCE])
     try:
-        from db import get_conn, _p
+        from dbcommon import get_conn, _p
         with get_conn() as (conn, cur):
             cur.execute(
                 f"UPDATE kb_sources SET priority_rank = 2, jurisdiction = 'KR', "

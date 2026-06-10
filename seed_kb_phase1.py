@@ -452,7 +452,7 @@ def _row_count(row) -> int:
 
 def verify_ingest() -> dict:
     """ingest 결과 DB 검증."""
-    from db import get_conn, _use_postgres
+    from dbcommon import get_conn, _use_postgres
 
     reg_filter = "TRUE" if _use_postgres else "1"
 
@@ -547,11 +547,11 @@ def main():
         return
 
     # ── 실제 ingest ──
-    from db import init_db
+    from rag_db import ensure_rag_schema
     from kb_ingest import ingest_batch
 
     logger.info("[Seed] DB 초기화...")
-    init_db()
+    ensure_rag_schema()  # RAG 소유 스키마 보장 — 전체 KB 스키마는 migrations/migrate_runner.py --sync 선행
 
     # Part C: kb_sources 시드
     logger.info("[Seed] Part C: kb_sources 시드 INSERT...")

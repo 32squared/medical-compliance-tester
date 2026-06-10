@@ -86,9 +86,9 @@ def _get_embedding_provider():
 
 # ─── SQLite 모드 감지 ─────────────────────────────────────────
 def _is_postgres() -> bool:
-    """db._use_postgres 플래그 참조."""
+    """dbcommon._use_postgres 플래그 참조."""
     try:
-        import db as _db
+        import dbcommon as _db
         return _db._use_postgres
     except Exception:
         return False
@@ -126,7 +126,7 @@ def _dense_search(
           "evidence_topic", "regulatory_korea", "topic_keywords",
           "source_id", "evidence_level", "title", "cosine_score"}, ...]
     """
-    from db import get_conn, _p, _ph
+    from dbcommon import get_conn, _p, _ph
 
     # pgvector 어댑터 등록
     try:
@@ -260,7 +260,7 @@ def _sparse_search(
     Returns:
         dense_search와 동일한 필드 구조 + "ts_score"
     """
-    from db import get_conn, _ph
+    from dbcommon import get_conn, _ph
 
     # 쿼리 전처리: 특수문자 제거, 공백 정규화 (한글 토크나이저 실패 방지)
     import re as _re
@@ -710,7 +710,7 @@ def apply_country_boost(results: List[dict]) -> List[dict]:
     양현종 자문: 해외 가이드라인을 국내에 그대로 적용하면 안 되는 분야 존재.
     KR 표기 자료를 우선 노출해 한국 의료 환경 반영.
     """
-    from db import _pg_json_loads_or
+    from dbcommon import _pg_json_loads_or
 
     for r in results:
         if r.get("evidence_country") == "KR":
@@ -2046,7 +2046,7 @@ def _insert_rag_query(
     실패 시 None 반환 (로깅 후 계속 진행).
     """
     from datetime import datetime, timezone
-    from db import _use_postgres
+    from dbcommon import _use_postgres
     rag_query_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
 
@@ -2062,7 +2062,7 @@ def _insert_rag_query(
     blocked_reasons_str = json.dumps(blocked_reasons_raw, ensure_ascii=False)
 
     try:
-        from db import get_conn, _p
+        from dbcommon import get_conn, _p
         with get_conn() as (conn, cur):
             cur.execute(
                 f"""

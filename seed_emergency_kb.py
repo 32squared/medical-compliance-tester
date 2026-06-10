@@ -344,7 +344,7 @@ def _row_val(row) -> int:
 
 def verify_emergency_docs() -> dict:
     """consultation_seed source의 active 문서/청크 수 검증."""
-    from db import get_conn
+    from dbcommon import get_conn
 
     with get_conn() as (conn, cur):
         cur.execute(
@@ -423,12 +423,12 @@ def main():
         sys.exit(1)
 
     from openai import OpenAI
-    from db import init_db
+    from rag_db import ensure_rag_schema
     from kb_ingest import ingest_document
     from analyzer import ComplianceAnalyzer
 
     logger.info("[Seed] DB 초기화...")
-    init_db()
+    ensure_rag_schema()  # RAG 소유 스키마 보장 — 전체 KB 스키마는 migrations/migrate_runner.py --sync 선행
 
     # ── source 등록 ───────────────────────────────────────────
     logger.info("[Seed] consultation_seed source 등록 중...")

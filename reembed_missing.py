@@ -112,13 +112,10 @@ def reembed_all_missing(batch_size: int = 100, dry_run: bool = False):
         batch_size: 1회 OpenAI API 호출당 처리 청크 수 (기본 100)
         dry_run: True이면 SELECT만 수행, UPDATE 없음
     """
-    # DB 모듈 임포트 (init_db 호출해야 _use_postgres 플래그 설정됨)
-    from db import get_conn, _use_postgres as _up_initial, init_db
-    init_db()  # _use_postgres 플래그 + 커넥션 풀 초기화
-
-    # init_db() 이후 재import로 최신 플래그 반영
-    import db as _db
-    _use_postgres = _db._use_postgres
+    # DB 모듈 임포트 — dbcommon 은 import 시점에 _use_postgres 확정 (4-E 수렴: init_db/재import 불필요)
+    from dbcommon import get_conn, _use_postgres
+    from rag_db import ensure_rag_schema
+    ensure_rag_schema()  # RAG 소유 스키마 보장 — 전체 KB 스키마는 migrations/migrate_runner.py --sync 선행
 
     logger.info("=== reembed_missing 시작 (dry_run=%s, batch_size=%d) ===", dry_run, batch_size)
     logger.info("DB 모드: %s", "PostgreSQL" if _use_postgres else "SQLite")

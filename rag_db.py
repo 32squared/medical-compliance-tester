@@ -1,9 +1,9 @@
 """
 rag_db.py — RAG 전용 DB 함수
 ==============================
-db.py 의 공유 연결 레이어(get_conn, _p, _ph, _row_to_dict, _now)를
-import 해서 사용한다.
-db.py 는 이 모듈을 import 하지 않는다(순환 임포트 방지).
+dbcommon 의 공유 연결 레이어(get_conn, _p, _ph, _row_to_dict, _now)를
+import 해서 사용한다. (4-E 수렴: db facade → dbcommon 직접 import)
+dbcommon 은 이 모듈을 import 하지 않는다(순환 임포트 방지).
 호출처(rag_engine.py, review_queue.py 등)는 직접 이 모듈을 import 하라.
 
 향후 RAG 스키마 변경은 ensure_rag_schema() 에 idempotent ALTER/CREATE 로
@@ -14,7 +14,7 @@ import json
 import uuid as _uuid
 from datetime import datetime, timezone
 
-from db import get_conn, _p, _row_to_dict
+from dbcommon import get_conn, _p, _row_to_dict
 
 
 # ════════════════════════════════════════

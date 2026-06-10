@@ -23,12 +23,20 @@ if os.path.exists(_TMP):
 os.environ["DB_PATH"] = _TMP
 
 import dbcommon    # noqa: E402 — DB_PATH 가 이미 env 에 주입됐으므로 연결 가능
-# rag_db 는 내부에서 db.py 를 import 해 init_db() 를 실행하므로 먼저 로드한다.
-# (repo 분리 후 rag_db 는 dbcommon 에 직접 의존하도록 변경 예정 — 4-E 과제)
+# 4-E 수렴 완료: rag_db 는 dbcommon 에 직접 의존한다 (db.py/init_db 비의존 — repo 분리 대응).
 import rag_db      # noqa: E402
-# test_no_host_conversations_write 가 SELECT 하는 conversations 테이블 보장.
-# db.init_db 는 이미 rag_db 임포트 중 db.py 모듈 수준에서 실행됨.
-# (rag_db → db.py → init_db() 체인으로 이미 생성됨 — 직접 import db 불필요)
+# test_no_host_conversations_write 가 SELECT 하는 conversations 테이블은 호스트 스키마
+# (분리 후 RAG repo 에 존재하지 않음) — 테스트가 스텁을 직접 생성한다.
+
+
+def _ensure_stub_conversations():
+    """호스트 conversations 스텁 (격리 검증용 — RAG 코드가 행을 만들지 않는지만 본다)."""
+    c = sqlite3.connect(_TMP)
+    try:
+        c.execute("CREATE TABLE IF NOT EXISTS conversations (id TEXT PRIMARY KEY)")
+        c.commit()
+    finally:
+        c.close()
 
 
 def _tables():
@@ -91,6 +99,7 @@ def test_normal_transition_preserves_redirected():
 def test_no_host_conversations_write():
     """RAG 상태 set/get 이 호스트 conversations 테이블을 건드리지 않음."""
     cid = "c-iso"
+    _ensure_stub_conversations()
     # conversations 에 같은 id 행이 없어도 RAG 상태는 독립적으로 동작
     rag_db.set_conversation_state(cid, "EMERGENCY_REDIRECTED")
     c = sqlite3.connect(_TMP)
