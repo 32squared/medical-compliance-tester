@@ -39,10 +39,17 @@ try:
     _evaluate_gpt = _ps._evaluate_gpt
     _evaluate_consultation = _ps._evaluate_consultation
     _evaluate_consultation_checklist = _ps._evaluate_consultation_checklist
+    # C-1b: proxy_server의 ID 토큰 취득 함수 재사용(중복 구현 방지)
+    _get_rag_id_token = _ps._get_rag_id_token
     logger.info("proxy_server 평가 함수 import 성공")
 except Exception as _e:
     logger.error("proxy_server import 실패: %s", _e)
     sys.exit(1)
+
+# ── RAG Cloud Run IAM 인증 (C-1b) ────────────────────────────────────────────
+# RAG_ID_TOKEN: 로컬/수동 토큰 주입용 (gcloud auth print-identity-token 결과).
+#               Cloud Run Job 환경에서는 미설정 → _get_rag_id_token() 자동 취득.
+_RAG_ID_TOKEN_STATIC = os.environ.get("RAG_ID_TOKEN", "").strip()
 
 # ── db import ────────────────────────────────────────────────────────────────
 try:
@@ -171,6 +178,11 @@ def run_rag(query: str) -> dict:
     }
     if _RAG_TRUST:
         headers["X-Rag-Trust"] = _RAG_TRUST
+    # Cloud Run IAM ID 토큰 주입 (C-1b): --no-allow-unauthenticated 대응.
+    # 우선순위: (1) RAG_ID_TOKEN env(수동 주입) > (2) metadata 자동 취득 > (3) 생략.
+    _id_token = _RAG_ID_TOKEN_STATIC or _get_rag_id_token()
+    if _id_token:
+        headers["Authorization"] = "Bearer " + _id_token
 
     start = time.time()
     text_parts: list = []
@@ -211,7 +223,13 @@ def run_rag(query: str) -> dict:
             body = e.read(200).decode("utf-8", errors="replace")
         except Exception:
             pass
-        error_msg = f"RAG HTTP {e.code}: {body}"
+        if e.code == 403:
+            error_msg = (
+                f"RAG HTTP 403 (IAM 인증 거부): {body} — "
+                "IAM 강제 시 RAG_ID_TOKEN env 또는 Cloud Run Job SA invoker 권한 필요"
+            )
+        else:
+            error_msg = f"RAG HTTP {e.code}: {body}"
     except URLError as e:
         error_msg = f"RAG 연결 실패: {e.reason}"
     except Exception as e:
