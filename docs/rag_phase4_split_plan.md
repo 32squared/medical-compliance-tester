@@ -125,8 +125,12 @@
 > ③ 호스트 모노레포 RAG 파일 물리 제거 + packages in-tree→submodule 전환(되돌리기 어려운 큰 변경 — 사용자 결정 후).
 
 ### 4-F. 마무리 (0.5일)
-1. 문서 갱신: rag_separation_plan.md Phase 4 완료 표기, CLAUDE.md 파일구조/명령 갱신, 운영 런북(롤백 절차: 신규 repo 이전 마지막 모놀리스 이미지 태그 보존).
-2. 1~2주 운영 관찰 후 잔존 죽은 코드/플래그(RAG_ENABLED 등) 제거 커밋.
+> ✅ **완료 (2026-06-11)**: CLAUDE.md 파일구조/명령/저장소구조 갱신(shim·submodule·RAG 분리 명시),
+> 운영 런북 신설 `docs/rag_rollback_runbook.md`(장애 진단 우선순위 + 리비전 트래픽 복귀 + 모놀리스
+> 전면 롤백 + IAM 토큰 + submodule 갱신 절차). 호스트 모노레포 push 완료(refactor/rag-modular,
+> 롤백 태그 origin 반영). 새 호스트 리비전 00104-vlr 호스트 경유 e2e 사용자 확인 완료.
+1. 문서 갱신: rag_separation_plan.md Phase 4 완료 표기, CLAUDE.md 파일구조/명령 갱신, 운영 런북(롤백 절차: 신규 repo 이전 마지막 모놀리스 이미지 태그 보존). — ✅
+2. 1~2주 운영 관찰 후 잔존 죽은 코드/플래그(RAG_ENABLED 등) 제거 커밋. — ⏳ 운영 관찰 대기(2026-06-25 경 재검토)
 
 **총 추정: 4.5~7 작업일** (1인, 검증 게이트 포함, 4-D 승인 대기 별도)
 

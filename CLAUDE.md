@@ -11,35 +11,56 @@ AI 건강상담 서비스 '나만의 주치의'의 의료법 준수 여부를 �
 - **배포**: Google Cloud Run (gen2) + VPC NAT 고정 IP
 - **AI**: OpenAI GPT (평가), SKIX/케이론 (건강상담 API)
 
+## 저장소 구조 (Phase 4 분리 완료 — 2026-06-11)
+RAG 서브시스템은 독립 저장소로 분리됨. 세 저장소가 medical-shared submodule 을 공유한다.
+- **medical-compliance-tester** (이 repo): 호스트(테스트 도구). RAG 코드 없음. `/api/rag/*` 는
+  `RAG_SERVICE_URL` 로 리버스 프록시(same-origin 불변조건). in-process RAG 모드는 제거됨.
+- **medical-rag-service**: RAG 본체(rag_server/engine/db, KB, migrations) + 자체 배포(deploy-rag.ps1).
+  Cloud Run IAM(--no-allow-unauthenticated), 호스트는 OIDC ID 토큰으로 호출.
+- **medical-shared** (submodule `packages/medical_shared`): 공유 코드 — dbcommon(DB 연결 레이어) +
+  compliance_rules(analyzer/guideline_loader/consultation_loader/rules_config + 3 JSON 번들).
+
 ## 핵심 파일 구조
 ```
-proxy_server.py          — 메인 서버 (API 라우팅, 프록시, 인증)
-db.py                    — DB 추상화 (PostgreSQL/SQLite 듀얼 모드)
-analyzer.py              — 정규식 기반 의료법 준수 검사
-config.py                — 가이드라인/위반규칙 브릿지
-guideline_loader.py      — guidelines.json 로더 + GPT 프롬프트 빌더
+proxy_server.py          — 메인 서버 (API 라우팅, SKIX/RAG 프록시, 인증)
+db.py                    — 호스트 DB CRUD (dbcommon facade 재노출)
+analyzer.py              — shim → packages/medical_shared/compliance_rules/analyzer.py
+config.py                — shim → rules_config (가이드라인/위반규칙 브릿지)
+guideline_loader.py      — shim → compliance_rules/guideline_loader.py
+consultation_loader.py   — shim → compliance_rules/consultation_loader.py
+dbcommon.py              — shim → packages/medical_shared/dbcommon (sys.modules 별칭)
+batch_eval_rag.py        — 배치 평가기 (RAG는 HTTP 호출, GPT 평가는 호스트 잔류)
 chat_tester.html         — 채팅 테스터 (메인 페이지)
 scenario_manager.html    — 시나리오 관리
 history.html             — 테스트 이력 + 배치 리포트
 guideline_manager.html   — 가이드라인 관리
 settings.html            — 설정 (5개 탭: API/GPT/사용자/문진/로그)
-guidelines.json          — 의료법 가이드라인 데이터
-violation_rules.json     — 정규식 위반 패턴 (42개)
-consultation_checklists.json — 42개 증상 문진 체크리스트
-deploy.ps1               — Cloud Run 배포 스크립트
-Dockerfile               — 컨테이너 빌드
+deploy.ps1 / deploy-dev.ps1 — Cloud Run 배포 (운영/DEV)
+scripts/check_no_cross_import.py — 경계검사(--forbid rag: 호스트가 RAG 모듈 import 금지)
+Dockerfile               — 컨테이너 빌드 (entrypoint: service/job)
+packages/medical_shared/ — medical-shared submodule (공유 코드 + 가이드라인/위반규칙/문진 JSON)
 ```
+
+> ⚠️ guidelines.json / violation_rules.json / consultation_checklists.json 은 더 이상 루트에 없다.
+> 단일 진실 소스 = `packages/medical_shared/compliance_rules/` (submodule). 수정은 medical-shared repo 에서.
 
 ## 빌드 & 실행 명령어
 ```bash
-# 로컬 서버 실행
+# 최초 클론 후: submodule 초기화 (medical-shared 없으면 shim import 실패)
+git submodule update --init --recursive
+
+# 로컬 서버 실행 (RAG는 별도 — RAG_SERVICE_URL 미설정 시 /api/rag/* 503)
 python proxy_server.py --port 9000
 
-# Cloud Run 배포
+# Cloud Run 배포 (운영 / DEV)
 $env:DB_PASSWORD = "MedComp2026!Secure"; .\deploy.ps1
+$env:DB_PASSWORD = "MedComp2026!Secure"; .\deploy-dev.ps1 -SkipMigrate -RagServiceUrl https://medical-rag-dev-cbtevhmzrq-du.a.run.app
+
+# 경계검사 (호스트가 RAG 모듈을 import하지 않음 — CI lint 게이트)
+python scripts/check_no_cross_import.py --forbid rag
 
 # JS 문법 검증 (모든 HTML)
-node -e "['chat_tester.html','scenario_manager.html','history.html','guideline_manager.html','settings.html'].forEach(f=>{const html=require('fs').readFileSync(f,'utf8');const m=html.match(/<script>([\s\S]*?)<\/script>/g);for(const t of m){const c=t.replace(/<\/?script>/g,'');if(c.length<500)continue;try{new Function(c);console.log(f+': OK')}catch(e){console.log(f+': ERR:',e.message)}}})"
+node -e "const fs=require('fs');const files=fs.readdirSync('.').filter(f=>f.endsWith('.html'));for(const f of files){const html=fs.readFileSync(f,'utf8');const m=html.match(/<script>([\s\S]*?)<\/script>/g)||[];for(const t of m){const c=t.replace(/<\/?script>/g,'');if(c.length<500)continue;try{new Function(c)}catch(e){console.log(f+': ERR:',e.message)}}}"
 
 # Python 문법 검증
 python -c "import py_compile; py_compile.compile('proxy_server.py', doraise=True); py_compile.compile('db.py', doraise=True); py_compile.compile('analyzer.py', doraise=True); print('OK')"
