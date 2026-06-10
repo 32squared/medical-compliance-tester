@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "medical-shared"
+version = "0.1.0"
+description = "Shared library for medical-compliance-tester host and RAG services"
+requires-python = ">=3.12"
+
+[tool.setuptools.packages.find]
+where = [".."]
+include = ["medical_shared*"]
+
+[tool.setuptools.package-data]
+"medical_shared.compliance_rules" = ["*.json"]
+
+# NOTE: 지금은 설치하지 않음 (4-E pip 패키징 대비 선언만).
+# 설치 시: pip install -e packages/medical_shared
