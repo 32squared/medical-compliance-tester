@@ -22,9 +22,13 @@ if os.path.exists(_TMP):
     os.remove(_TMP)
 os.environ["DB_PATH"] = _TMP
 
-import db          # noqa: E402
-db.init_db(_TMP)   # 베이스 스키마 생성 (rag_conversation_state 는 아직 없음)
+import dbcommon    # noqa: E402 — DB_PATH 가 이미 env 에 주입됐으므로 연결 가능
+# rag_db 는 내부에서 db.py 를 import 해 init_db() 를 실행하므로 먼저 로드한다.
+# (repo 분리 후 rag_db 는 dbcommon 에 직접 의존하도록 변경 예정 — 4-E 과제)
 import rag_db      # noqa: E402
+# test_no_host_conversations_write 가 SELECT 하는 conversations 테이블 보장.
+# db.init_db 는 이미 rag_db 임포트 중 db.py 모듈 수준에서 실행됨.
+# (rag_db → db.py → init_db() 체인으로 이미 생성됨 — 직접 import db 불필요)
 
 
 def _tables():

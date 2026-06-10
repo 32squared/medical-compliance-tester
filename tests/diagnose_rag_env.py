@@ -34,7 +34,7 @@ for ev in env_vars:
 
 # 2) DB 연결 모드 확인
 print("\n[2] DB 연결 모드")
-from db import _use_postgres
+from dbcommon import _use_postgres
 print(f"  _use_postgres = {_use_postgres}")
 if not _use_postgres:
     print("  WARNING: SQLite 모드입니다 — 운영 DB와 다릅니다!")
@@ -42,7 +42,7 @@ if not _use_postgres:
 # 3) KB 데이터 확인
 print("\n[3] KB 데이터 적재 현황")
 try:
-    from db import get_conn, _p, _ph
+    from dbcommon import get_conn, _p, _ph
 
     with get_conn() as (conn, cur):
         cur.execute("SELECT COUNT(*) FROM kb_documents WHERE status='active'")

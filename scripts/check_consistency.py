@@ -102,13 +102,16 @@ def _read(path):
 def check_py_compile():
     targets = sorted(glob.glob(os.path.join(ROOT, '*.py')))
     targets.append(os.path.join(ROOT, 'migrations', 'migrate_runner.py'))
+    # 4-B: packages/ 하위 Python 파일도 컴파일 검사에 포함
+    pkg_py = sorted(glob.glob(os.path.join(ROOT, 'packages', '**', '*.py'), recursive=True))
+    targets.extend(pkg_py)
     bad = 0
     for p in targets:
         try:
             py_compile.compile(p, doraise=True)
         except Exception as e:
             bad += 1
-            fail('py-compile', '%s: %s' % (os.path.basename(p), str(e)[:160]))
+            fail('py-compile', '%s: %s' % (os.path.relpath(p, ROOT), str(e)[:160]))
     if not bad:
         ok('py-compile', '%d files' % len(targets))
 
@@ -153,6 +156,37 @@ def check_data_json():
             fail('json-data', '%s: %s' % (name, str(e)[:120]))
     if not any(c == 'json-data' for c, _ in failures):
         ok('json-data', '%d files parse' % len(DATA_FILES))
+
+
+# ── [3b] JSON 번들 동기 (B5) — 루트 vs 패키지 사본 드리프트 차단 ──
+# 배경: rag_engine.py:61 등 RAG 5파일이 루트 JSON 을 __file__ 로 직접 읽고,
+# compliance_rules 패키지는 번들 사본을 읽는다(과도기 이중 사본). 드리프트 시
+# 생성(루트)과 평가(번들)가 다른 룰을 쓰게 되므로 해시 불일치 = 즉시 FAIL.
+# 4-E 에서 RAG 5파일이 패키지 참조로 전환되면 이 검사와 루트 사본을 함께 제거.
+_BUNDLE_DIR = os.path.join('packages', 'medical_shared', 'compliance_rules')
+
+
+def check_json_bundle_sync():
+    import hashlib
+    bad = 0
+    for name in DATA_FILES:
+        root_p = os.path.join(ROOT, name)
+        pkg_p = os.path.join(ROOT, _BUNDLE_DIR, name)
+        if not os.path.exists(pkg_p):
+            bad += 1
+            fail('json-bundle-sync', 'package copy missing: ' + name)
+            continue
+        with open(root_p, 'rb') as f:
+            h_root = hashlib.sha256(f.read()).hexdigest()
+        with open(pkg_p, 'rb') as f:
+            h_pkg = hashlib.sha256(f.read()).hexdigest()
+        if h_root != h_pkg:
+            bad += 1
+            fail('json-bundle-sync',
+                 '%s differs (root %s != pkg %s) - sync both copies'
+                 % (name, h_root[:12], h_pkg[:12]))
+    if not bad:
+        ok('json-bundle-sync', '%d files in sync (root == package bundle)' % len(DATA_FILES))
 
 
 # ── [4] 공유 심볼 계약 ──
@@ -314,6 +348,7 @@ def main():
         check_py_compile()
         check_js_syntax()
     check_data_json()
+    check_json_bundle_sync()
     check_shared_symbols()
     check_mixin_contract()
     check_import_boundary()

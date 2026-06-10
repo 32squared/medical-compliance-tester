@@ -37,9 +37,9 @@ def use_temp_db(tmp_path, monkeypatch):
     monkeypatch.setenv("DB_PATH", db_file)
     monkeypatch.delenv("DATABASE_URL", raising=False)
 
-    # db 모듈 재로드하여 새 DB 경로 반영
+    # dbcommon 모듈에 직접 패치 (get_conn 이 dbcommon 의 DB_PATH/_use_postgres 를 읽음)
     import importlib
-    import db as db_mod
+    import dbcommon as db_mod
     monkeypatch.setattr(db_mod, "DB_PATH", db_file)
     monkeypatch.setattr(db_mod, "_use_postgres", False)
 
@@ -429,7 +429,7 @@ def empty_sources_db(tmp_path, monkeypatch):
     monkeypatch.setenv("DB_PATH", db_file)
     monkeypatch.delenv("DATABASE_URL", raising=False)
 
-    import db as db_mod
+    import dbcommon as db_mod
     monkeypatch.setattr(db_mod, "DB_PATH", db_file)
     monkeypatch.setattr(db_mod, "_use_postgres", False)
 
