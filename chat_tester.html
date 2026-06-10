@@ -2027,10 +2027,22 @@ function renderAssistantEvaluation(msgDiv, evalData) {
                       : _ct_vList.filter(function(v){ return v.category === 'quality_issue'; }).length;
     var _ct_safetyN = (gptEval.safetyAdvisoryCount != null) ? gptEval.safetyAdvisoryCount
                      : _ct_vList.filter(function(v){ return v.category === 'safety_advisory'; }).length;
-    geHtml += '<div style="display:flex;gap:6px;margin:6px 0;flex-wrap:wrap">' +
+    // v1.5.2 — 상단/하단 면책 표시
+    var _ct_topDisc = (gptEval.has_top_disclaimer === true);
+    var _ct_topDiscKnown = (typeof gptEval.has_top_disclaimer === 'boolean');
+    var _ct_botDisc = (gptEval.has_bottom_disclaimer === true);
+    var _ct_botDiscKnown = (typeof gptEval.has_bottom_disclaimer === 'boolean');
+    geHtml += '<div style="display:flex;gap:6px;margin:6px 0;flex-wrap:wrap;align-items:center">' +
       '<span title="실제 한국 의료법 위반" style="font-size:11px;padding:2px 6px;border-radius:4px;background:' + (_ct_legalN > 0 ? 'rgba(239,68,68,.2)' : 'rgba(34,197,94,.15)') + ';color:' + (_ct_legalN > 0 ? 'var(--red)' : 'var(--green)') + ';font-weight:600">⚖️ 법위반 ' + _ct_legalN + '</span>' +
       '<span title="내부 품질 표준 미달" style="font-size:11px;padding:2px 6px;border-radius:4px;background:rgba(234,179,8,.15);color:var(--yellow);font-weight:600">📋 품질 권고 ' + _ct_qualityN + '</span>' +
       '<span title="환자 안전 권고" style="font-size:11px;padding:2px 6px;border-radius:4px;background:rgba(56,189,248,.15);color:var(--accent);font-weight:600">🛡️ 안전 권고 ' + _ct_safetyN + '</span>' +
+      '<span style="margin-left:6px;width:1px;height:14px;background:var(--border)"></span>' +
+      (_ct_topDiscKnown
+        ? '<span title="상단 면책 (필수)" style="font-size:11px;padding:2px 6px;border-radius:4px;background:' + (_ct_topDisc ? 'rgba(34,197,94,.15)' : 'rgba(239,68,68,.2)') + ';color:' + (_ct_topDisc ? 'var(--green)' : 'var(--red)') + ';font-weight:600">📜 상단 면책 ' + (_ct_topDisc ? '✓' : '✗') + '</span>'
+        : '<span title="상단 면책 정보 없음" style="font-size:11px;padding:2px 6px;border-radius:4px;background:rgba(148,163,184,.2);color:#94a3b8;font-weight:600">📜 상단 면책 ?</span>') +
+      (_ct_botDiscKnown
+        ? '<span title="하단 면책 (권장)" style="font-size:11px;padding:2px 6px;border-radius:4px;background:' + (_ct_botDisc ? 'rgba(34,197,94,.15)' : 'rgba(234,179,8,.15)') + ';color:' + (_ct_botDisc ? 'var(--green)' : 'var(--yellow)') + ';font-weight:600">📜 하단 면책 ' + (_ct_botDisc ? '✓' : '✗') + '</span>'
+        : '') +
     '</div>';
     if (gptEval.violations && gptEval.violations.length > 0) {
       geHtml += '<div class="eval-violations">';

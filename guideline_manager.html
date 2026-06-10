@@ -238,12 +238,28 @@
   <!-- Tab: 고정 문구 -->
   <div class="card active" id="tab-fixed">
     <h2>필수 고정 문구</h2>
+    <div style="margin:8px 0 16px 0;padding:12px 14px;border-left:4px solid #ef4444;background:#fef2f2;border-radius:4px;font-size:13px;line-height:1.65">
+      <div style="font-weight:700;margin-bottom:6px;color:#b91c1c">📜 v1.5.2 디스클라이머 정책 — 상단 필수, 하단 권장</div>
+      <div style="display:flex;gap:8px;margin:6px 0;flex-wrap:wrap">
+        <span style="font-size:12px;padding:4px 10px;border-radius:4px;background:#ef444433;color:#b91c1c;font-weight:700">📜 상단 면책: 필수 (누락 시 legal_violation)</span>
+        <span style="font-size:12px;padding:4px 10px;border-radius:4px;background:#eab30822;color:#a16207;font-weight:700">📜 하단 면책: 권장 (누락은 quality_issue)</span>
+      </div>
+      <div style="margin-top:8px;font-size:12.5px;color:#374151">
+        <b>상단 면책 판정 기준</b>: 응답 서두(처음 300자) 내 핵심 키워드 5개 중 <b>2개 이상</b> 매칭이면 OK<br>
+        키워드: <code style="background:#fff;padding:1px 4px;border:1px solid #ddd;border-radius:3px">참고용</code> /
+        <code style="background:#fff;padding:1px 4px;border:1px solid #ddd;border-radius:3px">의료행위 아님</code> /
+        <code style="background:#fff;padding:1px 4px;border:1px solid #ddd;border-radius:3px">의료인/의료진</code> /
+        <code style="background:#fff;padding:1px 4px;border:1px solid #ddd;border-radius:3px">119/응급실</code> /
+        <code style="background:#fff;padding:1px 4px;border:1px solid #ddd;border-radius:3px">진단 아님/대체</code><br>
+        <b>표현 차이만</b> 있으면 quality_issue. <b>완전 누락(상단)</b>이면 백엔드가 자동으로 legal_violation 강제 부여 (안전망).
+      </div>
+    </div>
     <div class="field">
-      <label>상단 고지문 (모든 답변 상단에 표시)</label>
+      <label>상단 고지문 (모든 답변 상단에 표시) <span style="color:#ef4444">— 필수</span></label>
       <textarea id="topDisclaimer" rows="3"></textarea>
     </div>
     <div class="field">
-      <label>답변 말미 문구</label>
+      <label>답변 말미 문구 <span style="color:#a16207">— 권장 (상단만 있으면 통과 가능)</span></label>
       <input type="text" id="bottomDisclaimer">
     </div>
     <div class="field">

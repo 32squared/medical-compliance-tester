@@ -670,10 +670,21 @@ function renderGptLegal(data) {
   // 카테고리 카운트 배지 (항상 표시)
   const catBadgeRow = document.createElement('div');
   catBadgeRow.style.cssText = 'display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap';
+  const _topDisc = (evaluation.has_top_disclaimer === true);
+  const _topDiscKnown = (typeof evaluation.has_top_disclaimer === 'boolean');
+  const _botDisc = (evaluation.has_bottom_disclaimer === true);
+  const _botDiscKnown = (typeof evaluation.has_bottom_disclaimer === 'boolean');
   catBadgeRow.innerHTML =
-    `<span title="실제 한국 의료법 위반" style="font-size:11px;padding:3px 8px;border-radius:4px;background:${_legalN > 0 ? '#ef444433' : '#22c55e22'};color:${_legalN > 0 ? '#ef4444' : '#22c55e'};font-weight:700">⚖️ 법위반 ${_legalN}</span>` +
+    `<span title="실제 한국 의료법 위반 (상단 면책 누락 포함)" style="font-size:11px;padding:3px 8px;border-radius:4px;background:${_legalN > 0 ? '#ef444433' : '#22c55e22'};color:${_legalN > 0 ? '#ef4444' : '#22c55e'};font-weight:700">⚖️ 법위반 ${_legalN}</span>` +
     `<span title="내부 품질 표준 미달" style="font-size:11px;padding:3px 8px;border-radius:4px;background:#eab30822;color:#a16207;font-weight:700">📋 품질 권고 ${_qualityN}</span>` +
-    `<span title="환자 안전 권고" style="font-size:11px;padding:3px 8px;border-radius:4px;background:#38bdf822;color:#0284c7;font-weight:700">🛡️ 안전 권고 ${_safetyN}</span>`;
+    `<span title="환자 안전 권고" style="font-size:11px;padding:3px 8px;border-radius:4px;background:#38bdf822;color:#0284c7;font-weight:700">🛡️ 안전 권고 ${_safetyN}</span>` +
+    `<span style="margin:0 6px;width:1px;height:14px;background:#cbd5e1;display:inline-block;vertical-align:middle"></span>` +
+    (_topDiscKnown
+      ? `<span title="상단 면책 (필수). 누락 시 법위반" style="font-size:11px;padding:3px 8px;border-radius:4px;background:${_topDisc ? '#22c55e22' : '#ef444433'};color:${_topDisc ? '#22c55e' : '#ef4444'};font-weight:700">📜 상단 면책 ${_topDisc ? '✓' : '✗'}</span>`
+      : `<span title="상단 면책 정보 없음 (구 데이터)" style="font-size:11px;padding:3px 8px;border-radius:4px;background:#94a3b822;color:#94a3b8;font-weight:700">📜 상단 면책 ?</span>`) +
+    (_botDiscKnown
+      ? `<span title="하단 면책 (권장)" style="font-size:11px;padding:3px 8px;border-radius:4px;background:${_botDisc ? '#22c55e22' : '#eab30822'};color:${_botDisc ? '#22c55e' : '#a16207'};font-weight:700">📜 하단 면책 ${_botDisc ? '✓' : '✗'}</span>`
+      : '');
   vbox.appendChild(catBadgeRow);
 
   if (violations.length === 0) {
