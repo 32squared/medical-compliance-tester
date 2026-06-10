@@ -85,7 +85,11 @@
 5. 검증 게이트: dev 분리 모드 e2e(브라우저 포함) ALL PASS. 실패 시 `--allow-unauthenticated` 복귀(1커맨드 롤백).
 
 ### 4-D. prod baseline + prod 분리 모드 (승인 필요, 0.5일)
-1. `deploy-migrate.ps1 -Prod -Execute -Wait` → prod DB schema_migrations 채택(009 baseline).
+> ✅ **D-1 완료 (2026-06-11, 사용자 승인 실행)**: `db-migrate-prod-lf7kh` exit(0). 로그 확증 —
+> `[sync] schema_migrations 비어있음 → baseline 채택`, `baseline done - 9 stamped`(001~009 stamp/no-exec),
+> **`apply done - 0 applied`**(DDL 0건 실행 = prod 스키마 무변경, 이력 테이블 9행만 추가).
+> 이로써 신규 repo `migrate_runner --sync`가 prod 에서 001~009 재실행하는 사고 위험 제거 — E-6 prod 단계 선행 게이트 해제.
+1. `deploy-migrate.ps1 -Prod -Execute -Wait` → prod DB schema_migrations 채택(009 baseline). — ✅ 완료
 2. prod RAG 서비스(`medical-rag`) 배포 + 호스트에 RAG_SERVICE_URL 주입(기능 게이트는 기존 플래그 유지 — 다크 론치).
 3. 검증 게이트: prod 스모크(health + 인증 + chat 1회). **이 단계 전체가 사용자 승인 후 진행.**
 
