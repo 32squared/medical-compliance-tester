@@ -58,7 +58,6 @@ EVIDENCE_LEVEL_WEIGHT: Dict[str, float] = {"A": 1.0, "B": 0.7, "C": 0.4}
 ENABLE_EVIDENCE_TOPIC_CHECK = os.environ.get("ENABLE_EVIDENCE_TOPIC_CHECK", "true").lower() != "false"
 
 # ─── 모듈 레벨 상수 ──────────────────────────────────────────
-_CHECKLIST_PATH = os.path.join(os.path.dirname(__file__), "consultation_checklists.json")
 _DENSE_LIMIT = 20   # dense 검색 후보 수
 _SPARSE_LIMIT = 20  # sparse 검색 후보 수
 _RRF_K = 60         # RRF 파라미터
@@ -67,7 +66,7 @@ _RRF_K = 60         # RRF 파라미터
 def _load_checklists() -> dict:
     """consultation_checklists.json → {"symptoms": {symptom_key: {...}}} (consultation_loader 위임)."""
     import consultation_loader
-    return consultation_loader.load_checklists_by_symptom(_CHECKLIST_PATH)
+    return consultation_loader.load_checklists_by_symptom()
 
 
 CHECKLISTS: dict = _load_checklists()

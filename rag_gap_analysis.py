@@ -16,20 +16,17 @@ from __future__ import annotations
 import argparse
 import collections
 import json
-import os
 import sys
 from typing import Dict, List, Tuple
 
-_DIR = os.path.dirname(os.path.abspath(__file__))
-_CHECKLISTS_JSON = os.path.join(_DIR, "consultation_checklists.json")
 _INSUFFICIENT = {"insufficient", "low", "LOW", "INSUFFICIENT"}
 
 
 def _load_symptom_keywords() -> Dict[str, List[str]]:
-    """consultation_checklists → {symptom_name: [keywords]} (증상 매핑용)."""
+    """consultation_checklists → {symptom_name: [keywords]} (증상 매핑용, 로더 위임)."""
     try:
-        with open(_CHECKLISTS_JSON, "r", encoding="utf-8") as f:
-            data = json.load(f)
+        import consultation_loader
+        data = consultation_loader.load_checklists_raw()
     except Exception:
         return {}
     out: Dict[str, List[str]] = {}

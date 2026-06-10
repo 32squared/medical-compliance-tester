@@ -511,14 +511,11 @@ def main():
     )
     args = parser.parse_args()
 
-    # ── JSON 로드 ──
-    checklist_path = os.path.join(_REPO_ROOT, "consultation_checklists.json")
-    guideline_path = os.path.join(_REPO_ROOT, "guidelines.json")
-
-    with open(checklist_path, encoding="utf-8") as f:
-        checklists = json.load(f)
-    with open(guideline_path, encoding="utf-8") as f:
-        guidelines_data = json.load(f)
+    # ── JSON 로드 (로더 위임 — packages/medical_shared/compliance_rules 번들 읽기) ──
+    import consultation_loader
+    import guideline_loader
+    checklists = consultation_loader.load_checklists_raw()
+    guidelines_data = guideline_loader.load_guidelines()
 
     logger.info("[Seed] consultation_checklists.json 로드: %d개 증상", len(checklists))
     logger.info(

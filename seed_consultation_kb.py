@@ -20,13 +20,11 @@ build_consultation_documents()는 순수 함수 — 키/DB/네트워크 없이 �
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import sys
 from typing import Dict, List
 
 _DIR = os.path.dirname(os.path.abspath(__file__))
-_CHECKLISTS_JSON = os.path.join(_DIR, "consultation_checklists.json")
 _SOURCE_ID = "consultation_checklist"
 
 # category → evidence_topic (검색 주제 매칭용; 신체계통)
@@ -147,9 +145,9 @@ def _register_source() -> None:
 
 
 def seed_consultation_kb(dry_run: bool = False) -> Dict:
-    """consultation_checklists.json → 문서 구성 → KB 적재."""
-    with open(_CHECKLISTS_JSON, "r", encoding="utf-8") as f:
-        checklists = json.load(f)
+    """consultation_checklists.json → 문서 구성 → KB 적재 (로더 위임)."""
+    import consultation_loader
+    checklists = consultation_loader.load_checklists_raw()
     docs = build_consultation_documents(checklists)
     summary = {"symptoms": len(checklists), "documents": len(docs), "ingested": 0}
     if dry_run:
