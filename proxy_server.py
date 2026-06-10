@@ -47,6 +47,68 @@ RAG_ENABLED = os.environ.get("RAG_ENABLED", "false").lower() in ("true", "1", "y
 RAG_SERVICE_URL = os.environ.get("RAG_SERVICE_URL", "").rstrip("/")
 RAG_TRUST_SECRET = os.environ.get("RAG_TRUST_SECRET", "")
 
+# ── RAG Cloud Run IAM ID 토큰 (C-1) ──
+# RAG_USE_IAM: "auto"(기본) — GCE metadata 가용 시 토큰 취득, 로컬에서는 자동 스킵(실패 캐시).
+#              "0"/"false" — 토큰 취득 완전 비활성(로컬 개발 명시 비활성화 시).
+#              "1"/"true"  — 강제 시도(metadata 없으면 WARNING 로그).
+RAG_USE_IAM = os.environ.get("RAG_USE_IAM", "auto").lower().strip()
+
+# 토큰 캐시 — (token_str | "unavailable", expires_at_epoch)
+# "unavailable": metadata 접근 실패 상태를 300초 캐시(로컬 개발 1초 패널티 방지).
+_rag_iam_cache_lock = threading.Lock()
+_rag_iam_token: str | None = None   # None = 미초기화, "unavailable" = 실패 캐시
+_rag_iam_expires: float = 0.0       # epoch seconds
+
+_RAG_IAM_TTL = 50 * 60          # 50분 (토큰 수명 1시간의 5/6)
+_RAG_IAM_FAIL_TTL = 300         # 실패 캐시 5분
+
+
+def _get_rag_id_token() -> str | None:
+    """Cloud Run service-to-service OIDC ID 토큰을 취득해 반환.
+
+    반환값:
+        str  — 유효한 ID 토큰 (Bearer 뒤에 붙일 raw 값)
+        None — 토큰 불필요(RAG_USE_IAM=0) 또는 취득 실패(실패 캐시 포함)
+
+    캐시 전략:
+        성공 토큰은 TTL 50분(_RAG_IAM_TTL) 동안 재사용.
+        실패(metadata 미접근)는 300초(_RAG_IAM_FAIL_TTL) 동안 None 캐시 →
+        로컬 개발에서 매 요청 1초 블록 방지.
+    """
+    import time
+
+    # RAG_USE_IAM=0/false → 즉시 None
+    if RAG_USE_IAM in ("0", "false"):
+        return None
+
+    global _rag_iam_token, _rag_iam_expires
+
+    with _rag_iam_cache_lock:
+        now = time.monotonic()
+        if _rag_iam_token is not None and now < _rag_iam_expires:
+            # 캐시 유효 — "unavailable" 이면 None 반환, 그 외 토큰 문자열 반환
+            return None if _rag_iam_token == "unavailable" else _rag_iam_token
+
+        # 캐시 만료 또는 미초기화 → 새로 취득
+        audience = RAG_SERVICE_URL or "http://localhost"
+        metadata_url = (
+            "http://metadata.google.internal/computeMetadata/v1"
+            f"/instance/service-accounts/default/identity?audience={audience}"
+        )
+        try:
+            from urllib.request import Request as _Req, urlopen as _open
+            req = _Req(metadata_url, headers={"Metadata-Flavor": "Google"})
+            with _open(req, timeout=1) as resp:
+                token = resp.read().decode("utf-8").strip()
+            _rag_iam_token = token
+            _rag_iam_expires = now + _RAG_IAM_TTL
+            return token
+        except Exception:
+            # 로컬 개발 등 metadata 서버 미접근 — 실패 상태를 캐시
+            _rag_iam_token = "unavailable"
+            _rag_iam_expires = now + _RAG_IAM_FAIL_TTL
+            return None
+
 # ── RAG 프록시 타임아웃 (env화, P4) ──
 # RAG_REQUEST_TIMEOUT: urlopen 전체 타임아웃 (batch_eval_rag와 동일 env명)
 # RAG_STREAM_IDLE_TIMEOUT: SSE 스트리밍 소켓 idle 타임아웃
@@ -7755,6 +7817,10 @@ has_top_disclaimer=false 인데 legal_violation 미부여 시 평가 오류로 �
                 h['X-User-Permissions'] = json.dumps(perms, ensure_ascii=False)
         if RAG_TRUST_SECRET:
             h['X-Rag-Trust'] = RAG_TRUST_SECRET
+        # Cloud Run IAM ID 토큰 주입 (C-1): --no-allow-unauthenticated 대응
+        token = _get_rag_id_token()
+        if token:
+            h['Authorization'] = 'Bearer ' + token
         return h
 
     def _proxy_to_rag(self, method, body):
@@ -7874,6 +7940,8 @@ def main():
     print(f"[STARTUP] Binding to 0.0.0.0:{args.port}...", flush=True)
     server = ThreadedHTTPServer(('0.0.0.0', args.port), ProxyHandler)
     print(f"[STARTUP] Server ready on port {args.port}", flush=True)
+    _iam_mode = {"0": "disabled", "false": "disabled", "1": "forced", "true": "forced"}.get(RAG_USE_IAM, "auto")
+    print(f"[RAG-PROXY] IAM auth: {_iam_mode} (RAG_USE_IAM={RAG_USE_IAM!r})", flush=True)
     print(f"""
 ╔══════════════════════════════════════════════════╗
 ║  나만의 주치의 — 서버 v2.0                         ║
