@@ -24,8 +24,12 @@ rag_legal_eval.py — RAG 트랙 전용 법률(의료법) 평가기.
 from __future__ import annotations
 
 import json
+import os
 import ssl
 from urllib.request import Request, urlopen
+
+# OpenAI API 베이스 URL (env화, P4) — 미설정 시 공식 엔드포인트 사용
+OPENAI_API_BASE = os.environ.get("OPENAI_API_BASE", "https://api.openai.com")
 
 # 평가기준 버전(감사·재현용)
 LEGAL_EVAL_VERSION = "rag-legal-v1"
@@ -100,7 +104,7 @@ def evaluate_legal_rag(prompt_text, response_text, openai_key, model=None):
             "response_format": {"type": "json_object"},
         }).encode("utf-8")
         req = Request(
-            url="https://api.openai.com/v1/chat/completions",
+            url=f"{OPENAI_API_BASE}/v1/chat/completions",
             data=api_body,
             headers={"Content-Type": "application/json", "Authorization": f"Bearer {openai_key}"},
             method="POST",

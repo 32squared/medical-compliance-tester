@@ -1,0 +1,112 @@
+# Host repo CI — medical-compliance-tester (RAG 분리 후 호스트 전용 repo)
+# D6 결정: CI only (GitHub Actions). 배포는 PowerShell 수동 유지.
+# trigger: push / PR on master or refactor/** branches.
+#
+# jobs:
+#   lint   — check_no_cross_import(--forbid rag) + py_compile + js-syntax
+#   pytest — 호스트 안정 테스트 (DB/서버/키 불필요)
+#
+# ※ medical-shared 는 git submodule (packages/medical_shared). private repo 이므로
+#    checkout 시 PAT 토큰이 필요하다 — repo Secrets 에 SHARED_REPO_TOKEN 추가 후
+#    아래 token 주석을 해제할 것. (미설정 시 submodule checkout 단계에서 실패)
+
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+      - "refactor/**"
+  pull_request:
+    branches:
+      - master
+      - "refactor/**"
+
+jobs:
+  # ── job (a): 경계검사 + 컴파일 + JS 문법 ───────────────────────────────────
+  lint:
+    name: "host-lint"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          # token: ${{ secrets.SHARED_REPO_TOKEN }}   # private submodule 인증용
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js (js-syntax check)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install shared package (submodule)
+        run: |
+          pip install --quiet -e "packages/medical_shared" 2>/dev/null || true
+
+      - name: Boundary — 호스트가 RAG 모듈을 import 하지 않음
+        run: python scripts/check_no_cross_import.py --forbid rag
+
+      - name: py_compile — 루트 + tests + scripts + packages
+        run: |
+          python - <<'PYEOF'
+          import py_compile, glob, os, sys
+          targets = (sorted(glob.glob("*.py")) + sorted(glob.glob("tests/*.py"))
+              + sorted(glob.glob("scripts/*.py"))
+              + sorted(glob.glob("packages/**/*.py", recursive=True)))
+          bad = 0
+          for p in targets:
+              try:
+                  py_compile.compile(p, doraise=True)
+              except Exception as e:
+                  print(f"ERR {p}: {e}"); bad += 1
+          print(f"py_compile: {len(targets)} files, {bad} errors")
+          sys.exit(1 if bad else 0)
+          PYEOF
+
+      - name: JS syntax — HTML 인라인 스크립트
+        run: |
+          node -e "const fs=require('fs');const files=fs.readdirSync('.').filter(f=>f.endsWith('.html'));let bad=0;for(const f of files){const html=fs.readFileSync(f,'utf8');const m=html.match(/<script>([\s\S]*?)<\/script>/g)||[];for(const t of m){const c=t.replace(/<\/?script>/g,'');if(c.length<500)continue;try{new Function(c)}catch(e){console.log(f+': '+e.message);bad++}}}console.log('js-syntax checked '+files.length+' html, '+bad+' errors');process.exit(bad?1:0)"
+
+  # ── job (b): pytest — 호스트 안정 테스트 ──────────────────────────────────
+  # PASS (포함):
+  #   test_guardrail_false_positives — ComplianceAnalyzer(shim) 정규식, DB 불필요
+  #   test_rag_consultation_eval     — 호스트 rag_consultation_eval 프롬프트 빌더, 키/네트워크 불필요
+  #   test_rag_legal_eval            — 호스트 rag_legal_eval 프롬프트 빌더, 키/네트워크 불필요
+  #   test_rlhf_db                   — SQLite 임시파일 DB, DATABASE_URL='' 강제
+  #
+  # EXCLUDED (서버/키 필요):
+  #   test_rag_kb_api / test_phase1_integration / test_rlhf_api — 로컬 서버 기동 필요
+  #   verify_rag_separation — 라이브 RAG URL 필요한 직접 실행 하니스
+  pytest:
+    name: "host-pytest"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          # token: ${{ secrets.SHARED_REPO_TOKEN }}   # private submodule 인증용
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python deps
+        run: |
+          pip install --quiet pytest
+          pip install --quiet -e "packages/medical_shared" 2>/dev/null || true
+
+      - name: Run host-stable tests
+        env:
+          DATABASE_URL: ""
+        run: |
+          python -m pytest \
+            tests/test_guardrail_false_positives.py \
+            tests/test_rag_consultation_eval.py \
+            tests/test_rag_legal_eval.py \
+            tests/test_rlhf_db.py \
+            -v --tb=short -q

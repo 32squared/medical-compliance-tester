@@ -13,35 +13,17 @@ import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
 
-# PostgreSQL support (optional)
-try:
-    import psycopg2
-    from psycopg2 import pool as pg_pool
-    from psycopg2.extras import RealDictCursor
-    HAS_POSTGRES = True
-except ImportError:
-    HAS_POSTGRES = False
-
-# ── 경로 설정 ──
-DB_PATH = os.environ.get('DB_PATH', os.path.join(os.path.dirname(__file__), 'app.db'))
-DATABASE_URL = os.environ.get('DATABASE_URL', '')
-
-# Secret Manager 분리 주입 지원:
-# DB_PASSWORD(Secret) + DB_USER + DB_NAME + DB_HOST → DATABASE_URL 자동 조합
-if not DATABASE_URL:
-    _pw   = os.environ.get('DB_PASSWORD', '')
-    _user = os.environ.get('DB_USER', 'app_user')
-    _name = os.environ.get('DB_NAME', 'medical_app')
-    _host = os.environ.get('DB_HOST', '')
-    if _pw and _host:
-        import urllib.parse as _urlparse
-        DATABASE_URL = (
-            f"postgresql://{_user}:{_urlparse.quote(_pw, safe='')}@/{_name}"
-            f"?host={_host}"
-        )
-
-_pg_pool = None  # PostgreSQL connection pool
-_use_postgres = False
+# ── 연결 레이어 분리(Phase 2): 접속/풀/플레이스홀더 원시함수는 dbcommon 소유.
+#    db.py 는 호스트 CRUD/스키마를 담당하고, 아래를 재export(파사드)해
+#    기존 API(`from db import get_conn, _p, _ph, _use_postgres, ...`)를 그대로 유지한다.
+#    ※ _pg_pool 은 lazy 재바인딩되므로 값 재export 하지 않고 dbcommon._pg_pool(라이브)을 직접 참조.
+import dbcommon
+from dbcommon import (  # noqa: F401  (facade 재export — 외부 호출처 무변경)
+    HAS_POSTGRES, DB_PATH, DATABASE_URL, _use_postgres,
+    _now, _ph, _p, _upsert, _row_to_dict,
+    _pg_json_loads, _pg_json_loads_or,
+    get_conn, _ensure_pool,
+)
 
 # ── 입력 검증 상수 ──
 MAX_COMMENT_LENGTH = 2000
@@ -68,13 +50,9 @@ DEFAULT_CATEGORIES = [
 
 # ── 증상별 문진 체크리스트 기본 데이터 (외부 파일 로드) ──
 def _load_default_checklists():
-    """consultation_checklists.json에서 42개 증상 체크리스트 로드"""
-    checklist_path = os.path.join(os.path.dirname(__file__), 'consultation_checklists.json')
-    try:
-        with open(checklist_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except Exception:
-        return []
+    """consultation_checklists.json에서 42개 증상 체크리스트 로드 (consultation_loader 위임)"""
+    import consultation_loader
+    return consultation_loader.load_checklists_raw()
 
 DEFAULT_CHECKLISTS = _load_default_checklists() or [
     {
@@ -784,58 +762,9 @@ SCHEMA = SCHEMA_SQLITE
 
 
 # ════════════════════════════════════════
-#  SQL 헬퍼 (SQLite vs PostgreSQL 차이 흡수)
+#  SQL 헬퍼 (_ph/_p/_upsert/_row_to_dict/_pg_json_loads(_or))
+#  → dbcommon 으로 이동(Phase 2). 상단에서 facade 재import 됨.
 # ════════════════════════════════════════
-
-def _ph(*args):
-    """Placeholder: ? (SQLite) vs %s (PostgreSQL). _ph(n) returns n comma-separated placeholders."""
-    n = args[0] if args else 1
-    return ','.join(['%s'] * n) if _use_postgres else ','.join(['?'] * n)
-
-
-def _p(n=1):
-    """Single placeholder string."""
-    return '%s' if _use_postgres else '?'
-
-
-def _upsert(table, key_col, key_val, columns, values):
-    """INSERT ... ON CONFLICT UPDATE helper. Returns (sql, params)."""
-    ph = _p()
-    col_list = ', '.join(columns)
-    ph_list = ', '.join([ph] * len(columns))
-    if _use_postgres:
-        update_parts = ', '.join(f"{c} = EXCLUDED.{c}" for c in columns if c != key_col)
-        sql = f"INSERT INTO {table} ({col_list}) VALUES ({ph_list}) ON CONFLICT ({key_col}) DO UPDATE SET {update_parts}"
-    else:
-        sql = f"INSERT OR REPLACE INTO {table} ({col_list}) VALUES ({ph_list})"
-    return sql, values
-
-
-def _row_to_dict(row):
-    """sqlite3.Row 또는 RealDictCursor dict -> dict 변환"""
-    if row is None:
-        return None
-    if isinstance(row, dict):
-        return dict(row)  # RealDictCursor already returns dict-like
-    return dict(row)
-
-
-def _pg_json_loads(val):
-    """PostgreSQL JSONB returns Python objects directly; SQLite stores as TEXT strings."""
-    if val is None:
-        return None
-    if isinstance(val, (dict, list)):
-        return val  # already parsed by psycopg2
-    try:
-        return json.loads(val)
-    except (json.JSONDecodeError, TypeError):
-        return None
-
-
-def _pg_json_loads_or(val, default):
-    """Like _pg_json_loads but with a default."""
-    result = _pg_json_loads(val)
-    return result if result is not None else default
 
 
 # ════════════════════════════════════════
@@ -843,16 +772,12 @@ def _pg_json_loads_or(val, default):
 # ════════════════════════════════════════
 
 def init_db(db_path=None):
-    """데이터베이스 초기화 (스키마 생성)"""
-    global _pg_pool, _use_postgres
-
+    """데이터베이스 초기화 (스키마 생성).
+    연결/풀/모드는 dbcommon 소유(import 시점 확정 + lazy 풀). 여기선 스키마만 생성."""
     if DATABASE_URL and HAS_POSTGRES:
-        # ── PostgreSQL 모드 ──
-        _use_postgres = True
-        if _pg_pool is None:
-            _pg_pool = pg_pool.SimpleConnectionPool(1, 10, DATABASE_URL)
-
-        conn = _pg_pool.getconn()
+        # ── PostgreSQL 모드 ── (풀은 dbcommon lazy 생성)
+        dbcommon._ensure_pool()
+        conn = dbcommon._pg_pool.getconn()
         try:
             conn.autocommit = True
             cur = conn.cursor()
@@ -874,6 +799,10 @@ def init_db(db_path=None):
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '[]'::jsonb",
                 "ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS turns_json JSONB DEFAULT '[]'::jsonb",
                 "ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS rubric_json JSONB DEFAULT '[]'::jsonb",
+                # conversations EMERGENCY_REDIRECTED 상태머신 컬럼 — 호스트 소유.
+                # (RAG 마이그레이션 블록에서 이전: RAG 마이그레이션이 호스트 테이블을 변형하지 않도록)
+                "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS emergency_state TEXT DEFAULT 'NORMAL'",
+                "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS emergency_redirected_at TEXT",
             ]
             for sql in migrations_pg:
                 try:
@@ -1218,9 +1147,8 @@ def init_db(db_path=None):
                     metrics_json TEXT,
                     notes TEXT
                 )""",
-                # 10. conversations ALTER — EMERGENCY_REDIRECTED 상태머신
-                "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS emergency_state TEXT DEFAULT 'NORMAL'",
-                "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS emergency_redirected_at TEXT",
+                # (conversations ALTER 는 호스트 migrations_pg 로 이전됨 —
+                #  RAG 마이그레이션은 호스트 conversations 테이블을 변형하지 않는다)
             ]
             for _sql in _rag_migrations_pg:
                 try:
@@ -1255,10 +1183,9 @@ def init_db(db_path=None):
                     pass
             cur.close()
         finally:
-            _pg_pool.putconn(conn)
+            dbcommon._pg_pool.putconn(conn)
     else:
-        # ── SQLite 모드 ──
-        _use_postgres = False
+        # ── SQLite 모드 ── (_use_postgres 는 dbcommon 이 import 시점에 확정)
         path = db_path or DB_PATH
         os.makedirs(os.path.dirname(path) if os.path.dirname(path) else '.', exist_ok=True)
         conn = sqlite3.connect(path)
@@ -1278,6 +1205,10 @@ def init_db(db_path=None):
             "ALTER TABLE users ADD COLUMN permissions TEXT DEFAULT '[]'",
             "ALTER TABLE scenarios ADD COLUMN turns_json TEXT DEFAULT '[]'",
             "ALTER TABLE scenarios ADD COLUMN rubric_json TEXT DEFAULT '[]'",
+            # conversations EMERGENCY_REDIRECTED 상태머신 컬럼 — 호스트 소유.
+            # (RAG 마이그레이션 블록에서 이전. SQLite: IF NOT EXISTS 미지원 — OperationalError 무시)
+            "ALTER TABLE conversations ADD COLUMN emergency_state TEXT DEFAULT 'NORMAL'",
+            "ALTER TABLE conversations ADD COLUMN emergency_redirected_at TEXT",
         ]
         for sql in migrations:
             try:
@@ -1562,15 +1493,8 @@ def init_db(db_path=None):
                 conn.execute(_sql)
             except sqlite3.OperationalError:
                 pass
-        # conversations ALTER (SQLite: IF NOT EXISTS 미지원 — 오류 무시)
-        for _col_sql in [
-            "ALTER TABLE conversations ADD COLUMN emergency_state TEXT DEFAULT 'NORMAL'",
-            "ALTER TABLE conversations ADD COLUMN emergency_redirected_at TEXT",
-        ]:
-            try:
-                conn.execute(_col_sql)
-            except sqlite3.OperationalError:
-                pass
+        # (conversations ALTER 는 호스트 migrations 로 이전됨 —
+        #  RAG 마이그레이션은 호스트 conversations 테이블을 변형하지 않는다)
         # 시드 데이터 — embedding_providers
         try:
             conn.execute("""
@@ -1607,42 +1531,7 @@ def init_db(db_path=None):
     return DATABASE_URL if _use_postgres else (db_path or DB_PATH)
 
 
-@contextmanager
-def get_conn(db_path=None):
-    """듀얼 모드 커넥션 컨텍스트 매니저. yields (conn, cur)."""
-    if _use_postgres:
-        conn = _pg_pool.getconn()
-        try:
-            conn.autocommit = False
-            cursor = conn.cursor(cursor_factory=RealDictCursor)
-            yield conn, cursor
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
-        finally:
-            cursor.close()
-            _pg_pool.putconn(conn)
-    else:
-        path = db_path or DB_PATH
-        conn = sqlite3.connect(path)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA foreign_keys=ON")
-        conn.execute("PRAGMA busy_timeout=10000")
-        cursor = conn.cursor()
-        try:
-            yield conn, cursor
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
-        finally:
-            cursor.close()
-            conn.close()
-
-
-def _now():
-    return datetime.now(timezone.utc).isoformat()
+# get_conn / _now → dbcommon 으로 이동(Phase 2). 상단에서 facade 재import 됨.
 
 
 # ════════════════════════════════════════

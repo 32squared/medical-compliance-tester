@@ -32,6 +32,7 @@ node_modules/
 
 # 분석/검증용 임시 스크립트 (Claude session 산출물)
 _*.py
+!__init__.py
 _*.txt
 _*.log
 *_state.json

@@ -4,7 +4,10 @@ param(
     [string]$ServiceName = "medical-compliance-tester-dev",
     [string]$SqlInstance = "medical-db",
     [string]$DbName = "medical_app_dev",
-    [string]$DbPassword = ""
+    [string]$DbPassword = "",
+    [switch]$SkipMigrate,
+    [string]$RagServiceUrl = "",
+    [string]$RagTrustSecret = ""
 )
 
 Write-Host "=== Medical Compliance Tester - DEV Cloud Run Deploy ===" -ForegroundColor Cyan
@@ -65,26 +68,53 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "Build done!" -ForegroundColor Green
 
+# [1.5/3] DB 스키마 마이그레이션 (migrate_runner.py --sync, Cloud Run Job)
+#   방금 빌드한 DEV 이미지로 db-migrate-dev Job 을 만들고 실행한다.
+#   현재는 db.py init_db() 가 여전히 스키마 소스라, 마이그레이션 실패해도 비차단(경고)으로 둔다.
+#   향후 RAG DDL 을 db.py 에서 떼어내면 이 단계를 fatal(실패 시 배포 중단)로 승격할 것.
+if (-not $SkipMigrate) {
+    Write-Host ""
+    Write-Host "[1.5/3] DB 마이그레이션 (db-migrate-dev Job, --sync)..." -ForegroundColor Yellow
+    & "$PSScriptRoot\deploy-migrate.ps1" -ServiceName $ServiceName -DbName $DbName -DbPassword $DbPassword -Execute -Wait
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "[WARN] 마이그레이션 Job 실패 - init_db 가 스키마를 보장하므로 배포는 계속합니다." -ForegroundColor Yellow
+    } else {
+        Write-Host "마이그레이션 완료." -ForegroundColor Green
+    }
+} else {
+    Write-Host "[1.5/3] 마이그레이션 생략 (-SkipMigrate)." -ForegroundColor DarkGray
+}
+
 # [2/3] Cloud Run DEV 배포
 Write-Host ""
 Write-Host "[2/3] Deploying DEV service to Cloud Run..." -ForegroundColor Yellow
+
+# Build env vars. If RagServiceUrl is set, reverse-proxy /api/rag/* to the standalone RAG service.
+# 전체 env 변수 레퍼런스: docs/env_reference.md
+$DevEnvVars = "DATABASE_URL=$DatabaseUrl,APP_ENV=development,RAG_ENABLED=true,RAG_LLM_MODEL=gpt-5.4-mini,RAG_LLM_FALLBACK_MODEL=gpt-5.4-mini,RAG_GUARDRAIL_FP_FILTER=true,LLM_REASONING_EFFORT=low"
+if ($RagServiceUrl) {
+    $DevEnvVars = "$DevEnvVars,RAG_SERVICE_URL=$RagServiceUrl"
+    Write-Host "  [split mode] reverse-proxy /api/rag/* -> $RagServiceUrl" -ForegroundColor Cyan
+}
+if ($RagTrustSecret) { $DevEnvVars = "$DevEnvVars,RAG_TRUST_SECRET=$RagTrustSecret" }
+
 gcloud run deploy $ServiceName `
     --image "gcr.io/$ProjectId/$ServiceName" `
     --region $Region `
     --platform managed `
     --allow-unauthenticated `
-    --memory 1Gi --cpu 1 `
+    --memory 2Gi --cpu 1 `
     --timeout 900 `
     --min-instances 0 --max-instances 3 `
     --concurrency 5 `
     --execution-environment gen2 `
-    --set-env-vars "DATABASE_URL=$DatabaseUrl,APP_ENV=development,RAG_ENABLED=true" `
+    --set-env-vars $DevEnvVars `
     --set-secrets "OPENAI_API_KEY=openai-api-key:latest,DB_PASSWORD=db-password:latest" `
     --add-cloudsql-instances $SqlConnection `
     --vpc-connector=medical-connector `
-    --vpc-egress=all-traffic `
+    --vpc-egress=private-ranges-only `
     --cpu-boost `
-    --cpu-throttling `
+    --no-cpu-throttling `
     --clear-volumes `
     --clear-volume-mounts
 if ($LASTEXITCODE -ne 0) {

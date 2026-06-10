@@ -1629,6 +1629,32 @@ async function evaluateWithLLM(prompt, responseText, msgId) {
 // ──────────────────────────────────────
 // Consultation Quality Evaluation (문진 품질 평가)
 // ──────────────────────────────────────
+// 문진 평가 축 메타: 평가 페이로드(ev.axes[*].label/max)를 우선 사용 → 기준 개정 자동 반영.
+// 과거 기록(label/max 미임베드)을 위해 레거시 폴백 맵 유지.
+var LEGACY_CONSULT_AXES = {
+  symptomExploration:  { label: '증상 탐색', max: 30 },
+  redFlagScreening:    { label: '위험 선별', max: 25 },
+  patientContext:      { label: '환자 맥락', max: 20 },
+  structuredApproach:  { label: '단계적 접근', max: 15 },
+  appropriateGuidance: { label: '적절한 안내', max: 10 },
+};
+function buildConsultAxes(ev) {
+  var evAxes = (ev && ev.axes) || {};
+  var keys = Object.keys(evAxes);
+  if (!keys.length) return [];
+  return keys.map(function(key) {
+    var d = evAxes[key] || {};
+    var leg = LEGACY_CONSULT_AXES[key] || {};
+    return {
+      key: key,
+      label: d.label || leg.label || key,
+      max: (typeof d.max === 'number' && d.max > 0) ? d.max : (leg.max || 0),
+      score: d.score || 0,
+      missing: d.missing || []
+    };
+  });
+}
+
 async function evaluateConsultation(prompt, responseText, msgId) {
   const proxy = getProxyUrl() || window.location.origin;
   const evalContainer = document.getElementById(`consultation-eval-${msgId}`);
@@ -1650,31 +1676,17 @@ async function evaluateConsultation(prompt, responseText, msgId) {
     const gradeColors = { A: 'var(--green)', B: '#38bdf8', C: '#f59e0b', D: '#f97316', F: 'var(--red)' };
     const gradeColor = gradeColors[ev.grade] || 'var(--text-dim)';
 
-    // 5축 바 생성 — v1.5.1 우선, v1.1.x fallback (과거 데이터 호환)
-    const _v15 = [
-      { key: 'safetyDisclosure', label: '의료법 경계·안전 고지', max: 15 },
-      { key: 'redFlagAwareness', label: '위험 신호 인식·전달', max: 25 },
-      { key: 'consultationFlow', label: '문진 Flow 명시', max: 25 },
-      { key: 'clinicalValue', label: '환자 맞춤·임상가치', max: 22 },
-      { key: 'actionAndCommunication', label: '행동 가이드·의사소통', max: 13 },
-    ];
-    const _v11 = [
-      { key: 'symptomExploration', label: '증상 탐색', max: 25 },
-      { key: 'redFlagScreening', label: '위험 선별', max: 25 },
-      { key: 'patientContext', label: '환자 맥락', max: 20 },
-      { key: 'structuredApproach', label: '단계적 접근', max: 15 },
-      { key: 'appropriateGuidance', label: '적절한 안내', max: 15 },
-    ];
-    const _hasV15 = _v15.some(a => (ev.axes || {})[a.key]);
-    const axes = _hasV15 ? _v15 : _v11;
+    // 평가 축 바 생성 (평가 페이로드의 label/max 사용 → 기준 개정 자동 반영)
+    // 백엔드가 v1.5.1/v1.1.x 어느 쪽이든 axes를 label/max 와 함께 응답;
+    // legacy 매핑은 buildConsultAxes() 안에 보존되어 과거 데이터 호환.
+    const axes = buildConsultAxes(ev);
 
     let axesHtml = '';
     for (const ax of axes) {
-      const axData = (ev.axes || {})[ax.key] || {};
-      const score = axData.score || 0;
-      const pct = Math.round((score / ax.max) * 100);
+      const score = ax.score || 0;
+      const pct = ax.max ? Math.round((score / ax.max) * 100) : 0;
       const barColor = pct >= 80 ? 'var(--green)' : pct >= 50 ? '#f59e0b' : 'var(--red)';
-      const missing = (axData.missing || []).join(', ');
+      const missing = (ax.missing || []).join(', ');
       const warn = pct < 60 ? ' ⚠️' : '';
       axesHtml += `<div style="margin-bottom:4px">
         <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text-dim)">
@@ -2079,7 +2091,7 @@ function renderAssistantEvaluation(msgDiv, evalData) {
     });
 
     // Auto-eval (isLive only)
-    if (isLive && savedSettings.enableLlmEval !== false && savedSettings.openaiKey) {
+    if (isLive && savedSettings.enableLlmEval !== false && (savedSettings.openaiKey || savedSettings.hasServerOpenaiKey)) {
       var gptLlmEl = gptSection.querySelector('.llm-eval');
       if (gptLlmEl) gptLlmEl.style.display = 'block';
       gptBtn.style.display = 'none';
@@ -2097,31 +2109,15 @@ function renderAssistantEvaluation(msgDiv, evalData) {
     // Show existing consultation eval data
     var cGradeColors = { A: 'var(--green)', B: '#38bdf8', C: '#f59e0b', D: '#f97316', F: 'var(--red)' };
     var cGradeColor = cGradeColors[consultationEval.grade] || 'var(--text-dim)';
-    // v1.5.1 \uC6B0\uC120 / v1.1.x fallback (\uACFC\uAC70 \uB370\uC774\uD130 \uD638\uD658)
-    var _cv15 = [
-      { key: 'safetyDisclosure', label: '\uC758\uB8CC\uBC95 \uACBD\uACC4\u00B7\uC548\uC804 \uACE0\uC9C0', max: 15 },
-      { key: 'redFlagAwareness', label: '\uC704\uD5D8 \uC2E0\uD638 \uC778\uC2DD\u00B7\uC804\uB2EC', max: 25 },
-      { key: 'consultationFlow', label: '\uBB38\uC9C4 Flow \uBA85\uC2DC', max: 25 },
-      { key: 'clinicalValue', label: '\uD658\uC790 \uB9DE\uCDA4\u00B7\uC784\uC0C1\uAC00\uCE58', max: 22 },
-      { key: 'actionAndCommunication', label: '\uD589\uB3D9 \uAC00\uC774\uB4DC\u00B7\uC758\uC0AC\uC18C\uD1B5', max: 13 },
-    ];
-    var _cv11 = [
-      { key: 'symptomExploration', label: '\uC99D\uC0C1 \uD0D0\uC0C9', max: 25 },
-      { key: 'redFlagScreening', label: '\uC704\uD5D8 \uC120\uBCC4', max: 25 },
-      { key: 'patientContext', label: '\uD658\uC790 \uB9E5\uB77D', max: 20 },
-      { key: 'structuredApproach', label: '\uB2E8\uACC4\uC801 \uC811\uADFC', max: 15 },
-      { key: 'appropriateGuidance', label: '\uC801\uC808\uD55C \uC548\uB0B4', max: 15 },
-    ];
-    var _hasCV15 = _cv15.some(function(a){ return (consultationEval.axes || {})[a.key]; });
-    var cAxes = _hasCV15 ? _cv15 : _cv11;
+    // buildConsultAxes: \uBC31\uC5D4\uB4DC \uC751\uB2F5\uC758 label/max\uB97C \uADF8\uB300\uB85C \uC0AC\uC6A9 (v1.5.1/v1.1.x \uC790\uB3D9 \uB300\uC751)
+    var cAxes = buildConsultAxes(consultationEval);
     var cAxesHtml = '';
     for (var ca = 0; ca < cAxes.length; ca++) {
       var ax = cAxes[ca];
-      var axData = (consultationEval.axes || {})[ax.key] || {};
-      var axScore = axData.score || 0;
-      var axPct = Math.round((axScore / ax.max) * 100);
+      var axScore = ax.score || 0;
+      var axPct = ax.max ? Math.round((axScore / ax.max) * 100) : 0;
       var axBarColor = axPct >= 80 ? 'var(--green)' : axPct >= 50 ? '#f59e0b' : 'var(--red)';
-      var axMissing = (axData.missing || []).join(', ');
+      var axMissing = (ax.missing || []).join(', ');
       var axWarn = axPct < 60 ? ' \u26A0\uFE0F' : '';
       cAxesHtml += '<div style="margin-bottom:4px">' +
         '<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text-dim)">' +
@@ -2187,7 +2183,7 @@ function renderAssistantEvaluation(msgDiv, evalData) {
     });
 
     // Auto-eval (isLive only)
-    if (isLive && savedSettings.enableLlmEval !== false && savedSettings.openaiKey) {
+    if (isLive && savedSettings.enableLlmEval !== false && (savedSettings.openaiKey || savedSettings.hasServerOpenaiKey)) {
       conBtn.style.display = 'none';
       var conEvalEl = consultSection.querySelector('[id^="consultation-eval-"]');
       if (conEvalEl) conEvalEl.style.display = 'block';
@@ -3193,12 +3189,48 @@ function renderEvidenceBadge(bubbleEl, quality, meta) {
   }
 }
 
+// SSE truncation 복구: 서버가 백그라운드로 끝까지 생성해 저장한 결과를 폴링한다.
+// (긴 RAG 응답을 네트워크가 못 버텨 STOP 전에 끊기는 환경 대응)
+async function pollRagResult(conversationId, query, sinceSec, onTick) {
+  var maxMs = 150000;     // 최대 2.5분 폴링
+  var intervalMs = 3000;  // 3초 간격
+  var start = Date.now();
+  while (Date.now() - start < maxMs) {
+    if (cancelRequested) return null;
+    await new Promise(function(r) { setTimeout(r, intervalMs); });
+    var elapsed = Math.round((Date.now() - start) / 1000);
+    if (typeof onTick === 'function') { try { onTick(elapsed); } catch(e) {} }
+    try {
+      var since = sinceSec + Math.ceil((Date.now() - start) / 1000);
+      var url = '/api/rag/result?conversation_id=' + encodeURIComponent(conversationId) +
+                '&query=' + encodeURIComponent(query) +
+                '&since_sec=' + encodeURIComponent(since);
+      var r = await fetch(url, { method: 'GET' });
+      if (!r.ok) continue;
+      var data = await r.json();
+      if (data && data.status === 'ready' &&
+          (data.answer || (data.citations && data.citations.length))) {
+        return data;
+      }
+    } catch (e) { /* 일시 오류 → 재시도 */ }
+  }
+  return null;
+}
+
 // /api/rag/chat SSE 호출
 async function callRag(query, { onGeneration, onInfo, onDone, onError, conversationId }) {
+  // conversation_id는 폴링 복구(/api/rag/result)의 키이므로 항상 확보한다
+  var convId = (conversationId || getCurrentConversationId() || '').trim();
+  if (!convId) {
+    convId = (window.crypto && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : ('rag-' + Date.now() + '-' + Math.random().toString(16).slice(2));
+  }
   var body = {
     query: query,
-    conversation_id: conversationId || getCurrentConversationId(),
+    conversation_id: convId,
   };
+  var reqStartMs = Date.now();
 
   var resp;
   try {
@@ -3242,6 +3274,7 @@ async function callRag(query, { onGeneration, onInfo, onDone, onError, conversat
   var searchResults = [];
   var guardrailAction = 'pass';
   var lastEvidenceCheck = null;  // EVIDENCE_CHECK 이벤트 저장
+  var gotStop = false;           // STOP 수신 여부 (미수신=truncation → 폴링 복구)
 
   while (true) {
     if (cancelRequested) { reader.cancel(); break; }
@@ -3289,6 +3322,7 @@ async function callRag(query, { onGeneration, onInfo, onDone, onError, conversat
         onInfo({ data: data, searchResults: searchResults, followUps: [] });
 
       } else if (type === 'STOP') {
+        gotStop = true;
         if (event.citations) ragCitations = event.citations;
         if (event.rag_query_id) ragQueryId = event.rag_query_id;
         if (event.guardrail_action) guardrailAction = event.guardrail_action;
@@ -3301,6 +3335,34 @@ async function callRag(query, { onGeneration, onInfo, onDone, onError, conversat
       } else if (type === 'KEEP_ALIVE') {
         continue;
       }
+    }
+  }
+
+  // STOP 미수신(스트림 truncation) → 서버는 백그라운드로 끝까지 생성해 결과를
+  // rag_queries에 저장한다. /api/rag/result 를 폴링해 답변·인용(source_url 포함)을 복구.
+  if (!gotStop && !cancelRequested) {
+    var baseSince = Math.ceil((Date.now() - reqStartMs) / 1000) + 30;
+    var recovered = await pollRagResult(convId, query, baseSince, function(elapsed) {
+      var b = document.getElementById('streamBubble');
+      if (b) {
+        var partialHtml = fullText ? marked.parse(fullText) : '';
+        b.innerHTML = partialHtml +
+          '<div style="color:var(--text-dim);font-size:12px;margin-top:8px">' +
+          '&#9203; 응답 생성 마무리 중… 서버에서 결과를 가져오는 중 (' + elapsed + '초)</div>';
+      }
+    });
+    if (recovered) {
+      fullText = recovered.answer || fullText;
+      onGeneration(fullText, '');  // 버블·finalText에 실제 답변 반영
+      if (recovered.citations && recovered.citations.length) ragCitations = recovered.citations;
+      if (recovered.rag_query_id) ragQueryId = recovered.rag_query_id;
+      if (recovered.guardrail_action) guardrailAction = recovered.guardrail_action;
+      if (recovered.evidence_quality && !lastEvidenceCheck) {
+        lastEvidenceCheck = { quality: recovered.evidence_quality };
+      }
+    } else if (!fullText) {
+      onError('응답을 받아오지 못했습니다 (시간 초과). 잠시 후 다시 시도해 주세요.');
+      return null;
     }
   }
 
