@@ -50,7 +50,11 @@
 
 ## 2. 작업 단계
 
-### 4-A. 분리 전 결합 절단 (in-repo, 1~2일) — 코드만, 인프라 불변
+### 4-A. 분리 전 결합 절단 — ✅ **완료 (2026-06-10, P1~P5 전체 게이트 PASS)**
+> P1 C1절단(b637344) · P2 rag_server 가드/health/SIGTERM(41ddec8) · P3 격리테스트(b11edc3) ·
+> P4 운영하드닝(7c14074, 103fe19) · P5 env 레퍼런스 61종(docs/env_reference.md).
+> 결과: 허용 결합 1건만 잔존(proxy_server→rag_routes, 4-E 소거 대상). 실서비스 스모크
+> (medical-rag-dev 대상 batch HTTP SSE 왕복) 통과.
 1. **C1 절단** (P1 설계 확정 2026-06-10): batch_eval_rag 는 HOST 잔류(D3). 절단 대상 3가지만 —
    - 생성: `rag_engine.generate_response` 직접 호출 → `RAG_SERVICE_URL` 의 `/api/rag/chat` HTTP(SSE) 호출로 전환(미설정 시 명시 에러 — 무음 폴백 금지).
    - 무음 폴백 제거: proxy_server import 실패 시 None 폴백 → 명시 에러.
