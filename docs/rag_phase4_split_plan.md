@@ -66,7 +66,12 @@
 4. **운영 하드닝(저비용 묶음)**: SIGTERM graceful shutdown(rag_server/proxy_server), `[RAG-PROXY]` 등 진단 print `flush=True`, `OPENAI_API_BASE` env 도입(api.openai.com 하드코딩 제거), `RAG_REQUEST_TIMEOUT` env, env 변수 전체 README 표(게이트 임계값 10여 개 포함).
 5. 검증 게이트: 기존 테스트 무회귀 + dev 배포 1회(분리 모드) + 배치평가 스모크(시나리오 2~3건).
 
-### 4-B. 공유 패키지 사전 재배치 (in-repo, 1일)
+### 4-B. 공유 패키지 사전 재배치 — ✅ **완료 (2026-06-10, B0~B5 게이트 PASS)**
+> 커밋: dbcommon 패키지화(6c3c52e) · compliance_rules+config분할+resources(963db9d) ·
+> 검사기+B5+facade해소(a46d4c3). 게이트 **0 fail / 0 warn**(facade WARN 3건 해소),
+> 전체 pytest 신규 실패 0(HEAD 대조). config.py 분할로 SKIX 설정 유출 차단.
+> 신설: [3b] json-bundle-sync(루트 vs 번들 JSON sha256) — 4-E 선결: RAG 5파일
+> (rag_engine.py:61 등)의 루트 JSON 직접 읽기를 패키지 참조로 전환 후 루트 사본 제거.
 1. `packages/medical_shared/` 생성: `dbcommon/`, `compliance_rules/`(analyzer, config, guideline_loader, consultation_loader + guidelines.json, violation_rules.json, consultation_checklists.json) + `pyproject.toml`.
 2. JSON 로드를 `importlib.resources` 로 전환(`CHECKLISTS_PATH` 등 `__file__` 하드코딩 제거 — 패키징 후 경로 문제 선제 차단).
 3. 루트에 호환 shim(`dbcommon.py` → `from packages.medical_shared.dbcommon import *`) 유지해 기존 import 무변경.
