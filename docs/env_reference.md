@@ -155,3 +155,18 @@
 
 > grep 수집 기준: 루트 `*.py` 전체 `os.environ.get(...)` / `os.environ[...]` 패턴 전수 조회 + entrypoint.sh RUN_MODE 분기 + deploy-*.ps1 4종 `--set-env-vars`/`--set-secrets` 목록.
 > 스크립트 전용(`scripts/*.py`) 운영 무관 변수(`ADMIN_PW`, `ANALYZE_RUN_ID`, `VERIFY_SCENARIO_ID`, `OUT_GCS_PATH`, `DUMP_RUN_ID` 등)는 운영 서비스와 무관한 개발·분석 도구이므로 이 표에서 제외했습니다.
+
+---
+
+## 부록: 네트워크 egress 경로 실측 (4-C/C-4, 2026-06-10)
+
+| 항목 | 값 |
+|---|---|
+| VPC 라우터 / NAT | `medical-router` / `medical-nat` (asia-northeast3, MANUAL_ONLY=고정 IP, ALL_SUBNETWORKS) |
+| 호스트 dev egress | `all-traffic` + medical-connector → **모든 외부 API(SKIX/OpenAI)가 NAT 고정 IP 경유** |
+| RAG dev egress | `private-ranges-only` + medical-connector → 사설 대역(Cloud SQL)만 VPC, **OpenAI는 Cloud Run 직접 egress(NAT 미경유, 비고정 IP)** |
+| 서비스 계정 | 양쪽 모두 default compute SA(716262961556-compute@) — **C-3에서 전용 SA 분리 예정** |
+
+- 함의: RAG의 OpenAI 호출은 고정 IP가 아니다. OpenAI는 IP 허용목록이 불필요하므로 현 구성 유지. 외부 API에 IP 제한이 생기면 RAG egress를 all-traffic으로 변경해야 한다.
+- IAM 인증 전환(C-3)은 egress 경로와 무관(인그레스 정책) — 상호 영향 없음 확인.
+- 롤백(1커맨드): `gcloud run services update medical-rag-dev --region=asia-northeast3 --allow-unauthenticated`
