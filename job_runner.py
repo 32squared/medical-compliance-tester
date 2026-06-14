@@ -11,6 +11,9 @@ job_runner.py — Cloud Run Job 진입점.
   RUN_ID            : runId (호출자가 미리 생성)
   SCENARIO_IDS_JSON : JSON 배열로 시나리오 ID 전달 (작은 batch 용)
   JOB_PAYLOAD_ID    : DB에 저장된 payload id (큰 batch — env 32KB 한계 회피)
+  AUTO_SELECT       : 'all_except_hb' 면 DB에서 HB 제외 enabled 시나리오 전체를 직접 조회
+                      (SCENARIO_IDS_JSON/JOB_PAYLOAD_ID 불필요 — Job이 VPC+CloudSQL 연결됨).
+                      'all' 이면 HB 포함 enabled 전체.
   RUN_BY            : 실행자 alias
   LABEL             : 라벨 (선택)
   FLUSH_EVERY       : DB 점진 저장 간격 (기본 5 — 실시간 UI polling 위해)
@@ -45,8 +48,41 @@ def _job_log(msg):
     print(line, flush=True)
 
 
+def _auto_select_scenario_ids(mode):
+    """DB에서 enabled 시나리오 ID 직접 조회 (Job이 VPC+CloudSQL 연결됨).
+
+    mode='all_except_hb' : HB-/hb- prefix + source='healthbench' 제외 (운영 일반 시나리오)
+    mode='all'           : enabled 전체 (HB 포함)
+
+    트리거 측에서 로컬 DB 접속(private IP) 불가할 때 Job 내부에서 추출하는 경로.
+    """
+    exclude_hb = (mode != 'all')
+    data = db.get_scenarios()
+    scenarios = data.get('scenarios', []) if isinstance(data, dict) else []
+    ids = []
+    src_dist = {}
+    for s in scenarios:
+        if not s.get('enabled', True):
+            continue
+        sid = s.get('id', '')
+        src = (s.get('source') or '')
+        if exclude_hb:
+            low = sid.lower()
+            if low.startswith('hb-') or src == 'healthbench':
+                continue
+        ids.append(sid)
+        src_dist[src or '(none)'] = src_dist.get(src or '(none)', 0) + 1
+    ids.sort()
+    _job_log(f"[auto-select] mode={mode} → {len(ids)}건 (HB제외={exclude_hb}) source분포={src_dist}")
+    return ids
+
+
 def _load_scenario_ids():
     """env var 또는 DB payload 에서 scenario_ids 로드."""
+    auto = os.environ.get('AUTO_SELECT', '').strip().lower()
+    if auto in ('all_except_hb', 'all'):
+        return _auto_select_scenario_ids(auto), None
+
     payload_id = os.environ.get('JOB_PAYLOAD_ID', '').strip()
     if payload_id:
         # DB payload 방식 (큰 batch). 미구현 시 명확히 실패.
@@ -62,7 +98,10 @@ def _load_scenario_ids():
 
     sids_json = os.environ.get('SCENARIO_IDS_JSON', '').strip()
     if not sids_json:
-        raise RuntimeError("SCENARIO_IDS_JSON 또는 JOB_PAYLOAD_ID 환경변수가 필요합니다.")
+        raise RuntimeError(
+            "SCENARIO_IDS_JSON / JOB_PAYLOAD_ID / AUTO_SELECT 중 하나가 필요합니다. "
+            "(AUTO_SELECT=all_except_hb 로 HB 제외 전체 자동 선택)"
+        )
     try:
         sids = json.loads(sids_json)
     except json.JSONDecodeError as e:
@@ -129,7 +168,10 @@ def _make_sigterm_handler():
 def main():
     run_id = os.environ.get('RUN_ID', '').strip()
     if not run_id:
-        raise RuntimeError("RUN_ID 환경변수 필수")
+        # 호출자가 안 주면 자동 생성 (AUTO_SELECT 트리거 등 간편 실행용)
+        import uuid as _uuid
+        run_id = f"job-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}-{_uuid.uuid4().hex[:6]}"
+        _job_log(f"[job] RUN_ID 미지정 → 자동 생성: {run_id}")
 
     run_by = os.environ.get('RUN_BY', 'job-runner').strip()
     label = os.environ.get('LABEL', '').strip()
