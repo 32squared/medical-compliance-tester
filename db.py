@@ -470,6 +470,38 @@ CREATE TABLE IF NOT EXISTS shared_eval_comments (
     created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_shared_comments_eval ON shared_eval_comments(eval_id, created_at);
+
+-- PHR 케이스 (개인 기준 건강기록을 답변에 실어보낼 형태로 정규화한 것)
+CREATE TABLE IF NOT EXISTS phr_cases (
+    id TEXT PRIMARY KEY,
+    case_no TEXT NOT NULL,
+    label TEXT DEFAULT '',
+    person_ref TEXT DEFAULT '',
+    tags_json TEXT DEFAULT '[]',
+    specialties_json TEXT DEFAULT '[]',
+    period_from TEXT DEFAULT '',
+    period_to TEXT DEFAULT '',
+    counts_json TEXT DEFAULT '{}',
+    case_json TEXT NOT NULL,
+    payload_json TEXT NOT NULL,
+    source_file TEXT DEFAULT '',
+    enabled INTEGER DEFAULT 1,
+    created_at TEXT NOT NULL,
+    created_by TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_phr_cases_no ON phr_cases(case_no);
+
+-- 케이스 배정 (분과별 전문가에게 케이스를 나눠준다)
+CREATE TABLE IF NOT EXISTS phr_case_assignments (
+    id TEXT PRIMARY KEY,
+    case_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    specialty TEXT DEFAULT '',
+    assigned_at TEXT NOT NULL,
+    assigned_by TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_phr_assign_user ON phr_case_assignments(user_id);
+CREATE INDEX IF NOT EXISTS idx_phr_assign_case ON phr_case_assignments(case_id);
 """
 
 # ── 스키마 (PostgreSQL) ──
@@ -755,6 +787,36 @@ CREATE TABLE IF NOT EXISTS shared_eval_comments (
     created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_shared_comments_eval ON shared_eval_comments(eval_id, created_at);
+
+CREATE TABLE IF NOT EXISTS phr_cases (
+    id TEXT PRIMARY KEY,
+    case_no TEXT NOT NULL,
+    label TEXT DEFAULT '',
+    person_ref TEXT DEFAULT '',
+    tags_json JSONB DEFAULT '[]'::jsonb,
+    specialties_json JSONB DEFAULT '[]'::jsonb,
+    period_from TEXT DEFAULT '',
+    period_to TEXT DEFAULT '',
+    counts_json JSONB DEFAULT '{}'::jsonb,
+    case_json JSONB NOT NULL,
+    payload_json JSONB NOT NULL,
+    source_file TEXT DEFAULT '',
+    enabled INTEGER DEFAULT 1,
+    created_at TEXT NOT NULL,
+    created_by TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_phr_cases_no ON phr_cases(case_no);
+
+CREATE TABLE IF NOT EXISTS phr_case_assignments (
+    id TEXT PRIMARY KEY,
+    case_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    specialty TEXT DEFAULT '',
+    assigned_at TEXT NOT NULL,
+    assigned_by TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_phr_assign_user ON phr_case_assignments(user_id);
+CREATE INDEX IF NOT EXISTS idx_phr_assign_case ON phr_case_assignments(case_id);
 """
 
 # Keep backward compat alias
@@ -3697,6 +3759,139 @@ def add_shared_comment(eval_id, comment_type, author, content, target_version=''
         )
     return {'author': author, 'content': content, 'createdAt': now_iso,
             'type': comment_type, 'targetVersion': target_version or ''}
+
+
+# ════════════════════════════════════════
+#  PHR 케이스
+# ════════════════════════════════════════
+
+def _phr_row_to_dict(r):
+    c = _row_to_dict(r)
+    c['tags'] = _pg_json_loads_or(c.pop('tags_json', '[]'), [])
+    c['specialties'] = _pg_json_loads_or(c.pop('specialties_json', '[]'), [])
+    c['counts'] = _pg_json_loads_or(c.pop('counts_json', '{}'), {})
+    c['caseNo'] = c.pop('case_no', '')
+    c['personRef'] = c.pop('person_ref', '')
+    c['periodFrom'] = c.pop('period_from', '')
+    c['periodTo'] = c.pop('period_to', '')
+    c['sourceFile'] = c.pop('source_file', '')
+    c['createdAt'] = c.pop('created_at', '')
+    c['createdBy'] = c.pop('created_by', '')
+    c['enabled'] = bool(c.get('enabled', 1))
+    return c
+
+
+def save_phr_cases(cases, source_file='', created_by=''):
+    """케이스 목록 저장 (case_no 기준 덮어쓰기).
+
+    cases: phr_case_builder.build_all() 결과 + 각 항목에 'payload' 키(SKIX 전달용).
+    """
+    now_iso = datetime.now(timezone.utc).isoformat()
+    ph = _p()
+    saved = []
+    with get_conn() as (conn, cur):
+        for c in cases:
+            case_no = c.get('case_id') or c.get('caseNo') or ''
+            if not case_no:
+                continue
+            cid = f'phr_{case_no}'
+            payload = c.get('payload') or {}
+            cur.execute(f"DELETE FROM phr_cases WHERE id = {ph}", (cid,))
+            cur.execute(
+                f"""INSERT INTO phr_cases
+                (id, case_no, label, person_ref, tags_json, specialties_json,
+                 period_from, period_to, counts_json, case_json, payload_json,
+                 source_file, enabled, created_at, created_by)
+                VALUES ({_ph(15)})""",
+                (cid, case_no, c.get('label', ''), c.get('person_ref', ''),
+                 json.dumps(c.get('tags', []), ensure_ascii=False),
+                 json.dumps(c.get('specialties', []), ensure_ascii=False),
+                 (c.get('period') or {}).get('from') or '',
+                 (c.get('period') or {}).get('to') or '',
+                 json.dumps(c.get('counts', {}), ensure_ascii=False),
+                 json.dumps(c, ensure_ascii=False),
+                 json.dumps(payload, ensure_ascii=False),
+                 source_file, 1, now_iso, created_by),
+            )
+            saved.append(case_no)
+    return saved
+
+
+def get_phr_cases(user_id=None, include_detail=False):
+    """케이스 목록. user_id 를 주면 그 사용자에게 배정된 것만 반환한다."""
+    ph = _p()
+    with get_conn() as (conn, cur):
+        if user_id:
+            cur.execute(
+                f"""SELECT c.* FROM phr_cases c
+                    JOIN phr_case_assignments a ON a.case_id = c.id
+                    WHERE a.user_id = {ph} AND c.enabled = 1
+                    ORDER BY c.case_no""", (user_id,))
+        else:
+            cur.execute("SELECT * FROM phr_cases ORDER BY case_no")
+        rows = cur.fetchall()
+
+    out = []
+    for r in rows:
+        c = _phr_row_to_dict(r)
+        detail = _pg_json_loads_or(c.pop('case_json', '{}'), {})
+        payload = _pg_json_loads_or(c.pop('payload_json', '{}'), {})
+        if include_detail:
+            c['case'] = detail
+            c['payload'] = payload
+        out.append(c)
+    return out
+
+
+def get_phr_case(case_id):
+    """케이스 1건 (원본 + SKIX 전달 payload 포함)."""
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(
+            f"SELECT * FROM phr_cases WHERE id = {ph} OR case_no = {ph}", (case_id, case_id))
+        r = cur.fetchone()
+    if not r:
+        return None
+    c = _phr_row_to_dict(r)
+    c['case'] = _pg_json_loads_or(c.pop('case_json', '{}'), {})
+    c['payload'] = _pg_json_loads_or(c.pop('payload_json', '{}'), {})
+    return c
+
+
+def delete_phr_case(case_id):
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(f"DELETE FROM phr_case_assignments WHERE case_id = {ph}", (case_id,))
+        cur.execute(f"DELETE FROM phr_cases WHERE id = {ph}", (case_id,))
+        return cur.rowcount
+
+
+def set_phr_assignments(case_id, user_ids, specialty='', assigned_by=''):
+    """케이스에 배정된 사용자 목록을 통째로 교체한다."""
+    now_iso = datetime.now(timezone.utc).isoformat()
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(f"DELETE FROM phr_case_assignments WHERE case_id = {ph}", (case_id,))
+        for uid in user_ids or []:
+            cur.execute(
+                f"""INSERT INTO phr_case_assignments
+                (id, case_id, user_id, specialty, assigned_at, assigned_by)
+                VALUES ({_ph(6)})""",
+                (f'{case_id}__{uid}', case_id, uid, specialty or '', now_iso, assigned_by),
+            )
+    return len(user_ids or [])
+
+
+def get_phr_assignments(case_id=None, user_id=None):
+    ph = _p()
+    with get_conn() as (conn, cur):
+        if case_id:
+            cur.execute(f"SELECT * FROM phr_case_assignments WHERE case_id = {ph}", (case_id,))
+        elif user_id:
+            cur.execute(f"SELECT * FROM phr_case_assignments WHERE user_id = {ph}", (user_id,))
+        else:
+            cur.execute("SELECT * FROM phr_case_assignments")
+        return [_row_to_dict(r) for r in cur.fetchall()]
 
 
 # ════════════════════════════════════════

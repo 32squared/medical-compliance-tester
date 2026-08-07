@@ -204,10 +204,65 @@ def _should_exclude_phr():
 # SKIX 호출 헬퍼 (multi-turn 지원)
 # ════════════════════════════════════════════
 
+# A1 에이전트 식별자 + 입력 필드. 규격상 값은 모두 문자열이며 비어 있어도 키는 보내야 한다.
+SKIX_A1_AGENT_STRID = 'SKIX_A1'
+A1_INPUT_FIELDS = ('Vital Signs', 'Air Quality Score', 'PHR', 'Vital Signs Trend')
+# 값이 비었을 때 넣을 기본값 — 객체형 필드는 '{}', 그 외는 빈 문자열
+A1_EMPTY_DEFAULT = {'PHR': '{}', 'Vital Signs Trend': '{}'}
+
+
+def _build_agent_inputs(agent_inputs):
+    """agent_input_field_to_value 구성.
+
+    규격상 값은 전부 문자열이므로 dict/list 는 JSON 문자열로 변환한다.
+    A1 의 네 필드는 값이 없어도 키를 빠뜨리지 않는다.
+    """
+    src = agent_inputs or {}
+    out = {}
+    for field in A1_INPUT_FIELDS:
+        v = src.get(field)
+        if v is None or v == '' or v == {} or v == []:
+            out[field] = A1_EMPTY_DEFAULT.get(field, '')
+        elif isinstance(v, str):
+            out[field] = v
+        else:
+            out[field] = json.dumps(v, ensure_ascii=False)
+    # 규격에 없는 추가 필드도 전달자가 명시했으면 그대로 넘긴다
+    for k, v in src.items():
+        if k not in out:
+            out[k] = v if isinstance(v, str) else json.dumps(v, ensure_ascii=False)
+    return out
+
+
+def _phr_case_agent_inputs(case_id):
+    """케이스 id → (agent_strid, agent_inputs). 케이스가 없으면 (None, None)."""
+    if not case_id:
+        return None, None
+    try:
+        case = db.get_phr_case(case_id)
+    except Exception as e:
+        ProxyHandler._add_log(f"[PHR] 케이스 조회 실패 {case_id}: {e}")
+        return None, None
+    if not case:
+        ProxyHandler._add_log(f"[PHR] 케이스 없음: {case_id}")
+        return None, None
+    payload = case.get('payload') or {}
+    vitals = payload.pop('vital_signs', None) if isinstance(payload, dict) else None
+    inputs = {'PHR': payload}
+    if vitals:
+        inputs['Vital Signs'] = vitals
+    return SKIX_A1_AGENT_STRID, inputs
+
 def _skix_post_one(query, conversation_strid, api_url, graph_type, api_key,
                    tenant_domain, api_uid, source_types,
-                   sock_timeout=60, read_timeout=900, connect_timeout=60):
+                   sock_timeout=60, read_timeout=900, connect_timeout=60,
+                   agent_strid=None, agent_inputs=None):
     """단일 SKIX 호출. SSE 파싱 후 결과 dict 반환.
+
+    agent_strid / agent_inputs
+        A1 에이전트에 PHR·바이탈을 실어보낼 때 사용한다.
+        agent_inputs 는 {'PHR': {...}, 'Vital Signs': [...]} 처럼 파이썬 객체로 주면
+        API 규격에 맞춰 각 값을 문자열화해 넣는다.
 
     Returns:
         {
@@ -231,11 +286,15 @@ def _skix_post_one(query, conversation_strid, api_url, graph_type, api_key,
     }
 
     target_url = f"{api_url}/api/service/conversations/{graph_type}"
-    req_body = json.dumps({
+    _payload = {
         "query": query,
         "conversation_strid": conversation_strid,
         "source_types": source_types,
-    }, ensure_ascii=False).encode('utf-8')
+    }
+    if agent_strid:
+        _payload["agent_strid"] = agent_strid
+        _payload["agent_input_field_to_value"] = _build_agent_inputs(agent_inputs)
+    req_body = json.dumps(_payload, ensure_ascii=False).encode('utf-8')
     hdrs = {
         'Content-Type': 'application/json', 'Accept': 'text/event-stream',
         'X-API-Key': api_key, 'X-tenant-Domain': tenant_domain, 'X-Api-UID': api_uid,
@@ -2272,6 +2331,16 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 return self._send_error(403, 'manage_rlhf 권한이 필요합니다')
             return self._rlhf_add_pair(body)
 
+        # ── PHR 케이스 API (Admin) ──
+        if self.path == '/api/phr/upload':
+            if not self._require_admin():
+                return
+            return self._phr_upload(body)
+        if self.path == '/api/phr/assign':
+            if not self._require_admin():
+                return
+            return self._phr_assign(body)
+
         # ── RAG API (위임) ──
         if self.path.startswith('/api/rag/'):
             if RAG_SERVICE_URL:
@@ -2376,6 +2445,14 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 return
             return self._delete_category(m_cat.group(1))
 
+        # ── PHR 케이스 삭제 (Admin) ──
+        m_phr_del = re.match(r'^/api/phr/cases/([^/]+)$', self.path)
+        if m_phr_del:
+            if not self._require_admin():
+                return
+            n = db.delete_phr_case(m_phr_del.group(1))
+            return self._send_json(200, {'success': True, 'deleted': n})
+
         m = re.match(r'^/api/scenarios/([^/]+)$', self.path)
         if m:
             return self._delete_scenario(m.group(1))
@@ -2478,6 +2555,13 @@ class ProxyHandler(BaseHTTPRequestHandler):
             return self._send_json(200, _get_consultation_criteria())
         if path == '/api/consultation-criteria/download-excel':
             return self._download_criteria_excel()
+
+        # ── PHR 케이스 API ──
+        if path == '/api/phr/cases':
+            return self._phr_list_cases()
+        m_phr = re.match(r'^/api/phr/cases/([^/]+)$', path)
+        if m_phr:
+            return self._phr_get_case(m_phr.group(1))
 
         # ── 체크리스트 API ──
         if path == '/api/checklists':
@@ -2689,6 +2773,9 @@ class ProxyHandler(BaseHTTPRequestHandler):
             # End Point 검색 결과 직접 호출 테스트 페이지 (Admin only — 검증용)
             '/admin/search-probe': 'search_probe.html',
             '/search_probe.html': 'search_probe.html',
+            # PHR 케이스 관리 (Admin)
+            '/phr': 'phr_manager.html',
+            '/phr_manager.html': 'phr_manager.html',
         }
         # 권한 기반 페이지 접근 가드 (admin은 항상 통과, advisor/tester는 permissions 체크)
         # value가 list면 OR 매칭 (둘 중 하나만 있으면 통과 — view_X 또는 manage_X 둘 다 허용)
@@ -2728,7 +2815,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
             # '/settings'는 의도적으로 제외 — admin 로그인 진입점이므로 누구나 페이지는 봐야 함
         }
         # Admin only 페이지 (PAGE_PERMISSIONS 와 별도) — 권한 무관 admin 만 접근
-        ADMIN_ONLY_PAGES = {'/admin/search-probe', '/search_probe.html'}
+        ADMIN_ONLY_PAGES = {'/admin/search-probe', '/search_probe.html',
+                            '/phr', '/phr_manager.html'}
         if path in ADMIN_ONLY_PAGES and not self._is_admin():
             self.send_response(302)
             self.send_header('Location', '/settings')
@@ -5738,6 +5826,154 @@ has_top_disclaimer=false 인데 legal_violation 미부여 시 평가 오류로 �
             ProxyHandler._add_log(f"[GPT] ERROR: 평가 오류: {str(e)[:100]}")
             self._send_error(500, f'평가 오류: {str(e)}')
 
+    # ════════════════════════════════════════
+    #  PHR 케이스
+    # ════════════════════════════════════════
+
+    def _phr_upload(self, body):
+        """POST /api/phr/upload — 개인 기준 PHR 엑셀을 케이스로 변환해 저장 (Admin)
+
+        body: {"data": "<base64 xlsx>", "filename": str, "sheet": str|null,
+               "today": "YYYY-MM-DD"|null, "replace": bool}
+        """
+        import base64
+        import io as _io
+        from datetime import date as _date
+
+        # Cloud Run 요청 상한(32MB)에 걸리기 전에 막는다. base64 는 원본의 약 1.34배.
+        MAX_XLSX_BYTES = 20 * 1024 * 1024
+
+        try:
+            payload = json.loads(body) if body else {}
+        except json.JSONDecodeError:
+            return self._send_error(400, '잘못된 JSON')
+
+        b64 = payload.get('data', '')
+        if not b64:
+            return self._send_error(400, '엑셀 데이터가 없습니다')
+
+        try:
+            file_bytes = base64.b64decode(b64)
+        except Exception:
+            return self._send_error(400, 'base64 디코드 실패')
+        if len(file_bytes) > MAX_XLSX_BYTES:
+            return self._send_error(413, f'파일이 너무 큽니다 ({len(file_bytes)//1024//1024}MB, 상한 20MB)')
+
+        today = None
+        if payload.get('today'):
+            try:
+                today = datetime.strptime(payload['today'], '%Y-%m-%d').date()
+            except ValueError:
+                return self._send_error(400, 'today 형식은 YYYY-MM-DD')
+        today = today or _date.today()
+
+        # Cloud Run 은 /tmp 외 파일시스템이 읽기 전용이라 메모리에서 바로 읽는다
+        try:
+            import phr_case_builder as pcb
+            cases = pcb.build_all(_io.BytesIO(file_bytes), payload.get('sheet') or None, today)
+            if not cases:
+                return self._send_error(400, '케이스를 만들 수 없습니다 (행 없음)')
+            for c in cases:
+                c['payload'] = pcb.to_skix_phr(c)
+        except ImportError:
+            return self._send_error(500, 'phr_case_builder 모듈을 찾을 수 없습니다')
+        except Exception as e:
+            return self._send_error(400, f'파싱 실패: {e}')
+
+        admin = self._get_admin_info() if hasattr(self, '_get_admin_info') else None
+        created_by = (admin or {}).get('id', 'admin') if admin else 'admin'
+
+        try:
+            saved = db.save_phr_cases(cases, source_file=payload.get('filename', ''),
+                                      created_by=created_by)
+        except Exception as e:
+            return self._send_error(500, f'저장 실패: {e}')
+
+        # 업로드 검증 리포트 — 무엇이 들어왔고 무엇을 못 읽었는지 바로 보이게 한다
+        report = []
+        for c in cases:
+            report.append({
+                'caseNo': c['case_id'],
+                'personRef': c['person_ref'],
+                'label': c['label'],
+                'tags': c['tags'],
+                'specialties': c['specialties'],
+                'period': c['period'],
+                'counts': c['counts'],
+                'missing': c['missing_items'],
+                'warnings': c['warnings'],
+                'payloadChars': len(json.dumps(c['payload'], ensure_ascii=False)),
+            })
+        ProxyHandler._add_log(f"[PHR] 업로드 — 케이스 {len(saved)}건 저장")
+        return self._send_json(200, {
+            'success': True, 'saved': saved, 'count': len(saved), 'report': report,
+        })
+
+    def _phr_list_cases(self):
+        """GET /api/phr/cases — 목록. 자문위원은 배정된 케이스만 본다."""
+        if not self._require_auth():
+            return
+        tester = self._get_tester_info()
+        try:
+            if tester and tester.get('role') == 'advisor':
+                cases = db.get_phr_cases(user_id=tester.get('id'))
+            else:
+                cases = db.get_phr_cases()
+        except Exception as e:
+            return self._send_error(500, f'조회 실패: {e}')
+
+        # 관리 화면에서 배정 현황을 함께 보여준다
+        assignments = {}
+        if not (tester and tester.get('role') == 'advisor'):
+            try:
+                for a in db.get_phr_assignments():
+                    assignments.setdefault(a['case_id'], []).append(a['user_id'])
+            except Exception:
+                pass
+        for c in cases:
+            c['assignedTo'] = assignments.get(c['id'], [])
+        return self._send_json(200, {'cases': cases, 'total': len(cases)})
+
+    def _phr_get_case(self, case_id):
+        """GET /api/phr/cases/{id} — 상세 (원본 대조용 타임라인 포함)."""
+        if not self._require_auth():
+            return
+        try:
+            case = db.get_phr_case(case_id)
+        except Exception as e:
+            return self._send_error(500, f'조회 실패: {e}')
+        if not case:
+            return self._send_error(404, '케이스를 찾을 수 없습니다')
+
+        tester = self._get_tester_info()
+        if tester and tester.get('role') == 'advisor':
+            allowed = {c['id'] for c in db.get_phr_cases(user_id=tester.get('id'))}
+            if case['id'] not in allowed:
+                return self._send_error(403, '배정되지 않은 케이스입니다')
+        return self._send_json(200, case)
+
+    def _phr_assign(self, body):
+        """POST /api/phr/assign — 케이스에 전문가 배정 (Admin)
+
+        body: {"caseId": str, "userIds": [str], "specialty": str}
+        """
+        try:
+            payload = json.loads(body) if body else {}
+        except json.JSONDecodeError:
+            return self._send_error(400, '잘못된 JSON')
+        case_id = (payload.get('caseId') or '').strip()
+        if not case_id:
+            return self._send_error(400, 'caseId 가 필요합니다')
+        user_ids = payload.get('userIds') or []
+        if not isinstance(user_ids, list):
+            return self._send_error(400, 'userIds 는 배열이어야 합니다')
+        try:
+            n = db.set_phr_assignments(case_id, user_ids,
+                                       payload.get('specialty', ''), 'admin')
+        except Exception as e:
+            return self._send_error(500, f'배정 실패: {e}')
+        return self._send_json(200, {'success': True, 'assigned': n})
+
     def _upload_criteria_excel(self, body):
         """POST /api/consultation-criteria/upload-excel — 엑셀 업로드로 문진 평가 기준 갱신"""
         try:
@@ -6813,11 +7049,29 @@ has_top_disclaimer=false 인데 legal_violation 미부여 시 평가 오류로 �
 
             # 요청 body에서 query 추출
             request_query = ''
+            phr_case_id = ''
             try:
                 req_body = json.loads(body)
                 request_query = req_body.get('query', '')
-            except Exception:
-                pass
+                # 케이스는 클라이언트가 id 만 보내고 실제 데이터는 서버가 붙인다.
+                # (전달 내용을 서버가 통제해야 무엇을 보냈는지 기록·재현이 된다)
+                phr_case_id = (self.headers.get('X-PHR-Case-Id', '')
+                               or req_body.pop('phr_case_id', '') or '')
+                if phr_case_id:
+                    agent_strid, agent_inputs = _phr_case_agent_inputs(phr_case_id)
+                    if agent_strid:
+                        req_body['agent_strid'] = agent_strid
+                        req_body['agent_input_field_to_value'] = _build_agent_inputs(agent_inputs)
+                        body = json.dumps(req_body, ensure_ascii=False).encode('utf-8')
+                        ProxyHandler._add_log(
+                            f"[PHR] 케이스 {phr_case_id} 주입 — payload "
+                            f"{len(req_body['agent_input_field_to_value'].get('PHR', ''))}자")
+                    else:
+                        phr_case_id = ''
+                elif 'phr_case_id' in req_body:
+                    body = json.dumps(req_body, ensure_ascii=False).encode('utf-8')
+            except Exception as e:
+                ProxyHandler._add_log(f"[PHR] 주입 실패: {e}")
 
             # DB에서 API 키 자동 주입 (프론트엔드 의존 제거)
             settings = db.get_settings()

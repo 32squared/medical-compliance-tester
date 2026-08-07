@@ -430,6 +430,13 @@
   </div>
   <div class="status-dot" id="statusDot" onclick="retryConnection()" title="클릭하여 연결 재테스트"></div>
   <span class="status-text" id="statusText" style="font-size:11px;color:var(--text-dim)">연결 확인 중...</span>
+  <!-- PHR 케이스 선택 — 선택 시 질문에 해당 개인의 건강기록이 함께 전달된다 -->
+  <select id="phrCaseSelect" onchange="onPhrCaseChange()" title="PHR 케이스 선택"
+          style="font-size:11px;padding:3px 6px;border-radius:6px;background:var(--surface);color:var(--text);border:1px solid var(--border);max-width:230px">
+    <option value="">PHR 없음</option>
+  </select>
+  <button class="btn-icon" id="phrPanelBtn" onclick="togglePhrPanel()" title="원본 기록 보기"
+          style="font-size:12px;display:none">&#128203;</button>
   <a href="/" class="nav-btn active">채팅 테스터</a>
   <a href="/manager" class="nav-btn">시나리오 관리</a>
   <a href="/history" class="nav-btn">테스트 이력</a>
@@ -528,6 +535,16 @@
       <div class="input-hint">Enter로 전송 · Shift+Enter로 줄바꿈</div>
     </div>
   </div>
+</div>
+
+<!-- PHR 원본 기록 패널 — 답변이 사실과 맞는지 대조하는 용도 -->
+<div id="phrPanel" style="display:none;position:fixed;top:44px;right:0;bottom:0;width:420px;z-index:400;
+     background:var(--surface);border-left:1px solid var(--border);overflow-y:auto;padding:14px 16px;box-shadow:-4px 0 18px rgba(0,0,0,.25)">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+    <div style="font-size:13px;font-weight:700" id="phrPanelTitle">원본 기록</div>
+    <button class="btn-icon" onclick="togglePhrPanel()" title="닫기" style="font-size:14px">&#10005;</button>
+  </div>
+  <div id="phrPanelBody" style="font-size:11.5px;line-height:1.55;color:var(--text)"></div>
 </div>
 
 <script>
@@ -962,6 +979,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       fetch('/api/auth/status').then(r => r.json()),
       fetch('/api/guidelines').then(r => r.ok ? r.json() : null),
     ]);
+    // PHR 케이스는 없으면 조용히 숨겨지므로 실패해도 진행을 막지 않는다
+    loadPhrCases().catch(() => {});
     setProgress(50);
 
     // 설정 적용
@@ -1137,6 +1156,161 @@ function buildBody(query) {
   return body;
 }
 
+// ──────────────────────────────────────
+// PHR 케이스
+//   선택하면 질문에 해당 개인의 건강기록이 함께 전달된다.
+//   전달 내용 자체는 서버가 케이스 id 로 조회해 붙이므로 여기서는 id 만 보낸다.
+// ──────────────────────────────────────
+let phrCases = [];
+let selectedPhrCaseId = '';
+let selectedPhrCase = null;
+
+async function loadPhrCases() {
+  try {
+    const res = await fetch('/api/phr/cases');
+    if (!res.ok) return;
+    const data = await res.json();
+    phrCases = (data && data.cases) || [];
+  } catch (e) {
+    console.warn('PHR 케이스 조회 실패:', e);
+    return;
+  }
+  const sel = document.getElementById('phrCaseSelect');
+  if (!sel) return;
+  if (!phrCases.length) { sel.style.display = 'none'; return; }
+  sel.style.display = '';
+  sel.innerHTML = '<option value="">PHR 없음</option>';
+  phrCases.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    const period = (c.periodFrom && c.periodTo) ? ` ${c.periodFrom}~${c.periodTo}` : '';
+    opt.textContent = `${c.caseNo}${period} · ${c.label || ''}`;
+    sel.appendChild(opt);
+  });
+  const saved = localStorage.getItem('phrCaseId');
+  if (saved && phrCases.some(c => c.id === saved)) {
+    sel.value = saved;
+    onPhrCaseChange();
+  }
+}
+
+async function onPhrCaseChange() {
+  const sel = document.getElementById('phrCaseSelect');
+  const btn = document.getElementById('phrPanelBtn');
+  selectedPhrCaseId = sel ? sel.value : '';
+  localStorage.setItem('phrCaseId', selectedPhrCaseId);
+  selectedPhrCase = null;
+  if (!selectedPhrCaseId) {
+    if (btn) btn.style.display = 'none';
+    const panel = document.getElementById('phrPanel');
+    if (panel) panel.style.display = 'none';
+    return;
+  }
+  if (btn) btn.style.display = '';
+  try {
+    const res = await fetch(`/api/phr/cases/${encodeURIComponent(selectedPhrCaseId)}`);
+    if (res.ok) {
+      selectedPhrCase = await res.json();
+      renderPhrPanel();
+    }
+  } catch (e) {
+    console.warn('PHR 케이스 상세 조회 실패:', e);
+  }
+}
+
+function togglePhrPanel() {
+  const panel = document.getElementById('phrPanel');
+  if (!panel) return;
+  panel.style.display = (panel.style.display === 'none' || !panel.style.display) ? 'block' : 'none';
+}
+
+function phrEsc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function renderPhrPanel() {
+  const body = document.getElementById('phrPanelBody');
+  const title = document.getElementById('phrPanelTitle');
+  if (!body || !selectedPhrCase) return;
+  const c = selectedPhrCase.case || {};
+  const p = c.period || {};
+  if (title) title.textContent = `${selectedPhrCase.caseNo} · 원본 기록`;
+
+  const H = (t) => `<div style="font-weight:700;margin:12px 0 5px;padding-bottom:3px;border-bottom:1px solid var(--border)">${t}</div>`;
+  let h = '';
+  h += `<div style="color:var(--text-dim)">${phrEsc(selectedPhrCase.label || '')}</div>`;
+  h += `<div style="color:var(--text-dim);margin-top:2px">기간 ${phrEsc(p.from)}~${phrEsc(p.to)} · 검진 ${(c.counts||{}).general||0}회 · 처방 ${(c.counts||{}).prescription||0}건</div>`;
+
+  // 수치 시계열 — 최신값을 굵게, 과거는 뒤에 나열
+  const tl = c.timeline || {};
+  const keys = Object.keys(tl);
+  if (keys.length) {
+    h += H('검진 수치');
+    h += '<table style="width:100%;border-collapse:collapse;font-size:11px">';
+    keys.forEach(k => {
+      const e = tl[k];
+      const s = e.series || [];
+      const latest = s[0] || {};
+      const past = s.slice(1, 5).map(x => `${x.value}<span style="color:var(--text-dim)">(${(x.date||'').slice(0,7)})</span>`).join(', ');
+      const dir = e.direction ? ` <span style="color:var(--text-dim)">${e.direction}</span>` : '';
+      h += `<tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:3px 4px;white-space:nowrap">${phrEsc(k)}</td>
+        <td style="padding:3px 4px;font-weight:700;white-space:nowrap">${phrEsc(latest.value)}${phrEsc(e.unit||'')}
+            <span style="font-weight:400;color:var(--text-dim)">${(latest.date||'').slice(0,7)}</span>${dir}</td>
+        <td style="padding:3px 4px;color:var(--text-dim)">${past}</td></tr>`;
+    });
+    h += '</table>';
+  }
+
+  // 측정되지 않은 항목 — 없다는 사실이 보여야 값 생성 여부를 판단할 수 있다
+  if ((c.missing_items || []).length) {
+    h += H('측정 기록 없음');
+    h += `<div style="color:var(--amber,#BF8F00)">${c.missing_items.map(phrEsc).join(' · ')}</div>`;
+  }
+
+  const ck = c.checkups || {};
+  if ((ck.general || []).length) {
+    h += H('일반검진 판정');
+    h += (ck.general || []).slice().reverse().map(g =>
+      `<div>${phrEsc(g.date || g.year)} — <b>${phrEsc(g.judgment || '-')}</b></div>`).join('');
+  }
+  if ((ck.cancer || []).length) {
+    h += H('암검진 판정');
+    h += (ck.cancer || []).slice().reverse().map(x =>
+      `<div style="margin-bottom:5px">${phrEsc(x.date || x.year)} · ${phrEsc(x.exam)} — <b>${phrEsc(x.judgment)}</b>
+       ${x.recommendation ? `<div style="color:var(--text-dim);font-size:10.5px">${phrEsc(String(x.recommendation).slice(0, 160))}</div>` : ''}</div>`).join('');
+  }
+  if ((ck.oral || []).length) {
+    h += H('구강검진 판정');
+    h += (ck.oral || []).slice().reverse().map(o =>
+      `<div>${phrEsc(o.date || o.year)} — <b>${phrEsc(o.judgment || '-')}</b>
+       ${o.overall || o.interpretation ? `<span style="color:var(--text-dim)"> ${phrEsc(String(o.overall || o.interpretation).slice(0, 80))}</span>` : ''}</div>`).join('');
+  }
+
+  // 처방 — 종료 여부가 계산돼 있어야 현재형 표현의 옳고 그름을 볼 수 있다
+  const rx = c.prescriptions || [];
+  if (rx.length) {
+    h += H(`처방 (최근 20건 / 총 ${rx.length}건)`);
+    h += '<table style="width:100%;border-collapse:collapse;font-size:10.5px">';
+    rx.slice(0, 20).forEach(r => {
+      const color = r.status === '복용기간내' ? 'var(--accent)' : 'var(--text-dim)';
+      h += `<tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:2px 3px">${phrEsc(r.name)}</td>
+        <td style="padding:2px 3px;white-space:nowrap;color:var(--text-dim)">${phrEsc(r.dispensed_date || '-')} ${r.days != null ? r.days + '일' : ''}</td>
+        <td style="padding:2px 3px;white-space:nowrap;color:${color}">${phrEsc(r.status)}</td></tr>`;
+    });
+    h += '</table>';
+  }
+
+  if ((c.warnings || []).length) {
+    h += H('파싱 경고');
+    h += (c.warnings || []).map(w =>
+      `<div style="color:var(--red,#C0392B)">${phrEsc(w.year)} ${phrEsc(w.reason)}</div>`).join('');
+  }
+  body.innerHTML = h;
+}
+
 function getProxyUrl() {
   // 항상 현재 origin 사용 (클라우드/로컬 모두 동일 서버에서 서빙)
   // settings의 proxyUrl이 localhost인데 현재 origin이 다르면 무시
@@ -1187,6 +1361,8 @@ async function callSSE(query, { onGeneration, onProgress, onInfo, onDone, onErro
   const fetchHeaders = { ...cfg.headers };
   if (proxyBase) fetchHeaders['X-Target-URL'] = targetUrl;
   if (conversationId) fetchHeaders['X-Conversation-Id'] = conversationId;
+  // 케이스가 선택돼 있으면 id 만 넘기고 실제 PHR 은 서버가 붙인다
+  if (selectedPhrCaseId) fetchHeaders['X-PHR-Case-Id'] = selectedPhrCaseId;
 
   const resp = await fetch(fetchUrl, {
     method: 'POST',
