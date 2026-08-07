@@ -1311,6 +1311,82 @@ function renderPhrPanel() {
   body.innerHTML = h;
 }
 
+// ──────────────────────────────────────
+// PHR 정합성 평가 (법률·문진에 이은 세 번째 축)
+//   활성 3축 65점. 나머지 3축은 기준 확정 전이라 채점하지 않고 관찰만 남긴다.
+// ──────────────────────────────────────
+function renderPhrEval(ev) {
+  var total = ev.totalScore || 0, max = ev.maxScore || 65;
+  var pct = max ? Math.round(total / max * 100) : 0;
+  var color = pct >= 80 ? 'var(--green)' : pct >= 50 ? '#f59e0b' : 'var(--red)';
+  var h = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">' +
+    '<span style="font-size:12px;font-weight:600">📋 PHR 정합성' +
+      (ev.caseNo ? ' <span style="color:var(--text-dim);font-weight:400">' + escapeHtml(ev.caseNo) + '</span>' : '') +
+    '</span>' +
+    '<span style="font-size:18px;font-weight:700;color:' + color + '">' + total + '<span style="font-size:12px;color:var(--text-dim)">/' + max + '</span></span>' +
+  '</div>';
+
+  (ev.axes || []).forEach(function(ax) {
+    var s = ax.score || 0, m = ax.maxScore || 0;
+    if (!m) return;
+    var p = Math.round(s / m * 100);
+    var bc = p >= 80 ? 'var(--green)' : p >= 50 ? '#f59e0b' : 'var(--red)';
+    h += '<div style="margin-bottom:4px">' +
+      '<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text-dim)">' +
+        '<span>' + escapeHtml(ax.name || ax.key) + '</span><span>' + s + '/' + m + '</span></div>' +
+      '<div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden">' +
+        '<div style="height:100%;width:' + p + '%;background:' + bc + '"></div></div>' +
+      (ax.reason ? '<div style="font-size:12px;color:var(--text-dim);margin-top:2px">' + escapeHtml(ax.reason) + '</div>' : '') +
+      ((ax.issues || []).length ? '<div style="font-size:12px;color:var(--red);margin-top:1px">· ' +
+         ax.issues.map(escapeHtml).join('<br>· ') + '</div>' : '') +
+    '</div>';
+  });
+
+  // 인용 대조 — 이 축의 핵심 산출물. 어느 문장이 원본과 맞고 틀린지 줄 단위로 보인다
+  var cits = ev.citations || [];
+  if (cits.length) {
+    var vc = { '일치': 'var(--green)', '불일치': 'var(--red)', '생성': 'var(--red)',
+               '시점누락': '#f59e0b', '해당없음': 'var(--text-dim)' };
+    h += '<details style="margin-top:6px"><summary style="font-size:12px;color:var(--text-dim);cursor:pointer">인용 대조 ' + cits.length + '건</summary>' +
+      '<table style="width:100%;border-collapse:collapse;font-size:11.5px;margin-top:4px">';
+    cits.forEach(function(c) {
+      h += '<tr style="border-bottom:1px solid var(--border)">' +
+        '<td style="padding:3px 4px">' + escapeHtml(String(c.quote || '').slice(0, 70)) + '</td>' +
+        '<td style="padding:3px 4px;white-space:nowrap;color:' + (vc[c.verdict] || 'var(--text-dim)') + ';font-weight:700">' + escapeHtml(c.verdict || '') + '</td>' +
+        '<td style="padding:3px 4px;color:var(--text-dim)">' + escapeHtml(String(c.source || '').slice(0, 40)) + '</td></tr>';
+    });
+    h += '</table></details>';
+  }
+  if (ev.summary) h += '<div style="font-size:12px;color:var(--text-dim);margin-top:5px">' + escapeHtml(ev.summary) + '</div>';
+  if ((ev.observations || []).length) {
+    h += '<details style="margin-top:4px"><summary style="font-size:11.5px;color:var(--text-dim);cursor:pointer">보류 축 관찰 ' +
+      ev.observations.length + '건 (' + (ev.heldAxes || []).map(escapeHtml).join(' · ') + ')</summary>' +
+      '<div style="font-size:11.5px;color:var(--text-dim);margin-top:3px">· ' +
+      ev.observations.map(escapeHtml).join('<br>· ') + '</div></details>';
+  }
+  return h;
+}
+
+async function evaluatePhr(prompt, response, msgId, caseId) {
+  var el = document.getElementById('phr-eval-' + msgId);
+  if (!el) return;
+  el.style.display = 'block';
+  el.innerHTML = '<span style="font-size:12px;color:var(--text-dim)">PHR 정합성 평가 중...</span>';
+  try {
+    const res = await fetch('/api/evaluate-phr', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: prompt, response: response, caseId: caseId || selectedPhrCaseId,
+                             conversationId: (typeof currentConvId !== 'undefined' ? currentConvId : null),
+                             messageId: msgId }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'PHR 평가 실패');
+    el.innerHTML = renderPhrEval(data);
+  } catch (e) {
+    el.innerHTML = '<span style="color:var(--red);font-size:12px">PHR 평가 실패: ' + escapeHtml(e.message) + '</span>';
+  }
+}
+
 function getProxyUrl() {
   // 항상 현재 origin 사용 (클라우드/로컬 모두 동일 서버에서 서빙)
   // settings의 proxyUrl이 localhost인데 현재 origin이 다르면 무시
@@ -2368,6 +2444,33 @@ function renderAssistantEvaluation(msgDiv, evalData) {
     }
   }
   evalBox.appendChild(consultSection);
+
+  // 4e-2. PHR 정합성 — 케이스가 선택된 대화에서만 나타나는 세 번째 축
+  var phrEval = evalData.phrEval || null;
+  if (selectedPhrCaseId || phrEval) {
+    var phrSection = document.createElement('div');
+    phrSection.style.cssText = 'margin-top:8px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px';
+    if (phrEval && phrEval.totalScore != null) {
+      phrSection.innerHTML = renderPhrEval(phrEval);
+    } else {
+      phrSection.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">' +
+        '<span style="font-size:12px;font-weight:600;color:var(--text)">📋 PHR 정합성</span>' +
+        '<button class="phr-eval-btn" style="font-size:13px">PHR 평가</button>' +
+      '</div><div id="phr-eval-' + escapeHtml(msgId) + '" style="display:none"></div>';
+      var _phrPrompt = userPrompt, _phrText = fullText, _phrMid = msgId, _phrCase = selectedPhrCaseId;
+      var phrBtn = phrSection.querySelector('.phr-eval-btn');
+      if (phrBtn) {
+        phrBtn.addEventListener('click', function() {
+          this.style.display = 'none';
+          var el = document.getElementById('phr-eval-' + _phrMid);
+          if (el) el.style.display = 'block';
+          evaluatePhr(_phrPrompt, _phrText, _phrMid, _phrCase);
+        });
+        // 서버가 백그라운드로 채점하므로 자동 실행은 하지 않는다 (중복 호출 방지)
+      }
+    }
+    evalBox.appendChild(phrSection);
+  }
 
   // 4f. Enhancement button
   var _enhUserPrompt = userPrompt;

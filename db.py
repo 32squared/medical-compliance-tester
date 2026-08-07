@@ -228,6 +228,7 @@ CREATE TABLE IF NOT EXISTS messages (
     gpt_eval_json TEXT,
     gpt_model TEXT,
     consultation_eval_json TEXT,
+    phr_eval_json TEXT,
     token_usage_json TEXT,
     FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
 );
@@ -545,6 +546,7 @@ CREATE TABLE IF NOT EXISTS messages (
     gpt_eval_json JSONB,
     gpt_model TEXT,
     consultation_eval_json JSONB,
+    phr_eval_json JSONB,
     token_usage_json JSONB,
     FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
 );
@@ -857,6 +859,8 @@ def init_db(db_path=None):
                 "ALTER TABLE comments ADD COLUMN IF NOT EXISTS full_response TEXT DEFAULT ''",
                 "ALTER TABLE comments ADD COLUMN IF NOT EXISTS updated_at TEXT",
                 "ALTER TABLE messages ADD COLUMN IF NOT EXISTS consultation_eval_json JSONB",
+                "ALTER TABLE messages ADD COLUMN IF NOT EXISTS phr_eval_json JSONB",
+                "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS phr_case_id TEXT DEFAULT ''",
                 "ALTER TABLE messages ADD COLUMN IF NOT EXISTS token_usage_json JSONB",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '[]'::jsonb",
                 "ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS turns_json JSONB DEFAULT '[]'::jsonb",
@@ -1263,6 +1267,8 @@ def init_db(db_path=None):
             "ALTER TABLE comments ADD COLUMN full_response TEXT DEFAULT ''",
             "ALTER TABLE comments ADD COLUMN updated_at TEXT",
             "ALTER TABLE messages ADD COLUMN consultation_eval_json TEXT",
+            "ALTER TABLE messages ADD COLUMN phr_eval_json TEXT",
+            "ALTER TABLE conversations ADD COLUMN phr_case_id TEXT DEFAULT ''",
             "ALTER TABLE messages ADD COLUMN token_usage_json TEXT",
             "ALTER TABLE users ADD COLUMN permissions TEXT DEFAULT '[]'",
             "ALTER TABLE scenarios ADD COLUMN turns_json TEXT DEFAULT '[]'",
@@ -1743,6 +1749,7 @@ def get_conversation(conv_id):
                 'follow_ups_json': 'followUps',
                 'gpt_eval_json': 'gptEval',
                 'consultation_eval_json': 'consultationEval',
+                'phr_eval_json': 'phrEval',
                 'token_usage_json': 'tokenUsage',
             }
             for jf, key in json_field_map.items():
@@ -1816,6 +1823,7 @@ def update_message(conv_id, msg_id, updates):
     allowed_json = {'compliance': 'compliance_json', 'searchResults': 'search_results_json',
                     'followUps': 'follow_ups_json', 'gptEval': 'gpt_eval_json',
                     'consultationEval': 'consultation_eval_json',
+                    'phrEval': 'phr_eval_json',
                     'tokenUsage': 'token_usage_json'}
     allowed_plain = {'gptModel': 'gpt_model', 'responseTime': 'response_time'}
     ph = _p()

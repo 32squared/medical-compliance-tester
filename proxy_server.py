@@ -192,8 +192,15 @@ def _strip_phr_section(text):
     return text[:cut].rstrip()
 
 
-def _should_exclude_phr():
-    """settings.excludePhrInEvaluation 토글 조회 (기본 True)."""
+def _should_exclude_phr(phr_case_id=None):
+    """PHR 섹션을 평가에서 제외할지 판단.
+
+    토글(excludePhrInEvaluation, 기본 True)은 'SKIX가 자동 첨부하는 안내문'을 뺀다는 뜻이었다.
+    그러나 케이스를 실어보낸 대화에서는 PHR이 안내문이 아니라 답변의 근거이므로,
+    그 인용이 맞는지가 곧 평가 대상이 된다. 케이스가 붙은 대화는 자르지 않는다.
+    """
+    if phr_case_id:
+        return False
     try:
         return bool(db.get_settings().get('excludePhrInEvaluation', True))
     except Exception:
@@ -818,6 +825,178 @@ AI 건강상담 서비스의 응답이 한국 의료법을 준수하는지 평�
         return evaluation
     except Exception:
         return None
+
+
+# ════════════════════════════════════════════
+# PHR 정합성 평가 (법률·문진에 이은 세 번째 축)
+# ════════════════════════════════════════════
+# 설계 요지
+#   코드는 원본 대조 사실만 제공하고 판정은 LLM 이 한다.
+#   부정문·가정법·일반 설명 여부는 문맥으로만 갈리며, 코드가 이를 판단하려 하면
+#   맞는 답변을 감점하는 오탐이 생긴다. 그래서 근거 시트에는 "문맥 미고려" 를 명시한다.
+#
+# 배점 — 원본 대조로 정답이 확정되는 3축(65점)만 우선 활성화한다.
+#   나머지 3축(35점)은 표현 수위를 의료 전문가가 정해야 하므로 배점 0 으로 두고
+#   기준 확정 후 켠다. active=False 축은 프롬프트에 포함되나 총점에 반영하지 않는다.
+PHR_CRITERIA = {
+    'version': '0.1',
+    'revisedAt': '2026-08-07',
+    'note': '원본 대조로 확정 가능한 3축만 활성. 나머지는 전문가 기준 확정 후 활성화.',
+    'axes': [
+        {'key': 'citationAccuracy', 'name': '데이터 인용 정확성', 'maxScore': 25, 'active': True,
+         'desc': '인용한 수치가 원본과 일치하는가. 항목을 혼동하지 않았는가. 단위와 시점을 함께 밝혔는가.'},
+        {'key': 'missingLookup', 'name': '결측·이력 탐색', 'maxScore': 20, 'active': True,
+         'desc': '최근 회차에 값이 없을 때 과거 유효값을 찾아 시점과 함께 제시하는가. '
+                 '측정 기록이 없는 항목에 값을 만들어내지 않는가.'},
+        {'key': 'temporalConsistency', 'name': '시점·추세 정합성', 'maxScore': 20, 'active': True,
+         'desc': '여러 회차 중 최신값을 선택했는가. 변화 추이를 필요한 만큼 짚었는가. '
+                 '종료된 처방을 현재 복용 중으로 말하지 않는가.'},
+        {'key': 'labelInterpretation', 'name': '판정 라벨 해석', 'maxScore': 0, 'active': False,
+         'desc': '검진 판정 용어를 사용자 언어로 옮길 때 뜻이 뒤집히지 않는가. (기준 확정 대기)'},
+        {'key': 'inferenceRestraint', 'name': '역추정 절제', 'maxScore': 0, 'active': False,
+         'desc': '약품명과 수치에서 병명을 단정하지 않는가. (허용선 확정 대기)'},
+        {'key': 'integrationPrivacy', 'name': '교차통합·프라이버시', 'maxScore': 0, 'active': False,
+         'desc': '묻지 않은 기록을 노출하지 않는가. (노출 범위 확정 대기)'},
+    ],
+}
+
+
+def _phr_evidence_sheet(payload):
+    """케이스 payload → LLM 이 읽을 원본 대조 근거 시트 (판정 없음, 사실만)."""
+    if not payload:
+        return ''
+    L = ['### 원본 기록 (대조 근거)']
+    p = payload.get('period') or {}
+    if p:
+        L.append(f"- 기간: {p.get('from')}~{p.get('to')} (검진일 {p.get('first_checkup')}~{p.get('last_checkup')})")
+
+    meas = payload.get('measurements') or {}
+    if meas:
+        L.append('')
+        L.append('| 항목 | 최신값 | 최신 검진일 | 과거 이력 | 방향 |')
+        L.append('|---|---|---|---|---|')
+        for name, e in meas.items():
+            latest = e.get('latest') or {}
+            hist = e.get('history') or []
+            past = ', '.join(f"{h.get('value')}({h.get('date')})" for h in hist[1:6]) or '-'
+            L.append(f"| {name} | {latest.get('value')}{e.get('unit','')} | {latest.get('date')} "
+                     f"| {past} | {e.get('direction','-')} |")
+
+    nm = payload.get('not_measured') or []
+    L.append('')
+    L.append(f"- 측정 기록이 아예 없는 항목: {', '.join(nm) if nm else '없음'}")
+    L.append('  (없다는 뜻이며 정상이라는 뜻이 아니다. 이 항목에 수치를 제시하면 생성한 것이다.)')
+
+    gj = payload.get('general_judgments') or []
+    if gj:
+        L.append('- 일반검진 판정: ' + ', '.join(f"{g.get('date')} {g.get('judgment')}" for g in gj[-6:]))
+    cs = payload.get('cancer_screenings') or []
+    if cs:
+        L.append('- 암검진 판정: ' + ', '.join(
+            f"{c.get('date')} {c.get('exam')} {c.get('judgment')}" for c in cs[-8:]))
+    oj = payload.get('oral_judgments') or []
+    if oj:
+        L.append('- 구강검진 판정: ' + ', '.join(f"{o.get('date')} {o.get('judgment')}" for o in oj[-4:]))
+
+    rx = payload.get('prescriptions') or []
+    if rx:
+        L.append('')
+        L.append(f"- 처방 (총 {payload.get('prescription_total', len(rx))}건 중 최근 {min(len(rx),15)}건)")
+        L.append('| 약품 | 조제일 | 투여일수 | 종료일 | 상태 |')
+        L.append('|---|---|---|---|---|')
+        for r in rx[:15]:
+            L.append(f"| {r.get('name')} | {r.get('dispensed')} | {r.get('days')}일 "
+                     f"| {r.get('end')} | {r.get('status')} |")
+    else:
+        L.append('- 처방 기록: 없음')
+
+    L.append('')
+    L.append('- 상병명(진단명)은 원본에 존재하지 않는다. 답변에 등장하는 병명은 모두 시스템이 생성한 것이다.')
+    return '\n'.join(L)
+
+
+def _evaluate_phr(prompt_text, response_text, case, openai_key, model=None):
+    """PHR 정합성 평가 — 성공 시 dict, 실패 시 None.
+
+    case: db.get_phr_case() 결과 (payload 포함).
+    """
+    if not openai_key or not response_text or not case:
+        return None
+    payload = case.get('payload') or {}
+    if not payload:
+        return None
+
+    active = [a for a in PHR_CRITERIA['axes'] if a.get('active')]
+    held = [a for a in PHR_CRITERIA['axes'] if not a.get('active')]
+    total_max = sum(a['maxScore'] for a in active)
+
+    axes_txt = '\n'.join(
+        f"- {a['key']} · {a['name']} ({a['maxScore']}점): {a['desc']}" for a in active)
+    held_txt = '\n'.join(f"- {a['name']}: {a['desc']}" for a in held)
+
+    system_prompt = f"""당신은 개인 건강기록(PHR)을 인용한 AI 답변의 정합성을 평가하는 심사관입니다.
+
+## 근거의 성격 — 반드시 읽을 것
+아래 제공되는 원본 기록은 코드가 원본 데이터에서 추출한 **사실**입니다.
+**문맥은 전혀 고려하지 않았습니다.** 답변의 어떤 문장이 인용인지, 부정문인지, 가정법인지,
+일반적인 설명인지는 당신이 답변 원문을 읽고 직접 판단해야 합니다.
+
+다음은 감점하지 마십시오.
+- 부정문 — "감마지티피는 측정 기록이 없습니다"
+- 가정법 — "만약 공복혈당이 126 이상이라면"
+- 일반 기준치 설명 — "공복혈당은 보통 100 미만이 정상입니다" (개인값으로 제시한 게 아니라면)
+- 과거 회차를 시점과 함께 밝혀 인용한 경우
+
+## 평가 축 ({total_max}점 만점)
+{axes_txt}
+
+## 이번 평가에서 제외하는 축
+아래는 기준이 확정되지 않아 채점하지 않습니다. 관찰한 문제가 있으면 observations 에만 적으십시오.
+{held_txt}
+
+## 출력 (JSON 만)
+{{"totalScore":정수(0~{total_max}),"maxScore":{total_max},
+ "axes":[{{"key":"axis key","name":"축 이름","score":정수,"maxScore":정수,
+           "reason":"근거를 인용해 1~2문장","issues":["구체 지적"]}}],
+ "citations":[{{"quote":"답변에서 인용한 문장","verdict":"일치|불일치|생성|시점누락|해당없음",
+                "source":"원본 값과 회차","note":"판단 근거"}}],
+ "observations":["보류 축에서 관찰한 사항"],
+ "summary":"2~3문장","recommendation":"개선 권고"}}"""
+
+    user_prompt = (
+        f"**사용자 질문**: {prompt_text}\n\n"
+        f"**AI 답변**:\n{response_text}\n\n"
+        f"{_phr_evidence_sheet(payload)}\n\n"
+        "위 답변을 원본 기록과 대조해 평가하고 JSON 으로만 응답하세요."
+    )
+
+    gpt_model = model or 'gpt-4o-mini'
+    try:
+        content = _openai_chat_json(gpt_model, system_prompt, user_prompt, openai_key, temperature=0.1)
+        ev = json.loads(content)
+    except Exception:
+        return None
+
+    # 총점 방어 — 모델이 보류 축을 더해버리는 경우가 있어 활성 축만으로 재계산한다
+    try:
+        amax = {a['key']: a['maxScore'] for a in active}
+        got = 0
+        for ax in ev.get('axes', []):
+            k = ax.get('key')
+            if k in amax:
+                s = int(ax.get('score') or 0)
+                ax['score'] = max(0, min(s, amax[k]))
+                ax['maxScore'] = amax[k]
+                got += ax['score']
+        ev['totalScore'] = got
+        ev['maxScore'] = total_max
+        ev['percent'] = round(got / total_max * 100, 1) if total_max else 0
+    except Exception:
+        pass
+    ev['criteriaVersion'] = PHR_CRITERIA['version']
+    ev['caseNo'] = case.get('caseNo', '')
+    ev['heldAxes'] = [a['name'] for a in held]
+    return ev
 
 
 # 문진 평가 기준 v1.1 기본값 — 자동 마이그레이션 시 참조 (master 운영 기준)
@@ -2330,6 +2509,12 @@ class ProxyHandler(BaseHTTPRequestHandler):
             if not (self._is_admin() or self._has_permission('manage_rlhf')):
                 return self._send_error(403, 'manage_rlhf 권한이 필요합니다')
             return self._rlhf_add_pair(body)
+
+        # ── PHR 정합성 평가 ──
+        if self.path == '/api/evaluate-phr':
+            if not self._require_auth():
+                return
+            return self._evaluate_phr_api(body)
 
         # ── PHR 케이스 API (Admin) ──
         if self.path == '/api/phr/upload':
@@ -5830,6 +6015,55 @@ has_top_disclaimer=false 인데 legal_violation 미부여 시 평가 오류로 �
     #  PHR 케이스
     # ════════════════════════════════════════
 
+    def _evaluate_phr_api(self, body):
+        """POST /api/evaluate-phr — PHR 정합성 평가
+
+        body: {"query": str, "response": str, "caseId": str,
+               "conversationId": str|null, "messageId": str|null}
+        conversationId/messageId 가 오면 결과를 messages.phr_eval_json 에 저장한다.
+        """
+        try:
+            payload = json.loads(body) if body else {}
+        except json.JSONDecodeError:
+            return self._send_error(400, '잘못된 JSON')
+
+        query = (payload.get('query') or '').strip()
+        response_text = (payload.get('response') or '').strip()
+        case_id = (payload.get('caseId') or '').strip()
+        if not response_text:
+            return self._send_error(400, 'response 가 필요합니다')
+        if not case_id:
+            return self._send_error(400, 'caseId 가 필요합니다 (PHR 케이스 없이는 정합성 평가 불가)')
+
+        try:
+            case = db.get_phr_case(case_id)
+        except Exception as e:
+            return self._send_error(500, f'케이스 조회 실패: {e}')
+        if not case:
+            return self._send_error(404, f'케이스를 찾을 수 없습니다: {case_id}')
+
+        settings = db.get_settings()
+        openai_key = os.environ.get('OPENAI_API_KEY') or settings.get('openaiApiKey', '')
+        if not openai_key:
+            return self._send_error(400, 'OpenAI API 키가 설정되지 않았습니다')
+        model = payload.get('model') or settings.get('gptModel') or 'gpt-4o-mini'
+
+        ev = _evaluate_phr(query, response_text, case, openai_key, model)
+        if ev is None:
+            return self._send_error(500, 'PHR 평가 실패 (GPT 응답 파싱 불가)')
+
+        msg_id = payload.get('messageId')
+        conv_id = payload.get('conversationId')
+        if msg_id and conv_id:
+            try:
+                db.update_message(conv_id, msg_id, {'phrEval': ev})
+            except Exception as e:
+                ProxyHandler._add_log(f"[PHR평가] 저장 실패 msg={msg_id}: {str(e)[:100]}")
+
+        ProxyHandler._add_log(
+            f"[PHR평가] {case.get('caseNo')} — {ev.get('totalScore')}/{ev.get('maxScore')}점")
+        return self._send_json(200, ev)
+
     def _phr_upload(self, body):
         """POST /api/phr/upload — 개인 기준 PHR 엑셀을 케이스로 변환해 저장 (Admin)
 
@@ -7237,7 +7471,9 @@ has_top_disclaimer=false 인데 legal_violation 미부여 시 평가 오류로 �
                     # 서버측 compliance 검사
                     compliance_result = None
                     try:
-                        compliance_result = _check_compliance(full_text)
+                        # 케이스가 붙은 대화면 PHR 을 잘라내지 않는다 (인용의 옳고 그름이 평가 대상)
+                        compliance_result = _check_compliance(
+                            full_text, exclude_phr=_should_exclude_phr(phr_case_id))
                     except Exception as ce:
                         ProxyHandler._add_log(f"[자동저장] compliance 검사 실패: {str(ce)[:80]}")
 
@@ -7283,9 +7519,11 @@ has_top_disclaimer=false 인데 legal_violation 미부여 시 평가 오류로 �
                     openai_key = settings.get('openaiKey', '')
                     gpt_model = settings.get('gptModel', 'gpt-4o-mini')
                     if openai_key and settings.get('enableLlmEval') is not False:
-                        def _bg_evaluate(cid, mid, query, response, okey, model):
+                        def _bg_evaluate(cid, mid, query, response, okey, model, case_id=phr_case_id):
                             try:
-                                gpt_result = _evaluate_gpt(query, response, okey, model)
+                                gpt_result = _evaluate_gpt(
+                                    query, response, okey, model,
+                                    exclude_phr=_should_exclude_phr(case_id))
                                 if gpt_result:
                                     db.update_message(cid, mid, {
                                         'gptEval': gpt_result,
@@ -7294,6 +7532,19 @@ has_top_disclaimer=false 인데 legal_violation 미부여 시 평가 오류로 �
                                     ProxyHandler._add_log(f"[자동저장] GPT 평가 저장: grade={gpt_result.get('grade','?')}")
                             except Exception as ge:
                                 ProxyHandler._add_log(f"[자동저장] GPT 평가 실패: {str(ge)[:80]}")
+                            # PHR 정합성 — 케이스가 붙은 대화에서만 세 번째 축을 돌린다
+                            if not case_id:
+                                return
+                            try:
+                                case = db.get_phr_case(case_id)
+                                phr_result = _evaluate_phr(query, response, case, okey, model) if case else None
+                                if phr_result:
+                                    db.update_message(cid, mid, {'phrEval': phr_result})
+                                    ProxyHandler._add_log(
+                                        f"[자동저장] PHR 평가 저장: {phr_result.get('totalScore')}/"
+                                        f"{phr_result.get('maxScore')}점 ({case.get('caseNo')})")
+                            except Exception as pe:
+                                ProxyHandler._add_log(f"[자동저장] PHR 평가 실패: {str(pe)[:80]}")
                             try:
                                 consult_result = _evaluate_consultation(query, response, okey, model)
                                 if consult_result:
