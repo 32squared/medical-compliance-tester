@@ -784,31 +784,33 @@ function applyRoleBasedUI(auth) {
     if (sl) sl.style.display = 'none';
   }
 
-  // 비-Admin: 엔드포인트 토글의 RAG/Both 옵션 숨김 (SKIX만 사용 가능)
+  // 비-Admin: 엔드포인트를 SKIX 로 고정하고 선택 영역 자체를 감춘다.
+  // (선택지를 지우는 대신 통째로 숨겨야 "고를 수 있다"는 오해가 없다)
   if (!auth.isAdmin) {
-    const ragLabel = document.getElementById('endpointLabelRag');
-    const bothLabel = document.getElementById('endpointLabelBoth');
-    const ragNotice = document.getElementById('endpointRagNotice');
-    if (ragLabel) ragLabel.style.display = 'none';
-    if (bothLabel) bothLabel.style.display = 'none';
-    if (ragNotice) ragNotice.style.display = 'none';
-    // 비-Admin이면 SKIX 강제 선택
     const skixRadio = document.querySelector('input[name="endpointMode"][value="skix"]');
     if (skixRadio) {
       skixRadio.checked = true;
       try { skixRadio.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {}
     }
+    const bar = document.getElementById('endpointToggleBar');
+    if (bar) bar.style.display = 'none';
+    // 환경(DEV/STG/PROD) 전환도 관리자 전용 — 일반 계정은 설정된 환경을 그대로 쓴다
+    const envSel = document.getElementById('envSelector');
+    if (envSel) envSel.style.display = 'none';
   }
 
-  // advisor: 채팅 테스터 외 모든 메뉴 숨김 + 평가 결과 숨김
-  if (userRole === 'advisor') {
+  // 비-Admin: 상단 메뉴는 채팅 테스터만 남긴다 (좌측 대화 목록은 그대로 유지)
+  if (!auth.isAdmin) {
     document.querySelectorAll('.topbar .nav-btn').forEach(function(el) {
       var href = el.getAttribute('href') || '';
-      // 채팅 테스터(/, /chat_tester.html) 제외 모두 숨김
       if (href !== '/' && href !== '/chat_tester.html') {
         el.style.display = 'none';
       }
     });
+  }
+
+  // advisor: 평가 결과까지 숨김 (중립적 자문 의견 수집 위함)
+  if (userRole === 'advisor') {
     // advisor에게는 GPT/문진/정규식 평가 결과를 모두 숨김 (중립적 자문 의견 수집 위함)
     // 동적 CSS 주입으로 향후 생성될 메시지에도 자동 적용
     var advisorStyle = document.getElementById('advisorHideEvalStyle');
@@ -819,7 +821,8 @@ function applyRoleBasedUI(auth) {
         .eval-result-box, .eval-section,
         [id^="consultation-eval-"], .llm-eval,
         .compliance-badge, .eval-btn,
-        .eval-loading {
+        .eval-loading,
+        .phr-eval-section, .phr-eval-btn, [id^="phr-eval-"] {
           display: none !important;
         }
       `;
@@ -2449,6 +2452,7 @@ function renderAssistantEvaluation(msgDiv, evalData) {
   var phrEval = evalData.phrEval || null;
   if (selectedPhrCaseId || phrEval) {
     var phrSection = document.createElement('div');
+    phrSection.className = 'phr-eval-section';   // advisor 에게는 CSS 로 숨긴다
     phrSection.style.cssText = 'margin-top:8px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px';
     if (phrEval && phrEval.totalScore != null) {
       phrSection.innerHTML = renderPhrEval(phrEval);
