@@ -1213,7 +1213,26 @@ async function loadPhrCases() {
 async function onPhrCaseChange() {
   const sel = document.getElementById('phrCaseSelect');
   const btn = document.getElementById('phrPanelBtn');
-  selectedPhrCaseId = sel ? sel.value : '';
+  const nextId = sel ? sel.value : '';
+
+  // 케이스를 바꾸면 반드시 새 대화로 시작한다.
+  //   - SKIX conversation_strid 를 이어가면 이전 케이스의 PHR 이 문맥에 남는다
+  //   - 대화 1건에 케이스 1건이 대응해야 진행 현황(질문 여부)이 맞는다
+  //   - 답변별 검토도 어느 페르소나의 것인지 섞이면 안 된다
+  if (nextId !== selectedPhrCaseId && chatHistory && chatHistory.length > 0) {
+    const prev = phrCases.find(function(c) { return c.id === selectedPhrCaseId; });
+    const next = phrCases.find(function(c) { return c.id === nextId; });
+    const msg = '케이스를 ' + (prev ? prev.caseNo : 'PHR 없음') + ' → ' +
+      (next ? next.caseNo : 'PHR 없음') + ' 로 바꾸면 새 대화로 시작합니다.\n' +
+      '지금 대화는 목록에 저장되어 있습니다. 계속할까요?';
+    if (!confirm(msg)) {
+      if (sel) sel.value = selectedPhrCaseId;   // 선택 되돌리기
+      return;
+    }
+    clearChat();
+  }
+
+  selectedPhrCaseId = nextId;
   localStorage.setItem('phrCaseId', selectedPhrCaseId);
   selectedPhrCase = null;
   const panel = document.getElementById('phrPanel');
@@ -1362,6 +1381,33 @@ function buildAdvisoryCard(msgId, query, response, caseId) {
 function togglePhrPanel() {
   const panel = document.getElementById('phrPanel');
   if (panel) panel.classList.toggle('open');
+}
+
+// 기존 대화를 열 때 선택기를 그 대화의 케이스로 맞춘다.
+// onPhrCaseChange 를 거치지 않는 이유 — 그쪽은 '사용자가 바꿨을 때' 새 대화로 리셋하는 경로다.
+async function syncPhrCaseFromConversation(caseId) {
+  const sel = document.getElementById('phrCaseSelect');
+  const panel = document.getElementById('phrPanel');
+  const btn = document.getElementById('phrPanelBtn');
+  selectedPhrCaseId = caseId || '';
+  selectedPhrCase = null;
+  if (sel) sel.value = phrCases.some(function(c) { return c.id === selectedPhrCaseId; }) ? selectedPhrCaseId : '';
+  if (!selectedPhrCaseId) {
+    if (btn) btn.style.display = 'none';
+    if (panel) panel.classList.remove('open');
+    renderPersonaCard();
+    return;
+  }
+  if (btn) btn.style.display = '';
+  try {
+    const res = await fetch(`/api/phr/cases/${encodeURIComponent(selectedPhrCaseId)}`);
+    if (res.ok) {
+      selectedPhrCase = await res.json();
+      renderPhrPanel();
+      renderPersonaCard();
+      if (panel) panel.classList.add('open');
+    }
+  } catch (e) { console.warn('케이스 동기화 실패:', e); }
 }
 
 // ──────────────────────────────────────
@@ -4262,6 +4308,9 @@ async function loadConversation(convId) {
     chatHistory = [];
     currentConvId = convId;
     conversationStrid = conv.conversationStrid || null;
+    // 이 대화가 어느 케이스로 진행됐는지 선택기에 반영한다.
+    // 안 맞추면 CASE-02 대화를 열어놓고 CASE-09 로 이어 묻게 된다.
+    syncPhrCaseFromConversation(conv.phr_case_id || conv.phrCaseId || '');
     const messagesEl = document.getElementById('messages');
     messagesEl.innerHTML = '';
 
