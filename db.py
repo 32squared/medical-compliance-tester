@@ -1835,11 +1835,24 @@ def create_conversation(data):
     conv_id = data.get('id') or f"conv-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}-{secrets.token_hex(4)}"
     with get_conn() as (conn, cur):
         cur.execute(
-            f"INSERT INTO conversations (id, user_id, user_name, title, env, conversation_strid, created_at, updated_at) VALUES ({_ph(8)})",
+            f"INSERT INTO conversations (id, user_id, user_name, title, env, conversation_strid, phr_case_id, created_at, updated_at) VALUES ({_ph(9)})",
             (conv_id, data.get('userId', ''), data.get('userName', ''), title,
-             data.get('env', 'dev'), data.get('conversationStrid', ''), now, now)
+             data.get('env', 'dev'), data.get('conversationStrid', ''),
+             data.get('phrCaseId', ''), now, now)
         )
     return get_conversation(conv_id)
+
+
+def set_conversation_phr_case(conv_id, case_id):
+    """대화에 PHR 케이스를 기록한다. 자문 진행 현황(질문 여부) 집계의 근거가 된다."""
+    if not conv_id or not case_id:
+        return 0
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(
+            f"UPDATE conversations SET phr_case_id = {ph} WHERE id = {ph} AND (phr_case_id IS NULL OR phr_case_id = '')",
+            (case_id, conv_id))
+        return cur.rowcount
 
 
 def add_message(conv_id, msg_data):

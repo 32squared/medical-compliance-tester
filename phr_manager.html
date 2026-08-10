@@ -86,10 +86,10 @@
       <thead><tr>
         <th style="width:90px">케이스</th><th style="width:110px">기간</th>
         <th style="width:58px">검진</th><th style="width:58px">처방</th>
-        <th>라벨 · 태그</th><th style="width:180px">분과</th>
-        <th style="width:210px">배정</th><th style="width:120px"></th>
+        <th>라벨 · 태그</th><th style="width:150px">분과</th>
+        <th style="width:170px">배정</th><th style="width:120px">진행</th><th style="width:150px"></th>
       </tr></thead>
-      <tbody id="caseRows"><tr><td colspan="8" class="muted">불러오는 중...</td></tr></tbody>
+      <tbody id="caseRows"><tr><td colspan="9" class="muted">불러오는 중...</td></tr></tbody>
     </table>
   </div>
 </div>
@@ -155,6 +155,7 @@
 <script>
 let cases = [];
 let users = [];
+let progress = {};
 let assignTarget = null;
 
 function esc(s) {
@@ -170,19 +171,27 @@ async function loadUsers() {
   } catch (e) { console.warn('계정 조회 실패', e); }
 }
 
+async function loadProgress() {
+  try {
+    const res = await fetch('/api/advisory/progress');
+    if (res.ok) progress = (await res.json()).byCase || {};
+  } catch (e) { progress = {}; }
+}
+
 async function loadCases() {
   const tb = document.getElementById('caseRows');
+  await loadProgress();
   try {
     const res = await fetch('/api/phr/cases');
-    if (!res.ok) { tb.innerHTML = `<tr><td colspan="8" class="err">조회 실패 (HTTP ${res.status})</td></tr>`; return; }
+    if (!res.ok) { tb.innerHTML = `<tr><td colspan="9" class="err">조회 실패 (HTTP ${res.status})</td></tr>`; return; }
     const d = await res.json();
     cases = d.cases || [];
   } catch (e) {
-    tb.innerHTML = `<tr><td colspan="8" class="err">조회 실패: ${esc(e.message)}</td></tr>`;
+    tb.innerHTML = `<tr><td colspan="9" class="err">조회 실패: ${esc(e.message)}</td></tr>`;
     return;
   }
   document.getElementById('caseCount').textContent = `${cases.length}건`;
-  if (!cases.length) { tb.innerHTML = '<tr><td colspan="8" class="muted">케이스가 없다. 위에서 엑셀을 업로드한다.</td></tr>'; return; }
+  if (!cases.length) { tb.innerHTML = '<tr><td colspan="9" class="muted">케이스가 없다. 위에서 엑셀을 업로드한다.</td></tr>'; return; }
 
   tb.innerHTML = cases.map(c => {
     const cnt = c.counts || {};
@@ -192,6 +201,14 @@ async function loadCases() {
     const assignedTxt = assigned.length
       ? assigned.map(u => `<span class="tag">${esc(u)}</span>`).join('')
       : '<span class="muted">미배정</span>';
+    // 진행 — 질문(대화)과 검토를 나눠 본다. 질문만 하고 검토를 안 한 상태가 가장 흔한 누락이다
+    const st = progress[c.id] || {};
+    const progHtml = (st.reviews
+        ? `<span class="ok">검토 ${st.reviews}건</span>`
+        : (st.conversations ? '<span class="warn">질문만</span>' : '<span class="muted">미착수</span>'))
+      + (st.conversations ? `<div class="muted" style="font-size:10px">대화 ${st.conversations}</div>` : '')
+      + (c.persona && c.persona.reviewed === false && (c.persona.age || c.persona.sex)
+          ? '<div class="warn" style="font-size:10px">페르소나 미검수</div>' : '');
     return `<tr>
       <td><b>${esc(c.caseNo)}</b><div class="muted" style="font-size:10px">${esc(c.personRef)}</div></td>
       <td class="muted">${esc(c.periodFrom)}~${esc(c.periodTo)}</td>
@@ -200,6 +217,7 @@ async function loadCases() {
       <td>${esc(c.label)}<div style="margin-top:3px">${tags}</div></td>
       <td>${sp}</td>
       <td>${assignedTxt}</td>
+      <td>${progHtml}</td>
       <td style="white-space:nowrap">
         <button class="btn ghost" onclick="showDetail('${esc(c.id)}')">상세</button>
         <button class="btn ghost" onclick="openPersona('${esc(c.id)}')">페르소나</button>

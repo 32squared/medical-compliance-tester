@@ -2754,6 +2754,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
         # ── 자문 검토 조회 ──
         if path == '/api/advisory/reviews':
             return self._advisory_list_reviews(parse_qs(parsed.query))
+        if path == '/api/advisory/progress':
+            return self._advisory_progress()
 
         # ── PHR 케이스 API ──
         if path == '/api/phr/cases':
@@ -6157,6 +6159,69 @@ has_top_disclaimer=false 인데 legal_violation 미부여 시 평가 오류로 �
             'verdicts': list(self.ADVISORY_VERDICTS),
         })
 
+    def _advisory_progress(self):
+        """GET /api/advisory/progress — 케이스별 질문·검토 완료 현황
+
+        자문위원은 자기 배정 케이스와 자기 검토만, 관리자는 전체를 본다.
+        """
+        if not self._require_auth():
+            return
+        tester = self._get_tester_info()
+        is_admin = self._is_admin()
+        me = (tester or {}).get('id') if not is_admin else None
+
+        try:
+            cases = db.get_phr_cases(user_id=me) if me else db.get_phr_cases()
+            reviews = db.get_advisory_reviews(reviewer_id=me) if me else db.get_advisory_reviews()
+        except Exception as e:
+            return self._send_error(500, f'조회 실패: {e}')
+
+        # 대화(질문) 여부 — conversations.phr_case_id 로 센다
+        conv_counts = {}
+        ph = _p_placeholder = None
+        try:
+            from dbcommon import get_conn, _p
+            with get_conn() as (conn, cur):
+                if me:
+                    cur.execute(
+                        f"SELECT phr_case_id, COUNT(*) AS n FROM conversations "
+                        f"WHERE phr_case_id <> '' AND user_id = {_p()} GROUP BY phr_case_id", (me,))
+                else:
+                    cur.execute("SELECT phr_case_id, COUNT(*) AS n FROM conversations "
+                                "WHERE phr_case_id <> '' GROUP BY phr_case_id")
+                for r in cur.fetchall():
+                    d = dict(r) if not isinstance(r, dict) else r
+                    conv_counts[d.get('phr_case_id')] = d.get('n', 0)
+        except Exception as e:
+            ProxyHandler._add_log(f"[자문진행] 대화 집계 실패: {str(e)[:80]}")
+
+        review_counts, reviewers = {}, {}
+        for r in reviews:
+            cid = r.get('case_id') or ''
+            if not cid:
+                continue
+            review_counts[cid] = review_counts.get(cid, 0) + 1
+            reviewers.setdefault(cid, set()).add(r.get('reviewer_id', ''))
+
+        by_case = {}
+        for c in cases:
+            cid = c['id']
+            by_case[cid] = {
+                'caseNo': c.get('caseNo', ''),
+                'label': c.get('label', ''),
+                'conversations': conv_counts.get(cid, 0),
+                'reviews': review_counts.get(cid, 0),
+                'reviewers': sorted(reviewers.get(cid, [])),
+                'personaReady': bool((c.get('persona') or {}).get('reviewed')),
+            }
+        done = sum(1 for v in by_case.values() if v['reviews'])
+        asked = sum(1 for v in by_case.values() if v['conversations'])
+        return self._send_json(200, {
+            'byCase': by_case, 'total': len(by_case),
+            'asked': asked, 'reviewed': done,
+            'scope': 'mine' if me else 'all',
+        })
+
     def _phr_set_persona(self, body):
         """POST /api/phr/persona — 케이스의 인적 배경 갱신 (Admin)
 
@@ -7474,6 +7539,12 @@ has_top_disclaimer=false 인데 legal_violation 미부여 시 평가 오류로 �
                         ProxyHandler._add_log(
                             f"[PHR] 케이스 {phr_case_id} 주입 — payload "
                             f"{len(req_body['agent_input_field_to_value'].get('PHR', ''))}자")
+                        # 대화에 케이스를 남긴다 — 자문 진행 현황(질문 여부) 집계 근거
+                        if conv_id:
+                            try:
+                                db.set_conversation_phr_case(conv_id, phr_case_id)
+                            except Exception as ce:
+                                ProxyHandler._add_log(f"[PHR] 대화 케이스 기록 실패: {str(ce)[:80]}")
                     else:
                         phr_case_id = ''
                 elif 'phr_case_id' in req_body:
