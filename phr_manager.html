@@ -107,6 +107,40 @@
   </div>
 </div>
 
+<!-- 페르소나 모달 -->
+<div class="modal-bg" id="personaModal">
+  <div class="modal">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <b id="personaTitle">페르소나</b>
+      <button class="btn ghost" onclick="document.getElementById('personaModal').style.display='none'">닫기</button>
+    </div>
+    <div class="muted" style="margin-bottom:10px">
+      원본 PHR 에는 나이·성별 필드가 없다. 성별은 여성 대상 암검진 이력으로만 추정되며,
+      나이와 배경은 여기서 채워야 자문위원이 그 사람의 입장에서 질문할 수 있다.
+    </div>
+    <div id="personaInferred" style="margin-bottom:10px"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <label class="muted">나이<input type="number" id="pAge" min="0" max="120"
+        style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 6px;font-size:12px"></label>
+      <label class="muted">성별
+        <select id="pSex" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 6px;font-size:12px">
+          <option value="">(미상)</option><option value="여성">여성</option><option value="남성">남성</option>
+        </select></label>
+    </div>
+    <label class="muted">직업·생활 배경<input type="text" id="pOcc" placeholder="예: 사무직, 교대근무"
+      style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 6px;font-size:12px;margin-bottom:8px"></label>
+    <label class="muted">배경 설명<textarea id="pBg" rows="2" placeholder="생활 습관, 가족 상황 등"
+      style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 6px;font-size:12px;margin-bottom:8px;resize:vertical"></textarea></label>
+    <label class="muted">현재 상황 — 왜 물어보는가<textarea id="pSit" rows="2" placeholder="예: 최근 피로가 심해 검진 결과를 다시 보고 싶다"
+      style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 6px;font-size:12px;margin-bottom:8px;resize:vertical"></textarea></label>
+    <label class="muted">자문위원 역할 지시문<textarea id="pInst" rows="2" placeholder="예: 검진 수치의 의미를 잘 모르는 사용자로서 질문해 주세요"
+      style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 6px;font-size:12px;margin-bottom:8px;resize:vertical"></textarea></label>
+    <label class="chk"><input type="checkbox" id="pReviewed"> 검수 완료 — 데이터와 배경이 앞뒤가 맞는지 확인함</label>
+    <button class="btn" style="margin-top:10px" onclick="savePersona()">저장</button>
+    <span id="personaStatus" class="muted" style="margin-left:8px"></span>
+  </div>
+</div>
+
 <!-- 상세 모달 -->
 <div class="modal-bg" id="detailModal">
   <div class="modal" style="width:min(900px,94vw)">
@@ -168,6 +202,7 @@ async function loadCases() {
       <td>${assignedTxt}</td>
       <td style="white-space:nowrap">
         <button class="btn ghost" onclick="showDetail('${esc(c.id)}')">상세</button>
+        <button class="btn ghost" onclick="openPersona('${esc(c.id)}')">페르소나</button>
         <button class="btn ghost" onclick="openAssign('${esc(c.id)}')">배정</button>
         <button class="btn danger" onclick="delCase('${esc(c.id)}')">삭제</button>
       </td></tr>`;
@@ -254,6 +289,57 @@ async function showDetail(id) {
         <pre>${esc(JSON.stringify(c.payload, null, 2))}</pre>`;
   document.getElementById('detailBody').innerHTML = h;
   document.getElementById('detailModal').style.display = 'flex';
+}
+
+let personaTarget = null;
+
+async function openPersona(id) {
+  const res = await fetch(`/api/phr/cases/${encodeURIComponent(id)}`);
+  if (!res.ok) { alert('조회 실패'); return; }
+  personaTarget = await res.json();
+  const p = personaTarget.persona || {};
+  document.getElementById('personaTitle').textContent = `${personaTarget.caseNo} · 페르소나`;
+  document.getElementById('personaInferred').innerHTML =
+    `<div class="muted">자동 추정 — 성별 <b class="${p.sex ? 'ok' : 'warn'}">${esc(p.sex || '미상')}</b>` +
+    ` <span style="font-size:11px">(${esc(p.sexBasis || '')})</span>` +
+    ` · 신장 ${esc(p.height || '-')}cm · 체중 ${esc(p.weight || '-')}kg</div>`;
+  document.getElementById('pAge').value = p.age || '';
+  document.getElementById('pSex').value = p.sex || '';
+  document.getElementById('pOcc').value = p.occupation || '';
+  document.getElementById('pBg').value = p.background || '';
+  document.getElementById('pSit').value = p.situation || '';
+  document.getElementById('pInst').value = p.instruction || '';
+  document.getElementById('pReviewed').checked = !!p.reviewed;
+  document.getElementById('personaStatus').textContent = '';
+  document.getElementById('personaModal').style.display = 'flex';
+}
+
+async function savePersona() {
+  if (!personaTarget) return;
+  const st = document.getElementById('personaStatus');
+  const ageRaw = document.getElementById('pAge').value.trim();
+  const persona = {
+    age: ageRaw ? parseInt(ageRaw, 10) : null,
+    sex: document.getElementById('pSex').value,
+    occupation: document.getElementById('pOcc').value.trim(),
+    background: document.getElementById('pBg').value.trim(),
+    situation: document.getElementById('pSit').value.trim(),
+    instruction: document.getElementById('pInst').value.trim(),
+    reviewed: document.getElementById('pReviewed').checked,
+  };
+  st.textContent = '저장 중...'; st.className = 'muted';
+  try {
+    const res = await fetch('/api/phr/persona', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ caseId: personaTarget.id, persona: persona }),
+    });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || '저장 실패');
+    st.textContent = '저장됨'; st.className = 'ok';
+    await loadCases();
+  } catch (e) {
+    st.textContent = '실패: ' + e.message; st.className = 'err';
+  }
 }
 
 function openAssign(id) {

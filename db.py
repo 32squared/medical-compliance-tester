@@ -483,6 +483,7 @@ CREATE TABLE IF NOT EXISTS phr_cases (
     period_from TEXT DEFAULT '',
     period_to TEXT DEFAULT '',
     counts_json TEXT DEFAULT '{}',
+    persona_json TEXT DEFAULT '{}',
     case_json TEXT NOT NULL,
     payload_json TEXT NOT NULL,
     source_file TEXT DEFAULT '',
@@ -503,6 +504,27 @@ CREATE TABLE IF NOT EXISTS phr_case_assignments (
 );
 CREATE INDEX IF NOT EXISTS idx_phr_assign_user ON phr_case_assignments(user_id);
 CREATE INDEX IF NOT EXISTS idx_phr_assign_case ON phr_case_assignments(case_id);
+
+-- 자문 검토 (렉스소프트 5항목) — 답변 1건에 대한 의학적 적절성 판정
+CREATE TABLE IF NOT EXISTS advisory_reviews (
+    id TEXT PRIMARY KEY,
+    conversation_id TEXT DEFAULT '',
+    message_id TEXT DEFAULT '',
+    case_id TEXT DEFAULT '',
+    case_no TEXT DEFAULT '',
+    reviewer_id TEXT NOT NULL,
+    reviewer_name TEXT DEFAULT '',
+    specialty TEXT DEFAULT '',
+    query TEXT DEFAULT '',
+    response TEXT DEFAULT '',
+    items_json TEXT DEFAULT '{}',
+    overall_note TEXT DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_adv_reviews_reviewer ON advisory_reviews(reviewer_id);
+CREATE INDEX IF NOT EXISTS idx_adv_reviews_case ON advisory_reviews(case_id);
+CREATE INDEX IF NOT EXISTS idx_adv_reviews_msg ON advisory_reviews(message_id);
 """
 
 # ── 스키마 (PostgreSQL) ──
@@ -800,6 +822,7 @@ CREATE TABLE IF NOT EXISTS phr_cases (
     period_from TEXT DEFAULT '',
     period_to TEXT DEFAULT '',
     counts_json JSONB DEFAULT '{}'::jsonb,
+    persona_json JSONB DEFAULT '{}'::jsonb,
     case_json JSONB NOT NULL,
     payload_json JSONB NOT NULL,
     source_file TEXT DEFAULT '',
@@ -819,6 +842,27 @@ CREATE TABLE IF NOT EXISTS phr_case_assignments (
 );
 CREATE INDEX IF NOT EXISTS idx_phr_assign_user ON phr_case_assignments(user_id);
 CREATE INDEX IF NOT EXISTS idx_phr_assign_case ON phr_case_assignments(case_id);
+
+-- 자문 검토 (렉스소프트 5항목) — 답변 1건에 대한 의학적 적절성 판정
+CREATE TABLE IF NOT EXISTS advisory_reviews (
+    id TEXT PRIMARY KEY,
+    conversation_id TEXT DEFAULT '',
+    message_id TEXT DEFAULT '',
+    case_id TEXT DEFAULT '',
+    case_no TEXT DEFAULT '',
+    reviewer_id TEXT NOT NULL,
+    reviewer_name TEXT DEFAULT '',
+    specialty TEXT DEFAULT '',
+    query TEXT DEFAULT '',
+    response TEXT DEFAULT '',
+    items_json JSONB DEFAULT '{}'::jsonb,
+    overall_note TEXT DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_adv_reviews_reviewer ON advisory_reviews(reviewer_id);
+CREATE INDEX IF NOT EXISTS idx_adv_reviews_case ON advisory_reviews(case_id);
+CREATE INDEX IF NOT EXISTS idx_adv_reviews_msg ON advisory_reviews(message_id);
 """
 
 # Keep backward compat alias
@@ -861,6 +905,7 @@ def init_db(db_path=None):
                 "ALTER TABLE messages ADD COLUMN IF NOT EXISTS consultation_eval_json JSONB",
                 "ALTER TABLE messages ADD COLUMN IF NOT EXISTS phr_eval_json JSONB",
                 "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS phr_case_id TEXT DEFAULT ''",
+                "ALTER TABLE phr_cases ADD COLUMN IF NOT EXISTS persona_json JSONB DEFAULT '{}'::jsonb",
                 "ALTER TABLE messages ADD COLUMN IF NOT EXISTS token_usage_json JSONB",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '[]'::jsonb",
                 "ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS turns_json JSONB DEFAULT '[]'::jsonb",
@@ -1269,6 +1314,7 @@ def init_db(db_path=None):
             "ALTER TABLE messages ADD COLUMN consultation_eval_json TEXT",
             "ALTER TABLE messages ADD COLUMN phr_eval_json TEXT",
             "ALTER TABLE conversations ADD COLUMN phr_case_id TEXT DEFAULT ''",
+            "ALTER TABLE phr_cases ADD COLUMN persona_json TEXT DEFAULT '{}'",
             "ALTER TABLE messages ADD COLUMN token_usage_json TEXT",
             "ALTER TABLE users ADD COLUMN permissions TEXT DEFAULT '[]'",
             "ALTER TABLE scenarios ADD COLUMN turns_json TEXT DEFAULT '[]'",
@@ -3778,6 +3824,7 @@ def _phr_row_to_dict(r):
     c['tags'] = _pg_json_loads_or(c.pop('tags_json', '[]'), [])
     c['specialties'] = _pg_json_loads_or(c.pop('specialties_json', '[]'), [])
     c['counts'] = _pg_json_loads_or(c.pop('counts_json', '{}'), {})
+    c['persona'] = _pg_json_loads_or(c.pop('persona_json', '{}'), {})
     c['caseNo'] = c.pop('case_no', '')
     c['personRef'] = c.pop('person_ref', '')
     c['periodFrom'] = c.pop('period_from', '')
@@ -3808,15 +3855,16 @@ def save_phr_cases(cases, source_file='', created_by=''):
             cur.execute(
                 f"""INSERT INTO phr_cases
                 (id, case_no, label, person_ref, tags_json, specialties_json,
-                 period_from, period_to, counts_json, case_json, payload_json,
+                 period_from, period_to, counts_json, persona_json, case_json, payload_json,
                  source_file, enabled, created_at, created_by)
-                VALUES ({_ph(15)})""",
+                VALUES ({_ph(16)})""",
                 (cid, case_no, c.get('label', ''), c.get('person_ref', ''),
                  json.dumps(c.get('tags', []), ensure_ascii=False),
                  json.dumps(c.get('specialties', []), ensure_ascii=False),
                  (c.get('period') or {}).get('from') or '',
                  (c.get('period') or {}).get('to') or '',
                  json.dumps(c.get('counts', {}), ensure_ascii=False),
+                 json.dumps(c.get('persona', {}), ensure_ascii=False),
                  json.dumps(c, ensure_ascii=False),
                  json.dumps(payload, ensure_ascii=False),
                  source_file, 1, now_iso, created_by),
@@ -3888,6 +3936,62 @@ def set_phr_assignments(case_id, user_ids, specialty='', assigned_by=''):
                 (f'{case_id}__{uid}', case_id, uid, specialty or '', now_iso, assigned_by),
             )
     return len(user_ids or [])
+
+
+def update_phr_persona(case_id, persona):
+    """케이스의 인적 배경(페르소나) 갱신. 자문위원이 '그 사람'이 되어 질문하기 위한 정보."""
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(
+            f"UPDATE phr_cases SET persona_json = {ph} WHERE id = {ph} OR case_no = {ph}",
+            (json.dumps(persona or {}, ensure_ascii=False), case_id, case_id))
+        return cur.rowcount
+
+
+def save_advisory_review(review):
+    """자문 검토 저장 (message_id 기준 덮어쓰기 — 같은 답변을 다시 검토하면 갱신)."""
+    now_iso = datetime.now(timezone.utc).isoformat()
+    ph = _p()
+    rid = review.get('id') or f"adv_{review.get('message_id','')}_{review.get('reviewer_id','')}"
+    with get_conn() as (conn, cur):
+        cur.execute(f"DELETE FROM advisory_reviews WHERE id = {ph}", (rid,))
+        cur.execute(
+            f"""INSERT INTO advisory_reviews
+            (id, conversation_id, message_id, case_id, case_no, reviewer_id, reviewer_name,
+             specialty, query, response, items_json, overall_note, created_at, updated_at)
+            VALUES ({_ph(14)})""",
+            (rid, review.get('conversation_id', ''), review.get('message_id', ''),
+             review.get('case_id', ''), review.get('case_no', ''),
+             review.get('reviewer_id', ''), review.get('reviewer_name', ''),
+             review.get('specialty', ''), (review.get('query') or '')[:4000],
+             (review.get('response') or '')[:20000],
+             json.dumps(review.get('items') or {}, ensure_ascii=False),
+             review.get('overall_note', ''), now_iso, now_iso),
+        )
+    return rid
+
+
+def get_advisory_reviews(message_id=None, reviewer_id=None, case_id=None, limit=500):
+    ph = _p()
+    with get_conn() as (conn, cur):
+        if message_id:
+            cur.execute(f"SELECT * FROM advisory_reviews WHERE message_id = {ph} ORDER BY created_at DESC",
+                        (message_id,))
+        elif reviewer_id:
+            cur.execute(f"SELECT * FROM advisory_reviews WHERE reviewer_id = {ph} ORDER BY created_at DESC",
+                        (reviewer_id,))
+        elif case_id:
+            cur.execute(f"SELECT * FROM advisory_reviews WHERE case_id = {ph} ORDER BY created_at DESC",
+                        (case_id,))
+        else:
+            cur.execute(f"SELECT * FROM advisory_reviews ORDER BY created_at DESC LIMIT {int(limit)}")
+        rows = cur.fetchall()
+    out = []
+    for r in rows:
+        d = _row_to_dict(r)
+        d['items'] = _pg_json_loads_or(d.pop('items_json', '{}'), {})
+        out.append(d)
+    return out
 
 
 def get_phr_assignments(case_id=None, user_id=None):

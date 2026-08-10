@@ -301,6 +301,42 @@ def assign_specialties(tags):
     return out or ['가정의학과']
 
 
+# 여성만 받는 국가암검진 — 성별 추정의 유일한 단서
+FEMALE_ONLY_EXAMS = {'자궁경부암', '유방암'}
+
+
+def infer_persona(timeline, cancer):
+    """케이스에서 유추 가능한 인적 배경만 채운다.
+
+    원본에 나이·성별 필드가 없다. 성별은 여성 대상 암검진 이력으로만 추정되고,
+    나이는 어떤 방법으로도 나오지 않으므로 비워 두고 사람이 채우게 한다.
+    추정 근거를 함께 남겨야 나중에 맞는지 검토할 수 있다.
+    """
+    exams = {c['exam'] for c in cancer if c.get('exam')}
+    female = exams & FEMALE_ONLY_EXAMS
+    if female:
+        sex, basis = '여성', f"{', '.join(sorted(female))} 검진 이력"
+    else:
+        sex, basis = '', '여성 대상 암검진 이력 없음 — 판단 불가'
+
+    def latest(name):
+        e = timeline.get(name)
+        return e['series'][0]['value'] if e and e.get('series') else None
+
+    return {
+        'sex': sex,
+        'sexBasis': basis,
+        'age': None,             # 원본에 없음. 관리 화면에서 입력한다.
+        'height': latest('신장'),
+        'weight': latest('체중'),
+        'occupation': '',
+        'background': '',        # 생활 배경
+        'situation': '',         # 지금 왜 물어보는가
+        'instruction': '',       # 자문위원에게 주는 역할 지시문
+        'reviewed': False,       # 사람이 검수했는가
+    }
+
+
 def build_case(case_id, person_id, rows, today=None):
     """한 사람의 원본 행들을 케이스 1건으로 만든다."""
     today = today or date.today()
@@ -352,6 +388,7 @@ def build_case(case_id, person_id, rows, today=None):
             'general': len(general), 'oral': len(oral),
             'cancer': len(cancer), 'prescription': len(prescriptions),
         },
+        'persona': infer_persona(timeline, cancer),
         'timeline': timeline,
         'missing_items': missing,
         'checkups': {'general': general, 'oral': oral, 'cancer': cancer},
