@@ -445,6 +445,20 @@
   </select>
   <button class="btn-icon" id="phrPanelBtn" onclick="togglePhrPanel()" title="원본 기록 접기/펼치기"
           style="font-size:12px;display:none">&#128203;</button>
+  <!-- 자문 문항 — 케이스에 매인 고정 문항을 골라 입력창에 넣는다.
+       손으로 타이핑하면 문장이 조금씩 달라져 개선 전후 비교가 깨진다 -->
+  <select id="advQuestionSelect" onchange="onAdvQuestionPick()" title="자문 고정 문항"
+          style="display:none;font-size:11px;padding:3px 6px;border-radius:6px;background:var(--surface);color:var(--text);border:1px solid var(--border);max-width:260px">
+    <option value="">문항 선택</option>
+  </select>
+  <!-- 가상 Vital — 실측이 아니라 주입값. 어느 구간부터 응급 안내가 나오는지 관측용 -->
+  <select id="phrVitalSelect" onchange="onPhrVitalChange()" title="가상 Vital 세트 (주입값)"
+          style="display:none;font-size:11px;padding:3px 6px;border-radius:6px;background:var(--surface);color:var(--text);border:1px solid var(--border)">
+    <option value="">Vital 없음</option>
+    <option value="V-A">V-A 158/96·92·97%</option>
+    <option value="V-B">V-B 178/104·108·96%</option>
+    <option value="V-C">V-C 205/118·122·93%</option>
+  </select>
   <span id="advProgress" style="display:none;font-size:11px;color:var(--text);white-space:nowrap"></span>
   <a href="/" class="nav-btn active">채팅 테스터</a>
   <a href="/manager" class="nav-btn">시나리오 관리</a>
@@ -804,11 +818,19 @@ function applyRoleBasedUI(auth) {
         .phr-eval-section, .phr-eval-btn, [id^="phr-eval-"] {
           display: none !important;
         }
+        /* 자문은 고정 문항으로만 진행한다. 예시 질문 버튼을 눌러 다른 질문을 하면
+           분과 간 비교도, 개선 전후 비교도 성립하지 않는다. 문항은 상단 '문항 선택'. */
+        .quick-prompts, #presetContainer { display: none !important; }
       `;
       document.head.appendChild(advisorStyle);
     }
     // body에 advisor 클래스 추가 (다른 곳에서 추가 처리 가능)
     document.body.classList.add('role-advisor');
+  }
+  // 프리셋은 역할이 정해진 뒤에 — 자문위원에게는 아예 부르지 않는다
+  if (userRole !== 'advisor') {
+    if (typeof loadPresets === 'function') loadPresets();
+    if (typeof loadCategories === 'function') loadCategories();
   }
 }
 
@@ -1146,6 +1168,11 @@ function buildBody(query) {
 let phrCases = [];
 let selectedPhrCaseId = '';
 let selectedPhrCase = null;
+// 가상 Vital 세트 키('' | 'V-A' | 'V-B' | 'V-C'). 실측이 아니라 주입값이며,
+// 같은 질문을 세 세트에 던져 어느 구간부터 119 안내가 시작되는지 관측하는 데 쓴다.
+let selectedPhrVitals = '';
+// 이 케이스에 매인 자문 고정 문항
+let advQuestions = [];
 
 async function loadPhrCases() {
   try {
@@ -1169,6 +1196,8 @@ async function loadPhrCases() {
     opt.textContent = `${c.caseNo}${period} · ${c.label || ''}`;
     sel.appendChild(opt);
   });
+  // 어느 케이스에 문항이 있는지 목록에서 바로 보이게 (케이스마다 눌러보지 않도록)
+  loadAdvisoryQuestionCounts();
   const saved = localStorage.getItem('phrCaseId');
   if (saved && phrCases.some(c => c.id === saved)) {
     sel.value = saved;
@@ -1202,13 +1231,20 @@ async function onPhrCaseChange() {
   localStorage.setItem('phrCaseId', selectedPhrCaseId);
   selectedPhrCase = null;
   const panel = document.getElementById('phrPanel');
+  const vsel = document.getElementById('phrVitalSelect');
+  const qsel = document.getElementById('advQuestionSelect');
   if (!selectedPhrCaseId) {
     if (btn) btn.style.display = 'none';
     if (panel) panel.classList.remove('open');
+    if (vsel) { vsel.style.display = 'none'; vsel.value = ''; }
+    if (qsel) qsel.style.display = 'none';
+    selectedPhrVitals = '';
+    advQuestions = [];
     renderPersonaCard();
     return;
   }
   if (btn) btn.style.display = '';
+  if (vsel) { vsel.style.display = ''; vsel.value = selectedPhrVitals; }
   try {
     const res = await fetch(`/api/phr/cases/${encodeURIComponent(selectedPhrCaseId)}`);
     if (res.ok) {
@@ -1222,6 +1258,88 @@ async function onPhrCaseChange() {
     console.warn('PHR 케이스 상세 조회 실패:', e);
   }
   loadAdvisoryProgress();
+  loadAdvisoryQuestions();
+}
+
+// 가상 Vital 세트 변경 — 케이스 변경과 같은 이유로 반드시 새 대화에서 시작한다.
+// 이전 세트의 수치가 SKIX 문맥에 남으면 어느 세트에 대한 답변인지 구분되지 않는다.
+function onPhrVitalChange() {
+  const sel = document.getElementById('phrVitalSelect');
+  const next = sel ? sel.value : '';
+  if (next !== selectedPhrVitals && chatHistory && chatHistory.length > 0) {
+    const msg = 'Vital 세트를 ' + (selectedPhrVitals || '없음') + ' → ' + (next || '없음') +
+      ' 로 바꾸면 새 대화로 시작합니다.\n지금 대화는 목록에 저장되어 있습니다. 계속할까요?';
+    if (!confirm(msg)) {
+      if (sel) sel.value = selectedPhrVitals;
+      return;
+    }
+    clearChat();
+  }
+  selectedPhrVitals = next;
+}
+
+// 케이스에 매인 고정 문항을 불러온다. 자문위원이 질문을 손으로 옮겨 적으면
+// 문장이 조금씩 달라져 개선 전후 적정률 비교가 성립하지 않는다.
+async function loadAdvisoryQuestions() {
+  const sel = document.getElementById('advQuestionSelect');
+  if (!sel) return;
+  advQuestions = [];
+  sel.innerHTML = '<option value="">문항 선택</option>';
+  if (!selectedPhrCaseId) { sel.style.display = 'none'; return; }
+  try {
+    // 시나리오 관리 권한이 없는 자문위원도 읽을 수 있는 전용 경로.
+    // 배정된 케이스인지는 서버가 확인한다.
+    const res = await fetch('/api/advisory/questions?caseId=' +
+                            encodeURIComponent(selectedPhrCaseId));
+    if (!res.ok) { sel.style.display = 'none'; return; }
+    const data = await res.json();
+    advQuestions = (data && data.questions) || [];
+  } catch (e) {
+    console.warn('자문 문항 조회 실패:', e);
+    sel.style.display = 'none';
+    return;
+  }
+  if (!advQuestions.length) { sel.style.display = 'none'; return; }
+  sel.style.display = '';
+  // 한 케이스에 두 분과 문항이 걸리는 경우가 있다(영상의학 문항이 소화기 시트의
+  // 사람을 가리키는 식). 그때만 분과를 앞에 붙인다 — 한 분과뿐인 케이스에까지
+  // 붙이면 모든 줄에 같은 말이 반복돼 문항 문장이 그만큼 잘려 보인다.
+  const specs = new Set(advQuestions.map(function (q) { return q.specialty || ''; }));
+  const showSpec = specs.size > 1;
+  advQuestions.forEach(function (q, i) {
+    const opt = document.createElement('option');
+    opt.value = String(i);
+    const vit = q.vitals ? ' [' + q.vitals + ']' : '';
+    const sp = (showSpec && q.specialty) ? '(' + q.specialty + ') ' : '';
+    opt.textContent = sp + (q.code ? q.code + ' · ' : '') + (q.prompt || '').slice(0, 38) + vit;
+    opt.title = (q.specialty ? '분과 — ' + q.specialty + '\n' : '') +
+      (q.checkPoint ? '검토 포인트 — ' + q.checkPoint + '\n\n' : '') + (q.prompt || '');
+    sel.appendChild(opt);
+  });
+}
+
+// 문항을 고르면 입력창에 그대로 채워 넣는다. 문항이 Vital 세트를 지정하면 함께 맞춘다.
+function onAdvQuestionPick() {
+  const sel = document.getElementById('advQuestionSelect');
+  if (!sel || sel.value === '') return;
+  const q = advQuestions[parseInt(sel.value, 10)];
+  if (!q) return;
+  if (q.vitals) {
+    const vsel = document.getElementById('phrVitalSelect');
+    if (vsel && vsel.value !== q.vitals) {
+      vsel.value = q.vitals;
+      onPhrVitalChange();
+    }
+  }
+  const input = document.getElementById('userInput') || document.getElementById('messageInput')
+    || document.querySelector('#inputArea textarea') || document.querySelector('textarea');
+  if (input) {
+    input.value = q.prompt || '';
+    input.focus();
+    if (typeof autoResize === 'function') { try { autoResize(input); } catch (e) {} }
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  sel.value = '';
 }
 
 // 페르소나 카드 — 자문위원이 '이 사람'이 되어 질문하도록 배경을 띄운다.
@@ -1338,10 +1456,46 @@ function buildAdvisoryCard(msgId, query, response, caseId) {
         if (!res.ok) throw new Error(res.d.error || '저장 실패');
         st.textContent = '저장됨 (' + res.d.answered + '/5 항목)';
         st.style.color = 'var(--green)';
+        // 저장 즉시 진행 현황을 다시 읽는다 — 무엇이 남았는지 배지·선택기에 반영
+        loadAdvisoryProgress();
       })
       .catch(function(e) { st.textContent = '실패: ' + e.message; st.style.color = 'var(--red)'; });
   });
+
+  // 이미 저장한 판정이 있으면 채워 넣는다.
+  // 없으면 대화를 다시 열 때마다 빈 폼이 뜨고, 그대로 저장하면 기존 판정을 덮어쓴다.
+  prefillAdvisoryCard(wrap, msgId);
   return wrap;
+}
+
+// 저장된 검토를 폼에 되살린다. 자문위원 본인 것만 조회된다(서버에서 강제).
+function prefillAdvisoryCard(wrap, msgId) {
+  fetch('/api/advisory/reviews?messageId=' + encodeURIComponent(msgId))
+    .then(function(r) { return r.ok ? r.json() : null; })
+    .then(function(d) {
+      if (!d || !d.reviews || !d.reviews.length) return;
+      var mine = d.reviews[0];
+      var items = mine.items || {};
+      ADVISORY_ITEMS.forEach(function(it) {
+        var v = items[it.key] || {};
+        if (v.verdict) {
+          var radio = wrap.querySelector('input[name="adv-' + msgId + '-' + it.key + '"][value="' + v.verdict + '"]');
+          if (radio) radio.checked = true;
+        }
+        var note = wrap.querySelector('.adv-note[data-key="' + it.key + '"]');
+        var sugg = wrap.querySelector('.adv-sugg[data-key="' + it.key + '"]');
+        if (note && v.note) note.value = v.note;
+        if (sugg && v.suggested) sugg.value = v.suggested;
+      });
+      var ov = wrap.querySelector('.adv-overall');
+      if (ov && mine.overallNote) ov.value = mine.overallNote;
+      var st = wrap.querySelector('.adv-status');
+      if (st) {
+        st.textContent = '저장된 검토를 불러왔습니다 — 수정 후 다시 저장하면 갱신됩니다';
+        st.style.color = 'var(--text-dim)';
+      }
+    })
+    .catch(function() { /* 조회 실패는 빈 폼으로 두면 된다 */ });
 }
 
 function togglePhrPanel() {
@@ -1351,20 +1505,27 @@ function togglePhrPanel() {
 
 // 기존 대화를 열 때 선택기를 그 대화의 케이스로 맞춘다.
 // onPhrCaseChange 를 거치지 않는 이유 — 그쪽은 '사용자가 바꿨을 때' 새 대화로 리셋하는 경로다.
-async function syncPhrCaseFromConversation(caseId) {
+async function syncPhrCaseFromConversation(caseId, vitals) {
   const sel = document.getElementById('phrCaseSelect');
   const panel = document.getElementById('phrPanel');
   const btn = document.getElementById('phrPanelBtn');
+  const vsel = document.getElementById('phrVitalSelect');
+  const qsel = document.getElementById('advQuestionSelect');
   selectedPhrCaseId = caseId || '';
   selectedPhrCase = null;
+  selectedPhrVitals = vitals || '';
   if (sel) sel.value = phrCases.some(function(c) { return c.id === selectedPhrCaseId; }) ? selectedPhrCaseId : '';
+  if (vsel) vsel.value = selectedPhrVitals;
   if (!selectedPhrCaseId) {
     if (btn) btn.style.display = 'none';
     if (panel) panel.classList.remove('open');
+    if (vsel) vsel.style.display = 'none';
+    if (qsel) qsel.style.display = 'none';
     renderPersonaCard();
     return;
   }
   if (btn) btn.style.display = '';
+  if (vsel) vsel.style.display = '';
   try {
     const res = await fetch(`/api/phr/cases/${encodeURIComponent(selectedPhrCaseId)}`);
     if (res.ok) {
@@ -1374,12 +1535,34 @@ async function syncPhrCaseFromConversation(caseId) {
       if (panel) panel.classList.add('open');
     }
   } catch (e) { console.warn('케이스 동기화 실패:', e); }
+  loadAdvisoryQuestions();
 }
 
 // ──────────────────────────────────────
 // 자문 진행 현황 — 케이스별로 질문했는지·검토했는지
 // ──────────────────────────────────────
 let advisoryProgress = {};
+
+// 케이스별 문항 수. 문항은 10개 배정 케이스 중 일부에만 걸려 있어서(가정의학은
+// 6문항이 4케이스에 흩어져 있다), 표시가 없으면 케이스를 하나씩 눌러봐야
+// 어디에 문항이 있는지 알 수 있다. 그러다 문항을 통째로 빠뜨리기 쉽다.
+let advQuestionCounts = {};
+
+async function loadAdvisoryQuestionCounts() {
+  try {
+    // caseId 없이 부르면 배정된 전 케이스의 문항을 한 번에 준다.
+    const res = await fetch('/api/advisory/questions');
+    if (!res.ok) return;
+    const d = await res.json();
+    const counts = {};
+    (d.questions || []).forEach(function (q) {
+      counts[q.caseId] = (counts[q.caseId] || 0) + 1;
+    });
+    advQuestionCounts = counts;
+  } catch (e) { return; }
+  decorateCaseOptions();
+  renderProgressBadge();
+}
 
 async function loadAdvisoryProgress() {
   try {
@@ -1401,9 +1584,16 @@ function decorateCaseOptions() {
     const c = phrCases.find(function(x) { return x.id === opt.value; });
     if (!c) return;
     const st = advisoryProgress[c.id] || {};
-    const mark = st.reviews ? '✓ ' : (st.conversations ? '· ' : '  ');
     const period = (c.periodFrom && c.periodTo) ? ' ' + c.periodFrom + '~' + c.periodTo : '';
-    opt.textContent = mark + c.caseNo + period + ' · ' + (c.label || '');
+    // 문항이 걸린 케이스에만 표시한다. 없는 쪽까지 '[문항 없음]' 을 달면
+    // 10줄 중 6줄이 같은 말로 채워져 정작 봐야 할 케이스가 묻힌다.
+    // 진척은 문항 단위로 — 4문항짜리 케이스에서 1개만 판정해도 ✓ 가 뜨면
+    // 남은 3개를 끝낸 것으로 착각한다.
+    const n = advQuestionCounts[c.id] || 0;
+    const done = st.reviews || 0;
+    const qn = n ? ' [판정 ' + done + '/' + n + ']' : '';
+    const mark = (n && done >= n) ? '✓ ' : (st.conversations ? '· ' : '  ');
+    opt.textContent = mark + c.caseNo + qn + period + ' · ' + (c.label || '');
   });
 }
 
@@ -1412,17 +1602,21 @@ function renderProgressBadge() {
   if (!box) return;
   const total = phrCases.length;
   if (!total) { box.style.display = 'none'; return; }
-  let asked = 0, reviewed = 0;
+  // 진척은 케이스가 아니라 문항 단위로 센다. 케이스 단위로 세면 4문항짜리
+  // 케이스에서 1개만 판정해도 그 케이스가 끝난 것으로 잡혀 실제보다 앞서 보인다.
+  const hasCounts = Object.keys(advQuestionCounts).length > 0;
+  if (!hasCounts) { box.style.display = 'none'; return; }
+  let qTotal = 0, judged = 0;
   phrCases.forEach(function(c) {
-    const st = advisoryProgress[c.id] || {};
-    if (st.conversations) asked++;
-    if (st.reviews) reviewed++;
+    qTotal += (advQuestionCounts[c.id] || 0);
+    judged += ((advisoryProgress[c.id] || {}).reviews || 0);
   });
+  const done = qTotal > 0 && judged >= qTotal;
   box.style.display = '';
   box.innerHTML = '<span style="color:var(--text-dim)">배정 ' + total + '</span>' +
-    ' · 질문 <b>' + asked + '</b>' +
-    ' · 검토 <b style="color:' + (reviewed === total ? 'var(--green)' : 'var(--accent)') + '">' + reviewed + '</b>' +
-    (reviewed === total ? ' <span style="color:var(--green)">완료</span>' : '');
+    ' · 판정 <b style="color:' + (done ? 'var(--green)' : 'var(--accent)') + '">' +
+    judged + '/' + qTotal + '</b>' +
+    (done ? ' <span style="color:var(--green)">완료</span>' : '');
 }
 
 function phrEsc(s) {
@@ -1640,6 +1834,9 @@ async function callSSE(query, { onGeneration, onProgress, onInfo, onDone, onErro
   if (conversationId) fetchHeaders['X-Conversation-Id'] = conversationId;
   // 케이스가 선택돼 있으면 id 만 넘기고 실제 PHR 은 서버가 붙인다
   if (selectedPhrCaseId) fetchHeaders['X-PHR-Case-Id'] = selectedPhrCaseId;
+  // 가상 Vital 세트 키만 넘긴다. 실제 수치는 서버 상수(PHR_VITAL_SETS)가 소유해
+  // 자문위원마다 다른 값이 들어가는 일이 없게 한다.
+  if (selectedPhrCaseId && selectedPhrVitals) fetchHeaders['X-PHR-Vitals'] = selectedPhrVitals;
 
   const resp = await fetch(fetchUrl, {
     method: 'POST',
@@ -3979,7 +4176,8 @@ async function loadConversation(convId) {
     conversationStrid = conv.conversationStrid || null;
     // 이 대화가 어느 케이스로 진행됐는지 선택기에 반영한다.
     // 안 맞추면 CASE-02 대화를 열어놓고 CASE-09 로 이어 묻게 된다.
-    syncPhrCaseFromConversation(conv.phr_case_id || conv.phrCaseId || '');
+    syncPhrCaseFromConversation(conv.phr_case_id || conv.phrCaseId || '',
+                                conv.phr_vitals || conv.phrVitals || '');
     const messagesEl = document.getElementById('messages');
     messagesEl.innerHTML = '';
 
@@ -3992,13 +4190,17 @@ async function loadConversation(convId) {
     }
 
     // messages 배열에서 Q&A 복원 (로컬 저장 구조)
+    // 직전 사용자 발화를 들고 다닌다 — 복원된 답변에서 검토를 저장할 때 질문이 함께 기록돼야
+    // 나중에 판정 결과만 보고도 무엇을 물어 나온 답인지 알 수 있다.
     const messages = conv.messages || [];
+    let lastUserContent = '';
     for (const msg of messages) {
       if (msg.role === 'user') {
         addUserMessage(msg.content);
         chatHistory.push({ role: 'user', content: msg.content });
+        lastUserContent = msg.content || '';
       } else if (msg.role === 'assistant') {
-        addRestoredAssistantMessage(msg.content, msg);
+        addRestoredAssistantMessage(msg.content, msg, lastUserContent);
         chatHistory.push({ role: 'assistant', content: msg.content, compliance: msg.compliance });
       }
     }
@@ -4017,7 +4219,7 @@ async function loadConversation(convId) {
   }
 }
 
-function addRestoredAssistantMessage(text, meta = {}) {
+function addRestoredAssistantMessage(text, meta = {}, userPrompt = '') {
   var messagesEl = document.getElementById('messages');
   var div = document.createElement('div');
   div.className = 'msg assistant';
@@ -4032,7 +4234,7 @@ function addRestoredAssistantMessage(text, meta = {}) {
   renderAssistantEvaluation(div, {
     msgId: safeMsgId,
     fullText: text,
-    userPrompt: '',
+    userPrompt: userPrompt || '',
     compliance: meta.compliance,
     gptEval: meta.gptEval || null,
     consultationEval: meta.consultationEval || null,
@@ -4273,7 +4475,10 @@ function exportChat() {
 }
 
 // ── 시나리오 기반 프리셋 동적 로딩 ──
-(async function loadPresets() {
+// 자문위원에게는 호출하지 않는다. 시나리오 관리 권한이 없어 403 이 나고,
+// 자문은 고정 문항으로만 진행하므로 카테고리 예시 버튼 자체가 방해가 된다.
+// 역할이 정해진 뒤 applyRoleBasedUI 에서 부른다.
+async function loadPresets() {
   try {
     const res = await fetch('/api/scenarios');
     const data = await res.json();
@@ -4322,13 +4527,14 @@ function exportChat() {
       ).join('');
     }
   }
+}
 
-  // URL에서 prompt 파라미터 확인 (시나리오 관리에서 전달)
+// URL에서 prompt 파라미터 확인 (시나리오 관리에서 전달) — 역할과 무관하게 동작한다
+(function () {
   const params = new URLSearchParams(window.location.search);
   const promptParam = params.get('prompt');
   if (promptParam) {
     insertPrompt(promptParam);
-    // URL 정리
     window.history.replaceState({}, '', '/');
   }
 })();
@@ -4668,7 +4874,9 @@ async function saveExtractedScenario() {
 // 카테고리 목록 로드 (추출 시 선택용)
 // 성능 개선: /api/scenarios 응답에 categories 가 포함되므로 그쪽에서 가져옴
 // (별도 /api/categories 호출 제거 — 0.5초 단축)
-(async function loadCategories() {
+// 자문위원에게는 부르지 않는다 — 시나리오 추출 기능 자체가 없고 조회 권한도 없다.
+// 역할이 정해진 뒤 applyRoleBasedUI 에서 부른다.
+async function loadCategories() {
   try {
     // 이미 캐시된 시나리오 목록이 있으면 즉시 사용
     if (window._scenariosCache && Array.isArray(window._scenariosCache.categories)) {
@@ -4683,7 +4891,7 @@ async function saveExtractedScenario() {
       window._categories = data.categories || [];
     }
   } catch(e) {}
-})();
+}
 
 // ── 프롬프트 보강 재질문 ──
 

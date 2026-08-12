@@ -57,6 +57,15 @@ def _s(v):
     return str(v).strip()
 
 
+def _year(v):
+    """연도를 4자리 문자열로. 엑셀이 연도를 실수로 주면 '2014.0' 이 되어 그대로 화면에 나온다."""
+    t = _s(v)
+    if not t:
+        return ''
+    m = re.match(r'^(\d{4})(?:\.0+)?$', t)
+    return m.group(1) if m else t
+
+
 def _num(v):
     """수치 파싱. 숫자가 아니면 None."""
     t = _s(v).replace(',', '')
@@ -150,7 +159,7 @@ def build_checkups(rows):
     """일반·구강·암 검진을 회차 단위로 정리한다. 같은 해 두 회차도 검진일로 구분한다."""
     general, oral, cancer = [], [], []
     for row in rows:
-        year = _s(row.get('year'))
+        year = _year(row.get('year'))
 
         # 일반검진 — 종합판정이나 수치가 하나라도 있으면 회차로 인정
         gdate = _s(row.get('date_general'))[:10]
@@ -345,7 +354,7 @@ def build_case(case_id, person_id, rows, today=None):
     timeline, missing = build_timeline(general)
     tags = classify(timeline, prescriptions, general, cancer)
 
-    years = sorted({_s(r.get('year')) for r in rows if _s(r.get('year'))})
+    years = sorted({_year(r.get('year')) for r in rows if _year(r.get('year'))})
     dates = [g['date'] for g in general if g['date']]
 
     label_bits = []

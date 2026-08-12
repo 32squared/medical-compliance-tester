@@ -905,6 +905,10 @@ def init_db(db_path=None):
                 "ALTER TABLE messages ADD COLUMN IF NOT EXISTS consultation_eval_json JSONB",
                 "ALTER TABLE messages ADD COLUMN IF NOT EXISTS phr_eval_json JSONB",
                 "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS phr_case_id TEXT DEFAULT ''",
+                # 자문 시나리오 — 대화에 쓰인 가상 Vital 세트('V-A'|'V-B'|'V-C'), 문항에 매인 케이스
+                "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS phr_vitals TEXT DEFAULT ''",
+                "ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS phr_case_id TEXT DEFAULT ''",
+                "ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS phr_vitals TEXT DEFAULT ''",
                 "ALTER TABLE phr_cases ADD COLUMN IF NOT EXISTS persona_json JSONB DEFAULT '{}'::jsonb",
                 "ALTER TABLE messages ADD COLUMN IF NOT EXISTS token_usage_json JSONB",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '[]'::jsonb",
@@ -1314,6 +1318,10 @@ def init_db(db_path=None):
             "ALTER TABLE messages ADD COLUMN consultation_eval_json TEXT",
             "ALTER TABLE messages ADD COLUMN phr_eval_json TEXT",
             "ALTER TABLE conversations ADD COLUMN phr_case_id TEXT DEFAULT ''",
+            # 자문 시나리오 — 대화에 쓰인 가상 Vital 세트('V-A'|'V-B'|'V-C'), 문항에 매인 케이스
+            "ALTER TABLE conversations ADD COLUMN phr_vitals TEXT DEFAULT ''",
+            "ALTER TABLE scenarios ADD COLUMN phr_case_id TEXT DEFAULT ''",
+            "ALTER TABLE scenarios ADD COLUMN phr_vitals TEXT DEFAULT ''",
             "ALTER TABLE phr_cases ADD COLUMN persona_json TEXT DEFAULT '{}'",
             "ALTER TABLE messages ADD COLUMN token_usage_json TEXT",
             "ALTER TABLE users ADD COLUMN permissions TEXT DEFAULT '[]'",
@@ -1843,15 +1851,20 @@ def create_conversation(data):
     return get_conversation(conv_id)
 
 
-def set_conversation_phr_case(conv_id, case_id):
-    """대화에 PHR 케이스를 기록한다. 자문 진행 현황(질문 여부) 집계의 근거가 된다."""
+def set_conversation_phr_case(conv_id, case_id, vitals=''):
+    """대화에 PHR 케이스를 기록한다. 자문 진행 현황(질문 여부) 집계의 근거가 된다.
+
+    vitals 는 주입한 가상 Vital 세트 키('V-A'|'V-B'|'V-C'). 어떤 세트로 받은 답변인지가
+    응급 개시선 판정의 근거라 케이스와 함께 남긴다. 케이스와 같이 최초 1회만 기록한다.
+    """
     if not conv_id or not case_id:
         return 0
     ph = _p()
     with get_conn() as (conn, cur):
         cur.execute(
-            f"UPDATE conversations SET phr_case_id = {ph} WHERE id = {ph} AND (phr_case_id IS NULL OR phr_case_id = '')",
-            (case_id, conv_id))
+            f"UPDATE conversations SET phr_case_id = {ph}, phr_vitals = {ph} "
+            f"WHERE id = {ph} AND (phr_case_id IS NULL OR phr_case_id = '')",
+            (case_id, vitals or '', conv_id))
         return cur.rowcount
 
 
@@ -2131,6 +2144,8 @@ def get_scenarios():
             s['followUps'] = _pg_json_loads_or(s.pop('follow_ups_json', '[]'), [])
             s['turns'] = _pg_json_loads_or(s.pop('turns_json', '[]'), [])
             s['rubric'] = _pg_json_loads_or(s.pop('rubric_json', '[]'), [])
+            s['phrCaseId'] = s.pop('phr_case_id', '') or ''
+            s['phrVitals'] = s.pop('phr_vitals', '') or ''
             s['createdAt'] = s.pop('created_at', '')
             s['updatedAt'] = s.pop('updated_at', '')
             scenarios.append(s)
@@ -2171,6 +2186,8 @@ def get_scenario(scenario_id):
         s['followUps'] = _pg_json_loads_or(s.pop('follow_ups_json', '[]'), [])
         s['turns'] = _pg_json_loads_or(s.pop('turns_json', '[]'), [])
         s['rubric'] = _pg_json_loads_or(s.pop('rubric_json', '[]'), [])
+        s['phrCaseId'] = s.pop('phr_case_id', '') or ''
+        s['phrVitals'] = s.pop('phr_vitals', '') or ''
         s['createdAt'] = s.pop('created_at', '')
         s['updatedAt'] = s.pop('updated_at', '')
         return s
@@ -2202,8 +2219,9 @@ def create_scenario(data):
         cur.execute(
             f"""INSERT INTO scenarios (id, category, subcategory, prompt, expected_behavior, should_refuse,
                risk_level, tags_json, enabled, source, parent_id, generation_info_json,
-               source_conversation_id, follow_ups_json, turns_json, rubric_json, created_at, updated_at)
-               VALUES ({_ph(18)})""",
+               source_conversation_id, follow_ups_json, turns_json, rubric_json,
+               phr_case_id, phr_vitals, created_at, updated_at)
+               VALUES ({_ph(20)})""",
             (scenario_id, data.get('category', 'general'), data.get('subcategory', ''),
              prompt, data.get('expectedBehavior', ''), int(data.get('shouldRefuse', False)),
              data.get('riskLevel', 'MEDIUM'), json.dumps(tags, ensure_ascii=False),
@@ -2213,6 +2231,7 @@ def create_scenario(data):
              json.dumps(data.get('followUps', []), ensure_ascii=False),
              json.dumps(data.get('turns', []), ensure_ascii=False),
              json.dumps(data.get('rubric', []), ensure_ascii=False),
+             data.get('phrCaseId', '') or '', data.get('phrVitals', '') or '',
              now, now)
         )
     return get_scenario(scenario_id)
@@ -2225,7 +2244,8 @@ def update_scenario(scenario_id, data):
     field_map = {
         'category': 'category', 'subcategory': 'subcategory', 'prompt': 'prompt',
         'expectedBehavior': 'expected_behavior', 'riskLevel': 'risk_level', 'source': 'source',
-        'parentId': 'parent_id', 'sourceConversationId': 'source_conversation_id'
+        'parentId': 'parent_id', 'sourceConversationId': 'source_conversation_id',
+        'phrCaseId': 'phr_case_id', 'phrVitals': 'phr_vitals'
     }
     for camel, snake in field_map.items():
         if camel in data:
@@ -2477,7 +2497,7 @@ def get_scenarios_summary(limit=None, offset=0, light=True):
             cur.execute(
                 "SELECT id, category, subcategory, prompt, risk_level, "
                 "should_refuse, expected_behavior, tags_json, enabled, "
-                "parent_id, source, source_conversation_id, created_at, updated_at "
+                "parent_id, source, source_conversation_id, phr_case_id, phr_vitals, created_at, updated_at "
                 f"FROM scenarios ORDER BY id LIMIT {ph} OFFSET {ph}",
                 (limit, offset),
             )
@@ -2485,7 +2505,7 @@ def get_scenarios_summary(limit=None, offset=0, light=True):
             cur.execute(
                 "SELECT id, category, subcategory, prompt, risk_level, "
                 "should_refuse, expected_behavior, tags_json, enabled, "
-                "parent_id, source, source_conversation_id, created_at, updated_at "
+                "parent_id, source, source_conversation_id, phr_case_id, phr_vitals, created_at, updated_at "
                 f"FROM scenarios ORDER BY id LIMIT {ph}",
                 (limit,),
             )
@@ -2493,7 +2513,7 @@ def get_scenarios_summary(limit=None, offset=0, light=True):
             cur.execute(
                 "SELECT id, category, subcategory, prompt, risk_level, "
                 "should_refuse, expected_behavior, tags_json, enabled, "
-                "parent_id, source, source_conversation_id, created_at, updated_at "
+                "parent_id, source, source_conversation_id, phr_case_id, phr_vitals, created_at, updated_at "
                 "FROM scenarios ORDER BY id"
             )
         rows = cur.fetchall()
@@ -2507,6 +2527,8 @@ def get_scenarios_summary(limit=None, offset=0, light=True):
             s['enabled'] = bool(s.pop('enabled', 1))
             s['parentId'] = s.pop('parent_id', None)
             s['sourceConversationId'] = s.pop('source_conversation_id', None)
+            s['phrCaseId'] = s.pop('phr_case_id', '') or ''
+            s['phrVitals'] = s.pop('phr_vitals', '') or ''
             s['createdAt'] = s.pop('created_at', '')
             s['updatedAt'] = s.pop('updated_at', '')
             # turns/rubric/follow_ups/generationInfo 는 제외 (목록에서 불필요)
@@ -3985,24 +4007,43 @@ def save_advisory_review(review):
 
 
 def get_advisory_reviews(message_id=None, reviewer_id=None, case_id=None, limit=500):
+    """자문 검토 조회. 넘긴 조건은 모두 AND 로 걸린다.
+
+    조건을 하나만 골라 쓰면 안 된다 — 자문위원이 messageId 로 조회할 때
+    reviewer_id 가 무시되면 남의 판정까지 돌려주게 된다.
+    """
     ph = _p()
+    where, args = [], []
+    if message_id:
+        where.append(f"message_id = {ph}")
+        args.append(message_id)
+    if reviewer_id:
+        where.append(f"reviewer_id = {ph}")
+        args.append(reviewer_id)
+    if case_id:
+        where.append(f"case_id = {ph}")
+        args.append(case_id)
+    sql = "SELECT * FROM advisory_reviews"
+    if where:
+        sql += " WHERE " + " AND ".join(where)
+    sql += f" ORDER BY created_at DESC LIMIT {int(limit)}"
     with get_conn() as (conn, cur):
-        if message_id:
-            cur.execute(f"SELECT * FROM advisory_reviews WHERE message_id = {ph} ORDER BY created_at DESC",
-                        (message_id,))
-        elif reviewer_id:
-            cur.execute(f"SELECT * FROM advisory_reviews WHERE reviewer_id = {ph} ORDER BY created_at DESC",
-                        (reviewer_id,))
-        elif case_id:
-            cur.execute(f"SELECT * FROM advisory_reviews WHERE case_id = {ph} ORDER BY created_at DESC",
-                        (case_id,))
-        else:
-            cur.execute(f"SELECT * FROM advisory_reviews ORDER BY created_at DESC LIMIT {int(limit)}")
+        cur.execute(sql, tuple(args))
         rows = cur.fetchall()
     out = []
     for r in rows:
         d = _row_to_dict(r)
         d['items'] = _pg_json_loads_or(d.pop('items_json', '{}'), {})
+        # 응답 키는 다른 API 와 같이 camelCase 로 통일한다
+        d['conversationId'] = d.pop('conversation_id', '') or ''
+        d['messageId'] = d.pop('message_id', '') or ''
+        d['caseId'] = d.pop('case_id', '') or ''
+        d['caseNo'] = d.pop('case_no', '') or ''
+        d['reviewerId'] = d.pop('reviewer_id', '') or ''
+        d['reviewerName'] = d.pop('reviewer_name', '') or ''
+        d['overallNote'] = d.pop('overall_note', '') or ''
+        d['createdAt'] = d.pop('created_at', '') or ''
+        d['updatedAt'] = d.pop('updated_at', '') or ''
         out.append(d)
     return out
 

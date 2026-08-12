@@ -81,6 +81,20 @@
   </div>
 
   <div class="card">
+    <h2>자문 판정 집계</h2>
+    <div class="muted" style="margin-bottom:8px">
+      이번 자문의 산출물은 의견서가 아니라 채점 기준이다. 그 원재료는 부적정 판정과 함께 받은 수정안 문장이므로,
+      판정 원본 · 항목별 집계 · 부적정 목록을 엑셀로 내려받아 라벨 사전과 금지 표현 목록을 만든다.
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+      <button class="btn" onclick="loadAdvisorySummary()">집계 새로고침</button>
+      <a class="btn" href="/api/advisory/export" style="text-decoration:none">엑셀 내보내기</a>
+      <span id="advSummaryStatus" class="muted"></span>
+    </div>
+    <div id="advSummaryBox"></div>
+  </div>
+
+  <div class="card">
     <h2>케이스 목록 <span class="muted" id="caseCount"></span></h2>
     <table>
       <thead><tr>
@@ -402,12 +416,51 @@ async function delCase(id) {
   await loadCases();
 }
 
+// 자문 판정 집계 — 어느 항목에서 부적정이 몰리는지가 기준 개정의 출발점이다.
+// 적정률은 적정/(적정+부적정) 이며 '해당없음' 은 분모에서 뺀다.
+async function loadAdvisorySummary() {
+  const box = document.getElementById('advSummaryBox');
+  const st = document.getElementById('advSummaryStatus');
+  if (!box) return;
+  st.textContent = '불러오는 중...';
+  let d;
+  try {
+    const res = await fetch('/api/advisory/reviews');
+    if (!res.ok) { st.textContent = `조회 실패 (HTTP ${res.status})`; return; }
+    d = await res.json();
+  } catch (e) { st.textContent = '조회 실패: ' + esc(e.message); return; }
+
+  const defs = d.itemDefs || [];
+  const sum = d.summary || {};
+  if (!d.total) {
+    box.innerHTML = '<div class="muted">아직 저장된 판정이 없습니다.</div>';
+    st.textContent = '';
+    return;
+  }
+  let h = '<table><thead><tr><th>검토 항목</th><th style="width:70px">적정</th>' +
+    '<th style="width:70px">부적정</th><th style="width:80px">해당없음</th>' +
+    '<th style="width:80px">모수</th><th style="width:80px">적정률</th></tr></thead><tbody>';
+  defs.forEach(function (it) {
+    const s = sum[it.key] || {};
+    const ok = s['적정'] || 0, bad = s['부적정'] || 0, na = s['해당없음'] || 0;
+    const denom = ok + bad;
+    const rate = denom ? (ok / denom * 100).toFixed(1) + '%' : '-';
+    h += `<tr><td>${esc(it.name)}</td><td>${ok}</td>` +
+      `<td${bad ? ' style="color:var(--red);font-weight:700"' : ''}>${bad}</td>` +
+      `<td class="muted">${na}</td><td class="muted">${denom}</td><td><b>${rate}</b></td></tr>`;
+  });
+  h += '</tbody></table>';
+  box.innerHTML = h;
+  st.textContent = `판정 ${d.total}건`;
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   const d = new Date();
   document.getElementById('todayInput').value =
     `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   await loadUsers();
   await loadCases();
+  await loadAdvisorySummary();
 });
 </script>
 </body>

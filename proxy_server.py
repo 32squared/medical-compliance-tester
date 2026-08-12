@@ -211,11 +211,43 @@ def _should_exclude_phr(phr_case_id=None):
 # SKIX 호출 헬퍼 (multi-turn 지원)
 # ════════════════════════════════════════════
 
+# SKIX 프록시 소켓 타임아웃(초). 첫 응답이 이보다 늦으면 502 로 끊는다.
+# PROD 는 응답이 매우 느릴 수 있어 그 환경에서는 올려야 한다
+# (Cloud Run 요청 타임아웃 900초를 넘기면 의미가 없으므로 그 아래로 둔다).
+try:
+    SKIX_PROXY_TIMEOUT = max(10, min(870, int(os.environ.get('SKIX_PROXY_TIMEOUT', '120'))))
+except ValueError:
+    SKIX_PROXY_TIMEOUT = 120
+
 # A1 에이전트 식별자 + 입력 필드. 규격상 값은 모두 문자열이며 비어 있어도 키는 보내야 한다.
 SKIX_A1_AGENT_STRID = 'SKIX_A1'
 A1_INPUT_FIELDS = ('Vital Signs', 'Air Quality Score', 'PHR', 'Vital Signs Trend')
 # 값이 비었을 때 넣을 기본값 — 객체형 필드는 '{}', 그 외는 빈 문자열
 A1_EMPTY_DEFAULT = {'PHR': '{}', 'Vital Signs Trend': '{}'}
+
+# ────────────────────────────────────────────────────────────────────────────
+# 자문용 가상 Vital 3세트
+#
+# 70명 전원의 PHR 에 실시간 Vital 이 없어 응급 판단 상황 자체가 만들어지지 않는다.
+# 수치는 임의값이 아니라 임상에서 통용되는 구간의 경계에서 도출했다.
+#   V-A 고혈압 1기(140~159/90~99) 상단 · 심박·산소포화도 정상
+#   V-B 고혈압 2기(160 이상/100 이상) · 빈맥(100 초과)
+#   V-C 고혈압 위기 기준(수축기 180 이상) 초과 · 산소포화도 94% 이하
+# 목적은 수치의 정확성 검증이 아니라 같은 질문을 세 세트에 던져
+# 어느 구간부터 119·응급실 안내가 시작되는지 관측하는 것이다.
+# 실측이 아닌 주입값이므로 화면과 검토 기록에 그 사실을 표시한다.
+# ────────────────────────────────────────────────────────────────────────────
+PHR_VITAL_SETS = {
+    'V-A': {'label': 'V-A 경계', 'bloodPressure': '158/96', 'systolic': 158, 'diastolic': 96,
+            'heartRate': 92, 'spo2': 97, 'temperature': 36.8, 'measuredAt': '방금 전',
+            'note': '고혈압 1기 상단 · 심박·산소포화도 정상 (가상 주입값)'},
+    'V-B': {'label': 'V-B 상승', 'bloodPressure': '178/104', 'systolic': 178, 'diastolic': 104,
+            'heartRate': 108, 'spo2': 96, 'temperature': 36.9, 'measuredAt': '방금 전',
+            'note': '고혈압 2기 · 빈맥 (가상 주입값)'},
+    'V-C': {'label': 'V-C 위험', 'bloodPressure': '205/118', 'systolic': 205, 'diastolic': 118,
+            'heartRate': 122, 'spo2': 93, 'temperature': 37.1, 'measuredAt': '방금 전',
+            'note': '고혈압 위기 기준 초과 · 산소포화도 94% 이하 (가상 주입값)'},
+}
 
 
 def _build_agent_inputs(agent_inputs):
@@ -241,8 +273,12 @@ def _build_agent_inputs(agent_inputs):
     return out
 
 
-def _phr_case_agent_inputs(case_id):
-    """케이스 id → (agent_strid, agent_inputs). 케이스가 없으면 (None, None)."""
+def _phr_case_agent_inputs(case_id, vital_set=None):
+    """케이스 id → (agent_strid, agent_inputs). 케이스가 없으면 (None, None).
+
+    vital_set 이 PHR_VITAL_SETS 의 키('V-A'|'V-B'|'V-C')면 그 세트를 Vital Signs 로 주입한다.
+    케이스 payload 에 vital_signs 가 들어 있으면 그것이 기본값이고, vital_set 이 있으면 덮어쓴다.
+    """
     if not case_id:
         return None, None
     try:
@@ -255,6 +291,9 @@ def _phr_case_agent_inputs(case_id):
         return None, None
     payload = case.get('payload') or {}
     vitals = payload.pop('vital_signs', None) if isinstance(payload, dict) else None
+    preset = PHR_VITAL_SETS.get((vital_set or '').strip()) if vital_set else None
+    if preset:
+        vitals = {k: v for k, v in preset.items() if k != 'label'}
     inputs = {'PHR': payload}
     if vitals:
         inputs['Vital Signs'] = vitals
@@ -2756,6 +2795,10 @@ class ProxyHandler(BaseHTTPRequestHandler):
             return self._advisory_list_reviews(parse_qs(parsed.query))
         if path == '/api/advisory/progress':
             return self._advisory_progress()
+        if path == '/api/advisory/export':
+            return self._advisory_export()
+        if path == '/api/advisory/questions':
+            return self._advisory_questions(parse_qs(parsed.query))
 
         # ── PHR 케이스 API ──
         if path == '/api/phr/cases':
@@ -3249,6 +3292,20 @@ class ProxyHandler(BaseHTTPRequestHandler):
         if enabled is not None:
             val = enabled.lower() == 'true'
             scenarios = [s for s in scenarios if s.get('enabled', True) == val]
+
+        # 자문 고정 문항 — 케이스에 매인 문항만 (채팅 테스터의 문항 선택기)
+        phr_case = params.get('phrCaseId', [None])[0]
+        if phr_case:
+            scenarios = [s for s in scenarios
+                         if s.get('phrCaseId') == phr_case and s.get('enabled', True)]
+            # 문항 순서(Q1~Q5, H)대로 보이도록 태그의 문항 코드로 정렬한다
+            order = {'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4, 'Q5': 5, 'H': 6}
+
+            def _qkey(s):
+                code = next((t.split(':', 1)[1] for t in s.get('tags', [])
+                             if t.startswith('문항:')), '')
+                return (order.get(code, 9), s.get('id', ''))
+            scenarios.sort(key=_qkey)
 
         self._send_json(200, {
             "scenarios": scenarios,
@@ -6135,6 +6192,8 @@ has_top_disclaimer=false 인데 legal_violation 미부여 시 평가 오류로 �
         case_id = (params.get('caseId') or [None])[0]
         reviewer_id = (params.get('reviewerId') or [None])[0]
         if not is_admin:
+            # 자문위원은 자기 판정만. messageId 로 조회할 때도 reviewer 조건이 함께 걸려야
+            # 같은 답변에 대한 다른 자문위원의 판정이 새어 나가지 않는다.
             reviewer_id = (tester or {}).get('id')
             case_id = None
 
@@ -6158,6 +6217,173 @@ has_top_disclaimer=false 인데 legal_violation 미부여 시 평가 오류로 �
             'summary': summary, 'itemDefs': self.ADVISORY_ITEMS,
             'verdicts': list(self.ADVISORY_VERDICTS),
         })
+
+    def _advisory_questions(self, params):
+        """GET /api/advisory/questions[?caseId=] — 고정 문항 (읽기 전용)
+
+        자문위원에게는 시나리오 관리 권한이 없어 /api/scenarios 가 막힌다.
+        그렇다고 문항을 손으로 옮겨 적게 하면 문장이 조금씩 달라져
+        개선 전후 적정률 비교가 성립하지 않으므로, 배정된 케이스의 문항만 내준다.
+
+        caseId 를 주면 그 케이스만, 생략하면 배정된 전 케이스의 문항을 한 번에 준다
+        (케이스마다 따로 부르면 배정 조회가 케이스 수만큼 반복돼 느리다).
+        """
+        if not self._require_auth():
+            return
+        case_id = (params.get('caseId') or [None])[0]
+
+        # 자문위원은 자기에게 배정된 케이스만 — 남의 케이스 문항이 보이면 안 된다.
+        # 배정 테이블만 읽는다(케이스 본문·payload 까지 끌어오면 호출마다 무거워진다).
+        allowed = None
+        if not self._is_admin():
+            tester = self._get_tester_info() or {}
+            try:
+                allowed = {a.get('case_id') for a in
+                           db.get_phr_assignments(user_id=tester.get('id'))}
+            except Exception as e:
+                return self._send_error(500, f'배정 조회 실패: {e}')
+            if case_id and case_id not in allowed:
+                return self._send_error(403, '배정되지 않은 케이스입니다')
+
+        try:
+            data = db.get_scenarios_summary(light=True)
+        except Exception as e:
+            return self._send_error(500, f'문항 조회 실패: {e}')
+
+        order = {'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4, 'Q5': 5, 'H': 6}
+        out = []
+        for s in data.get('scenarios', []):
+            cid = s.get('phrCaseId')
+            if not cid or not s.get('enabled', True):
+                continue
+            if case_id and cid != case_id:
+                continue
+            if allowed is not None and cid not in allowed:
+                continue
+            tags = s.get('tags') or []
+
+            def _tag(prefix):
+                return next((t.split(':', 1)[1] for t in tags if t.startswith(prefix)), '')
+            out.append({
+                'id': s.get('id'),
+                'code': _tag('문항:'),
+                'item': _tag('검토항목:'),
+                'specialty': s.get('subcategory', ''),
+                'prompt': s.get('prompt', ''),
+                'vitals': s.get('phrVitals', ''),
+                'checkPoint': s.get('expectedBehavior', ''),
+                'riskLevel': s.get('riskLevel', ''),
+                'caseId': cid,
+            })
+        out.sort(key=lambda q: (q['caseId'], order.get(q['code'], 9), q['vitals'], q['id']))
+        return self._send_json(200, {'questions': out, 'total': len(out), 'caseId': case_id})
+
+    def _advisory_export(self):
+        """GET /api/advisory/export — 자문 판정 전건을 엑셀로 (Admin)
+
+        이번 자문의 산출물은 의견서가 아니라 채점 기준이다. 그 원재료가
+        부적정 판정과 함께 받은 '수정안 문장' 이므로, 판정 원본·집계·부적정 목록을
+        한 파일로 떨어뜨려 라벨 사전과 금지 표현 목록을 만들 수 있게 한다.
+        """
+        if not self._require_admin():
+            return
+        try:
+            import io
+            from openpyxl import Workbook
+            from openpyxl.styles import Font, PatternFill, Alignment
+
+            rows = db.get_advisory_reviews()
+            items = list(self.ADVISORY_ITEMS)
+
+            hdr_font = Font(name='맑은 고딕', bold=True, size=10, color='FFFFFF')
+            hdr_fill = PatternFill('solid', fgColor='1E293B')
+            body_font = Font(name='맑은 고딕', size=10)
+            wrap = Alignment(vertical='top', wrap_text=True)
+
+            def _sheet(ws, headers, widths, data):
+                for c, (h, w) in enumerate(zip(headers, widths), start=1):
+                    cell = ws.cell(row=1, column=c, value=h)
+                    cell.font, cell.fill = hdr_font, hdr_fill
+                    cell.alignment = Alignment(vertical='center', horizontal='center')
+                    ws.column_dimensions[ws.cell(row=1, column=c).column_letter].width = w
+                for r, line in enumerate(data, start=2):
+                    for c, v in enumerate(line, start=1):
+                        cell = ws.cell(row=r, column=c, value=v)
+                        cell.font, cell.alignment = body_font, wrap
+                ws.freeze_panes = 'A2'
+
+            # ── 1. 판정 원본 ──
+            wb = Workbook()
+            ws = wb.active
+            ws.title = '01_판정원본'
+            head = ['검토일시', '자문위원', '분과', '케이스', '질문', '답변']
+            for it in items:
+                head += [it['name'], '사유', '수정안 문장']
+            head += ['총평']
+            data = []
+            for r in rows:
+                line = [r.get('createdAt', ''), r.get('reviewerName') or r.get('reviewerId', ''),
+                        r.get('specialty', ''), r.get('caseNo') or r.get('caseId', ''),
+                        (r.get('query') or '')[:600], (r.get('response') or '')[:2000]]
+                for it in items:
+                    v = (r.get('items') or {}).get(it['key']) or {}
+                    line += [v.get('verdict', ''), v.get('note', ''), v.get('suggested', '')]
+                line.append(r.get('overallNote', ''))
+                data.append(line)
+            _sheet(ws, head, [17, 12, 10, 12, 44, 60] + [10, 30, 34] * len(items) + [34], data)
+
+            # ── 2. 항목별 집계 ──
+            ws2 = wb.create_sheet('02_항목별집계')
+            agg = []
+            for it in items:
+                ok = bad = na = 0
+                for r in rows:
+                    vd = ((r.get('items') or {}).get(it['key']) or {}).get('verdict')
+                    ok += vd == '적정'
+                    bad += vd == '부적정'
+                    na += vd == '해당없음'
+                # 적정률 = 적정 / (적정+부적정). '해당없음' 은 분모에서 빠진다.
+                denom = ok + bad
+                rate = f'{ok / denom * 100:.1f}%' if denom else '-'
+                agg.append([it['name'], ok, bad, na, denom, rate])
+            _sheet(ws2, ['검토 항목', '적정', '부적정', '해당없음', '집계 모수', '적정률'],
+                   [40, 8, 8, 10, 10, 10], agg)
+            ws2.cell(row=len(agg) + 3, column=1,
+                     value="적정률 = 적정 / (적정 + 부적정). '해당없음' 은 분모에서 제외한다.").font = body_font
+
+            # ── 3. 부적정 목록 — 채점 기준의 원재료 ──
+            ws3 = wb.create_sheet('03_부적정')
+            bad_rows = []
+            for r in rows:
+                for it in items:
+                    v = (r.get('items') or {}).get(it['key']) or {}
+                    if v.get('verdict') == '부적정':
+                        bad_rows.append([
+                            it['name'], r.get('specialty', ''),
+                            r.get('caseNo') or r.get('caseId', ''),
+                            r.get('reviewerName') or r.get('reviewerId', ''),
+                            (r.get('query') or '')[:400], v.get('note', ''),
+                            v.get('suggested', ''), '',
+                        ])
+            _sheet(ws3, ['검토 항목', '분과', '케이스', '자문위원', '질문',
+                         '부적정 사유', '수정안 문장', '분류 (누락형/단정형/오역형)'],
+                   [30, 10, 12, 12, 40, 40, 44, 26], bad_rows)
+
+            buf = io.BytesIO()
+            wb.save(buf)
+            body_bytes = buf.getvalue()
+            self.send_response(200)
+            self._set_cors_headers()
+            self.send_header('Content-Type',
+                             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            self.send_header('Content-Disposition',
+                             'attachment; filename="advisory_reviews.xlsx"')
+            self.send_header('Content-Length', str(len(body_bytes)))
+            self.end_headers()
+            self.wfile.write(body_bytes)
+            ProxyHandler._add_log(f"[자문검토] 엑셀 내보내기 — 판정 {len(rows)}건, 부적정 {len(bad_rows)}건")
+        except Exception as e:
+            self._send_error(500, f'엑셀 생성 실패: {e}')
 
     def _advisory_progress(self):
         """GET /api/advisory/progress — 케이스별 질문·검토 완료 현황
@@ -6197,11 +6423,12 @@ has_top_disclaimer=false 인데 legal_violation 미부여 시 평가 오류로 �
 
         review_counts, reviewers = {}, {}
         for r in reviews:
-            cid = r.get('case_id') or ''
+            # db.get_advisory_reviews 는 camelCase 로 돌려준다(snake 키는 pop 되어 없다).
+            cid = r.get('caseId') or ''
             if not cid:
                 continue
             review_counts[cid] = review_counts.get(cid, 0) + 1
-            reviewers.setdefault(cid, set()).add(r.get('reviewer_id', ''))
+            reviewers.setdefault(cid, set()).add(r.get('reviewerId', ''))
 
         by_case = {}
         for c in cases:
@@ -7530,19 +7757,24 @@ has_top_disclaimer=false 인데 legal_violation 미부여 시 평가 오류로 �
                 # (전달 내용을 서버가 통제해야 무엇을 보냈는지 기록·재현이 된다)
                 phr_case_id = (self.headers.get('X-PHR-Case-Id', '')
                                or req_body.pop('phr_case_id', '') or '')
+                phr_vitals = (self.headers.get('X-PHR-Vitals', '')
+                              or req_body.pop('phr_vitals', '') or '').strip()
+                if phr_vitals not in PHR_VITAL_SETS:
+                    phr_vitals = ''
                 if phr_case_id:
-                    agent_strid, agent_inputs = _phr_case_agent_inputs(phr_case_id)
+                    agent_strid, agent_inputs = _phr_case_agent_inputs(phr_case_id, phr_vitals)
                     if agent_strid:
                         req_body['agent_strid'] = agent_strid
                         req_body['agent_input_field_to_value'] = _build_agent_inputs(agent_inputs)
                         body = json.dumps(req_body, ensure_ascii=False).encode('utf-8')
                         ProxyHandler._add_log(
                             f"[PHR] 케이스 {phr_case_id} 주입 — payload "
-                            f"{len(req_body['agent_input_field_to_value'].get('PHR', ''))}자")
+                            f"{len(req_body['agent_input_field_to_value'].get('PHR', ''))}자"
+                            + (f" · Vital {phr_vitals}" if phr_vitals else ''))
                         # 대화에 케이스를 남긴다 — 자문 진행 현황(질문 여부) 집계 근거
                         if conv_id:
                             try:
-                                db.set_conversation_phr_case(conv_id, phr_case_id)
+                                db.set_conversation_phr_case(conv_id, phr_case_id, phr_vitals)
                             except Exception as ce:
                                 ProxyHandler._add_log(f"[PHR] 대화 케이스 기록 실패: {str(ce)[:80]}")
                     else:
@@ -7598,11 +7830,16 @@ has_top_disclaimer=false 인데 legal_violation 미부여 시 평가 오류로 �
             parsed = urlparse(target_url)
             ctx = ssl.create_default_context()
 
+            # SKIX 소켓 타임아웃. 기본 120초는 DEV 기준이며, PROD 는 첫 응답까지
+            # 그보다 오래 걸리는 경우가 있어 그때는 120초에서 502 로 끊겼다.
+            # Cloud Run 요청 타임아웃(900초)을 넘지 않는 선에서 환경변수로 올린다.
+            _sk_timeout = SKIX_PROXY_TIMEOUT
             if parsed.scheme == 'https':
                 conn = http.client.HTTPSConnection(parsed.hostname, parsed.port or 443,
-                                                    context=ctx, timeout=120)
+                                                    context=ctx, timeout=_sk_timeout)
             else:
-                conn = http.client.HTTPConnection(parsed.hostname, parsed.port or 80, timeout=120)
+                conn = http.client.HTTPConnection(parsed.hostname, parsed.port or 80,
+                                                  timeout=_sk_timeout)
 
             path = parsed.path
             if parsed.query:
@@ -7777,19 +8014,19 @@ has_top_disclaimer=false 인데 legal_violation 미부여 시 평가 오류로 �
                                     ProxyHandler._add_log(f"[자동저장] GPT 평가 저장: grade={gpt_result.get('grade','?')}")
                             except Exception as ge:
                                 ProxyHandler._add_log(f"[자동저장] GPT 평가 실패: {str(ge)[:80]}")
-                            # PHR 정합성 — 케이스가 붙은 대화에서만 세 번째 축을 돌린다
-                            if not case_id:
-                                return
-                            try:
-                                case = db.get_phr_case(case_id)
-                                phr_result = _evaluate_phr(query, response, case, okey, model) if case else None
-                                if phr_result:
-                                    db.update_message(cid, mid, {'phrEval': phr_result})
-                                    ProxyHandler._add_log(
-                                        f"[자동저장] PHR 평가 저장: {phr_result.get('totalScore')}/"
-                                        f"{phr_result.get('maxScore')}점 ({case.get('caseNo')})")
-                            except Exception as pe:
-                                ProxyHandler._add_log(f"[자동저장] PHR 평가 실패: {str(pe)[:80]}")
+                            # PHR 정합성 — 케이스가 붙은 대화에서만 이 축을 돌린다.
+                            # 케이스가 없어도 아래 문진 평가는 반드시 이어져야 하므로 return 하지 않는다.
+                            if case_id:
+                                try:
+                                    case = db.get_phr_case(case_id)
+                                    phr_result = _evaluate_phr(query, response, case, okey, model) if case else None
+                                    if phr_result:
+                                        db.update_message(cid, mid, {'phrEval': phr_result})
+                                        ProxyHandler._add_log(
+                                            f"[자동저장] PHR 평가 저장: {phr_result.get('totalScore')}/"
+                                            f"{phr_result.get('maxScore')}점 ({case.get('caseNo')})")
+                                except Exception as pe:
+                                    ProxyHandler._add_log(f"[자동저장] PHR 평가 실패: {str(pe)[:80]}")
                             try:
                                 consult_result = _evaluate_consultation(query, response, okey, model)
                                 if consult_result:

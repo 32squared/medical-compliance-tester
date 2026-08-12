@@ -47,6 +47,10 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "Build done!" -ForegroundColor Green
 
 # [2/3] Cloud Run 배포 (Cloud SQL 연결)
+#
+# 환경변수는 --update-env-vars 로 갱신한다. --set-env-vars 는 기존 변수를 통째로 교체해서,
+# 콘솔이나 수동으로 넣어 둔 OPENAI_API_KEY 가 배포 때마다 사라진다. 그러면 GPT 평가·문진 평가·
+# PHR 정합성 평가가 조용히 멈추는데, 화면에는 오류가 아니라 '평가 없음' 으로만 보여 알아채기 어렵다.
 Write-Host "[2/3] Deploying to Cloud Run with Cloud SQL..." -ForegroundColor Yellow
 gcloud run deploy $ServiceName `
     --image "gcr.io/$ProjectId/$ServiceName" `
@@ -58,7 +62,7 @@ gcloud run deploy $ServiceName `
     --min-instances 0 --max-instances 10 `
     --concurrency 5 `
     --execution-environment gen2 `
-    --set-env-vars "DATABASE_URL=$DatabaseUrl" `
+    --update-env-vars "DATABASE_URL=$DatabaseUrl" `
     --add-cloudsql-instances $SqlConnection `
     --vpc-connector=medical-connector `
     --vpc-egress=all-traffic `
