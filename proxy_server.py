@@ -7071,19 +7071,47 @@ has_top_disclaimer=false 인데 legal_violation 미부여 시 평가 오류로 �
     # 로컬 대화 저장 + 커멘트
     # ════════════════════════════════════════════
 
+    def _can_access_conversation(self, conv) -> bool:
+        """대화 소유권 확인 — Admin은 전부, 그 외엔 본인 대화만.
+
+        목록·검색은 본인 것만 돌려주는데 상세·수정·삭제에 같은 선을 긋지 않으면
+        id 만 알면 남의 대화를 열람·삭제하는 우회로가 남는다. 운영 서비스는
+        --allow-unauthenticated 라 그 우회로가 인터넷에 열려 있었다.
+
+        주인이 없는 대화('' / 'anonymous')는 비로그인 채팅이 만든 것이라 그대로 둔다.
+        여기까지 막으면 로그인 없이 쓰던 흐름이 저장 단계에서 조용히 끊긴다.
+
+        소유자 키는 두 가지로 들어온다 — db.get_conversation 은 userId 로 바꿔서 주고
+        db.get_conversations 는 user_id 그대로 준다. 한쪽만 보면 값이 늘 빈 문자열로
+        읽혀 '주인 없음' 으로 통과해 버리므로, 두 표기를 모두 확인한다. 어느 키도
+        없으면 호출부가 잘못된 것이니 열어 주지 않는다(모르면 막는 쪽).
+        """
+        if self._is_admin():
+            return True
+        if not isinstance(conv, dict) or ('userId' not in conv and 'user_id' not in conv):
+            return False
+        owner = conv.get('userId') or conv.get('user_id') or ''
+        if owner in ('', 'anonymous'):
+            return True
+        tester = self._get_tester_info()
+        return bool(tester) and owner == tester['id']
+
     def _list_local_conversations(self, query_string=''):
-        """GET /api/conversations — 로컬 대화 목록 (userId 자동 필터)"""
+        """GET /api/conversations — 로컬 대화 목록 (본인 것만, Admin은 전체)"""
+        if not self._require_auth():
+            return
         tester = self._get_tester_info()
         user_id = tester['id'] if tester else None
 
         params = parse_qs(query_string)
         limit = int(params.get('limit', ['50'])[0])
 
-        # 사용자별 필터 (Admin은 전체)
-        if not self._is_admin() and user_id:
-            convs = db.get_conversations(user_id=user_id, limit=limit)
-        else:
+        # 미인증은 위에서 걸러진다. 예전에는 user_id 가 없으면 else 로 빠져 전체를
+        # 돌려줬고, 그 경로로 로그인 없이 남의 대화 목록이 그대로 나갔다.
+        if self._is_admin():
             convs = db.get_conversations(limit=limit)
+        else:
+            convs = db.get_conversations(user_id=user_id, limit=limit)
 
         results = []
         for c in convs:
@@ -7101,7 +7129,9 @@ has_top_disclaimer=false 인데 legal_violation 미부여 시 평가 오류로 �
         self._send_json(200, {"results": results, "total_count": len(results)})
 
     def _search_local_conversations(self, query_string=''):
-        """GET /api/conversations/search — 로컬 대화 검색"""
+        """GET /api/conversations/search — 로컬 대화 검색 (본인 것만, Admin은 전체)"""
+        if not self._require_auth():
+            return
         params = parse_qs(query_string)
         search_query = params.get('search_query', [''])[0]
         if not search_query:
@@ -7110,10 +7140,11 @@ has_top_disclaimer=false 인데 legal_violation 미부여 시 평가 오류로 �
         tester = self._get_tester_info()
         user_id = tester['id'] if tester else None
 
-        if not self._is_admin() and user_id:
-            convs = db.search_conversations(user_id=user_id, query=search_query)
-        else:
+        # 목록과 같은 이유로 미인증 전체조회 경로를 없앤다.
+        if self._is_admin():
             convs = db.search_conversations(query=search_query)
+        else:
+            convs = db.search_conversations(user_id=user_id, query=search_query)
 
         results = []
         for c in convs:
@@ -7131,6 +7162,8 @@ has_top_disclaimer=false 인데 legal_violation 미부여 시 평가 오류로 �
         c = db.get_conversation(conv_id)
         if not c:
             return self._send_error(404, '대화를 찾을 수 없습니다')
+        if not self._can_access_conversation(c):
+            return self._send_error(403, '본인 대화만 조회할 수 있습니다')
 
         # 보강 데이터를 메시지에 첨부
         try:
@@ -7201,6 +7234,8 @@ has_top_disclaimer=false 인데 legal_violation 미부여 시 평가 오류로 �
         conv = db.get_conversation(conv_id)
         if not conv:
             return self._send_error(404, '대화를 찾을 수 없습니다')
+        if not self._can_access_conversation(conv):
+            return self._send_error(403, '본인 대화에만 기록할 수 있습니다')
 
         # GPT 평가 결과 업데이트 (기존 메시지에 추가)
         if payload.get('updateGptEval'):
@@ -7287,11 +7322,17 @@ has_top_disclaimer=false 인데 legal_violation 미부여 시 평가 오류로 �
         self._send_json(200, {"success": True, "messageCount": msg_count, "assistantMsgId": assistant_msg_id})
 
     def _delete_local_conversation(self, conv_id):
-        """DELETE /api/conversations/{id} — 대화 삭제"""
+        """DELETE /api/conversations/{id} — 대화 삭제 (본인 또는 Admin)"""
+        if not self._require_auth():
+            return
         existing = db.get_conversation(conv_id)
         if not existing:
             return self._send_error(404, '대화를 찾을 수 없습니다')
+        if not self._can_access_conversation(existing):
+            return self._send_error(403, '본인 대화만 삭제할 수 있습니다')
         db.delete_conversation(conv_id)
+        actor = (self._get_tester_info() or {}).get('id') or '관리자'
+        ProxyHandler._add_log(f"[대화] 삭제: id={conv_id[:8]}..., 요청자={actor}")
         self._send_json(200, {"success": True})
 
     def _add_comment(self, conv_id, body):
