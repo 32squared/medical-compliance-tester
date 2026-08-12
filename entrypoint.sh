@@ -8,6 +8,18 @@ set -e
 if [ "$RUN_MODE" = "job" ]; then
     echo "[entrypoint] mode=job → python /app/job_runner.py"
     exec python /app/job_runner.py
+elif [ "$RUN_MODE" = "seed_advisory" ]; then
+    # 2차 자문 준비 데이터 투입 (Cloud Run Job 전용).
+    # Cloud SQL 이 private IP 라 로컬에서 직접 넣을 수 없어 GCP 안에서 실행한다.
+    # SEED_DRY_RUN=1 이면 저장하지 않고 계획만 출력한다.
+    # 운영 DB 처럼 이미 데이터가 있는 곳에서는 무엇을 덮어쓰는지 먼저 확인한다.
+    SEED_ARGS=""
+    if [ "$SEED_DRY_RUN" = "1" ]; then SEED_ARGS="--dry-run"; fi
+    echo "[entrypoint] mode=seed_advisory → scripts/seed_advisory.py ${SEED_ARGS}"
+    exec python /app/scripts/seed_advisory.py \
+        --phr "${SEED_PHR_XLSX:-/app/seed_data/phr_70.xlsx}" \
+        --questions "${SEED_Q_XLSX:-/app/seed_data/questions.xlsx}" \
+        ${SEED_ARGS}
 else
     PORT_USED="${PORT:-8080}"
     echo "[entrypoint] mode=service → python /app/proxy_server.py --port ${PORT_USED}"

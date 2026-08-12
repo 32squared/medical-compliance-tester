@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PHR 케이스 관리 — 나만의 주치의</title>
+<style>
+  :root {
+    --bg:#0f1115; --surface:#171a21; --surface2:#1e222b; --border:#2a2f3a;
+    --text:#e6e8ec; --text-dim:#8b93a1; --accent:#5b9cf8; --accent-dim:#1b2b45;
+    --green:#4caf7d; --amber:#d4a24a; --red:#e05a4f;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text);
+         font-family:'Malgun Gothic','맑은 고딕',system-ui,sans-serif; font-size:13px; }
+  .topbar { display:flex; align-items:center; gap:10px; padding:8px 14px;
+            background:var(--surface); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:10; }
+  .topbar h1 { font-size:15px; margin:0; font-weight:700; }
+  .nav-btn { color:var(--text-dim); text-decoration:none; font-size:12px; padding:4px 9px; border-radius:6px; }
+  .nav-btn:hover { background:var(--surface2); color:var(--text); }
+  .nav-btn.active { background:var(--accent-dim); color:var(--accent); }
+  .wrap { padding:16px; max-width:1500px; margin:0 auto; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:10px;
+          padding:14px 16px; margin-bottom:14px; }
+  .card h2 { font-size:13px; margin:0 0 10px; font-weight:700; }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  th, td { padding:6px 8px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top; }
+  th { color:var(--text-dim); font-weight:600; font-size:11px; background:var(--surface2); }
+  tr:hover td { background:var(--surface2); }
+  .btn { background:var(--accent); color:#fff; border:none; border-radius:6px;
+         padding:6px 12px; font-size:12px; cursor:pointer; font-family:inherit; }
+  .btn:hover { filter:brightness(1.1); }
+  .btn.ghost { background:transparent; border:1px solid var(--border); color:var(--text-dim); }
+  .btn.danger { background:var(--red); }
+  .tag { display:inline-block; background:var(--surface2); border:1px solid var(--border);
+         border-radius:4px; padding:1px 5px; font-size:10px; color:var(--text-dim); margin:1px 2px 1px 0; }
+  .tag.sp { border-color:var(--accent); color:var(--accent); }
+  .warn { color:var(--amber); }
+  .err { color:var(--red); }
+  .ok { color:var(--green); }
+  .muted { color:var(--text-dim); }
+  input[type=file] { font-size:12px; color:var(--text-dim); }
+  .modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:100;
+              align-items:center; justify-content:center; }
+  .modal { background:var(--surface); border:1px solid var(--border); border-radius:12px;
+           padding:20px; width:min(560px,92vw); max-height:86vh; overflow:auto; }
+  label.chk { display:block; padding:4px 6px; border-radius:5px; cursor:pointer; }
+  label.chk:hover { background:var(--surface2); }
+  pre { background:var(--bg); border:1px solid var(--border); border-radius:6px;
+        padding:8px; overflow:auto; max-height:340px; font-size:11px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>&#127973; PHR 케이스 관리</h1>
+  <a href="/" class="nav-btn">채팅 테스터</a>
+  <a href="/manager" class="nav-btn">시나리오 관리</a>
+  <a href="/history" class="nav-btn">테스트 이력</a>
+  <a href="/phr" class="nav-btn active">PHR 케이스</a>
+  <a href="/settings" class="nav-btn">&#9881; 설정</a>
+  <span id="whoami" class="muted" style="margin-left:auto;font-size:11px"></span>
+</div>
+
+<div class="wrap">
+
+  <div class="card">
+    <h2>케이스 업로드</h2>
+    <div class="muted" style="margin-bottom:8px">
+      개인 기준 PHR 엑셀을 올리면 사람 단위로 케이스가 만들어진다.
+      항목별 시계열 · 결측 항목 · 처방 종료일이 이 단계에서 확정되며, 같은 케이스 번호는 덮어쓴다.
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <input type="file" id="xlsxFile" accept=".xlsx">
+      <label class="muted">기준일 <input type="date" id="todayInput"
+             style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:4px 6px;font-size:12px"></label>
+      <button class="btn" id="uploadBtn" onclick="doUpload()">업로드</button>
+      <span id="uploadStatus" class="muted"></span>
+    </div>
+    <div id="uploadReport" style="margin-top:12px"></div>
+  </div>
+
+  <div class="card">
+    <h2>자문 판정 집계</h2>
+    <div class="muted" style="margin-bottom:8px">
+      이번 자문의 산출물은 의견서가 아니라 채점 기준이다. 그 원재료는 부적정 판정과 함께 받은 수정안 문장이므로,
+      판정 원본 · 항목별 집계 · 부적정 목록을 엑셀로 내려받아 라벨 사전과 금지 표현 목록을 만든다.
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+      <button class="btn" onclick="loadAdvisorySummary()">집계 새로고침</button>
+      <a class="btn" href="/api/advisory/export" style="text-decoration:none">엑셀 내보내기</a>
+      <span id="advSummaryStatus" class="muted"></span>
+    </div>
+    <div id="advSummaryBox"></div>
+  </div>
+
+  <div class="card">
+    <h2>케이스 목록 <span class="muted" id="caseCount"></span></h2>
+    <table>
+      <thead><tr>
+        <th style="width:90px">케이스</th><th style="width:110px">기간</th>
+        <th style="width:58px">검진</th><th style="width:58px">처방</th>
+        <th>라벨 · 태그</th><th style="width:150px">분과</th>
+        <th style="width:170px">배정</th><th style="width:120px">진행</th><th style="width:150px"></th>
+      </tr></thead>
+      <tbody id="caseRows"><tr><td colspan="9" class="muted">불러오는 중...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- 배정 모달 -->
+<div class="modal-bg" id="assignModal">
+  <div class="modal">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <b id="assignTitle">전문가 배정</b>
+      <button class="btn ghost" onclick="closeAssign()">닫기</button>
+    </div>
+    <div class="muted" style="margin-bottom:8px">배정된 자문위원만 채팅에서 이 케이스를 볼 수 있다.</div>
+    <div id="assignUsers" style="max-height:44vh;overflow:auto;margin-bottom:12px"></div>
+    <button class="btn" onclick="saveAssign()">저장</button>
+  </div>
+</div>
+
+<!-- 페르소나 모달 -->
+<div class="modal-bg" id="personaModal">
+  <div class="modal">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <b id="personaTitle">페르소나</b>
+      <button class="btn ghost" onclick="document.getElementById('personaModal').style.display='none'">닫기</button>
+    </div>
+    <div class="muted" style="margin-bottom:10px">
+      원본 PHR 에는 나이·성별 필드가 없다. 성별은 여성 대상 암검진 이력으로만 추정되며,
+      나이와 배경은 여기서 채워야 자문위원이 그 사람의 입장에서 질문할 수 있다.
+    </div>
+    <div id="personaInferred" style="margin-bottom:10px"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <label class="muted">나이<input type="number" id="pAge" min="0" max="120"
+        style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 6px;font-size:12px"></label>
+      <label class="muted">성별
+        <select id="pSex" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 6px;font-size:12px">
+          <option value="">(미상)</option><option value="여성">여성</option><option value="남성">남성</option>
+        </select></label>
+    </div>
+    <label class="muted">직업·생활 배경<input type="text" id="pOcc" placeholder="예: 사무직, 교대근무"
+      style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 6px;font-size:12px;margin-bottom:8px"></label>
+    <label class="muted">배경 설명<textarea id="pBg" rows="2" placeholder="생활 습관, 가족 상황 등"
+      style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 6px;font-size:12px;margin-bottom:8px;resize:vertical"></textarea></label>
+    <label class="muted">현재 상황 — 왜 물어보는가<textarea id="pSit" rows="2" placeholder="예: 최근 피로가 심해 검진 결과를 다시 보고 싶다"
+      style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 6px;font-size:12px;margin-bottom:8px;resize:vertical"></textarea></label>
+    <label class="muted">자문위원 역할 지시문<textarea id="pInst" rows="2" placeholder="예: 검진 수치의 의미를 잘 모르는 사용자로서 질문해 주세요"
+      style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 6px;font-size:12px;margin-bottom:8px;resize:vertical"></textarea></label>
+    <label class="chk"><input type="checkbox" id="pReviewed"> 검수 완료 — 데이터와 배경이 앞뒤가 맞는지 확인함</label>
+    <button class="btn" style="margin-top:10px" onclick="savePersona()">저장</button>
+    <span id="personaStatus" class="muted" style="margin-left:8px"></span>
+  </div>
+</div>
+
+<!-- 상세 모달 -->
+<div class="modal-bg" id="detailModal">
+  <div class="modal" style="width:min(900px,94vw)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <b id="detailTitle">케이스 상세</b>
+      <button class="btn ghost" onclick="document.getElementById('detailModal').style.display='none'">닫기</button>
+    </div>
+    <div id="detailBody"></div>
+  </div>
+</div>
+
+<script>
+let cases = [];
+let users = [];
+let progress = {};
+let assignTarget = null;
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function loadUsers() {
+  try {
+    const res = await fetch('/api/tester/accounts');
+    if (!res.ok) return;
+    const d = await res.json();
+    users = (d.accounts || d.testers || d.users || []);
+  } catch (e) { console.warn('계정 조회 실패', e); }
+}
+
+async function loadProgress() {
+  try {
+    const res = await fetch('/api/advisory/progress');
+    if (res.ok) progress = (await res.json()).byCase || {};
+  } catch (e) { progress = {}; }
+}
+
+async function loadCases() {
+  const tb = document.getElementById('caseRows');
+  await loadProgress();
+  try {
+    const res = await fetch('/api/phr/cases');
+    if (!res.ok) { tb.innerHTML = `<tr><td colspan="9" class="err">조회 실패 (HTTP ${res.status})</td></tr>`; return; }
+    const d = await res.json();
+    cases = d.cases || [];
+  } catch (e) {
+    tb.innerHTML = `<tr><td colspan="9" class="err">조회 실패: ${esc(e.message)}</td></tr>`;
+    return;
+  }
+  document.getElementById('caseCount').textContent = `${cases.length}건`;
+  if (!cases.length) { tb.innerHTML = '<tr><td colspan="9" class="muted">케이스가 없다. 위에서 엑셀을 업로드한다.</td></tr>'; return; }
+
+  tb.innerHTML = cases.map(c => {
+    const cnt = c.counts || {};
+    const tags = (c.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join('');
+    const sp = (c.specialties || []).map(s => `<span class="tag sp">${esc(s)}</span>`).join('');
+    const assigned = (c.assignedTo || []);
+    const assignedTxt = assigned.length
+      ? assigned.map(u => `<span class="tag">${esc(u)}</span>`).join('')
+      : '<span class="muted">미배정</span>';
+    // 진행 — 질문(대화)과 검토를 나눠 본다. 질문만 하고 검토를 안 한 상태가 가장 흔한 누락이다
+    const st = progress[c.id] || {};
+    const progHtml = (st.reviews
+        ? `<span class="ok">검토 ${st.reviews}건</span>`
+        : (st.conversations ? '<span class="warn">질문만</span>' : '<span class="muted">미착수</span>'))
+      + (st.conversations ? `<div class="muted" style="font-size:10px">대화 ${st.conversations}</div>` : '')
+      + (c.persona && c.persona.reviewed === false && (c.persona.age || c.persona.sex)
+          ? '<div class="warn" style="font-size:10px">페르소나 미검수</div>' : '');
+    return `<tr>
+      <td><b>${esc(c.caseNo)}</b><div class="muted" style="font-size:10px">${esc(c.personRef)}</div></td>
+      <td class="muted">${esc(c.periodFrom)}~${esc(c.periodTo)}</td>
+      <td>${cnt.general || 0}</td>
+      <td>${cnt.prescription || 0}</td>
+      <td>${esc(c.label)}<div style="margin-top:3px">${tags}</div></td>
+      <td>${sp}</td>
+      <td>${assignedTxt}</td>
+      <td>${progHtml}</td>
+      <td style="white-space:nowrap">
+        <button class="btn ghost" onclick="showDetail('${esc(c.id)}')">상세</button>
+        <button class="btn ghost" onclick="openPersona('${esc(c.id)}')">페르소나</button>
+        <button class="btn ghost" onclick="openAssign('${esc(c.id)}')">배정</button>
+        <button class="btn danger" onclick="delCase('${esc(c.id)}')">삭제</button>
+      </td></tr>`;
+  }).join('');
+}
+
+async function doUpload() {
+  const f = document.getElementById('xlsxFile').files[0];
+  const st = document.getElementById('uploadStatus');
+  const btn = document.getElementById('uploadBtn');
+  if (!f) { st.textContent = '파일을 선택한다.'; st.className = 'warn'; return; }
+  btn.disabled = true;
+  st.textContent = '업로드 중...'; st.className = 'muted';
+
+  const b64 = await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(',')[1]);
+    r.onerror = reject;
+    r.readAsDataURL(f);
+  });
+
+  try {
+    const res = await fetch('/api/phr/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        data: b64, filename: f.name,
+        today: document.getElementById('todayInput').value || null,
+      }),
+    });
+    const d = await res.json();
+    if (!res.ok) { st.textContent = d.error || `실패 (HTTP ${res.status})`; st.className = 'err'; return; }
+    st.textContent = `케이스 ${d.count}건 저장`; st.className = 'ok';
+    renderReport(d.report || []);
+    await loadCases();
+  } catch (e) {
+    st.textContent = '실패: ' + e.message; st.className = 'err';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderReport(rows) {
+  const box = document.getElementById('uploadReport');
+  if (!rows.length) { box.innerHTML = ''; return; }
+  const warned = rows.filter(r => (r.warnings || []).length);
+  box.innerHTML = `
+    <div style="font-weight:700;margin-bottom:6px">업로드 검증</div>
+    <table><thead><tr>
+      <th>케이스</th><th>기간</th><th>검진</th><th>처방</th>
+      <th>측정 없음</th><th>전달 크기</th><th>경고</th>
+    </tr></thead><tbody>
+    ${rows.map(r => `<tr>
+      <td><b>${esc(r.caseNo)}</b> <span class="muted">${esc(r.personRef)}</span></td>
+      <td class="muted">${esc((r.period||{}).from)}~${esc((r.period||{}).to)}</td>
+      <td>${(r.counts||{}).general||0}</td>
+      <td>${(r.counts||{}).prescription||0}</td>
+      <td class="${(r.missing||[]).length ? 'warn' : 'muted'}">${(r.missing||[]).map(esc).join(', ') || '-'}</td>
+      <td class="muted">${(r.payloadChars||0).toLocaleString()}자</td>
+      <td class="${(r.warnings||[]).length ? 'err' : 'muted'}">${(r.warnings||[]).length || '-'}</td>
+    </tr>`).join('')}
+    </tbody></table>
+    ${warned.length ? `<div class="err" style="margin-top:6px">경고 ${warned.length}건 — 컬럼 조각 수가 맞지 않는 처방은 인용 대상에서 제외했다.</div>` : ''}`;
+}
+
+async function showDetail(id) {
+  const res = await fetch(`/api/phr/cases/${encodeURIComponent(id)}`);
+  if (!res.ok) { alert('조회 실패'); return; }
+  const c = await res.json();
+  document.getElementById('detailTitle').textContent = `${c.caseNo} · ${c.label || ''}`;
+  const tl = (c.case || {}).timeline || {};
+  let h = '<div style="font-weight:700;margin-bottom:6px">항목별 시계열</div><table><thead><tr><th>항목</th><th>최신</th><th>이력</th><th>방향</th></tr></thead><tbody>';
+  Object.keys(tl).forEach(k => {
+    const e = tl[k], s = e.series || [];
+    h += `<tr><td>${esc(k)}</td>
+      <td><b>${esc((s[0]||{}).value)}${esc(e.unit||'')}</b> <span class="muted">${esc(((s[0]||{}).date||'').slice(0,7))}</span></td>
+      <td class="muted">${s.slice(1,6).map(x=>`${x.value}(${(x.date||'').slice(2,7)})`).join(', ')}</td>
+      <td class="muted">${esc(e.direction||'')}</td></tr>`;
+  });
+  h += '</tbody></table>';
+  const miss = (c.case || {}).missing_items || [];
+  if (miss.length) h += `<div style="margin-top:10px"><b>측정 기록 없음</b> <span class="warn">${miss.map(esc).join(' · ')}</span></div>`;
+  h += `<div style="margin-top:12px;font-weight:700">SKIX 전달 payload</div>
+        <pre>${esc(JSON.stringify(c.payload, null, 2))}</pre>`;
+  document.getElementById('detailBody').innerHTML = h;
+  document.getElementById('detailModal').style.display = 'flex';
+}
+
+let personaTarget = null;
+
+async function openPersona(id) {
+  const res = await fetch(`/api/phr/cases/${encodeURIComponent(id)}`);
+  if (!res.ok) { alert('조회 실패'); return; }
+  personaTarget = await res.json();
+  const p = personaTarget.persona || {};
+  document.getElementById('personaTitle').textContent = `${personaTarget.caseNo} · 페르소나`;
+  document.getElementById('personaInferred').innerHTML =
+    `<div class="muted">자동 추정 — 성별 <b class="${p.sex ? 'ok' : 'warn'}">${esc(p.sex || '미상')}</b>` +
+    ` <span style="font-size:11px">(${esc(p.sexBasis || '')})</span>` +
+    ` · 신장 ${esc(p.height || '-')}cm · 체중 ${esc(p.weight || '-')}kg</div>`;
+  document.getElementById('pAge').value = p.age || '';
+  document.getElementById('pSex').value = p.sex || '';
+  document.getElementById('pOcc').value = p.occupation || '';
+  document.getElementById('pBg').value = p.background || '';
+  document.getElementById('pSit').value = p.situation || '';
+  document.getElementById('pInst').value = p.instruction || '';
+  document.getElementById('pReviewed').checked = !!p.reviewed;
+  document.getElementById('personaStatus').textContent = '';
+  document.getElementById('personaModal').style.display = 'flex';
+}
+
+async function savePersona() {
+  if (!personaTarget) return;
+  const st = document.getElementById('personaStatus');
+  const ageRaw = document.getElementById('pAge').value.trim();
+  const persona = {
+    age: ageRaw ? parseInt(ageRaw, 10) : null,
+    sex: document.getElementById('pSex').value,
+    occupation: document.getElementById('pOcc').value.trim(),
+    background: document.getElementById('pBg').value.trim(),
+    situation: document.getElementById('pSit').value.trim(),
+    instruction: document.getElementById('pInst').value.trim(),
+    reviewed: document.getElementById('pReviewed').checked,
+  };
+  st.textContent = '저장 중...'; st.className = 'muted';
+  try {
+    const res = await fetch('/api/phr/persona', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ caseId: personaTarget.id, persona: persona }),
+    });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || '저장 실패');
+    st.textContent = '저장됨'; st.className = 'ok';
+    await loadCases();
+  } catch (e) {
+    st.textContent = '실패: ' + e.message; st.className = 'err';
+  }
+}
+
+function openAssign(id) {
+  assignTarget = cases.find(c => c.id === id);
+  if (!assignTarget) return;
+  document.getElementById('assignTitle').textContent = `${assignTarget.caseNo} · 전문가 배정`;
+  const cur = new Set(assignTarget.assignedTo || []);
+  const box = document.getElementById('assignUsers');
+  if (!users.length) {
+    box.innerHTML = '<div class="muted">계정을 불러오지 못했다.</div>';
+  } else {
+    box.innerHTML = users.map(u => {
+      const uid = u.id || u.userId || '';
+      const nm = u.name || u.alias || uid;
+      const role = u.role || 'tester';
+      return `<label class="chk"><input type="checkbox" value="${esc(uid)}" ${cur.has(uid)?'checked':''}>
+              ${esc(nm)} <span class="muted">${esc(uid)} · ${esc(role)}${u.org ? ' · '+esc(u.org) : ''}</span></label>`;
+    }).join('');
+  }
+  document.getElementById('assignModal').style.display = 'flex';
+}
+
+function closeAssign() { document.getElementById('assignModal').style.display = 'none'; }
+
+async function saveAssign() {
+  if (!assignTarget) return;
+  const ids = Array.from(document.querySelectorAll('#assignUsers input[type=checkbox]:checked')).map(i => i.value);
+  const res = await fetch('/api/phr/assign', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ caseId: assignTarget.id, userIds: ids,
+                           specialty: (assignTarget.specialties || [])[0] || '' }),
+  });
+  if (!res.ok) { alert('배정 실패'); return; }
+  closeAssign();
+  await loadCases();
+}
+
+async function delCase(id) {
+  if (!confirm(`${id} 케이스를 삭제한다. 계속하시겠습니까?`)) return;
+  const res = await fetch(`/api/phr/cases/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  if (!res.ok) { alert('삭제 실패'); return; }
+  await loadCases();
+}
+
+// 자문 판정 집계 — 어느 항목에서 부적정이 몰리는지가 기준 개정의 출발점이다.
+// 적정률은 적정/(적정+부적정) 이며 '해당없음' 은 분모에서 뺀다.
+async function loadAdvisorySummary() {
+  const box = document.getElementById('advSummaryBox');
+  const st = document.getElementById('advSummaryStatus');
+  if (!box) return;
+  st.textContent = '불러오는 중...';
+  let d;
+  try {
+    const res = await fetch('/api/advisory/reviews');
+    if (!res.ok) { st.textContent = `조회 실패 (HTTP ${res.status})`; return; }
+    d = await res.json();
+  } catch (e) { st.textContent = '조회 실패: ' + esc(e.message); return; }
+
+  const defs = d.itemDefs || [];
+  const sum = d.summary || {};
+  if (!d.total) {
+    box.innerHTML = '<div class="muted">아직 저장된 판정이 없습니다.</div>';
+    st.textContent = '';
+    return;
+  }
+  let h = '<table><thead><tr><th>검토 항목</th><th style="width:70px">적정</th>' +
+    '<th style="width:70px">부적정</th><th style="width:80px">해당없음</th>' +
+    '<th style="width:80px">모수</th><th style="width:80px">적정률</th></tr></thead><tbody>';
+  defs.forEach(function (it) {
+    const s = sum[it.key] || {};
+    const ok = s['적정'] || 0, bad = s['부적정'] || 0, na = s['해당없음'] || 0;
+    const denom = ok + bad;
+    const rate = denom ? (ok / denom * 100).toFixed(1) + '%' : '-';
+    h += `<tr><td>${esc(it.name)}</td><td>${ok}</td>` +
+      `<td${bad ? ' style="color:var(--red);font-weight:700"' : ''}>${bad}</td>` +
+      `<td class="muted">${na}</td><td class="muted">${denom}</td><td><b>${rate}</b></td></tr>`;
+  });
+  h += '</tbody></table>';
+  box.innerHTML = h;
+  st.textContent = `판정 ${d.total}건`;
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const d = new Date();
+  document.getElementById('todayInput').value =
+    `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  await loadUsers();
+  await loadCases();
+  await loadAdvisorySummary();
+});
+</script>
+</body>
+</html>
