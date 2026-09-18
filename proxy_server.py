@@ -30,6 +30,20 @@ import os
 import signal
 import threading
 import db
+
+
+# ── v3 판정기(medical-eval) 어댑터 — 병존(shadow) ─────────────────────────────
+# EVAL_V3=1 일 때만 돈다. 기존 컴플라이언스/문진 판정값은 건드리지 않고 결과에
+# `evalV3` 키만 더한다. 서브모듈이 없으면 import 부터 조용히 넘어간다.
+try:
+    import eval_v3 as _eval_v3
+except Exception:                       # 서브모듈 미초기화 등 — v3 없이 그대로 돈다
+    _eval_v3 = None
+
+
+def _eval_v3_fn():
+    """배치 실행기에 넘길 v3 판정 함수. 꺼져 있거나 못 쓰면 None."""
+    return _eval_v3.batch_fn() if _eval_v3 is not None else None
 # rag_routes import 제거 — 4-E Phase: in-process RAG 모드 완전 제거
 
 # 스크립트가 있는 폴더 기준으로 파일 경로 설정
@@ -4742,6 +4756,7 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
             evaluate_phr_fn=_evaluate_phr_by_case,
             phr_request_fn=_phr_request_fields,
             skix_replay_fn=_skix_replay,
+            evaluate_v3_fn=_eval_v3_fn(),
             log_fn=ProxyHandler._add_log,
         )
 

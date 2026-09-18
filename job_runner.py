@@ -29,6 +29,20 @@ from datetime import datetime, timezone
 # 여기서는 line_buffering 만 추가로 켜준다 (reconfigure — TextIOWrapper double-wrap 회피).
 import db
 from batch_executor import BatchExecutor, build_skix_config
+
+
+# ── v3 판정기(medical-eval) 어댑터 — 병존(shadow) ─────────────────────────────
+# EVAL_V3=1 일 때만 돈다. 기존 컴플라이언스/문진 판정값은 건드리지 않고 결과에
+# `evalV3` 키만 더한다. 서브모듈이 없으면 import 부터 조용히 넘어간다.
+try:
+    import eval_v3 as _eval_v3
+except Exception:                       # 서브모듈 미초기화 등 — v3 없이 그대로 돈다
+    _eval_v3 = None
+
+
+def _eval_v3_fn():
+    """배치 실행기에 넘길 v3 판정 함수. 꺼져 있거나 못 쓰면 None."""
+    return _eval_v3.batch_fn() if _eval_v3 is not None else None
 # proxy_server 의 모듈 레벨 함수만 가져온다. ProxyHandler 인스턴스는 사용하지 않는다.
 from proxy_server import (
     _save_run_to_db, _evaluate_gpt, _evaluate_consultation,
@@ -166,6 +180,41 @@ def _make_sigterm_handler():
     return _handler
 
 
+def _v3_log_summary(results):
+    """v3(온톨로지) 판정 요약을 로그로 남긴다 — id·등급·규칙 id 만 (답변 원문·케이스 값 없음).
+
+    이력 화면 없이도 Cloud Logging 에서 배치의 v3 결과를 읽기 위한 것이다.
+    """
+    rows = [(r.get('scenarioId'), r.get('evalV3')) for r in (results or []) if r.get('evalV3')]
+    if not rows:
+        return
+    gate, pv, uv, errs, hits = {}, {}, {}, 0, {}
+    for sid, v in rows:
+        if v.get('error'):
+            errs += 1
+            _job_log(f"[v3] {sid} error={str(v.get('error'))[:100]}")
+            continue
+        gate[v.get('legal_verdict')] = gate.get(v.get('legal_verdict'), 0) + 1
+        pv[v.get('validity_grade') or '-'] = pv.get(v.get('validity_grade') or '-', 0) + 1
+        uv[v.get('uv_grade') or '-'] = uv.get(v.get('uv_grade') or '-', 0) + 1
+        for h in (v.get('legal_hits') or []):
+            hits[h] = hits.get(h, 0) + 1
+        rm = v.get('rag_meta') or {}
+        _job_log(
+            f"[v3] {sid} verdict={v.get('verdict')} legal={v.get('legal_verdict')} "
+            f"hits={v.get('legal_hits') or []} review={v.get('legal_review_hits') or []} "
+            f"{v.get('validity_axis') or 'PV'}={v.get('validity_grade')} unmet={v.get('validity_unmet') or []} "
+            f"UV={v.get('uv_grade')} unmet={v.get('uv_unmet') or []} intent={v.get('uv_intent')} "
+            f"prompt={rm.get('prompt_version') or v.get('prompt_version')} skip={rm.get('skip_reason')} "
+            f"claims={v.get('claim_count')} fallback={v.get('claim_fallback')}"
+        )
+    meta = next((v for _, v in rows if not v.get('error')), {})
+    _job_log(
+        f"[v3] SUMMARY n={len(rows)} err={errs} gate={gate} PV/SV={pv} UV={uv} rule_hits={hits} "
+        f"eval={meta.get('eval_version')} ontology={meta.get('ontology_version')} judge={meta.get('judge_model')}"
+    )
+
+
 def main():
     run_id = os.environ.get('RUN_ID', '').strip()
     if not run_id:
@@ -229,6 +278,7 @@ def main():
         evaluate_phr_fn=_evaluate_phr_by_case,
         phr_request_fn=_phr_request_fields,
         skix_replay_fn=_skix_replay,
+        evaluate_v3_fn=_eval_v3_fn(),
         log_fn=_job_log,
     )
 
@@ -268,6 +318,7 @@ def main():
             f"[job] DONE run_id={run_id} total={summary['completed']} "
             f"pass={summary['passed']} fail={summary['failed']} err={summary['errors']}"
         )
+        _v3_log_summary(_state['results'])
     except Exception as e:
         _job_log(f"[job] 치명적 오류: {type(e).__name__}: {str(e)[:300]}")
         _flush_to_db(status='completed')

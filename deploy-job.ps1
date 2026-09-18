@@ -6,7 +6,10 @@ param(
     [string]$SqlInstance  = "medical-db",
     [string]$DbPassword   = "",
     [string]$ServiceAccount = "716262961556-compute@developer.gserviceaccount.com",
-    [string]$VpcConnector = "medical-connector"
+    [string]$VpcConnector = "medical-connector",
+    # 온톨로지 기반 v3 판정 병존 실행. 켜면 답변 1건당 판정 모델 호출이 2회 늘어난다.
+    [switch]$EvalV3,
+    [string]$EvalV3Model = ""
 )
 
 Write-Host "=== Cloud Run Jobs Deploy (batch-runner) ===" -ForegroundColor Cyan
@@ -58,7 +61,15 @@ Write-Host "[1/2] Action: $Action Job '$JobName'..." -ForegroundColor Yellow
 
 # Cloud Run Jobs CLI는 set-env-vars 가 ',' 를 구분자로 인식.
 # DATABASE_URL 안에 ',' '@' 들어있을 수 있으므로 ';' 구분자 사용 (URL 표준에 ';' 없음).
-$EnvSpec = "^;^RUN_MODE=job;DATABASE_URL=$DatabaseUrl"
+$EnvPairs = @("RUN_MODE=job", "DATABASE_URL=$DatabaseUrl")
+if ($EvalV3) {
+    $EnvPairs += "EVAL_V3=1"
+    if ($EvalV3Model) { $EnvPairs += "EVAL_V3_MODEL=$EvalV3Model" }
+    Write-Host "EVAL_V3:    ON (판정 모델 호출 +2회/답변)" -ForegroundColor Yellow
+} else {
+    Write-Host "EVAL_V3:    off (-EvalV3 로 켠다)" -ForegroundColor DarkGray
+}
+$EnvSpec = "^;^" + ($EnvPairs -join ";")
 
 # 배열로 인자 구성해서 PowerShell line continuation 이슈 회피
 $gcloudArgs = @(

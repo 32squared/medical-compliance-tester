@@ -19,6 +19,9 @@ RAG 서브시스템은 독립 저장소로 분리됨. 세 저장소가 medical-s
   Cloud Run IAM(--no-allow-unauthenticated), 호스트는 OIDC ID 토큰으로 호출.
 - **medical-shared** (submodule `packages/medical_shared`): 공유 코드 — dbcommon(DB 연결 레이어) +
   compliance_rules(analyzer/guideline_loader/consultation_loader/rules_config + 3 JSON 번들).
+- **medical-eval** (submodule `packages/medical_eval`): 온톨로지 기반 v3 판정기(LG/PV/SV/UV) **라이브러리**.
+  호스트는 어댑터 `eval_v3.py` 를 통해서만 부른다(`--forbid eval` 경계검사). 현재 **병존(shadow)** 단계 —
+  `EVAL_V3=1` 일 때만 돌고, 기존 compliance/consultation 판정에는 영향을 주지 않는다.
 
 ## 핵심 파일 구조
 ```
@@ -30,15 +33,17 @@ guideline_loader.py      — shim → compliance_rules/guideline_loader.py
 consultation_loader.py   — shim → compliance_rules/consultation_loader.py
 dbcommon.py              — shim → packages/medical_shared/dbcommon (sys.modules 별칭)
 batch_eval_rag.py        — 배치 평가기 (RAG는 HTTP 호출, GPT 평가는 호스트 잔류)
+eval_v3.py               — v3 판정기 어댑터 (medical_eval 을 직접 import 하는 유일한 호스트 파일)
 chat_tester.html         — 채팅 테스터 (메인 페이지)
 scenario_manager.html    — 시나리오 관리
 history.html             — 테스트 이력 + 배치 리포트
 guideline_manager.html   — 가이드라인 관리
 settings.html            — 설정 (5개 탭: API/GPT/사용자/문진/로그)
 deploy.ps1 / deploy-dev.ps1 — Cloud Run 배포 (운영/DEV)
-scripts/check_no_cross_import.py — 경계검사(--forbid rag: 호스트가 RAG 모듈 import 금지)
+scripts/check_no_cross_import.py — 경계검사(--forbid rag: RAG 모듈 / --forbid eval: medical_eval 직접 import 금지)
 Dockerfile               — 컨테이너 빌드 (entrypoint: service/job)
 packages/medical_shared/ — medical-shared submodule (공유 코드 + 가이드라인/위반규칙/문진 JSON)
+packages/medical_eval/   — medical-eval submodule (v3 판정기 + 온톨로지 스냅샷)
 ```
 
 > ⚠️ guidelines.json / violation_rules.json / consultation_checklists.json 은 더 이상 루트에 없다.
@@ -56,8 +61,19 @@ python proxy_server.py --port 9000
 $env:DB_PASSWORD = "MedComp2026!Secure"; .\deploy.ps1
 $env:DB_PASSWORD = "MedComp2026!Secure"; .\deploy-dev.ps1 -SkipMigrate -RagServiceUrl https://medical-rag-dev-cbtevhmzrq-du.a.run.app
 
-# 경계검사 (호스트가 RAG 모듈을 import하지 않음 — CI lint 게이트)
-python scripts/check_no_cross_import.py --forbid rag
+# 경계검사 (CI lint 게이트)
+python scripts/check_no_cross_import.py --forbid rag    # 호스트가 RAG 모듈을 import하지 않음
+python scripts/check_no_cross_import.py --forbid eval   # medical_eval 은 eval_v3.py 만 부른다
+node scripts/check_v3_ui.js                            # 이력 화면 v3 렌더(교차표·배지) 검증
+
+# v3 판정 병존 실행 (기존 v2 결과는 그대로, v3 키만 추가)
+EVAL_V3=1 python batch_eval_rag.py --limit 20          # RAG 배치. 또는 --eval-v3
+EVAL_V3=1 python proxy_server.py --port 9000           # 앱 배치 → 이력 화면에 v3 표시
+
+# 배포에서 켜기 — 안 켜면 컨테이너 안에 EVAL_V3 가 없어 v3 는 돌지 않는다.
+.\deploy-dev.ps1 -EvalV3        # DEV 서비스
+.\deploy.ps1 -EvalV3            # 운영 서비스 (앱 내 배치)
+.\deploy-job.ps1 -EvalV3        # Cloud Run Job (1100건 대량 배치가 도는 곳)
 
 # JS 문법 검증 (모든 HTML)
 node -e "const fs=require('fs');const files=fs.readdirSync('.').filter(f=>f.endsWith('.html'));for(const f of files){const html=fs.readFileSync(f,'utf8');const m=html.match(/<script>([\s\S]*?)<\/script>/g)||[];for(const t of m){const c=t.replace(/<\/?script>/g,'');if(c.length<500)continue;try{new Function(c)}catch(e){console.log(f+': ERR:',e.message)}}}"
@@ -94,10 +110,32 @@ python -c "import py_compile; py_compile.compile('proxy_server.py', doraise=True
 - 평가 결과 폰트: 헤더 14-15px, 배지 18-20px, 본문 13px, 상세 12px
 
 ## 주요 패턴
-### 평가 시스템 (3중)
+### 평가 시스템 (v2 — 현행 3중)
 1. **정규식** (즉시): analyzer.py → violation_rules.json 패턴 매칭
 2. **GPT** (3-5초): _evaluate_gpt() → 최종 판정 기준 (A~F)
 3. **문진 품질** (3-5초): _evaluate_consultation() → 5개 축 100점
+
+### 평가 시스템 (v3 — 온톨로지 기반, 병존 단계)
+`packages/medical_eval` 의 4축 판정. 판정 기준은 산문이 아니라 온톨로지 스냅샷(rule 52행)이다.
+- **LG** 법률·안전 게이트 (pass/fail) · **PV** 기록 활용 유효성 · **SV** 증상 상담 유효성 · **UV** 사용자 가치
+- 호출당 판정 모델 2회. 등급은 총점이 아니라 **미충족 필수 항목 수**로 정한다.
+- 배치 결과에 등급·규칙 id·버전만 남긴다(답변 원문·인용문은 남기지 않는다).
+  앱 배치·Job 배치는 `evalV3`, RAG 배치(batch_eval_rag)는 `eval_v3` 키다.
+- **시나리오 관리에서 기준을 연계한다**: scenario_manager.html 편집 모달의 '평가 기준 연계' —
+  증상군(42 체크리스트에서 선택) · 기대 분기(응급/당일/외래/생활관리) · PHR 케이스 ID.
+  비우면 질문 내용으로 자동 판별한다. 열이 생기기 전 시나리오는 태그(`symptom:` · `branch:` ·
+  `case:`)에서 회수한다.
+- **이력 화면에서 본다**: history.html 배치 리포트에 v3 요약과 **v2 × v3 교차표**가 나오고,
+  시나리오 상세 팝업에 건별 판정(게이트·등급·걸린 규칙·체크리스트 커버리지)이 나온다.
+  v3 없이 돌린 배치에는 그 자리가 아예 안 그려진다.
+- 켜면 답변 1건당 판정 모델 호출이 2회 늘어난다. 시나리오가 많으면 비용·시간을 먼저 보라.
+- 관련 환경변수: `EVAL_V3`(1이면 병존 실행) · `EVAL_V3_MODEL` · `EVAL_V3_SNAPSHOT` ·
+  `MEDICAL_EVAL_CHECKLISTS`(SV 체크리스트 경로) ·
+  `PHR_TRANSMIT_PATH`(RAG 주입용 transmit 원문) · `PHR_CASES_PATH`(판정용 phr_cases.json).
+- ⚠ 배포 이미지에는 `packages/medical_eval/data/` 가 없다(.gcloudignore 의 `data/` 가 모든 깊이의
+  data 디렉터리를 제외한다). SV 체크리스트는 그래서 어댑터가 공유 번들
+  (`packages/medical_shared/compliance_rules/consultation_checklists.json`, 저장소 사본과 동일 파일)로
+  경로를 고정한다. 이 고정이 없으면 SV-02·03·04·06 이 **조용히 na** 가 되어 판정이 속 빈 채로 돈다.
 
 ### 배치 실행
 - ThreadPoolExecutor (max_workers=10)

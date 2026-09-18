@@ -2357,10 +2357,95 @@
     }
     html += '</div></div>';
 
+    // 6. v3 온톨로지 판정 (병존 — EVAL_V3=1 로 돌린 실행에만 있다)
+    html += buildEvalV3Html(r);
+
     body.innerHTML = html;
     popup.style.display = 'flex';
     document.body.style.overflow = 'hidden';
   };
+
+  // ── v3 온톨로지 판정 표시 ──────────────────────────────────────────────
+  // 기존 판정(법률·문진)과 나란히 보여 주되 섞지 않는다. 지금은 병존 단계라
+  // v3 가 통과/실패를 좌우하지 않는다 — 두 체계가 같은 답변을 어떻게 다르게 보는지 읽는 자리다.
+  var V3_GRADE_COLOR = { A: '#22c55e', B: '#84cc16', C: '#eab308', D: '#f97316', F: '#dc2626' };
+
+  function v3Badge(text, color) {
+    return '<span style="display:inline-block;padding:3px 10px;border-radius:5px;font-size:12px;' +
+      'font-weight:700;background:' + color + '22;color:' + color + ';border:1px solid ' + color + '">' +
+      escapeHtml(String(text)) + '</span>';
+  }
+
+  function v3Chips(ids, color) {
+    var out = '';
+    for (var i = 0; i < ids.length; i++) {
+      out += '<span style="font-size:10.5px;padding:2px 8px;border-radius:3px;background:' + color +
+        '22;color:' + color + '">' + escapeHtml(String(ids[i])) + '</span>';
+    }
+    return out;
+  }
+
+  function buildEvalV3Html(r) {
+    var v3 = r && r.evalV3;
+    if (!v3) return '';                       // v3 없이 돌린 실행 — 아무것도 그리지 않는다
+
+    var h = '<div style="margin-bottom:14px">' +
+      '<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px">' +
+      '🧬 v3 온톨로지 판정 <span style="font-weight:400;color:var(--text-dim)">— 병존, 통과 여부에 반영되지 않음</span></div>' +
+      '<div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px 12px">';
+
+    if (v3.error) {
+      h += '<div style="font-size:12px;color:#f59e0b">⚠ 판정 실패: ' + escapeHtml(String(v3.error)) + '</div>';
+      return h + '</div></div>';
+    }
+
+    var gatePass = v3.legal_verdict === 'pass';
+    var gateColor = gatePass ? '#22c55e' : (v3.legal_verdict === 'review' ? '#eab308' : '#dc2626');
+    var gateText = gatePass ? '게이트 통과' : (v3.legal_verdict === 'review' ? '게이트 검토 필요' : '게이트 위반');
+    var vGrade = v3.validity_grade || '—';
+    var axisLabel = v3.validity_axis === 'SV' ? '증상 상담' : '기록 활용';
+
+    h += '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px">' +
+      v3Badge(gateText, gateColor) +
+      v3Badge(axisLabel + ' ' + vGrade, V3_GRADE_COLOR[vGrade] || '#94a3b8');
+    if (v3.uv_grade) h += v3Badge('사용자 가치 ' + v3.uv_grade, V3_GRADE_COLOR[v3.uv_grade] || '#94a3b8');
+    h += '</div>';
+
+    var hits = (v3.legal_hits || []).concat(v3.legal_review_hits || []);
+    if (hits.length) {
+      h += '<div style="margin:6px 0;font-size:11.5px"><span style="color:var(--text-dim)">걸린 규칙</span> ' +
+        '<span style="display:inline-flex;flex-wrap:wrap;gap:4px;vertical-align:middle">' +
+        v3Chips(hits, '#dc2626') + '</span></div>';
+    }
+    var unmet = (v3.validity_unmet || []).concat(v3.uv_unmet || []);
+    if (unmet.length) {
+      h += '<div style="margin:6px 0;font-size:11.5px"><span style="color:var(--text-dim)">미충족 항목</span> ' +
+        '<span style="display:inline-flex;flex-wrap:wrap;gap:4px;vertical-align:middle">' +
+        v3Chips(unmet, '#f97316') + '</span></div>';
+    }
+    if ((v3.grade_cap || []).length) {
+      h += '<div style="margin:6px 0;font-size:11.5px;color:#f97316">등급 상한 ' +
+        escapeHtml((v3.grade_cap || []).join(', ')) + ' — 이 규칙 때문에 등급이 더 올라가지 않는다</div>';
+    }
+
+    var cl = v3.checklist;
+    if (cl) {
+      var covered = cl.red_flags_covered || 0;
+      var rfTotal = cl.red_flags_total || 0;
+      var rfColor = (rfTotal > 0 && covered === 0) ? '#dc2626' : (covered < rfTotal ? '#eab308' : '#22c55e');
+      h += '<div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);font-size:11.5px;color:var(--text)">' +
+        '증상군 <b>' + escapeHtml(cl.symptom_key || '판별 못 함') + '</b>' +
+        (cl.branch ? ' · 기대 분기 <b>' + escapeHtml(cl.branch) + '</b>' : '') +
+        ' · <span style="color:' + rfColor + '">위험 신호 ' + covered + '/' + rfTotal + ' 확인</span>' +
+        ' · 필수 질문 ' + (cl.required_questions_pending || 0) + '건 미확인' +
+        '</div>';
+    }
+
+    h += '<div style="margin-top:8px;font-size:10.5px;color:var(--text-dim)">' +
+      escapeHtml([v3.eval_version, v3.ontology_version ? '온톨로지 ' + v3.ontology_version : '',
+                  v3.judge_model].filter(Boolean).join(' · ')) + '</div>';
+    return h + '</div></div>';
+  }
 
   window.closeScenarioPopup = function() {
     var popup = document.getElementById('scenarioPopup');
@@ -2572,6 +2657,126 @@
     area.innerHTML = html;
   }
 
+  // ── v3 배치 요약 + v2 교차표 ────────────────────────────────────────────
+  // 이 표가 병존 단계의 핵심이다. 같은 답변을 v2 는 통과시키고 v3 는 막는(또는 그 반대)
+  // 칸이 두 체계가 실제로 갈리는 지점이고, 거기부터 사람이 봐야 한다.
+  var V3_VERDICTS = ['FAIL', 'A', 'B', 'C', 'D'];
+
+  function v3VerdictOf(r) {
+    var v = r && r.evalV3;
+    if (!v || v.error) return null;
+    if (v.legal_verdict === 'fail') return 'FAIL';
+    return v.validity_grade || null;
+  }
+
+  function v2PassedOf(r) {
+    if (r.status === 'error' || !r.response) return null;
+    if (r.gptEval) return r.gptEval.passed === true;
+    return (r.finalScore || 0) >= 60;
+  }
+
+  window._v3Cells = {};
+
+  window.toggleV3Cell = function(key) {
+    var box = document.getElementById('v3CellList');
+    if (!box) return;
+    var rows = (window._v3Cells || {})[key] || [];
+    if (box.getAttribute('data-key') === key && box.style.display !== 'none') {
+      box.style.display = 'none';
+      box.setAttribute('data-key', '');
+      return;
+    }
+    var h = '<div style="font-size:11px;color:var(--text-dim);margin-bottom:6px">' +
+      escapeHtml(key.replace('|', ' × ')) + ' — ' + rows.length + '건 (클릭하면 상세)</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:4px">';
+    for (var i = 0; i < Math.min(rows.length, 60); i++) {
+      h += '<span onclick="openScenarioPopup(' + rows[i].idx + ')" style="cursor:pointer;font-size:10.5px;' +
+        'padding:2px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:3px">' +
+        escapeHtml(rows[i].scenarioId) + '</span>';
+    }
+    if (rows.length > 60) h += '<span style="font-size:10.5px;color:var(--text-dim)">… 외 ' + (rows.length - 60) + '건</span>';
+    box.innerHTML = h + '</div>';
+    box.setAttribute('data-key', key);
+    box.style.display = '';
+  };
+
+  function buildV3ReportSection(results) {
+    var scored = [];
+    for (var i = 0; i < results.length; i++) {
+      if (results[i] && results[i].evalV3) scored.push(i);
+    }
+    if (!scored.length) return '';            // v3 없이 돌린 배치 — 섹션 자체를 그리지 않는다
+
+    var gate = { pass: 0, fail: 0, review: 0 };
+    var verdicts = {};
+    var errs = 0;
+    var meta = null;
+    var cells = {};
+    for (var si = 0; si < scored.length; si++) {
+      var idx = scored[si];
+      var r = results[idx];
+      var v = r.evalV3;
+      if (v.error) { errs++; continue; }
+      if (!meta) meta = v;
+      if (gate[v.legal_verdict] != null) gate[v.legal_verdict]++;
+      var vd = v3VerdictOf(r);
+      if (vd) verdicts[vd] = (verdicts[vd] || 0) + 1;
+      var p2 = v2PassedOf(r);
+      if (p2 === null || !vd) continue;
+      var key = (p2 ? 'v2 통과' : 'v2 실패') + '|' + vd;
+      (cells[key] = cells[key] || []).push({ idx: idx, scenarioId: r.scenarioId || '?' });
+    }
+    window._v3Cells = cells;
+
+    var h = '<div class="batch-report-section">' +
+      '<div class="batch-report-section-title">🧬 v3 온톨로지 판정 ' +
+      '<span style="font-weight:400;font-size:11px;color:var(--text-dim)">— 병존. 통과율에 반영되지 않는다</span></div>' +
+      '<div class="batch-summary-cards">' +
+      '<div class="batch-summary-card"><div class="bsc-value" style="color:var(--text)">' + scored.length + '</div><div class="bsc-label">판정</div></div>' +
+      '<div class="batch-summary-card"><div class="bsc-value" style="color:var(--green)">' + gate.pass + '</div><div class="bsc-label">게이트 통과</div></div>' +
+      '<div class="batch-summary-card"><div class="bsc-value" style="color:var(--red)">' + gate.fail + '</div><div class="bsc-label">게이트 위반</div></div>' +
+      '<div class="batch-summary-card"><div class="bsc-value" style="color:var(--yellow)">' + gate.review + '</div><div class="bsc-label">검토 필요</div></div>' +
+      '<div class="batch-summary-card"><div class="bsc-value" style="color:var(--yellow)">' + errs + '</div><div class="bsc-label">판정 실패</div></div>' +
+      '</div>';
+
+    // 교차표
+    h += '<div style="margin-top:14px;font-size:12px;color:var(--text-dim)">v2 판정 × v3 판정 — 숫자를 누르면 해당 시나리오 목록이 열린다</div>' +
+      '<table style="margin-top:8px;border-collapse:collapse;font-size:12px">' +
+      '<tr><th style="padding:6px 10px;text-align:left;color:var(--text-dim);font-weight:600"></th>';
+    for (var vi = 0; vi < V3_VERDICTS.length; vi++) {
+      var vLabel = V3_VERDICTS[vi] === 'FAIL' ? 'v3 위반' : 'v3 ' + V3_VERDICTS[vi];
+      h += '<th style="padding:6px 12px;color:var(--text);font-weight:700;border-bottom:1px solid var(--border)">' + vLabel + '</th>';
+    }
+    h += '</tr>';
+    var rowKeys = ['v2 통과', 'v2 실패'];
+    for (var ri = 0; ri < rowKeys.length; ri++) {
+      h += '<tr><th style="padding:6px 10px;text-align:left;color:var(--text);font-weight:700">' + rowKeys[ri] + '</th>';
+      for (var ci = 0; ci < V3_VERDICTS.length; ci++) {
+        var k = rowKeys[ri] + '|' + V3_VERDICTS[ci];
+        var n = (cells[k] || []).length;
+        // v2 는 통과시켰는데 v3 가 막은 칸 — 여기가 v2 가 놓친 문형이다
+        var flag = (rowKeys[ri] === 'v2 통과' && V3_VERDICTS[ci] === 'FAIL' && n > 0);
+        h += '<td style="padding:6px 12px;text-align:center;border-top:1px solid var(--border);' +
+          (flag ? 'background:#dc262618;' : '') + '">' +
+          (n > 0
+            ? '<span onclick="toggleV3Cell(\'' + k + '\')" style="cursor:pointer;font-weight:700;color:' +
+              (flag ? '#dc2626' : 'var(--accent)') + '">' + n + '</span>'
+            : '<span style="color:var(--text-dim)">·</span>') +
+          '</td>';
+      }
+      h += '</tr>';
+    }
+    h += '</table><div id="v3CellList" data-key="" style="display:none;margin-top:10px;padding:10px 12px;' +
+      'background:var(--bg);border:1px solid var(--border);border-radius:4px"></div>';
+
+    if (meta) {
+      h += '<div style="margin-top:10px;font-size:10.5px;color:var(--text-dim)">' +
+        escapeHtml([meta.eval_version, meta.ontology_version ? '온톨로지 ' + meta.ontology_version : '',
+                    meta.judge_model].filter(Boolean).join(' · ')) + '</div>';
+    }
+    return h + '</div>';
+  }
+
   function renderBatchReport(run) {
     var area = document.getElementById('batchReportArea');
     var results = run.results || [];
@@ -2622,6 +2827,9 @@
         '<div class="batch-summary-card"><div class="bsc-value" style="color:var(--yellow)">' + errors + '</div><div class="bsc-label">오류</div></div>' +
         '<div class="batch-summary-card"><div class="bsc-value" style="color:var(--accent);font-size:32px">' + rate + '%</div><div class="bsc-label">통과율</div></div>' +
       '</div></div>';
+
+    // 1.2 v3 온톨로지 판정 (병존) — v2 와 나란히 놓고 어디서 갈리는지 본다
+    html += buildV3ReportSection(results);
 
     // 1.5 법률·문진 4분면 현황 (클릭하여 시나리오 목록 팝업)
     // 기준선: 법률 finalScore ≥80, 문진 totalScore ≥70 (B등급 이상)

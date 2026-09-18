@@ -481,6 +481,35 @@
       <label>태그 (콤마 구분)</label>
       <input type="text" id="fTags" placeholder="예: 진단, 두통, 신경과">
     </div>
+    <div class="field">
+      <label>평가 기준 연계 (온톨로지 판정)</label>
+      <div class="hint" style="margin-bottom:8px">
+        비워두면 질문 내용으로 자동 판별한다. 자동 판별이 틀리거나 못 고르면
+        위험 신호·필수 질문 채점이 빠지므로, 아는 시나리오는 지정해 두는 편이 낫다.
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>증상군</label>
+          <select id="fSymptomKey">
+            <option value="">자동 판별</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>기대 분기</label>
+          <select id="fBranch">
+            <option value="">기대 동작에서 읽음</option>
+            <option value="응급">응급</option>
+            <option value="당일">당일</option>
+            <option value="외래">외래</option>
+            <option value="생활관리">생활관리</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>PHR 케이스 ID</label>
+        <input type="text" id="fPhrCaseId" placeholder="기록 활용 시나리오만 — 예: case03">
+      </div>
+    </div>
     <div class="field-row">
       <div class="field">
         <div class="toggle-field">
@@ -572,6 +601,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       fetch('/api/auth/status'),
       fetch('/api/guidelines')
     ]);
+    // 증상군 목록은 편집 모달에서만 쓰니 화면 진입을 막지 않는다.
+    loadSymptomGroups();
     if (bar) bar.style.width = '60%';
 
     // Apply scenarios
@@ -920,6 +951,58 @@ function clearSelection() {
 // ════════════════════════════════════════════
 // Modal — Create / Edit
 // ════════════════════════════════════════════
+// ── 평가 기준 연계 (온톨로지 판정 입력) ──────────────────────────────
+// 증상군 목록은 문진 체크리스트(42 증상군)와 같은 것을 쓴다. 판정기가 위험 신호와
+// 필수 질문을 그 표에서 찾으므로, 여기서 고르는 값이 곧 채점 기준이 된다.
+let symptomGroups = [];
+
+async function loadSymptomGroups() {
+  const sel = document.getElementById('fSymptomKey');
+  if (!sel) return;
+  try {
+    const res = await fetch(`${API}/api/checklists`);
+    if (!res.ok) return;
+    const data = await res.json();
+    symptomGroups = (data.checklists || []).filter(c => c.symptomKey);
+    symptomGroups.sort((a, b) => (a.symptomName || '').localeCompare(b.symptomName || '', 'ko'));
+    for (const g of symptomGroups) {
+      const opt = document.createElement('option');
+      opt.value = g.symptomKey;
+      opt.textContent = g.symptomName ? `${g.symptomName} (${g.symptomKey})` : g.symptomKey;
+      sel.appendChild(opt);
+    }
+  } catch (e) {
+    // 목록을 못 받아도 편집은 되어야 한다 — '자동 판별'만 남는다.
+  }
+}
+
+function v3TagValue(tags, prefix) {
+  const hit = (tags || []).find(t => String(t).startsWith(prefix));
+  return hit ? String(hit).slice(prefix.length).trim() : '';
+}
+
+function setV3Fields(s) {
+  // 열이 생기기 전에 등록된 시나리오는 같은 값이 태그에 들어 있다.
+  const tags = s ? (s.tags || []) : [];
+  const symptom = (s && s.symptomKey) || v3TagValue(tags, 'symptom:');
+  const branch = (s && s.branch) || v3TagValue(tags, 'branch:');
+  const phrCase = (s && s.phrCaseId) || v3TagValue(tags, 'case:');
+  const sel = document.getElementById('fSymptomKey');
+  // 목록에 없는 값이면 선택이 안 되므로, 있는 그대로 항목을 하나 만들어 보존한다.
+  if (sel && symptom && !Array.from(sel.options).some(o => o.value === symptom)) {
+    const opt = document.createElement('option');
+    opt.value = symptom;
+    // 목록이 아직 안 왔을 뿐일 수 있으므로, 실제로 받아온 뒤에만 '없음'이라고 말한다.
+    opt.textContent = symptomGroups.length ? `${symptom} (목록에 없음)` : symptom;
+    sel.appendChild(opt);
+  }
+  if (sel) sel.value = symptom || '';
+  const br = document.getElementById('fBranch');
+  if (br) br.value = branch || '';
+  const pc = document.getElementById('fPhrCaseId');
+  if (pc) pc.value = phrCase || '';
+}
+
 function openCreateModal() {
   editingId = null;
   document.getElementById('modalTitle').textContent = '새 시나리오 (수동 등록)';
@@ -932,6 +1015,7 @@ function openCreateModal() {
   document.getElementById('fPrompt').value = '';
   document.getElementById('fExpected').value = '';
   document.getElementById('fTags').value = '';
+  setV3Fields(null);
   setToggle('fShouldRefuse', false);
   setToggle('fEnabled', true);
   renderPhrSection(null);
@@ -953,6 +1037,7 @@ function openEditModal(id) {
   document.getElementById('fPrompt').value = s.prompt;
   document.getElementById('fExpected').value = s.expectedBehavior || '';
   document.getElementById('fTags').value = (s.tags || []).join(', ');
+  setV3Fields(s);
   setToggle('fShouldRefuse', s.shouldRefuse);
   setToggle('fEnabled', s.enabled !== false);
   renderPhrSection(s);
@@ -1049,6 +1134,9 @@ async function saveScenario() {
     riskLevel: document.getElementById('fRiskLevel').value,
     tags: document.getElementById('fTags').value.split(',').map(t => t.trim()).filter(Boolean),
     enabled: getToggle('fEnabled'),
+    symptomKey: document.getElementById('fSymptomKey').value,
+    branch: document.getElementById('fBranch').value,
+    phrCaseId: document.getElementById('fPhrCaseId').value.trim(),
   };
 
   if (!editingId) {
