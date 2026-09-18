@@ -34,6 +34,8 @@ class BatchExecutor:
     DEFAULT_SOCKET_TIMEOUT = 60   # KEEP_ALIVE 이벤트 사이 간격이 30s 넘는 케이스 대응
     DEFAULT_HTTP_TIMEOUT = 60
     DEFAULT_EVAL_TIMEOUT = 120
+    RATE_LIMIT_SLEEP = 22        # 429 시 대기 (초) — 분당 제한 창이 도는 시간의 1/3
+    RATE_LIMIT_MAX_WAITS = 30    # 시나리오당 최대 대기 횟수 (30×22s ≈ 11분 상한)
 
     def __init__(
         self,
@@ -43,6 +45,8 @@ class BatchExecutor:
         evaluate_gpt_fn=None,
         evaluate_consultation_fn=None,
         evaluate_rubric_fn=None,
+        evaluate_phr_fn=None,
+        phr_request_fn=None,
         skix_replay_fn=None,
         log_fn=print,
     ):
@@ -54,6 +58,11 @@ class BatchExecutor:
         evaluate_consultation_fn: callable(prompt, response, openai_key, model) -> dict|None
         evaluate_rubric_fn: callable(prompt, response, rubric_items, openai_key, model, history) -> dict|None
           — HealthBench 등 rubric 보유 시나리오에서만 호출. None 이면 rubric 평가 스킵.
+        evaluate_phr_fn: callable(prompt, response, case_id, openai_key, model) -> dict|None
+          — 시나리오에 phrCaseId 가 있을 때만 호출하는 PHR 정합성 평가(법률·문진에 이은 세 번째 축).
+        phr_request_fn: callable(case_id) -> dict|None
+          — SKIX 요청 본문에 합칠 {agent_strid, agent_input_field_to_value}.
+            PHR 을 실어보내지 않으면 답변이 기록을 참조하지 않아 정합성 평가 자체가 성립하지 않는다.
         skix_replay_fn: callable(scenario, http_cfg) -> dict
           — multi-turn 시나리오를 sequential replay 로 처리. None 이면 단일 호출 fallback.
         log_fn: callable(str) — 로그 출력 함수 (기본 print).
@@ -64,6 +73,8 @@ class BatchExecutor:
         self.evaluate_gpt = evaluate_gpt_fn
         self.evaluate_consultation = evaluate_consultation_fn
         self.evaluate_rubric = evaluate_rubric_fn
+        self.evaluate_phr = evaluate_phr_fn
+        self.phr_request = phr_request_fn
         self.skix_replay = skix_replay_fn
         self.log = log_fn or (lambda _msg: None)
         self.gpt_model = self.settings.get('openaiModel', 'gpt-4o-mini')
@@ -101,7 +112,9 @@ class BatchExecutor:
         graph_type = self.skix.get('graph_type', 'ORCHESTRATED_HYBRID_SEARCH')
         source_types = self.skix.get('source_types') or ['WEB', 'PUBMED']
 
-        for attempt in range(max_retries + 1):
+        attempt = 0
+        rl_waits = 0   # 429 대기 횟수 (재시도와 별도 예산)
+        while True:
             t0 = _time.time()
             full_text = ''
             first_token_time = None
@@ -113,11 +126,18 @@ class BatchExecutor:
             err_msg = None
             try:
                 target_url = f"{api_url}/api/service/conversations/{graph_type}"
-                req_body_bytes = json.dumps({
+                _body = {
                     "query": sc['prompt'],
                     "conversation_strid": None,
                     "source_types": source_types,
-                }, ensure_ascii=False).encode('utf-8')
+                }
+                # PHR 케이스가 붙은 시나리오는 기록을 함께 실어보낸다.
+                if sc.get('phrCaseId') and self.phr_request:
+                    try:
+                        _body.update(self.phr_request(sc['phrCaseId']) or {})
+                    except Exception as pe:
+                        self.log(f"[배치] PHR 주입 실패 {sc.get('phrCaseId')}: {str(pe)[:80]}")
+                req_body_bytes = json.dumps(_body, ensure_ascii=False).encode('utf-8')
                 hdrs = {
                     'Content-Type': 'application/json',
                     'Accept': 'text/event-stream',
@@ -202,14 +222,17 @@ class BatchExecutor:
                     'partial': is_partial,
                 })
 
-                # LLM 평가 (병렬, 둘 다 timeout 120s)
+                # LLM 평가 (병렬, 각 timeout 120s) — 법률 · 문진 · PHR 정합성
                 gpt = None
                 consult = None
-                if self.openai_key and full_text and (self.evaluate_gpt or self.evaluate_consultation):
+                phr = None
+                phr_case = sc.get('phrCaseId') if self.evaluate_phr else None
+                if self.openai_key and full_text and (self.evaluate_gpt or self.evaluate_consultation or phr_case):
                     try:
-                        eval_exec = ThreadPoolExecutor(max_workers=2)
+                        eval_exec = ThreadPoolExecutor(max_workers=3 if phr_case else 2)
                         gpt_f = eval_exec.submit(self.evaluate_gpt, sc['prompt'], full_text, self.openai_key, self.gpt_model) if self.evaluate_gpt else None
                         consult_f = eval_exec.submit(self.evaluate_consultation, sc['prompt'], full_text, self.openai_key, self.gpt_model) if self.evaluate_consultation else None
+                        phr_f = eval_exec.submit(self.evaluate_phr, sc['prompt'], full_text, phr_case, self.openai_key, self.gpt_model) if phr_case else None
                         if gpt_f is not None:
                             try:
                                 gpt = gpt_f.result(timeout=self.DEFAULT_EVAL_TIMEOUT)
@@ -221,6 +244,12 @@ class BatchExecutor:
                                 consult = consult_f.result(timeout=self.DEFAULT_EVAL_TIMEOUT)
                             except Exception:
                                 consult = None
+                        if phr_f is not None:
+                            try:
+                                phr = phr_f.result(timeout=self.DEFAULT_EVAL_TIMEOUT)
+                            except Exception as _e:
+                                self.log(f"[PHR정합성] 실패 sid={sid}: {str(_e)[:120]}")
+                                phr = None
                         eval_exec.shutdown(wait=False, cancel_futures=True)
                     except Exception as _ex:
                         self.log(f"[컴플라이언스] 실행기 실패 sid={sid}: {str(_ex)[:120]}")
@@ -264,6 +293,9 @@ class BatchExecutor:
                     "attemptLog": attempt_log,
                     "gptEval": gpt,
                     "consultationEval": consult,
+                    "phrEval": phr,
+                    "phrCaseId": sc.get('phrCaseId', ''),
+                    "tags": sc.get('tags', []),
                     "guidelineVersion": gpt.get('guidelineVersion', '') if gpt else '',
                     "searchResults": collected_search_results_batch[:5] if collected_search_results_batch else [],
                 }
@@ -310,8 +342,17 @@ class BatchExecutor:
                     f"[배치] sid={sid} attempt={attempt+1}/{max_retries+1} 실패: {err_cat} {err_msg[:120]} (partial={len(partial_now)} chars)"
                 )
 
+                # 속도 제한(HTTP 429)은 실패가 아니라 순번 대기다 — 재시도 횟수를
+                # 소모하지 않고 창이 열릴 때까지 물러난다 (DEV SKIX: 분당 10건).
+                if ((('429' in err_msg and 'per' in err_msg) or http_status == 429)
+                        and rl_waits < self.RATE_LIMIT_MAX_WAITS):
+                    rl_waits += 1
+                    self.log(f"[배치] sid={sid} 속도 제한 — {self.RATE_LIMIT_SLEEP}s 대기 ({rl_waits}/{self.RATE_LIMIT_MAX_WAITS})")
+                    _time.sleep(self.RATE_LIMIT_SLEEP)
+                    continue
                 if attempt < max_retries:
-                    _time.sleep(2 ** attempt)
+                    attempt += 1
+                    _time.sleep(2 ** (attempt - 1))
                     continue
 
                 partial_meta = best_partial_meta or {}
@@ -372,7 +413,9 @@ class BatchExecutor:
             'connect_timeout': self.DEFAULT_HTTP_TIMEOUT,
         }
 
-        for attempt in range(max_retries + 1):
+        attempt = 0
+        rl_waits = 0   # 429 대기 횟수 (재시도와 별도 예산)
+        while True:
             t0 = _time.time()
             http_status = None
             err_cat = None
@@ -432,15 +475,19 @@ class BatchExecutor:
                 # 평가 입력 query: multi-turn 시 마지막 user turn
                 eval_query = turn_results[-1]['query'] if turn_results else sc.get('prompt', '')
 
-                # LLM 평가 (gpt / consultation / rubric 3-way 병렬)
+                # LLM 평가 (법률 / 문진 / rubric / PHR 정합성 병렬)
                 gpt = None
                 consult = None
                 rubric_eval = None
+                phr = None
+                phr_case = sc.get('phrCaseId') if self.evaluate_phr else None
                 rubric_items_batch = sc.get('rubric') or []
                 if self.openai_key and full_text:
                     try:
-                        workers = 3 if (rubric_items_batch and self.evaluate_rubric) else 2
+                        workers = 2 + (1 if (rubric_items_batch and self.evaluate_rubric) else 0) \
+                                    + (1 if phr_case else 0)
                         eval_exec = ThreadPoolExecutor(max_workers=workers)
+                        phr_f = eval_exec.submit(self.evaluate_phr, eval_query, full_text, phr_case, self.openai_key, self.gpt_model) if phr_case else None
                         gpt_f = eval_exec.submit(self.evaluate_gpt, eval_query, full_text, self.openai_key, self.gpt_model) if self.evaluate_gpt else None
                         consult_f = eval_exec.submit(self.evaluate_consultation, eval_query, full_text, self.openai_key, self.gpt_model) if self.evaluate_consultation else None
                         rubric_f = None
@@ -467,6 +514,12 @@ class BatchExecutor:
                             except Exception as _e:
                                 self.log(f"[rubric] 실패 sid={sid}: {str(_e)[:120]}")
                                 rubric_eval = None
+                        if phr_f is not None:
+                            try:
+                                phr = phr_f.result(timeout=self.DEFAULT_EVAL_TIMEOUT)
+                            except Exception as _e:
+                                self.log(f"[PHR정합성] 실패 sid={sid}: {str(_e)[:120]}")
+                                phr = None
                         eval_exec.shutdown(wait=False, cancel_futures=True)
                     except Exception as _ex:
                         self.log(f"[컴플라이언스] 실행기 실패 sid={sid}: {str(_ex)[:120]}")
@@ -519,6 +572,8 @@ class BatchExecutor:
                     "turnsTotal": len(turn_results),
                     "gptEval": gpt,
                     "consultationEval": consult,
+                    "phrEval": phr,
+                    "phrCaseId": sc.get('phrCaseId', ''),
                     "rubricEval": rubric_eval,
                     "guidelineVersion": gpt.get('guidelineVersion', '') if gpt else '',
                     "searchResults": collected_search_results_batch[:5] if collected_search_results_batch else [],
@@ -574,8 +629,17 @@ class BatchExecutor:
                     f"[배치] sid={sid} attempt={attempt+1}/{max_retries+1} 실패: {err_cat} {err_msg[:120]} (partial={len(partial_now)} chars)"
                 )
 
+                # 속도 제한(HTTP 429)은 실패가 아니라 순번 대기다 — 재시도 횟수를
+                # 소모하지 않고 창이 열릴 때까지 물러난다 (DEV SKIX: 분당 10건).
+                if ((('429' in err_msg and 'per' in err_msg) or http_status == 429)
+                        and rl_waits < self.RATE_LIMIT_MAX_WAITS):
+                    rl_waits += 1
+                    self.log(f"[배치] sid={sid} 속도 제한 — {self.RATE_LIMIT_SLEEP}s 대기 ({rl_waits}/{self.RATE_LIMIT_MAX_WAITS})")
+                    _time.sleep(self.RATE_LIMIT_SLEEP)
+                    continue
                 if attempt < max_retries:
-                    _time.sleep(2 ** attempt)
+                    attempt += 1
+                    _time.sleep(2 ** (attempt - 1))
                     continue
 
                 partial_meta = best_partial_meta or {}

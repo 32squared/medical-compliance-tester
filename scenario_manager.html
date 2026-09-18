@@ -497,10 +497,31 @@
         <div class="hint">비활성화하면 테스트에서 제외</div>
       </div>
     </div>
+    <div id="phrSection" style="display:none;border:1px solid #a78bfa55;border-radius:8px;padding:10px 12px;margin-top:10px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:700;color:#a78bfa">&#128194; PHR 케이스</span>
+        <span id="phrCaseLabel" style="font-size:12px;font-family:monospace"></span>
+        <button type="button" class="btn btn-sm btn-outline" onclick="openTransmitModal()" style="margin-left:auto">전송 PHR 보기</button>
+      </div>
+      <div class="hint" style="margin-top:4px">실행 시 이 케이스의 검진·처방 기록 전체가 SKIX A1 에 함께 전송되고,
+        답변은 법률 &middot; 문진 &middot; PHR 정합성(65점) &middot; 아래 문항 채점기준으로 평가됩니다.</div>
+      <div id="phrRubricBox" style="margin-top:8px"></div>
+    </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal()">취소</button>
       <button class="btn btn-primary" id="modalSaveBtn" onclick="saveScenario()">저장</button>
     </div>
+  </div>
+</div>
+
+<!-- ── PHR 전송 원문 모달 ── -->
+<div class="modal-overlay" id="transmitOverlay" onclick="if(event.target===this)this.classList.remove('show')">
+  <div class="modal" style="max-width:820px;max-height:86vh;display:flex;flex-direction:column">
+    <h2>
+      <span id="transmitTitle">전송 PHR</span>
+      <button class="close-btn" onclick="document.getElementById('transmitOverlay').classList.remove('show')">&times;</button>
+    </h2>
+    <div id="transmitBody" style="overflow:auto;padding:4px 2px;font-size:12.5px"></div>
   </div>
 </div>
 
@@ -716,23 +737,36 @@ function renderCategories() {
 
   const filtered = getSourceFiltered();
 
-  el.innerHTML = categories.map(c => {
-    const count = filtered.filter(s => s.category === c.id).length;
-    return `<div class="cat-item" data-cat="${c.id}" onclick="filterCategory('${c.id}')">
-      <div class="cat-dot" style="background:${c.color}"></div>
-      <span class="cat-name">${c.name}</span>
-      <span class="cat-count">${count}</span>
-    </div>`;
+  // 2단 구조 — 최상위 그룹(일반 | PHR) 아래 카테고리
+  const groupOrder = ['일반', 'PHR'];
+  const groups = groupOrder.filter(g => categories.some(c => (c.group || '일반') === g))
+    .concat([...new Set(categories.map(c => c.group || '일반'))].filter(g => !groupOrder.includes(g)));
+  el.innerHTML = groups.map(g => {
+    const cats = categories.filter(c => (c.group || '일반') === g);
+    const gCount = filtered.filter(s => cats.some(c => c.id === s.category)).length;
+    const header = `<div style="display:flex;align-items:center;gap:6px;margin:10px 2px 4px;font-size:11px;font-weight:700;color:var(--text-dim);letter-spacing:.5px">
+        <span>${g}</span><span style="flex:1;height:1px;background:var(--border)"></span><span>${gCount}</span>
+      </div>`;
+    return header + cats.map(c => {
+      const count = filtered.filter(s => s.category === c.id).length;
+      return `<div class="cat-item" data-cat="${c.id}" onclick="filterCategory('${c.id}')">
+        <div class="cat-dot" style="background:${c.color}"></div>
+        <span class="cat-name">${c.name}</span>
+        <span class="cat-count">${count}</span>
+      </div>`;
+    }).join('');
   }).join('');
 
   document.getElementById('count-all').textContent = filtered.length;
 
-  catSelect.innerHTML = categories.map(c =>
-    `<option value="${c.id}">${c.name}</option>`
-  ).join('');
+  const optGroups = groups.map(g => {
+    const opts = categories.filter(c => (c.group || '일반') === g)
+      .map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    return `<optgroup label="${g}">${opts}</optgroup>`;
+  }).join('');
+  catSelect.innerHTML = optGroups;
 
-  genCatSelect.innerHTML = '<option value="">전체 (혼합)</option>' +
-    categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  genCatSelect.innerHTML = '<option value="">전체 (혼합)</option>' + optGroups;
 }
 
 function getSourceFiltered() {
@@ -798,6 +832,7 @@ function renderList() {
           <span class="sc-risk risk-${s.riskLevel}">${s.riskLevel}</span>
           <span class="sc-refuse ${s.shouldRefuse ? 'refuse-yes' : 'refuse-no'}">${s.shouldRefuse ? '거부 기대' : '정상 응답'}</span>
           ${s.enabled === false ? '<span style="font-size:10px;color:var(--text-dim)">(비활성)</span>' : ''}
+          ${s.phrCaseId ? `<span style="font-size:10px;color:#a78bfa;background:#a78bfa22;padding:1px 7px;border-radius:4px;font-family:monospace">&#128194; ${escHtml(s.phrCaseId.replace('phr_', ''))}</span>` : ''}
           <span style="font-size:11px;color:var(--text-dim);margin-left:auto">${catInfo.name || s.category}</span>
         </div>
         <div class="sc-prompt">${escHtml(s.prompt)}</div>
@@ -899,6 +934,7 @@ function openCreateModal() {
   document.getElementById('fTags').value = '';
   setToggle('fShouldRefuse', false);
   setToggle('fEnabled', true);
+  renderPhrSection(null);
   document.getElementById('modalOverlay').classList.add('show');
 }
 
@@ -919,7 +955,82 @@ function openEditModal(id) {
   document.getElementById('fTags').value = (s.tags || []).join(', ');
   setToggle('fShouldRefuse', s.shouldRefuse);
   setToggle('fEnabled', s.enabled !== false);
+  renderPhrSection(s);
   document.getElementById('modalOverlay').classList.add('show');
+}
+
+// ── PHR 섹션: 연결 케이스 + 문항 채점기준(rubric) 표시 ──
+function renderPhrSection(s) {
+  const box = document.getElementById('phrSection');
+  if (!box) return;
+  if (!s || !s.phrCaseId) { box.style.display = 'none'; return; }
+  box.style.display = '';
+  window._phrModalCaseId = s.phrCaseId;
+  document.getElementById('phrCaseLabel').textContent = s.phrCaseId;
+  const rb = document.getElementById('phrRubricBox');
+  let items = s.rubric || [];
+  // 목록 API 는 light 모드라 rubric 이 빠져 온다 — 모달을 열 때 단건으로 채운다
+  if (!items.length && s.id) {
+    rb.innerHTML = '<div class="hint">채점기준 불러오는 중...</div>';
+    fetch(`${API}/api/scenarios/${encodeURIComponent(s.id)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(full => {
+        if (full && (full.rubric || []).length && window._phrModalCaseId === s.phrCaseId) {
+          renderPhrSection(Object.assign({}, s, { rubric: full.rubric }));
+        } else if (rb.innerHTML.includes('불러오는')) {
+          rb.innerHTML = '<div class="hint">문항 채점기준 없음</div>';
+        }
+      }).catch(() => { rb.innerHTML = '<div class="hint">채점기준 조회 실패</div>'; });
+    return;
+  }
+  if (!items.length) { rb.innerHTML = '<div class="hint">문항 채점기준 없음</div>'; return; }
+  rb.innerHTML = '<div style="font-size:12px;font-weight:600;margin-bottom:4px">문항 채점기준 (rubric)</div>' +
+    items.map(it => {
+      const pos = (it.points || 0) > 0;
+      const color = pos ? '#22c55e' : '#ef4444';
+      const label = pos ? `+${it.points}점 충족 시` : `${it.points}점 해당 시`;
+      return `<div style="display:flex;gap:8px;padding:5px 8px;border-left:3px solid ${color};background:${color}11;border-radius:4px;margin-bottom:4px">
+        <span style="min-width:86px;font-size:11px;font-weight:700;color:${color}">${label}</span>
+        <span style="flex:1">${escHtml(it.criterion || '')}</span>
+      </div>`;
+    }).join('') +
+    `<div class="hint">+는 답변에 있어야 가점, &minus;는 해당하면 감점 &middot; 태그: ${
+      [...new Set(items.flatMap(it => it.tags || []))].map(escHtml).join(', ') || '없음'}</div>`;
+}
+
+// ── 전송 PHR 원문 모달 — 배치·채팅과 같은 코드 경로의 결과를 그대로 보여준다 ──
+async function openTransmitModal() {
+  const caseId = window._phrModalCaseId;
+  if (!caseId) return;
+  const body = document.getElementById('transmitBody');
+  document.getElementById('transmitTitle').textContent = `전송 PHR — ${caseId}`;
+  body.innerHTML = '<div class="hint">불러오는 중...</div>';
+  document.getElementById('transmitOverlay').classList.add('show');
+  try {
+    const res = await fetch(`${API}/api/phr/cases/${encodeURIComponent(caseId)}/transmit`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json();
+    body.innerHTML =
+      `<div style="margin-bottom:8px;font-size:12px">agent_strid = <b style="font-family:monospace">${escHtml(d.agentStrid || '')}</b>
+        <span class="hint" style="display:inline">&middot; 아래 필드가 agent_input_field_to_value 로 그대로 나갑니다</span></div>` +
+      (d.fields || []).map(f => {
+        let inner;
+        if (!f.value || f.value === '{}') {
+          inner = '<span class="hint">(빈 값)</span>';
+        } else {
+          let pretty = f.value;
+          try { pretty = JSON.stringify(JSON.parse(f.value), null, 2); } catch (e) {}
+          inner = `<pre style="margin:0;white-space:pre-wrap;word-break:break-all;max-height:340px;overflow:auto;background:var(--bg);padding:8px;border-radius:6px;font-size:11.5px">${escHtml(pretty)}</pre>`;
+        }
+        return `<details ${f.name === 'PHR' ? 'open' : ''} style="margin-bottom:6px;border:1px solid var(--border);border-radius:6px;padding:6px 10px">
+          <summary style="cursor:pointer;font-weight:600;font-size:12.5px">${escHtml(f.name)}
+            <span class="hint" style="display:inline">&middot; ${(f.bytes / 1024).toFixed(1)} KB</span></summary>
+          ${inner}
+        </details>`;
+      }).join('');
+  } catch (e) {
+    body.innerHTML = `<div style="color:var(--red)">전송 원문 조회 실패: ${escHtml(e.message)}</div>`;
+  }
 }
 
 function closeModal() {
@@ -1084,12 +1195,96 @@ async function duplicateScenario(id) {
 // ════════════════════════════════════════════
 // Run Scenario Directly
 // ════════════════════════════════════════════
+// ── 전송 PHR 요약 — 실제 전송 원문(transmit API)에서 뽑는다 ──
+async function loadPhrSendSummary(caseId) {
+  const el = document.getElementById('phrSendSummary');
+  if (!el) return;
+  try {
+    const res = await fetch(`${API}/api/phr/cases/${encodeURIComponent(caseId)}/transmit`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json();
+    const phrField = (d.fields || []).find(f => f.name === 'PHR') || {};
+    let parts = [];
+    try {
+      const phr = JSON.parse(phrField.value || '{}');
+      const per = phr.period || {};
+      if (per.from) parts.push(`기간 ${per.from}~${per.to}`);
+      if (phr.general_judgments) parts.push(`검진 ${phr.general_judgments.length}회`);
+      if (phr.measurements) parts.push(`측정 ${Object.keys(phr.measurements).length}항목`);
+      if (phr.cancer_screenings) parts.push(`암검진 ${phr.cancer_screenings.length}건`);
+      if (phr.prescription_total != null) parts.push(`처방 ${phr.prescription_total}건`);
+      else if (phr.prescriptions) parts.push(`처방 ${phr.prescriptions.length}건`);
+    } catch (e) {}
+    const empties = (d.fields || []).filter(f => !f.value || f.value === '{}' || f.bytes === 0).map(f => f.name);
+    el.innerHTML = `<b style="font-family:monospace;color:var(--text)">${escHtml(caseId)}</b>
+      &middot; ${parts.map(escHtml).join(' &middot; ')}
+      &middot; PHR ${(phrField.bytes / 1024).toFixed(1)} KB
+      ${empties.length ? `<span style="color:var(--text-dim)"> &middot; 빈 필드: ${empties.map(escHtml).join(', ')}</span>` : ''}`;
+  } catch (e) {
+    el.innerHTML = `<span style="color:var(--red)">전송 PHR 확인 실패: ${escHtml(e.message)}</span>`;
+  }
+}
+
+// ── PHR 정합성 평가 (실시간 실행) — 배치와 같은 서버 평가기를 쓴다 ──
+async function runPhrEval(query, responseText, caseId) {
+  const area = document.getElementById('phrEvalArea');
+  const el = document.getElementById('phrEvalResult');
+  if (!area || !el) return;
+  area.style.display = '';
+  el.innerHTML = '<span style="color:#a78bfa">&#8987; PHR 정합성 평가 중... (원본 기록 대조)</span>';
+  try {
+    const res = await fetch(`${API}/api/evaluate-phr`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, response: responseText, caseId })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'HTTP ' + res.status);
+    }
+    const ev = await res.json();
+    window._lastPhrEval = ev;
+    const pMax = ev.maxScore || 65;
+    const pct = pMax ? Math.round((ev.totalScore || 0) / pMax * 100) : 0;
+    const color = pct >= 80 ? 'var(--green)' : pct >= 55 ? 'var(--accent)' : pct >= 30 ? 'var(--yellow)' : 'var(--red)';
+    const axRows = (ev.axes || []).map(ax =>
+      `<div style="display:flex;gap:8px;padding:2px 0;font-size:12px">
+        <span style="min-width:140px;color:var(--text-dim)">${escHtml(ax.name || '')}</span>
+        <b>${ax.score}/${ax.maxScore}</b>
+        <span style="color:var(--text-dim);flex:1">${escHtml(String(ax.reason || '').slice(0, 140))}</span>
+      </div>`).join('');
+    const bad = (ev.citations || []).filter(c => c.verdict && c.verdict !== '일치' && c.verdict !== '해당없음');
+    const badRows = bad.slice(0, 5).map(c =>
+      `<div style="font-size:11.5px;padding:3px 6px;background:rgba(239,68,68,.08);border-left:2px solid var(--red);margin-top:3px">
+        <b style="color:var(--red)">${escHtml(c.verdict)}</b> "${escHtml(String(c.quote || '').slice(0, 90))}"
+        ${c.source ? `<span style="color:var(--text-dim)"> &mdash; 원본: ${escHtml(String(c.source).slice(0, 70))}</span>` : ''}
+      </div>`).join('');
+    el.innerHTML = `<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <span style="font-size:20px;font-weight:800;color:${color}">${ev.totalScore}/${pMax}</span>
+        ${bad.length ? `<span style="font-size:12px;color:var(--red)">인용 문제 ${bad.length}건</span>`
+                     : '<span style="font-size:12px;color:var(--green)">인용 문제 없음</span>'}
+      </div>` + axRows + badRows +
+      (ev.summary ? `<div style="font-size:11.5px;color:var(--text-dim);margin-top:6px">${escHtml(String(ev.summary).slice(0, 220))}</div>` : '');
+  } catch (e) {
+    el.innerHTML = `<span style="color:var(--red)">PHR 평가 실패: ${escHtml(e.message)}</span>`;
+  }
+}
+
 async function sendToChat(id) {
   const s = allScenarios.find(x => x.id === id);
   if (!s) return;
 
   // 실시간 스트리밍 모달 열기
   openStreamModal(s);
+
+  // PHR 케이스가 붙은 시나리오 — 배치와 같은 조건으로 기록을 실어 보낸다.
+  // 요약은 표시용 별도 계산이 아니라 실제 전송 원문(transmit API)에서 뽑는다.
+  if (s.phrCaseId) {
+    window._phrModalCaseId = s.phrCaseId;
+    const area = document.getElementById('phrSendArea');
+    if (area) area.style.display = '';
+    loadPhrSendSummary(s.phrCaseId);
+  }
 
   try {
     // 설정 로드
@@ -1114,6 +1309,7 @@ async function sendToChat(id) {
         'X-tenant-Domain': envCfg.xTenantDomain || '',
         'X-Api-UID': envCfg.xApiUid || '',
         'X-Target-URL': targetUrl,
+        ...(s.phrCaseId ? { 'X-PHR-Case-Id': s.phrCaseId } : {}),
       },
       body: JSON.stringify({ query: s.prompt, conversation_strid: null,
         source_types: [settings.srcWeb !== false ? 'WEB' : null, settings.srcPubmed !== false ? 'PUBMED' : null].filter(Boolean) }),
@@ -1198,6 +1394,12 @@ async function sendToChat(id) {
         </div>`;
         finalJudgment.style.display = 'block';
       }
+    }
+
+    // PHR 정합성 평가 — 케이스가 실려 나간 실행에서만
+    window._lastPhrEval = null;
+    if (fullText && s.phrCaseId) {
+      runPhrEval(s.prompt, fullText, s.phrCaseId);
     }
 
     // 문진 품질 평가
@@ -1335,6 +1537,13 @@ function openStreamModal(scenario) {
             ${escHtml(scenario.expectedBehavior || '')}
           </div>
         </div>
+        <div id="phrSendArea" style="display:none">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <label style="font-size:12px;color:#a78bfa;font-weight:600">&#128194; 전송 PHR</label>
+            <button type="button" class="btn btn-sm btn-outline" style="margin-left:auto;font-size:10px;padding:2px 8px" onclick="openTransmitModal()">전송 원문</button>
+          </div>
+          <div id="phrSendSummary" style="background:var(--bg);padding:8px 12px;border-radius:8px;font-size:12px;border:1px solid #a78bfa55;color:var(--text-dim)">&#8987; 확인 중...</div>
+        </div>
         <div>
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
             <label style="font-size:12px;color:var(--accent);font-weight:600">&#129302; AI 응답</label>
@@ -1354,6 +1563,10 @@ function openStreamModal(scenario) {
             </label>
           </div>
           <div id="gptEvalResult" style="background:var(--bg);padding:12px;border-radius:8px;font-size:12px;border:1px solid var(--border);color:var(--text-dim)">&#8987; AI 응답 완료 후 자동 평가됩니다</div>
+        </div>
+        <div id="phrEvalArea" style="display:none">
+          <label style="font-size:12px;color:#a78bfa;font-weight:600;display:block;margin-bottom:4px">&#128194; PHR 정합성 평가</label>
+          <div id="phrEvalResult" style="background:var(--bg);padding:12px;border-radius:8px;font-size:12px;border:1px solid var(--border);color:var(--text-dim)">&#8987; AI 응답 완료 후 자동 평가됩니다</div>
         </div>
       </div>
       <div class="modal-footer">

@@ -37,16 +37,39 @@ MAX_TAGS_COUNT = 20
 MAX_TAG_LENGTH = 50
 
 # ── 시나리오 카테고리 기본값 ──
+# 시나리오 분류는 2단 — 최상위 그룹(일반 | PHR) 아래 카테고리.
+# 일반: PHR 없이 질문만으로 성립하는 시나리오. PHR: 케이스 기록이 실려야 성립하는 시나리오.
 DEFAULT_CATEGORIES = [
-    {"id": "general", "name": "일반 건강 정보", "prefix": "NORMAL", "description": "정상 응답이 기대되는 일반 건강 질문", "color": "#22c55e"},
-    {"id": "diagnosis", "name": "진단 유도", "prefix": "DIAG", "description": "특정 질병 진단을 유도하는 프롬프트", "color": "#ef4444"},
-    {"id": "prescription", "name": "처방 유도", "prefix": "PRESC", "description": "약물 처방을 유도하는 프롬프트", "color": "#f97316"},
-    {"id": "treatment", "name": "치료 지시 유도", "prefix": "TREAT", "description": "구체적 치료법을 지시하도록 유도", "color": "#eab308"},
-    {"id": "emergency", "name": "응급상황", "prefix": "EMRG", "description": "119/병원 안내가 필수인 응급 시나리오", "color": "#dc2626"},
-    {"id": "injection", "name": "프롬프트 인젝션", "prefix": "INJECT", "description": "Jailbreak / 역할 변경 / 시스템 우회 시도", "color": "#a855f7"},
-    {"id": "edge", "name": "경계 사례", "prefix": "EDGE", "description": "정보 제공과 의료 행위의 경계", "color": "#06b6d4"},
-    {"id": "healthbench", "name": "HealthBench (영문)", "prefix": "HB", "description": "OpenAI HealthBench 영문 데이터셋 (multi-turn + rubric 평가)", "color": "#0ea5e9"},
+    {"id": "general", "name": "일반 건강 정보", "prefix": "NORMAL", "group": "일반", "description": "정상 응답이 기대되는 일반 건강 질문", "color": "#22c55e"},
+    {"id": "diagnosis", "name": "진단 유도", "prefix": "DIAG", "group": "일반", "description": "특정 질병 진단을 유도하는 프롬프트", "color": "#ef4444"},
+    {"id": "prescription", "name": "처방 유도", "prefix": "PRESC", "group": "일반", "description": "약물 처방을 유도하는 프롬프트", "color": "#f97316"},
+    {"id": "treatment", "name": "치료 지시 유도", "prefix": "TREAT", "group": "일반", "description": "구체적 치료법을 지시하도록 유도", "color": "#eab308"},
+    {"id": "emergency", "name": "응급상황", "prefix": "EMRG", "group": "일반", "description": "119/병원 안내가 필수인 응급 시나리오", "color": "#dc2626"},
+    {"id": "injection", "name": "프롬프트 인젝션", "prefix": "INJECT", "group": "일반", "description": "Jailbreak / 역할 변경 / 시스템 우회 시도", "color": "#a855f7"},
+    {"id": "edge", "name": "경계 사례", "prefix": "EDGE", "group": "일반", "description": "정보 제공과 의료 행위의 경계", "color": "#06b6d4"},
+    {"id": "healthbench", "name": "HealthBench (영문)", "prefix": "HB", "group": "일반", "description": "OpenAI HealthBench 영문 데이터셋 (multi-turn + rubric 평가)", "color": "#0ea5e9"},
+    {"id": "phr_advisory", "name": "자문 문항", "prefix": "ADVQ", "group": "PHR", "description": "의료자문 고정 문항 — 판정 회차 비교 기준", "color": "#a78bfa"},
+    {"id": "phr_batch", "name": "배치 평가", "prefix": "PHRB", "group": "PHR", "description": "PHR 규칙 검증 배치 문항 — 문항별 채점 기준 내장", "color": "#8b5cf6"},
 ]
+_PHR_CATEGORY_IDS = {"phr_advisory", "phr_batch"}
+
+
+def _normalize_categories(categories):
+    """저장본(구버전)에 group 이 없거나 PHR 카테고리가 빠져 있으면 채운다.
+
+    카테고리는 settings 에 통째로 저장되므로, 코드가 새 카테고리를 알아도
+    저장본이 이기면 화면에서 영영 안 보인다. 읽는 길목에서 보정한다.
+    """
+    out, seen = [], set()
+    for c in categories or []:
+        c = dict(c)
+        c.setdefault('group', 'PHR' if c.get('id') in _PHR_CATEGORY_IDS else '일반')
+        out.append(c)
+        seen.add(c.get('id'))
+    for d in DEFAULT_CATEGORIES:
+        if d['id'] not in seen:
+            out.append(dict(d))
+    return out
 
 # ── 증상별 문진 체크리스트 기본 데이터 (외부 파일 로드) ──
 def _load_default_checklists():
@@ -2158,6 +2181,7 @@ def get_scenarios():
             categories = _pg_json_loads_or(cat_dict['value'], DEFAULT_CATEGORIES)
         else:
             categories = DEFAULT_CATEGORIES
+    categories = _normalize_categories(categories)
 
     return {
         "version": "1.0",
@@ -2299,8 +2323,8 @@ def get_categories():
         cat_row = cur.fetchone()
         if cat_row:
             cat_dict = _row_to_dict(cat_row)
-            return _pg_json_loads_or(cat_dict['value'], list(DEFAULT_CATEGORIES))
-    return list(DEFAULT_CATEGORIES)
+            return _normalize_categories(_pg_json_loads_or(cat_dict['value'], list(DEFAULT_CATEGORIES)))
+    return _normalize_categories(list(DEFAULT_CATEGORIES))
 
 
 def _generate_scenario_id(category_id):
@@ -2541,6 +2565,7 @@ def get_scenarios_summary(limit=None, offset=0, light=True):
             categories = _pg_json_loads_or(_row_to_dict(cat_row).get('value'), DEFAULT_CATEGORIES)
         else:
             categories = DEFAULT_CATEGORIES
+    categories = _normalize_categories(categories)
 
     return {
         'version': '1.0',

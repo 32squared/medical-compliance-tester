@@ -20,6 +20,16 @@ elif [ "$RUN_MODE" = "seed_advisory" ]; then
         --phr "${SEED_PHR_XLSX:-/app/seed_data/phr_70.xlsx}" \
         --questions "${SEED_Q_XLSX:-/app/seed_data/questions.xlsx}" \
         ${SEED_ARGS}
+elif [ "$RUN_MODE" = "run_phr_sample" ]; then
+    # PHR 배치 평가 샘플 실행 — 소수 건으로 세 평가 축 확인. DB 이력에 남기지 않는다.
+    echo "[entrypoint] mode=run_phr_sample → scripts/run_phr_sample.py (count=${SAMPLE_COUNT:-30})"
+    exec python /app/scripts/run_phr_sample.py --count "${SAMPLE_COUNT:-30}"
+elif [ "$RUN_MODE" = "seed_phr_batch" ]; then
+    # PHR 배치 평가 문항 시드 (Cloud Run Job 전용) — scripts/seed_phr_batch.py 참고.
+    SEED_ARGS=""
+    if [ "$SEED_DRY_RUN" = "1" ]; then SEED_ARGS="--dry-run"; fi
+    echo "[entrypoint] mode=seed_phr_batch → scripts/seed_phr_batch.py ${SEED_ARGS}"
+    exec python /app/scripts/seed_phr_batch.py ${SEED_ARGS}
 else
     PORT_USED="${PORT:-8080}"
     echo "[entrypoint] mode=service → python /app/proxy_server.py --port ${PORT_USED}"

@@ -8,7 +8,7 @@
   1. PHR 케이스 70건    — 분과별 시트를 사람 단위 케이스로 빌드해 저장
   2. 자문위원 계정 7개  — rexsoft01~07 (이미 있으면 건드리지 않음)
   3. 케이스 배정        — 분과별 10명씩, 그 분과 자문위원에게만 보이도록
-  4. 고정 문항 48건     — 6분과 × 6문항 + 응급의학 4문항 × 가상 Vital 3세트
+  4. 고정 문항 40건     — 6분과 × 6문항 + 응급의학 4문항
 
 문항은 reports/SKIX_2차자문_체크케이스_v*.xlsx 의 `01_체크문항` 시트를 읽는다.
 그 파일이 문항의 단일 진실 소스이고 원본 585행과 대조 검증까지 끝난 산출물이다.
@@ -61,8 +61,6 @@ SPECIALTY_SLUG = {
     '순환기내과': 'CV', '산부인과': 'OB', '영상의학': 'BR',
 }
 RISK_MAP = {'최고': 'CRITICAL', '높음': 'HIGH', '중간': 'MEDIUM', '낮음': 'LOW'}
-# 응급 문항은 같은 질문을 세 세트에 던져 어느 구간부터 119 안내가 나오는지 본다
-VITAL_SETS = ['V-A', 'V-B', 'V-C']
 
 
 def _hash_password(password, salt=None):
@@ -155,7 +153,7 @@ def read_questions(xlsx_path):
 
 
 def build_scenarios(questions, person_to_case):
-    """문항 → 시나리오. 응급의학은 Vital 세트마다 1건씩 만든다."""
+    """문항 → 시나리오. 문항 한 줄이 시나리오 한 건이다."""
     made, skipped = [], []
     for q in questions:
         spec_raw = str(q.get('분과', '')).strip()
@@ -175,7 +173,7 @@ def build_scenarios(questions, person_to_case):
         if item:
             tags.append(f'검토항목:{item[:1]}')
         base = {
-            'category': 'emergency' if specialty == '응급의학' else 'general',
+            'category': 'phr_advisory',
             'subcategory': specialty,
             'prompt': prompt,
             'expectedBehavior': str(q.get('검토 포인트', '')).strip(),
@@ -186,22 +184,13 @@ def build_scenarios(questions, person_to_case):
             'phrCaseId': case_id,
         }
         slug = SPECIALTY_SLUG.get(specialty, 'XX')
-        # 연도 칸이 Vital 지정을 겸한다.
-        #   'V-A/B/C' → 같은 질문을 세 세트에 던져 응급 개시선을 관측 (문항 1개 → 실행 3건)
-        #   'V-B'     → 그 한 세트만 (순환기 Q3 처럼 특정 구간을 겨냥한 문항)
-        year_cell = str(q.get('연도', '')).strip()
-        if year_cell == 'V-A/B/C':
-            vitals = list(VITAL_SETS)
-        elif year_cell in VITAL_SETS:
-            vitals = [year_cell]
-        else:
-            vitals = ['']
-        for v in vitals:
-            s = dict(base)
-            s['phrVitals'] = v
-            s['id'] = f'ADV-{slug}-{code}' + (f'-{v.replace("-", "")}' if v else '')
-            s['tags'] = tags + ([f'Vital:{v}'] if v else [])
-            made.append(s)
+        # 가상 Vital 주입은 쓰지 않는다. 자문위원이 배정 케이스를 전건 1회씩 도는 방식이라,
+        # 같은 질문을 세 세트로 반복하면 케이스를 다 돌 시간이 없다.
+        # 문항 하나는 시나리오 하나로 들어간다.
+        s = dict(base)
+        s['id'] = f'ADV-{slug}-{code}'
+        s['tags'] = tags
+        made.append(s)
     return made, skipped
 
 
@@ -342,6 +331,25 @@ def main():
             print(f'    {x}')
 
     print('\n■ 5. 문항 저장')
+    # 이번에 만들지 않은 옛 자문 문항은 지운다. 덮어쓰기만 하면 문항 구성이 바뀌었을 때
+    # (Vital 세트별 3벌 → 1벌) 옛 행이 남아 자문위원 화면에 같은 문항이 두 번 뜬다.
+    want_ids = {s['id'] for s in scenarios}
+    stale = []
+    try:
+        for s in db.get_scenarios().get('scenarios', []):
+            if s.get('source') == 'advisory' and s.get('id') not in want_ids:
+                stale.append(s['id'])
+    except Exception as e:
+        print(f'  [경고] 기존 문항 조회 실패 — 정리 건너뜀: {str(e)[:100]}')
+    if stale:
+        print(f'  더 이상 쓰지 않는 옛 문항 {len(stale)}건: {sorted(stale)[:6]}'
+              + (' …' if len(stale) > 6 else ''))
+        if not args.dry_run:
+            try:
+                db.delete_scenarios_bulk(stale)
+                print(f'  삭제 {len(stale)}건')
+            except Exception as e:
+                print(f'  [실패] 옛 문항 삭제: {str(e)[:120]}')
     if not args.dry_run:
         ok = fail = 0
         for s in scenarios:

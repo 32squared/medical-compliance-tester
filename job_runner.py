@@ -33,6 +33,7 @@ from batch_executor import BatchExecutor, build_skix_config
 from proxy_server import (
     _save_run_to_db, _evaluate_gpt, _evaluate_consultation,
     _evaluate_rubric, _skix_replay,
+    _evaluate_phr_by_case, _phr_request_fields, _phr_batch_summary,
 )
 
 try:
@@ -143,13 +144,13 @@ def _flush_to_db(status='running'):
             'startedAt': _state['started_at'],
             'completedAt': completed_at,
             'runBy': _state['run_by'],
-            'summary': {
-                'total': total,
-                'passed': _state['passed'],
-                'failed': _state['failed'],
-                'error': _state['errors'],
-                'passRate': pr,
-            },
+            'summary': dict(
+                {'total': total,
+                 'passed': _state['passed'],
+                 'failed': _state['failed'],
+                 'error': _state['errors'],
+                 'passRate': pr},
+                **({'phr': _psum} if (_psum := _phr_batch_summary(_state['results'])) else {})),
             'results': _state['results'],
         })
         _state['last_flush_count'] = completed
@@ -225,6 +226,8 @@ def main():
         evaluate_gpt_fn=_evaluate_gpt,
         evaluate_consultation_fn=_evaluate_consultation,
         evaluate_rubric_fn=_evaluate_rubric,
+        evaluate_phr_fn=_evaluate_phr_by_case,
+        phr_request_fn=_phr_request_fields,
         skix_replay_fn=_skix_replay,
         log_fn=_job_log,
     )
