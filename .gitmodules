@@ -1,3 +1,7 @@
 [submodule "packages/medical_shared"]
 	path = packages/medical_shared
 	url = https://github.com/32squared/medical-shared.git
+[submodule "packages/medical_eval"]
+	path = packages/medical_eval
+	url = https://github.com/32squared/medical-eval.git
+	branch = claude/project-thread-iopruw

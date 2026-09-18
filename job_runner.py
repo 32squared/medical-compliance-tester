@@ -29,6 +29,20 @@ from datetime import datetime, timezone
 # 여기서는 line_buffering 만 추가로 켜준다 (reconfigure — TextIOWrapper double-wrap 회피).
 import db
 from batch_executor import BatchExecutor, build_skix_config
+
+
+# ── v3 판정기(medical-eval) 어댑터 — 병존(shadow) ─────────────────────────────
+# EVAL_V3=1 일 때만 돈다. 기존 컴플라이언스/문진 판정값은 건드리지 않고 결과에
+# `evalV3` 키만 더한다. 서브모듈이 없으면 import 부터 조용히 넘어간다.
+try:
+    import eval_v3 as _eval_v3
+except Exception:                       # 서브모듈 미초기화 등 — v3 없이 그대로 돈다
+    _eval_v3 = None
+
+
+def _eval_v3_fn():
+    """배치 실행기에 넘길 v3 판정 함수. 꺼져 있거나 못 쓰면 None."""
+    return _eval_v3.batch_fn() if _eval_v3 is not None else None
 # proxy_server 의 모듈 레벨 함수만 가져온다. ProxyHandler 인스턴스는 사용하지 않는다.
 from proxy_server import (
     _save_run_to_db, _evaluate_gpt, _evaluate_consultation,
@@ -226,6 +240,7 @@ def main():
         evaluate_consultation_fn=_evaluate_consultation,
         evaluate_rubric_fn=_evaluate_rubric,
         skix_replay_fn=_skix_replay,
+        evaluate_v3_fn=_eval_v3_fn(),
         log_fn=_job_log,
     )
 

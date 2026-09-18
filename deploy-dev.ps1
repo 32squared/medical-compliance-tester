@@ -7,7 +7,10 @@ param(
     [string]$DbPassword = "",
     [switch]$SkipMigrate,
     [string]$RagServiceUrl = "",
-    [string]$RagTrustSecret = ""
+    [string]$RagTrustSecret = "",
+    # 온톨로지 기반 v3 판정 병존 실행. 켜면 답변 1건당 판정 모델 호출이 2회 늘어난다.
+    [switch]$EvalV3,
+    [string]$EvalV3Model = ""
 )
 
 Write-Host "=== Medical Compliance Tester - DEV Cloud Run Deploy ===" -ForegroundColor Cyan
@@ -97,6 +100,11 @@ if ($RagServiceUrl) {
     Write-Host "  [split mode] reverse-proxy /api/rag/* -> $RagServiceUrl" -ForegroundColor Cyan
 }
 if ($RagTrustSecret) { $DevEnvVars = "$DevEnvVars,RAG_TRUST_SECRET=$RagTrustSecret" }
+if ($EvalV3) {
+    $DevEnvVars = "$DevEnvVars,EVAL_V3=1"
+    if ($EvalV3Model) { $DevEnvVars = "$DevEnvVars,EVAL_V3_MODEL=$EvalV3Model" }
+    Write-Host "  [eval-v3] 온톨로지 판정 병존 ON (판정 모델 호출 +2회/답변)" -ForegroundColor Yellow
+}
 
 gcloud run deploy $ServiceName `
     --image "gcr.io/$ProjectId/$ServiceName" `

@@ -82,6 +82,21 @@ except Exception as _e:
     logger.warning("rag_consultation_eval import 실패: %s — _evaluate_consultation 폴백", _e)
     _evaluate_consult_rag = None
 
+# ── v3 판정기(medical-eval) 어댑터 — 병존(shadow) ─────────────────────────────
+# EVAL_V3=1 일 때만 돈다. v2 결과(compliance/consultation/checklist)에는 손대지 않고
+# `eval_v3` 키를 **추가**할 뿐이다(계약 §6.3).
+try:
+    import eval_v3 as _v3
+    _V3_OK, _V3_WHY = _v3.available()
+    if _v3.ENABLED and not _V3_OK:
+        logger.warning("EVAL_V3=1 이지만 v3 판정기를 쓸 수 없습니다: %s", _V3_WHY)
+    elif _v3.ENABLED:
+        logger.info("v3 병존 판정 활성 | %s", _v3.versions())
+except Exception as _e:
+    logger.warning("eval_v3 import 실패 — v3 병존 판정 없이 진행: %s", _e)
+    _v3, _V3_OK = None, False
+
+
 # ── 상수 ─────────────────────────────────────────────────────────────────────
 _GRADE_ORDER = {"A": 5, "B": 4, "C": 3, "D": 2, "F": 1}
 _SCENARIOS_JSON = os.path.join(_DIR, "scenarios.json")
@@ -90,6 +105,37 @@ _SCENARIOS_JSON = os.path.join(_DIR, "scenarios.json")
 # ─────────────────────────────────────────────────────────────────────────────
 # 시나리오 로딩
 # ─────────────────────────────────────────────────────────────────────────────
+
+def _scenario_row(s: dict) -> dict:
+    """시나리오 1행 → 배치 내부 형식.
+
+    `phrCaseId`·`branch`·`symptomKey` 는 v3 판정용 열이다(REQ-0007). 열이 생기기 전에 적재된
+    행은 같은 값이 `tags` 에 `case:<id>` · `branch:<분기>` · `symptom:<증상군>` 으로 들어 있어
+    거기서 회수한다.
+
+    `symptomKey` 가 증상 모드(SV) 의 정식 경로다. 이것을 주지 않으면 판정기가 질문 문장에서
+    증상군을 추측하는데, 어느 증상이 주소(主訴)인지는 낱말만으로 갈리지 않아 절반 가까이
+    못 고르거나 틀린다(증상 골든 50건 측정). 시나리오에 달아 두는 편이 훨씬 정확하다.
+    """
+    tags = s.get("tags") or []
+    tagged = {}
+    for t in tags:
+        if isinstance(t, str) and ":" in t:
+            k, _, v = t.partition(":")
+            tagged.setdefault(k, v)
+    return {
+        "id":                s.get("id", ""),
+        "category":          s.get("category", ""),
+        "prompt":            s.get("prompt", ""),
+        "expected_behavior": s.get("expectedBehavior", ""),
+        "should_refuse":     bool(s.get("shouldRefuse", False)),
+        "risk_level":        s.get("riskLevel", "MEDIUM"),
+        "phr_case_id":       s.get("phrCaseId") or tagged.get("case") or None,
+        "branch":            s.get("branch") or tagged.get("branch") or "",
+        "symptom_key":       s.get("symptomKey") or tagged.get("symptom") or "",
+        "rubric":            s.get("rubric") or [],
+    }
+
 
 def load_scenarios(source: str = "db", limit: int = None) -> list:
     """
@@ -105,14 +151,7 @@ def load_scenarios(source: str = "db", limit: int = None) -> list:
             data = _db.get_scenarios()
             raw = data.get("scenarios", [])
             for s in raw:
-                scenarios.append({
-                    "id":                s.get("id", ""),
-                    "category":          s.get("category", ""),
-                    "prompt":            s.get("prompt", ""),
-                    "expected_behavior": s.get("expectedBehavior", ""),
-                    "should_refuse":     bool(s.get("shouldRefuse", False)),
-                    "risk_level":        s.get("riskLevel", "MEDIUM"),
-                })
+                scenarios.append(_scenario_row(s))
             logger.info("DB에서 시나리오 %d개 로드", len(scenarios))
         except Exception as e:
             logger.warning("DB 시나리오 로드 실패 (%s) — JSON 폴백", e)
@@ -125,14 +164,7 @@ def load_scenarios(source: str = "db", limit: int = None) -> list:
                 data = json.load(f)
             raw = data.get("scenarios", [])
             for s in raw:
-                scenarios.append({
-                    "id":                s.get("id", ""),
-                    "category":          s.get("category", ""),
-                    "prompt":            s.get("prompt", ""),
-                    "expected_behavior": s.get("expectedBehavior", ""),
-                    "should_refuse":     bool(s.get("shouldRefuse", False)),
-                    "risk_level":        s.get("riskLevel", "MEDIUM"),
-                })
+                scenarios.append(_scenario_row(s))
             logger.info("scenarios.json에서 %d개 로드", len(scenarios))
         except Exception as e:
             logger.error("scenarios.json 로드 실패: %s", e)
@@ -148,27 +180,37 @@ def load_scenarios(source: str = "db", limit: int = None) -> list:
 # RAG 응답 생성
 # ─────────────────────────────────────────────────────────────────────────────
 
-def run_rag(query: str) -> dict:
+def run_rag(query: str, phr_transmit: str = None) -> dict:
     """
     RAG_SERVICE_URL /api/rag/chat SSE 호출 → 응답 텍스트 + evidence_quality + citations 수집.
+
+    `phr_transmit` 을 주면 개인화(기록 모드)로 호출한다 — 최상위 `phr` 축약 필드(transmit
+    원문 JSON 문자열)와 `personal_consent: true` 게이트를 함께 보낸다.
 
     Returns:
         {
             'text': str,
             'evidence_quality': str,   # 'HIGH' | 'MEDIUM' | 'LOW' | 'INSUFFICIENT'
             'citations': list,
+            'prompt_version': str or None,     # STOP 메타 — 프롬프트 버전(v17/v18 비교용)
+            'personal_injected': list or None, # STOP 메타 — 주입된 개인화 밴드.
+                                               #   None=모름, []=미주입(기록 모드 채점 불가)
             'latency_ms': int,
             'error': str or None,
         }
     """
     conv_id = f"batch_eval_{uuid.uuid4().hex[:12]}"
     url = f"{_RAG_SERVICE_URL}/api/rag/chat"
-    payload = json.dumps({
+    body = {
         "query": query,
         "conversation_id": conv_id,
         "top_k": 5,
         "enable_guardrails": True,
-    }).encode("utf-8")
+    }
+    if phr_transmit:
+        body["phr"] = phr_transmit            # 축약 경로(정식 agent_input_field_to_value 와 겹치면 우선)
+        body["personal_consent"] = True       # 방향2 PERSONAL_RAW_TO_LLM 게이트
+    payload = json.dumps(body).encode("utf-8")
 
     headers = {
         "Content-Type": "application/json",
@@ -188,6 +230,8 @@ def run_rag(query: str) -> dict:
     text_parts: list = []
     evidence_quality = "UNKNOWN"
     citations: list = []
+    prompt_version = None
+    personal_injected = None                  # None 과 [] 는 다르다 — 모름 vs 미주입
     error_msg = None
 
     try:
@@ -212,6 +256,14 @@ def run_rag(query: str) -> dict:
                     if stop_text:
                         text_parts = [stop_text]
                     citations = event.get("citations", [])
+                    # STOP 메타(계약 §6.2). meta 안 또는 최상위 — 양쪽 다 받는다.
+                    meta = event.get("meta") or {}
+                    pv = meta.get("prompt_version", event.get("prompt_version"))
+                    if pv:
+                        prompt_version = pv
+                    pi = meta.get("personal_injected", event.get("personal_injected"))
+                    if isinstance(pi, list):
+                        personal_injected = pi
                 elif etype == "EVIDENCE_CHECK":
                     evidence_quality = event.get("data", {}).get("quality", "UNKNOWN")
                 elif etype == "ERROR":
@@ -240,6 +292,8 @@ def run_rag(query: str) -> dict:
         "text": "".join(text_parts),
         "evidence_quality": evidence_quality,
         "citations": citations,
+        "prompt_version": prompt_version,
+        "personal_injected": personal_injected,
         "latency_ms": latency_ms,
         "error": error_msg,
     }
@@ -284,6 +338,9 @@ def evaluate_one(scenario: dict, openai_key: str, model: str) -> dict:
         "checklist_grade": None,
         "checklist_score": None,
         "both_A": False,
+        "prompt_version": None,
+        "personal_injected": None,
+        "eval_v3": None,            # v3 병존 판정(EVAL_V3=1 일 때만). v2 값에는 영향 없음
         "latency_ms": 0,
         "error": None,
     }
@@ -292,9 +349,22 @@ def evaluate_one(scenario: dict, openai_key: str, model: str) -> dict:
 
     try:
         # ── 1. RAG 응답 생성 ──────────────────────────────────────
-        rag = run_rag(prompt)
+        # 시나리오에 PHR 케이스가 걸려 있으면 개인화(기록 모드)로 호출한다.
+        phr_transmit = None                        # RAG 주입용 transmit 원문
+        case_id = scenario.get("phr_case_id")
+        if case_id and _v3 is not None:
+            try:
+                phr_transmit, _ = _v3.phr_for(case_id)   # 판정용 phr_cases 는 evaluate_scenario 가 읽는다
+                if not phr_transmit:
+                    logger.debug("[%s] PHR 케이스 %s transmit 원문 없음 — 증상 모드로 진행", sid, case_id)
+            except Exception as e:
+                logger.warning("[%s] PHR 케이스 조회 실패(%s): %s", sid, case_id, e)
+
+        rag = run_rag(prompt, phr_transmit=phr_transmit)
         result["rag_response"] = rag["text"]
         result["evidence_quality"] = rag["evidence_quality"]
+        result["prompt_version"] = rag.get("prompt_version")
+        result["personal_injected"] = rag.get("personal_injected")
         result["latency_ms"] = rag["latency_ms"]
 
         if rag["error"]:
@@ -366,6 +436,26 @@ def evaluate_one(scenario: dict, openai_key: str, model: str) -> dict:
         comp_ok = c_grade in ("A",) if c_grade != "?" else False
         cons_ok = q_grade in ("A",) if q_grade != "?" else False
         result["both_A"] = comp_ok and cons_ok
+
+        # ── 6. v3 병존 판정 (EVAL_V3=1) ───────────────────────────
+        # v2 결과는 위에서 이미 확정됐다. 여기서는 `eval_v3` 키만 더한다 — 실패해도
+        # 배치는 v2 결과로 그대로 끝난다(3단계 교차표까지는 v3 가 판정을 좌우하지 않는다).
+        if _v3 is not None and _v3.ENABLED and _V3_OK:
+            rag_meta = {"prompt_version": rag.get("prompt_version") or "unknown",
+                        "evidence_quality": rag["evidence_quality"]}
+            if rag.get("personal_injected") is not None:
+                rag_meta["personal_injected"] = rag["personal_injected"]
+                rag_meta["personal_injected_count"] = len(rag["personal_injected"])
+            try:
+                # 시나리오 → 판정기 인자 매핑은 eval_v3.evaluate_scenario 한 곳뿐이다.
+                # 경로마다 따로 매핑하면 한쪽만 고쳐져 두 배치가 다른 판정을 내게 된다.
+                result["eval_v3"] = _v3.evaluate_scenario(
+                    scenario, prompt, response_text,
+                    api_key=openai_key, rag_meta=rag_meta,
+                )
+            except Exception as e:                 # 어댑터가 이미 잡지만 배치는 절대 멈추지 않는다
+                logger.warning("[%s] v3 판정 실패: %s", sid, e)
+                result["eval_v3"] = {"error": f"{type(e).__name__}: {e}"}
 
         # ── 진단 로깅 (both_A 미달 시 위반/누락 + 응답 스니펫) ──────
         if os.environ.get("DIAG_LOG") == "1" and not result["both_A"]:
@@ -518,7 +608,19 @@ def main() -> None:
         default=os.environ.get("EVAL_MODEL", "gpt-4o-mini"),
         help="평가용 GPT 모델 (default: env EVAL_MODEL 또는 gpt-4o-mini)"
     )
+    parser.add_argument(
+        "--eval-v3", action="store_true",
+        help="v3(온톨로지) 판정을 병존 실행한다 — env EVAL_V3=1 과 같다. v2 결과는 그대로 둔다"
+    )
     args = parser.parse_args()
+
+    if args.eval_v3 and _v3 is not None:
+        _v3.ENABLED = True
+        ok, why = _v3.available()
+        if not ok:
+            logger.error("--eval-v3 지만 v3 판정기를 쓸 수 없습니다: %s", why)
+            sys.exit(1)
+        logger.info("v3 병존 판정 활성 | %s", _v3.versions())
 
     # RAG_SERVICE_URL 필수 체크
     if not _RAG_SERVICE_URL:
@@ -617,6 +719,25 @@ def main() -> None:
         "category_pass_rate": cat_rate,
     }
 
+    # v3 병존 판정이 돌았으면 요약에 버전·분포를 남긴다(교차표의 입력이 된다).
+    if any(r.get("eval_v3") for r in results):
+        v3_rows = [r["eval_v3"] for r in results if r.get("eval_v3")]
+        ok_rows = [v for v in v3_rows if not v.get("error")]
+        verdict_dist, gate_dist = {}, {}
+        for v in ok_rows:
+            verdict_dist[v.get("verdict") or "?"] = verdict_dist.get(v.get("verdict") or "?", 0) + 1
+            gate_dist[v.get("legal_verdict") or "?"] = gate_dist.get(v.get("legal_verdict") or "?", 0) + 1
+        first = ok_rows[0] if ok_rows else {}
+        summary["eval_v3"] = {
+            "scored": len(ok_rows),
+            "error_count": len(v3_rows) - len(ok_rows),
+            "verdict_dist": verdict_dist,
+            "legal_verdict_dist": gate_dist,
+            "eval_version": first.get("eval_version"),
+            "ontology_version": first.get("ontology_version"),
+            "judge_model": first.get("judge_model"),
+        }
+
     output_data = {
         "summary": summary,
         "below_A_items": below_A_list,
@@ -664,7 +785,18 @@ def main() -> None:
                 "resp": (r.get("rag_response") or "")[:1200],
                 "viol": viols,
                 "err": r.get("error"),
+                "pv_ver": r.get("prompt_version"),
             }
+            v3 = r.get("eval_v3")
+            if v3:
+                # 등급 열은 두 개로 둔다 — 합치면 어느 축이 떨어졌는지 사라진다(계약 §7).
+                line["v3"] = {
+                    "verdict": v3.get("verdict"), "legal": v3.get("legal_verdict"),
+                    "hits": v3.get("legal_hits"), "axis": v3.get("validity_axis"),
+                    "vgrade": v3.get("validity_grade"), "unmet": v3.get("validity_unmet"),
+                    "ugrade": v3.get("uv_grade"), "cap": v3.get("grade_cap"),
+                    "err": v3.get("error"),
+                }
             print("EVAL_ROW " + json.dumps(line, ensure_ascii=False), flush=True)
         print("===EVAL_RESULTS_JSONL_END===", flush=True)
 
@@ -698,6 +830,14 @@ def main() -> None:
         )
     if len(below_A_list) > 20:
         print(f"    ... 외 {len(below_A_list) - 20}개 (전체 결과는 JSON 파일 참조)")
+    print()
+    if summary.get("eval_v3"):
+        v3s = summary["eval_v3"]
+        print()
+        print(f"  [v3 병존 판정 — {v3s.get('eval_version')} / 온톨로지 {v3s.get('ontology_version')}]")
+        print(f"    판정 {v3s['scored']}건, 실패 {v3s['error_count']}건")
+        print(f"    게이트: " + ", ".join(f"{k} {v}개" for k, v in sorted(v3s["legal_verdict_dist"].items())))
+        print(f"    최종:   " + ", ".join(f"{k} {v}개" for k, v in sorted(v3s["verdict_dist"].items())))
     print()
     print(f"  결과 파일: {out_path}")
     print("=" * 60)
