@@ -47,6 +47,7 @@ def _eval_v3_fn():
 from proxy_server import (
     _save_run_to_db, _evaluate_gpt, _evaluate_consultation,
     _evaluate_rubric, _skix_replay,
+    _evaluate_phr_by_case, _phr_request_fields, _phr_batch_summary,
 )
 
 try:
@@ -71,9 +72,19 @@ def _auto_select_scenario_ids(mode):
     트리거 측에서 로컬 DB 접속(private IP) 불가할 때 Job 내부에서 추출하는 경로.
     """
     exclude_hb = (mode != 'all')
+    # 표본 추출(선택) — 트리거 측이 운영 DB 의 id 를 모를 때 카테고리·태그로 고른다.
+    #   SELECT_CATEGORY=phr_batch,phr_advisory   카테고리(쉼표 구분)
+    #   SELECT_TAG=v18회귀                        태그 포함
+    #   SELECT_PER_SUBCATEGORY=3                  서브카테고리(분과)별 앞 n건 (id 정렬)
+    #   SELECT_LIMIT=50                           전체 상한
+    sel_cat = {c.strip() for c in os.environ.get('SELECT_CATEGORY', '').split(',') if c.strip()}
+    sel_tag = os.environ.get('SELECT_TAG', '').strip()
+    per_sub = int(os.environ.get('SELECT_PER_SUBCATEGORY', '0') or 0)
+    limit = int(os.environ.get('SELECT_LIMIT', '0') or 0)
+
     data = db.get_scenarios()
     scenarios = data.get('scenarios', []) if isinstance(data, dict) else []
-    ids = []
+    picked = []
     src_dist = {}
     for s in scenarios:
         if not s.get('enabled', True):
@@ -84,10 +95,29 @@ def _auto_select_scenario_ids(mode):
             low = sid.lower()
             if low.startswith('hb-') or src == 'healthbench':
                 continue
-        ids.append(sid)
+        if sel_cat and (s.get('category') or '') not in sel_cat:
+            continue
+        if sel_tag and sel_tag not in (s.get('tags') or []):
+            continue
+        picked.append(s)
         src_dist[src or '(none)'] = src_dist.get(src or '(none)', 0) + 1
-    ids.sort()
-    _job_log(f"[auto-select] mode={mode} → {len(ids)}건 (HB제외={exclude_hb}) source분포={src_dist}")
+    picked.sort(key=lambda x: x.get('id', ''))
+    if per_sub > 0:
+        seen = {}
+        kept = []
+        for s in picked:
+            k = s.get('subcategory') or ''
+            seen[k] = seen.get(k, 0) + 1
+            if seen[k] <= per_sub:
+                kept.append(s)
+        picked = kept
+    if limit > 0:
+        picked = picked[:limit]
+    ids = [s.get('id', '') for s in picked]
+    _job_log(f"[auto-select] mode={mode} → {len(ids)}건 (HB제외={exclude_hb} category={sorted(sel_cat) or '-'} "
+             f"tag={sel_tag or '-'} per_sub={per_sub} limit={limit}) source분포={src_dist}")
+    if sel_cat or sel_tag or per_sub or limit:
+        _job_log(f"[auto-select] ids={ids}")
     return ids
 
 
@@ -157,13 +187,13 @@ def _flush_to_db(status='running'):
             'startedAt': _state['started_at'],
             'completedAt': completed_at,
             'runBy': _state['run_by'],
-            'summary': {
-                'total': total,
-                'passed': _state['passed'],
-                'failed': _state['failed'],
-                'error': _state['errors'],
-                'passRate': pr,
-            },
+            'summary': dict(
+                {'total': total,
+                 'passed': _state['passed'],
+                 'failed': _state['failed'],
+                 'error': _state['errors'],
+                 'passRate': pr},
+                **({'phr': _psum} if (_psum := _phr_batch_summary(_state['results'])) else {})),
             'results': _state['results'],
         })
         _state['last_flush_count'] = completed
@@ -177,6 +207,57 @@ def _make_sigterm_handler():
         _flush_to_db(status='cancelled')
         sys.exit(143)
     return _handler
+
+
+def _v3_log_summary(results):
+    """v3(온톨로지) 판정 요약을 로그로 남긴다 — id·등급·규칙 id 만 (답변 원문·케이스 값 없음).
+
+    이력 화면 없이도 Cloud Logging 에서 배치의 v3 결과를 읽기 위한 것이다.
+    """
+    rows = [(r.get('scenarioId'), r.get('evalV3')) for r in (results or []) if r.get('evalV3')]
+    if not rows:
+        return
+    gate, pv, uv, errs, hits = {}, {}, {}, 0, {}
+    cross = {}      # v2 법률(pass/fail/-) × v3 legal gate(pass/fail) — 섀도 기간 일치율
+    v2_by_sid = {r.get('scenarioId'): (r.get('gptEval') or {}) for r in (results or [])}
+    for sid, v in rows:
+        if v.get('error'):
+            errs += 1
+            _job_log(f"[v3] {sid} error={str(v.get('error'))[:100]}")
+            continue
+        gate[v.get('legal_verdict')] = gate.get(v.get('legal_verdict'), 0) + 1
+        pv[v.get('validity_grade') or '-'] = pv.get(v.get('validity_grade') or '-', 0) + 1
+        uv[v.get('uv_grade') or '-'] = uv.get(v.get('uv_grade') or '-', 0) + 1
+        for h in (v.get('legal_hits') or []):
+            hits[h] = hits.get(h, 0) + 1
+        rm = v.get('rag_meta') or {}
+        g = v2_by_sid.get(sid) or {}
+        v2 = ('pass' if g.get('passed') else 'fail') if g.get('grade') else '-'
+        key = f"v2:{v2}/v3:{v.get('legal_verdict')}"
+        cross[key] = cross.get(key, 0) + 1
+        _job_log(
+            f"[v3] {sid} v2={g.get('grade') or '-'}/{v2} verdict={v.get('verdict')} legal={v.get('legal_verdict')} "
+            f"hits={v.get('legal_hits') or []} review={v.get('legal_review_hits') or []} "
+            f"{v.get('validity_axis') or 'PV'}={v.get('validity_grade')} unmet={v.get('validity_unmet') or []} "
+            f"UV={v.get('uv_grade')} unmet={v.get('uv_unmet') or []} intent={v.get('uv_intent')} "
+            f"prompt={rm.get('prompt_version') or v.get('prompt_version')} skip={rm.get('skip_reason')} "
+            f"claims={v.get('claim_count')} fallback={v.get('claim_fallback')}"
+            + (f" escalated={esc.get('first_model')}:{esc.get('first_verdict')}→{esc.get('model')}:{esc.get('verdict') or esc.get('error')}"
+               if (esc := v.get('judge_escalation')) else "")
+        )
+    meta = next((v for _, v in rows if not v.get('error')), {})
+    _job_log(
+        f"[v3] SUMMARY n={len(rows)} err={errs} gate={gate} PV/SV={pv} UV={uv} rule_hits={hits} "
+        f"eval={meta.get('eval_version')} ontology={meta.get('ontology_version')} judge={meta.get('judge_model')}"
+    )
+    n_esc = sum(1 for _, v in rows if v.get('judge_escalation'))
+    if n_esc:
+        _job_log(f"[v3] ESCALATION {n_esc}/{len(rows)}건 1차 fail → 2차 판정 "
+                 f"(2차도 fail: {sum(1 for _, v in rows if (v.get('judge_escalation') or {}).get('verdict') == 'FAIL')})")
+    agree = cross.get('v2:pass/v3:pass', 0) + cross.get('v2:fail/v3:fail', 0)
+    both = sum(n for k, n in cross.items() if not k.startswith('v2:-'))
+    _job_log(f"[v3] CROSS v2×v3 {cross} agree={agree}/{both}"
+             + (f" ({agree * 100 // both}%)" if both else ""))
 
 
 def main():
@@ -239,6 +320,8 @@ def main():
         evaluate_gpt_fn=_evaluate_gpt,
         evaluate_consultation_fn=_evaluate_consultation,
         evaluate_rubric_fn=_evaluate_rubric,
+        evaluate_phr_fn=_evaluate_phr_by_case,
+        phr_request_fn=_phr_request_fields,
         skix_replay_fn=_skix_replay,
         evaluate_v3_fn=_eval_v3_fn(),
         log_fn=_job_log,
@@ -280,6 +363,7 @@ def main():
             f"[job] DONE run_id={run_id} total={summary['completed']} "
             f"pass={summary['passed']} fail={summary['failed']} err={summary['errors']}"
         )
+        _v3_log_summary(_state['results'])
     except Exception as e:
         _job_log(f"[job] 치명적 오류: {type(e).__name__}: {str(e)[:300]}")
         _flush_to_db(status='completed')

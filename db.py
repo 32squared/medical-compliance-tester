@@ -37,16 +37,39 @@ MAX_TAGS_COUNT = 20
 MAX_TAG_LENGTH = 50
 
 # ── 시나리오 카테고리 기본값 ──
+# 시나리오 분류는 2단 — 최상위 그룹(일반 | PHR) 아래 카테고리.
+# 일반: PHR 없이 질문만으로 성립하는 시나리오. PHR: 케이스 기록이 실려야 성립하는 시나리오.
 DEFAULT_CATEGORIES = [
-    {"id": "general", "name": "일반 건강 정보", "prefix": "NORMAL", "description": "정상 응답이 기대되는 일반 건강 질문", "color": "#22c55e"},
-    {"id": "diagnosis", "name": "진단 유도", "prefix": "DIAG", "description": "특정 질병 진단을 유도하는 프롬프트", "color": "#ef4444"},
-    {"id": "prescription", "name": "처방 유도", "prefix": "PRESC", "description": "약물 처방을 유도하는 프롬프트", "color": "#f97316"},
-    {"id": "treatment", "name": "치료 지시 유도", "prefix": "TREAT", "description": "구체적 치료법을 지시하도록 유도", "color": "#eab308"},
-    {"id": "emergency", "name": "응급상황", "prefix": "EMRG", "description": "119/병원 안내가 필수인 응급 시나리오", "color": "#dc2626"},
-    {"id": "injection", "name": "프롬프트 인젝션", "prefix": "INJECT", "description": "Jailbreak / 역할 변경 / 시스템 우회 시도", "color": "#a855f7"},
-    {"id": "edge", "name": "경계 사례", "prefix": "EDGE", "description": "정보 제공과 의료 행위의 경계", "color": "#06b6d4"},
-    {"id": "healthbench", "name": "HealthBench (영문)", "prefix": "HB", "description": "OpenAI HealthBench 영문 데이터셋 (multi-turn + rubric 평가)", "color": "#0ea5e9"},
+    {"id": "general", "name": "일반 건강 정보", "prefix": "NORMAL", "group": "일반", "description": "정상 응답이 기대되는 일반 건강 질문", "color": "#22c55e"},
+    {"id": "diagnosis", "name": "진단 유도", "prefix": "DIAG", "group": "일반", "description": "특정 질병 진단을 유도하는 프롬프트", "color": "#ef4444"},
+    {"id": "prescription", "name": "처방 유도", "prefix": "PRESC", "group": "일반", "description": "약물 처방을 유도하는 프롬프트", "color": "#f97316"},
+    {"id": "treatment", "name": "치료 지시 유도", "prefix": "TREAT", "group": "일반", "description": "구체적 치료법을 지시하도록 유도", "color": "#eab308"},
+    {"id": "emergency", "name": "응급상황", "prefix": "EMRG", "group": "일반", "description": "119/병원 안내가 필수인 응급 시나리오", "color": "#dc2626"},
+    {"id": "injection", "name": "프롬프트 인젝션", "prefix": "INJECT", "group": "일반", "description": "Jailbreak / 역할 변경 / 시스템 우회 시도", "color": "#a855f7"},
+    {"id": "edge", "name": "경계 사례", "prefix": "EDGE", "group": "일반", "description": "정보 제공과 의료 행위의 경계", "color": "#06b6d4"},
+    {"id": "healthbench", "name": "HealthBench (영문)", "prefix": "HB", "group": "일반", "description": "OpenAI HealthBench 영문 데이터셋 (multi-turn + rubric 평가)", "color": "#0ea5e9"},
+    {"id": "phr_advisory", "name": "자문 문항", "prefix": "ADVQ", "group": "PHR", "description": "의료자문 고정 문항 — 판정 회차 비교 기준", "color": "#a78bfa"},
+    {"id": "phr_batch", "name": "배치 평가", "prefix": "PHRB", "group": "PHR", "description": "PHR 규칙 검증 배치 문항 — 문항별 채점 기준 내장", "color": "#8b5cf6"},
 ]
+_PHR_CATEGORY_IDS = {"phr_advisory", "phr_batch"}
+
+
+def _normalize_categories(categories):
+    """저장본(구버전)에 group 이 없거나 PHR 카테고리가 빠져 있으면 채운다.
+
+    카테고리는 settings 에 통째로 저장되므로, 코드가 새 카테고리를 알아도
+    저장본이 이기면 화면에서 영영 안 보인다. 읽는 길목에서 보정한다.
+    """
+    out, seen = [], set()
+    for c in categories or []:
+        c = dict(c)
+        c.setdefault('group', 'PHR' if c.get('id') in _PHR_CATEGORY_IDS else '일반')
+        out.append(c)
+        seen.add(c.get('id'))
+    for d in DEFAULT_CATEGORIES:
+        if d['id'] not in seen:
+            out.append(dict(d))
+    return out
 
 # ── 증상별 문진 체크리스트 기본 데이터 (외부 파일 로드) ──
 def _load_default_checklists():
@@ -228,6 +251,7 @@ CREATE TABLE IF NOT EXISTS messages (
     gpt_eval_json TEXT,
     gpt_model TEXT,
     consultation_eval_json TEXT,
+    phr_eval_json TEXT,
     token_usage_json TEXT,
     FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
 );
@@ -473,6 +497,60 @@ CREATE TABLE IF NOT EXISTS shared_eval_comments (
     created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_shared_comments_eval ON shared_eval_comments(eval_id, created_at);
+
+-- PHR 케이스 (개인 기준 건강기록을 답변에 실어보낼 형태로 정규화한 것)
+CREATE TABLE IF NOT EXISTS phr_cases (
+    id TEXT PRIMARY KEY,
+    case_no TEXT NOT NULL,
+    label TEXT DEFAULT '',
+    person_ref TEXT DEFAULT '',
+    tags_json TEXT DEFAULT '[]',
+    specialties_json TEXT DEFAULT '[]',
+    period_from TEXT DEFAULT '',
+    period_to TEXT DEFAULT '',
+    counts_json TEXT DEFAULT '{}',
+    persona_json TEXT DEFAULT '{}',
+    case_json TEXT NOT NULL,
+    payload_json TEXT NOT NULL,
+    source_file TEXT DEFAULT '',
+    enabled INTEGER DEFAULT 1,
+    created_at TEXT NOT NULL,
+    created_by TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_phr_cases_no ON phr_cases(case_no);
+
+-- 케이스 배정 (분과별 전문가에게 케이스를 나눠준다)
+CREATE TABLE IF NOT EXISTS phr_case_assignments (
+    id TEXT PRIMARY KEY,
+    case_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    specialty TEXT DEFAULT '',
+    assigned_at TEXT NOT NULL,
+    assigned_by TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_phr_assign_user ON phr_case_assignments(user_id);
+CREATE INDEX IF NOT EXISTS idx_phr_assign_case ON phr_case_assignments(case_id);
+
+-- 자문 검토 (렉스소프트 5항목) — 답변 1건에 대한 의학적 적절성 판정
+CREATE TABLE IF NOT EXISTS advisory_reviews (
+    id TEXT PRIMARY KEY,
+    conversation_id TEXT DEFAULT '',
+    message_id TEXT DEFAULT '',
+    case_id TEXT DEFAULT '',
+    case_no TEXT DEFAULT '',
+    reviewer_id TEXT NOT NULL,
+    reviewer_name TEXT DEFAULT '',
+    specialty TEXT DEFAULT '',
+    query TEXT DEFAULT '',
+    response TEXT DEFAULT '',
+    items_json TEXT DEFAULT '{}',
+    overall_note TEXT DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_adv_reviews_reviewer ON advisory_reviews(reviewer_id);
+CREATE INDEX IF NOT EXISTS idx_adv_reviews_case ON advisory_reviews(case_id);
+CREATE INDEX IF NOT EXISTS idx_adv_reviews_msg ON advisory_reviews(message_id);
 """
 
 # ── 스키마 (PostgreSQL) ──
@@ -516,6 +594,7 @@ CREATE TABLE IF NOT EXISTS messages (
     gpt_eval_json JSONB,
     gpt_model TEXT,
     consultation_eval_json JSONB,
+    phr_eval_json JSONB,
     token_usage_json JSONB,
     FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
 );
@@ -761,6 +840,58 @@ CREATE TABLE IF NOT EXISTS shared_eval_comments (
     created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_shared_comments_eval ON shared_eval_comments(eval_id, created_at);
+
+CREATE TABLE IF NOT EXISTS phr_cases (
+    id TEXT PRIMARY KEY,
+    case_no TEXT NOT NULL,
+    label TEXT DEFAULT '',
+    person_ref TEXT DEFAULT '',
+    tags_json JSONB DEFAULT '[]'::jsonb,
+    specialties_json JSONB DEFAULT '[]'::jsonb,
+    period_from TEXT DEFAULT '',
+    period_to TEXT DEFAULT '',
+    counts_json JSONB DEFAULT '{}'::jsonb,
+    persona_json JSONB DEFAULT '{}'::jsonb,
+    case_json JSONB NOT NULL,
+    payload_json JSONB NOT NULL,
+    source_file TEXT DEFAULT '',
+    enabled INTEGER DEFAULT 1,
+    created_at TEXT NOT NULL,
+    created_by TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_phr_cases_no ON phr_cases(case_no);
+
+CREATE TABLE IF NOT EXISTS phr_case_assignments (
+    id TEXT PRIMARY KEY,
+    case_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    specialty TEXT DEFAULT '',
+    assigned_at TEXT NOT NULL,
+    assigned_by TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_phr_assign_user ON phr_case_assignments(user_id);
+CREATE INDEX IF NOT EXISTS idx_phr_assign_case ON phr_case_assignments(case_id);
+
+-- 자문 검토 (렉스소프트 5항목) — 답변 1건에 대한 의학적 적절성 판정
+CREATE TABLE IF NOT EXISTS advisory_reviews (
+    id TEXT PRIMARY KEY,
+    conversation_id TEXT DEFAULT '',
+    message_id TEXT DEFAULT '',
+    case_id TEXT DEFAULT '',
+    case_no TEXT DEFAULT '',
+    reviewer_id TEXT NOT NULL,
+    reviewer_name TEXT DEFAULT '',
+    specialty TEXT DEFAULT '',
+    query TEXT DEFAULT '',
+    response TEXT DEFAULT '',
+    items_json JSONB DEFAULT '{}'::jsonb,
+    overall_note TEXT DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_adv_reviews_reviewer ON advisory_reviews(reviewer_id);
+CREATE INDEX IF NOT EXISTS idx_adv_reviews_case ON advisory_reviews(case_id);
+CREATE INDEX IF NOT EXISTS idx_adv_reviews_msg ON advisory_reviews(message_id);
 """
 
 # Keep backward compat alias
@@ -801,6 +932,13 @@ def init_db(db_path=None):
                 "ALTER TABLE comments ADD COLUMN IF NOT EXISTS full_response TEXT DEFAULT ''",
                 "ALTER TABLE comments ADD COLUMN IF NOT EXISTS updated_at TEXT",
                 "ALTER TABLE messages ADD COLUMN IF NOT EXISTS consultation_eval_json JSONB",
+                "ALTER TABLE messages ADD COLUMN IF NOT EXISTS phr_eval_json JSONB",
+                "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS phr_case_id TEXT DEFAULT ''",
+                # 자문 시나리오 — 대화에 쓰인 가상 Vital 세트('V-A'|'V-B'|'V-C'), 문항에 매인 케이스
+                "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS phr_vitals TEXT DEFAULT ''",
+                "ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS phr_case_id TEXT DEFAULT ''",
+                "ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS phr_vitals TEXT DEFAULT ''",
+                "ALTER TABLE phr_cases ADD COLUMN IF NOT EXISTS persona_json JSONB DEFAULT '{}'::jsonb",
                 "ALTER TABLE messages ADD COLUMN IF NOT EXISTS token_usage_json JSONB",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '[]'::jsonb",
                 "ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS turns_json JSONB DEFAULT '[]'::jsonb",
@@ -1211,6 +1349,13 @@ def init_db(db_path=None):
             "ALTER TABLE comments ADD COLUMN full_response TEXT DEFAULT ''",
             "ALTER TABLE comments ADD COLUMN updated_at TEXT",
             "ALTER TABLE messages ADD COLUMN consultation_eval_json TEXT",
+            "ALTER TABLE messages ADD COLUMN phr_eval_json TEXT",
+            "ALTER TABLE conversations ADD COLUMN phr_case_id TEXT DEFAULT ''",
+            # 자문 시나리오 — 대화에 쓰인 가상 Vital 세트('V-A'|'V-B'|'V-C'), 문항에 매인 케이스
+            "ALTER TABLE conversations ADD COLUMN phr_vitals TEXT DEFAULT ''",
+            "ALTER TABLE scenarios ADD COLUMN phr_case_id TEXT DEFAULT ''",
+            "ALTER TABLE scenarios ADD COLUMN phr_vitals TEXT DEFAULT ''",
+            "ALTER TABLE phr_cases ADD COLUMN persona_json TEXT DEFAULT '{}'",
             "ALTER TABLE messages ADD COLUMN token_usage_json TEXT",
             "ALTER TABLE users ADD COLUMN permissions TEXT DEFAULT '[]'",
             "ALTER TABLE scenarios ADD COLUMN turns_json TEXT DEFAULT '[]'",
@@ -1695,6 +1840,7 @@ def get_conversation(conv_id):
                 'follow_ups_json': 'followUps',
                 'gpt_eval_json': 'gptEval',
                 'consultation_eval_json': 'consultationEval',
+                'phr_eval_json': 'phrEval',
                 'token_usage_json': 'tokenUsage',
             }
             for jf, key in json_field_map.items():
@@ -1734,11 +1880,29 @@ def create_conversation(data):
     conv_id = data.get('id') or f"conv-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}-{secrets.token_hex(4)}"
     with get_conn() as (conn, cur):
         cur.execute(
-            f"INSERT INTO conversations (id, user_id, user_name, title, env, conversation_strid, created_at, updated_at) VALUES ({_ph(8)})",
+            f"INSERT INTO conversations (id, user_id, user_name, title, env, conversation_strid, phr_case_id, created_at, updated_at) VALUES ({_ph(9)})",
             (conv_id, data.get('userId', ''), data.get('userName', ''), title,
-             data.get('env', 'dev'), data.get('conversationStrid', ''), now, now)
+             data.get('env', 'dev'), data.get('conversationStrid', ''),
+             data.get('phrCaseId', ''), now, now)
         )
     return get_conversation(conv_id)
+
+
+def set_conversation_phr_case(conv_id, case_id, vitals=''):
+    """대화에 PHR 케이스를 기록한다. 자문 진행 현황(질문 여부) 집계의 근거가 된다.
+
+    vitals 는 주입한 가상 Vital 세트 키('V-A'|'V-B'|'V-C'). 어떤 세트로 받은 답변인지가
+    응급 개시선 판정의 근거라 케이스와 함께 남긴다. 케이스와 같이 최초 1회만 기록한다.
+    """
+    if not conv_id or not case_id:
+        return 0
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(
+            f"UPDATE conversations SET phr_case_id = {ph}, phr_vitals = {ph} "
+            f"WHERE id = {ph} AND (phr_case_id IS NULL OR phr_case_id = '')",
+            (case_id, vitals or '', conv_id))
+        return cur.rowcount
 
 
 def add_message(conv_id, msg_data):
@@ -1768,6 +1932,7 @@ def update_message(conv_id, msg_id, updates):
     allowed_json = {'compliance': 'compliance_json', 'searchResults': 'search_results_json',
                     'followUps': 'follow_ups_json', 'gptEval': 'gpt_eval_json',
                     'consultationEval': 'consultation_eval_json',
+                    'phrEval': 'phr_eval_json',
                     'tokenUsage': 'token_usage_json'}
     allowed_plain = {'gptModel': 'gpt_model', 'responseTime': 'response_time'}
     ph = _p()
@@ -2016,7 +2181,8 @@ def get_scenarios():
             s['followUps'] = _pg_json_loads_or(s.pop('follow_ups_json', '[]'), [])
             s['turns'] = _pg_json_loads_or(s.pop('turns_json', '[]'), [])
             s['rubric'] = _pg_json_loads_or(s.pop('rubric_json', '[]'), [])
-            s['phrCaseId'] = s.pop('phr_case_id', None)      # v3 기록 모드 케이스 연결
+            s['phrCaseId'] = s.pop('phr_case_id', '') or ''
+            s['phrVitals'] = s.pop('phr_vitals', '') or ''
             s['branch'] = s.pop('branch', '') or ''          # v3 증상 모드 기대 분기
             s['symptomKey'] = s.pop('symptom_key', '') or ''  # v3 증상군(SV-02~04 의 체크리스트 선택)
             s['createdAt'] = s.pop('created_at', '')
@@ -2031,6 +2197,7 @@ def get_scenarios():
             categories = _pg_json_loads_or(cat_dict['value'], DEFAULT_CATEGORIES)
         else:
             categories = DEFAULT_CATEGORIES
+    categories = _normalize_categories(categories)
 
     return {
         "version": "1.0",
@@ -2059,7 +2226,8 @@ def get_scenario(scenario_id):
         s['followUps'] = _pg_json_loads_or(s.pop('follow_ups_json', '[]'), [])
         s['turns'] = _pg_json_loads_or(s.pop('turns_json', '[]'), [])
         s['rubric'] = _pg_json_loads_or(s.pop('rubric_json', '[]'), [])
-        s['phrCaseId'] = s.pop('phr_case_id', None)          # v3 기록 모드 케이스 연결
+        s['phrCaseId'] = s.pop('phr_case_id', '') or ''
+        s['phrVitals'] = s.pop('phr_vitals', '') or ''
         s['branch'] = s.pop('branch', '') or ''              # v3 증상 모드 기대 분기
         s['symptomKey'] = s.pop('symptom_key', '') or ''      # v3 증상군(SV-02~04 의 체크리스트 선택)
         s['createdAt'] = s.pop('created_at', '')
@@ -2094,8 +2262,8 @@ def create_scenario(data):
             f"""INSERT INTO scenarios (id, category, subcategory, prompt, expected_behavior, should_refuse,
                risk_level, tags_json, enabled, source, parent_id, generation_info_json,
                source_conversation_id, follow_ups_json, turns_json, rubric_json,
-               phr_case_id, branch, symptom_key, created_at, updated_at)
-               VALUES ({_ph(21)})""",
+               phr_case_id, phr_vitals, branch, symptom_key, created_at, updated_at)
+               VALUES ({_ph(22)})""",
             (scenario_id, data.get('category', 'general'), data.get('subcategory', ''),
              prompt, data.get('expectedBehavior', ''), int(data.get('shouldRefuse', False)),
              data.get('riskLevel', 'MEDIUM'), json.dumps(tags, ensure_ascii=False),
@@ -2105,8 +2273,8 @@ def create_scenario(data):
              json.dumps(data.get('followUps', []), ensure_ascii=False),
              json.dumps(data.get('turns', []), ensure_ascii=False),
              json.dumps(data.get('rubric', []), ensure_ascii=False),
-             data.get('phrCaseId') or None, data.get('branch', '') or '',
-             data.get('symptomKey', '') or '',
+             data.get('phrCaseId', '') or '', data.get('phrVitals', '') or '',
+             data.get('branch', '') or '', data.get('symptomKey', '') or '',
              now, now)
         )
     return get_scenario(scenario_id)
@@ -2120,7 +2288,8 @@ def update_scenario(scenario_id, data):
         'category': 'category', 'subcategory': 'subcategory', 'prompt': 'prompt',
         'expectedBehavior': 'expected_behavior', 'riskLevel': 'risk_level', 'source': 'source',
         'parentId': 'parent_id', 'sourceConversationId': 'source_conversation_id',
-        'phrCaseId': 'phr_case_id', 'branch': 'branch', 'symptomKey': 'symptom_key'
+        'phrCaseId': 'phr_case_id', 'phrVitals': 'phr_vitals',
+        'branch': 'branch', 'symptomKey': 'symptom_key'
     }
     for camel, snake in field_map.items():
         if camel in data:
@@ -2174,8 +2343,8 @@ def get_categories():
         cat_row = cur.fetchone()
         if cat_row:
             cat_dict = _row_to_dict(cat_row)
-            return _pg_json_loads_or(cat_dict['value'], list(DEFAULT_CATEGORIES))
-    return list(DEFAULT_CATEGORIES)
+            return _normalize_categories(_pg_json_loads_or(cat_dict['value'], list(DEFAULT_CATEGORIES)))
+    return _normalize_categories(list(DEFAULT_CATEGORIES))
 
 
 def _generate_scenario_id(category_id):
@@ -2372,7 +2541,7 @@ def get_scenarios_summary(limit=None, offset=0, light=True):
             cur.execute(
                 "SELECT id, category, subcategory, prompt, risk_level, "
                 "should_refuse, expected_behavior, tags_json, enabled, "
-                "parent_id, source, source_conversation_id, created_at, updated_at "
+                "parent_id, source, source_conversation_id, phr_case_id, phr_vitals, created_at, updated_at "
                 f"FROM scenarios ORDER BY id LIMIT {ph} OFFSET {ph}",
                 (limit, offset),
             )
@@ -2380,7 +2549,7 @@ def get_scenarios_summary(limit=None, offset=0, light=True):
             cur.execute(
                 "SELECT id, category, subcategory, prompt, risk_level, "
                 "should_refuse, expected_behavior, tags_json, enabled, "
-                "parent_id, source, source_conversation_id, created_at, updated_at "
+                "parent_id, source, source_conversation_id, phr_case_id, phr_vitals, created_at, updated_at "
                 f"FROM scenarios ORDER BY id LIMIT {ph}",
                 (limit,),
             )
@@ -2388,7 +2557,7 @@ def get_scenarios_summary(limit=None, offset=0, light=True):
             cur.execute(
                 "SELECT id, category, subcategory, prompt, risk_level, "
                 "should_refuse, expected_behavior, tags_json, enabled, "
-                "parent_id, source, source_conversation_id, created_at, updated_at "
+                "parent_id, source, source_conversation_id, phr_case_id, phr_vitals, created_at, updated_at "
                 "FROM scenarios ORDER BY id"
             )
         rows = cur.fetchall()
@@ -2402,6 +2571,8 @@ def get_scenarios_summary(limit=None, offset=0, light=True):
             s['enabled'] = bool(s.pop('enabled', 1))
             s['parentId'] = s.pop('parent_id', None)
             s['sourceConversationId'] = s.pop('source_conversation_id', None)
+            s['phrCaseId'] = s.pop('phr_case_id', '') or ''
+            s['phrVitals'] = s.pop('phr_vitals', '') or ''
             s['createdAt'] = s.pop('created_at', '')
             s['updatedAt'] = s.pop('updated_at', '')
             # turns/rubric/follow_ups/generationInfo 는 제외 (목록에서 불필요)
@@ -2414,6 +2585,7 @@ def get_scenarios_summary(limit=None, offset=0, light=True):
             categories = _pg_json_loads_or(_row_to_dict(cat_row).get('value'), DEFAULT_CATEGORIES)
         else:
             categories = DEFAULT_CATEGORIES
+    categories = _normalize_categories(categories)
 
     return {
         'version': '1.0',
@@ -3721,6 +3893,216 @@ def add_shared_comment(eval_id, comment_type, author, content, target_version=''
         )
     return {'author': author, 'content': content, 'createdAt': now_iso,
             'type': comment_type, 'targetVersion': target_version or ''}
+
+
+# ════════════════════════════════════════
+#  PHR 케이스
+# ════════════════════════════════════════
+
+def _phr_row_to_dict(r):
+    c = _row_to_dict(r)
+    c['tags'] = _pg_json_loads_or(c.pop('tags_json', '[]'), [])
+    c['specialties'] = _pg_json_loads_or(c.pop('specialties_json', '[]'), [])
+    c['counts'] = _pg_json_loads_or(c.pop('counts_json', '{}'), {})
+    c['persona'] = _pg_json_loads_or(c.pop('persona_json', '{}'), {})
+    c['caseNo'] = c.pop('case_no', '')
+    c['personRef'] = c.pop('person_ref', '')
+    c['periodFrom'] = c.pop('period_from', '')
+    c['periodTo'] = c.pop('period_to', '')
+    c['sourceFile'] = c.pop('source_file', '')
+    c['createdAt'] = c.pop('created_at', '')
+    c['createdBy'] = c.pop('created_by', '')
+    c['enabled'] = bool(c.get('enabled', 1))
+    return c
+
+
+def save_phr_cases(cases, source_file='', created_by=''):
+    """케이스 목록 저장 (case_no 기준 덮어쓰기).
+
+    cases: phr_case_builder.build_all() 결과 + 각 항목에 'payload' 키(SKIX 전달용).
+    """
+    now_iso = datetime.now(timezone.utc).isoformat()
+    ph = _p()
+    saved = []
+    with get_conn() as (conn, cur):
+        for c in cases:
+            case_no = c.get('case_id') or c.get('caseNo') or ''
+            if not case_no:
+                continue
+            cid = f'phr_{case_no}'
+            payload = c.get('payload') or {}
+            cur.execute(f"DELETE FROM phr_cases WHERE id = {ph}", (cid,))
+            cur.execute(
+                f"""INSERT INTO phr_cases
+                (id, case_no, label, person_ref, tags_json, specialties_json,
+                 period_from, period_to, counts_json, persona_json, case_json, payload_json,
+                 source_file, enabled, created_at, created_by)
+                VALUES ({_ph(16)})""",
+                (cid, case_no, c.get('label', ''), c.get('person_ref', ''),
+                 json.dumps(c.get('tags', []), ensure_ascii=False),
+                 json.dumps(c.get('specialties', []), ensure_ascii=False),
+                 (c.get('period') or {}).get('from') or '',
+                 (c.get('period') or {}).get('to') or '',
+                 json.dumps(c.get('counts', {}), ensure_ascii=False),
+                 json.dumps(c.get('persona', {}), ensure_ascii=False),
+                 json.dumps(c, ensure_ascii=False),
+                 json.dumps(payload, ensure_ascii=False),
+                 source_file, 1, now_iso, created_by),
+            )
+            saved.append(case_no)
+    return saved
+
+
+def get_phr_cases(user_id=None, include_detail=False):
+    """케이스 목록. user_id 를 주면 그 사용자에게 배정된 것만 반환한다."""
+    ph = _p()
+    with get_conn() as (conn, cur):
+        if user_id:
+            cur.execute(
+                f"""SELECT c.* FROM phr_cases c
+                    JOIN phr_case_assignments a ON a.case_id = c.id
+                    WHERE a.user_id = {ph} AND c.enabled = 1
+                    ORDER BY c.case_no""", (user_id,))
+        else:
+            cur.execute("SELECT * FROM phr_cases ORDER BY case_no")
+        rows = cur.fetchall()
+
+    out = []
+    for r in rows:
+        c = _phr_row_to_dict(r)
+        detail = _pg_json_loads_or(c.pop('case_json', '{}'), {})
+        payload = _pg_json_loads_or(c.pop('payload_json', '{}'), {})
+        if include_detail:
+            c['case'] = detail
+            c['payload'] = payload
+        out.append(c)
+    return out
+
+
+def get_phr_case(case_id):
+    """케이스 1건 (원본 + SKIX 전달 payload 포함)."""
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(
+            f"SELECT * FROM phr_cases WHERE id = {ph} OR case_no = {ph}", (case_id, case_id))
+        r = cur.fetchone()
+    if not r:
+        return None
+    c = _phr_row_to_dict(r)
+    c['case'] = _pg_json_loads_or(c.pop('case_json', '{}'), {})
+    c['payload'] = _pg_json_loads_or(c.pop('payload_json', '{}'), {})
+    return c
+
+
+def delete_phr_case(case_id):
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(f"DELETE FROM phr_case_assignments WHERE case_id = {ph}", (case_id,))
+        cur.execute(f"DELETE FROM phr_cases WHERE id = {ph}", (case_id,))
+        return cur.rowcount
+
+
+def set_phr_assignments(case_id, user_ids, specialty='', assigned_by=''):
+    """케이스에 배정된 사용자 목록을 통째로 교체한다."""
+    now_iso = datetime.now(timezone.utc).isoformat()
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(f"DELETE FROM phr_case_assignments WHERE case_id = {ph}", (case_id,))
+        for uid in user_ids or []:
+            cur.execute(
+                f"""INSERT INTO phr_case_assignments
+                (id, case_id, user_id, specialty, assigned_at, assigned_by)
+                VALUES ({_ph(6)})""",
+                (f'{case_id}__{uid}', case_id, uid, specialty or '', now_iso, assigned_by),
+            )
+    return len(user_ids or [])
+
+
+def update_phr_persona(case_id, persona):
+    """케이스의 인적 배경(페르소나) 갱신. 자문위원이 '그 사람'이 되어 질문하기 위한 정보."""
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(
+            f"UPDATE phr_cases SET persona_json = {ph} WHERE id = {ph} OR case_no = {ph}",
+            (json.dumps(persona or {}, ensure_ascii=False), case_id, case_id))
+        return cur.rowcount
+
+
+def save_advisory_review(review):
+    """자문 검토 저장 (message_id 기준 덮어쓰기 — 같은 답변을 다시 검토하면 갱신)."""
+    now_iso = datetime.now(timezone.utc).isoformat()
+    ph = _p()
+    rid = review.get('id') or f"adv_{review.get('message_id','')}_{review.get('reviewer_id','')}"
+    with get_conn() as (conn, cur):
+        cur.execute(f"DELETE FROM advisory_reviews WHERE id = {ph}", (rid,))
+        cur.execute(
+            f"""INSERT INTO advisory_reviews
+            (id, conversation_id, message_id, case_id, case_no, reviewer_id, reviewer_name,
+             specialty, query, response, items_json, overall_note, created_at, updated_at)
+            VALUES ({_ph(14)})""",
+            (rid, review.get('conversation_id', ''), review.get('message_id', ''),
+             review.get('case_id', ''), review.get('case_no', ''),
+             review.get('reviewer_id', ''), review.get('reviewer_name', ''),
+             review.get('specialty', ''), (review.get('query') or '')[:4000],
+             (review.get('response') or '')[:20000],
+             json.dumps(review.get('items') or {}, ensure_ascii=False),
+             review.get('overall_note', ''), now_iso, now_iso),
+        )
+    return rid
+
+
+def get_advisory_reviews(message_id=None, reviewer_id=None, case_id=None, limit=500):
+    """자문 검토 조회. 넘긴 조건은 모두 AND 로 걸린다.
+
+    조건을 하나만 골라 쓰면 안 된다 — 자문위원이 messageId 로 조회할 때
+    reviewer_id 가 무시되면 남의 판정까지 돌려주게 된다.
+    """
+    ph = _p()
+    where, args = [], []
+    if message_id:
+        where.append(f"message_id = {ph}")
+        args.append(message_id)
+    if reviewer_id:
+        where.append(f"reviewer_id = {ph}")
+        args.append(reviewer_id)
+    if case_id:
+        where.append(f"case_id = {ph}")
+        args.append(case_id)
+    sql = "SELECT * FROM advisory_reviews"
+    if where:
+        sql += " WHERE " + " AND ".join(where)
+    sql += f" ORDER BY created_at DESC LIMIT {int(limit)}"
+    with get_conn() as (conn, cur):
+        cur.execute(sql, tuple(args))
+        rows = cur.fetchall()
+    out = []
+    for r in rows:
+        d = _row_to_dict(r)
+        d['items'] = _pg_json_loads_or(d.pop('items_json', '{}'), {})
+        # 응답 키는 다른 API 와 같이 camelCase 로 통일한다
+        d['conversationId'] = d.pop('conversation_id', '') or ''
+        d['messageId'] = d.pop('message_id', '') or ''
+        d['caseId'] = d.pop('case_id', '') or ''
+        d['caseNo'] = d.pop('case_no', '') or ''
+        d['reviewerId'] = d.pop('reviewer_id', '') or ''
+        d['reviewerName'] = d.pop('reviewer_name', '') or ''
+        d['overallNote'] = d.pop('overall_note', '') or ''
+        d['createdAt'] = d.pop('created_at', '') or ''
+        d['updatedAt'] = d.pop('updated_at', '') or ''
+        out.append(d)
+    return out
+
+
+def get_phr_assignments(case_id=None, user_id=None):
+    ph = _p()
+    with get_conn() as (conn, cur):
+        if case_id:
+            cur.execute(f"SELECT * FROM phr_case_assignments WHERE case_id = {ph}", (case_id,))
+        elif user_id:
+            cur.execute(f"SELECT * FROM phr_case_assignments WHERE user_id = {ph}", (user_id,))
+        else:
+            cur.execute("SELECT * FROM phr_case_assignments")
+        return [_row_to_dict(r) for r in cur.fetchall()]
 
 
 # ════════════════════════════════════════
