@@ -132,6 +132,11 @@ python -c "import py_compile; py_compile.compile('proxy_server.py', doraise=True
 - 관련 환경변수: `EVAL_V3`(1이면 병존 실행) · `EVAL_V3_MODEL` · `EVAL_V3_SNAPSHOT` ·
   `MEDICAL_EVAL_CHECKLISTS`(SV 체크리스트 경로) ·
   `PHR_TRANSMIT_PATH`(RAG 주입용 transmit 원문) · `PHR_CASES_PATH`(판정용 phr_cases.json).
+- 평가 스위치(2026-09-18, v3 전환 단계): `EVAL_PHR=0`(PHR 정합성 LLM 평가 끔 — v3 PV fact_check 가 대체) ·
+  `EVAL_V2_LEGAL=0`(v2 법률 A~F 끔 — v3 legal gate 가 대체) · `EVAL_FINAL=v3`(status·finalScore 를
+  v3 verdict 로: legal fail→0점 fail, pass→PV/SV 등급 A100·B85·C70·D60, 등급 없음 90; rubric 은 그대로 우선).
+  배포는 `deploy.ps1 -EvalV3 -EvalV3Model gpt-5.4-mini -ExtraEnv "EVAL_PHR=0,..."` /
+  `deploy-job.ps1 ... -ExtraEnv "EVAL_PHR=0;..."`(Job 은 `;` 구분). job_runner 는 `[v3] CROSS` 줄에 v2×v3 일치율을 남긴다.
 - ⚠ 배포 이미지에는 `packages/medical_eval/data/` 가 없다(.gcloudignore 의 `data/` 가 모든 깊이의
   data 디렉터리를 제외한다). SV 체크리스트는 그래서 어댑터가 공유 번들
   (`packages/medical_shared/compliance_rules/consultation_checklists.json`, 저장소 사본과 동일 파일)로

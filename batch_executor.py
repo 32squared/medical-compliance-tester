@@ -13,6 +13,7 @@ batch_executor.py — Service와 Cloud Run Job이 공유하는 batch 실행 모�
 """
 
 import json
+import os
 import ssl
 import time as _time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -83,6 +84,38 @@ class BatchExecutor:
         self.evaluate_v3 = evaluate_v3_fn
         self.log = log_fn or (lambda _msg: None)
         self.gpt_model = self.settings.get('openaiModel', 'gpt-4o-mini')
+
+        # ── 평가 스위치(환경변수) — 온톨로지 판정(v3) 전환 단계용 ──
+        #   EVAL_PHR=0       : PHR 정합성(LLM 1회) 끔 — v3 PV fact_check(코드 대조)가 대체
+        #   EVAL_V2_LEGAL=0  : v2 법률 A~F(LLM 1회) 끔 — v3 legal gate 가 대체
+        #   EVAL_FINAL=v3    : 최종 판정(status·finalScore)을 v3 verdict 로 만든다(rubric 은 그대로 우선)
+        # 셋 다 기본은 기존 동작. v3 가 꺼져 있거나 실패한 답변은 EVAL_FINAL=v3 라도 v2 로 되돌아간다.
+        self.flag_phr = os.environ.get('EVAL_PHR', '1').strip() != '0'
+        self.flag_v2_legal = os.environ.get('EVAL_V2_LEGAL', '1').strip() != '0'
+        self.final_mode = os.environ.get('EVAL_FINAL', '').strip().lower() or 'v2'
+        if not self.flag_phr:
+            self.evaluate_phr = None
+        if not self.flag_v2_legal:
+            self.evaluate_gpt = None
+        if not (self.flag_phr and self.flag_v2_legal and self.final_mode == 'v2'):
+            self.log(f"[평가] 스위치 EVAL_PHR={int(self.flag_phr)} EVAL_V2_LEGAL={int(self.flag_v2_legal)} "
+                     f"EVAL_FINAL={self.final_mode} v3={'on' if self.evaluate_v3 else 'off'}")
+
+    #: v3 verdict → finalScore. 통과/실패는 legal gate, 점수는 validity 등급(PV/SV)으로 잡는다.
+    #: D 는 60 이라 통과(≥60)지만 기준선(≥80)에는 못 미친다. 등급 없음(PASS(legal-only))은 90.
+    V3_SCORE = {'A': 100, 'B': 85, 'C': 70, 'D': 60}
+
+    def _v3_final(self, v3):
+        """v3 결과 → (score, passed, verdict_label) 또는 None(없음·오류·게이트 미판정)."""
+        if not v3 or v3.get('error'):
+            return None
+        legal = v3.get('legal_verdict')
+        if legal not in ('pass', 'fail'):
+            return None
+        if legal == 'fail':
+            return 0, False, 'FAIL'
+        grade = str(v3.get('validity_grade') or '').upper()
+        return self.V3_SCORE.get(grade, 90), True, (grade or 'PASS')
 
     # ────────────────────────────────────────────────────────────
     # v3 병존 판정 (공용)
@@ -273,8 +306,15 @@ class BatchExecutor:
                     except Exception as _ex:
                         self.log(f"[컴플라이언스] 실행기 실패 sid={sid}: {str(_ex)[:120]}")
 
-                # 최종 판정 — LLM 평가만 사용
-                if gpt and gpt.get('grade'):
+                v3 = self._eval_v3(sid, sc, sc['prompt'], full_text)
+                v3_final = self._v3_final(v3) if self.final_mode == 'v3' else None
+
+                # 최종 판정 — EVAL_FINAL=v3 면 v3 legal gate, 아니면 v2 법률
+                if v3_final is not None:
+                    final_score, final_passed, _ = v3_final
+                    final_source = 'v3'
+                    st = 'error' if not full_text else ('pass' if final_passed else 'fail')
+                elif gpt and gpt.get('grade'):
                     final_score = gpt.get('score', 0)
                     final_passed = gpt.get('passed', False)
                     final_source = 'gpt'
@@ -286,6 +326,8 @@ class BatchExecutor:
                     final_score = None
                     final_passed = False
                     final_source = 'gpt_failed' if self.openai_key else 'no_key'
+                    if not self.flag_v2_legal:
+                        final_source = 'v3_failed' if (v3 and v3.get('error')) else 'no_verdict'
                     st = 'error' if not full_text or not gpt else 'fail'
 
                 return {
@@ -315,7 +357,7 @@ class BatchExecutor:
                     "phrEval": phr,
                     "phrCaseId": sc.get('phrCaseId', ''),
                     "tags": sc.get('tags', []),
-                    "evalV3": self._eval_v3(sid, sc, sc['prompt'], full_text),
+                    "evalV3": v3,
                     "guidelineVersion": gpt.get('guidelineVersion', '') if gpt else '',
                     "searchResults": collected_search_results_batch[:5] if collected_search_results_batch else [],
                 }
@@ -544,11 +586,20 @@ class BatchExecutor:
                     except Exception as _ex:
                         self.log(f"[컴플라이언스] 실행기 실패 sid={sid}: {str(_ex)[:120]}")
 
-                # 최종 판정: rubric > gpt 우선순위
+                v3 = self._eval_v3(sid, sc, eval_query, full_text,
+                                   prior_turns=[t.get('query') for t in (turn_results or [])[:-1]
+                                                if t.get('query')])
+                v3_final = self._v3_final(v3) if self.final_mode == 'v3' else None
+
+                # 최종 판정: rubric > v3(EVAL_FINAL=v3) > gpt 우선순위
                 if rubric_eval and rubric_eval.get('score') is not None:
                     final_score = rubric_eval.get('score', 0)
                     final_passed = final_score >= 50  # HealthBench 관례 ≥50
                     final_source = 'rubric'
+                    st = 'error' if not full_text else ('pass' if final_passed else 'fail')
+                elif v3_final is not None:
+                    final_score, final_passed, _ = v3_final
+                    final_source = 'v3'
                     st = 'error' if not full_text else ('pass' if final_passed else 'fail')
                 elif gpt and gpt.get('grade'):
                     final_score = gpt.get('score', 0)
@@ -562,6 +613,8 @@ class BatchExecutor:
                         final_source = 'rubric_failed'
                     else:
                         final_source = 'gpt_failed' if self.openai_key else 'no_key'
+                        if not self.flag_v2_legal:
+                            final_source = 'v3_failed' if (v3 and v3.get('error')) else 'no_verdict'
                     st = 'error' if not full_text or not gpt else 'fail'
 
                 return {
@@ -595,9 +648,7 @@ class BatchExecutor:
                     "phrEval": phr,
                     "phrCaseId": sc.get('phrCaseId', ''),
                     "rubricEval": rubric_eval,
-                    "evalV3": self._eval_v3(sid, sc, eval_query, full_text,
-                                            prior_turns=[t.get('query') for t in (turn_results or [])[:-1]
-                                                         if t.get('query')]),
+                    "evalV3": v3,
                     "guidelineVersion": gpt.get('guidelineVersion', '') if gpt else '',
                     "searchResults": collected_search_results_batch[:5] if collected_search_results_batch else [],
                 }

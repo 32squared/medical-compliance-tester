@@ -1150,8 +1150,10 @@
 
       // Determine finalSource
       const hasRubric = r.rubricEval && r.rubricEval.score != null;
-      const finalSource = hasRubric ? 'rubric' : ((gptEval && gptEval.grade) ? 'gpt' : 'regex');
+      const finalSource = hasRubric ? 'rubric'
+        : (r.finalSource === 'v3' ? 'v3' : ((gptEval && gptEval.grade) ? 'gpt' : 'regex'));
       const sourceIndicator = finalSource === 'rubric' ? '🩺 HealthBench 루브릭'
+        : finalSource === 'v3' ? '🧭 온톨로지 판정(v3)'
         : finalSource === 'gpt' ? '\uD83E\uDD16 컴플라이언스 기준' : '\uD83D\uDCCB 정규식 (참고)';
 
       // 의료법 검수 표시
@@ -2120,6 +2122,7 @@
                 const stIcon = r.status === 'pass' ? '✅' : r.status === 'fail' ? '❌' : '⚠️';
                 const stColor = r.status === 'pass' ? 'var(--green)' : r.status === 'fail' ? 'var(--red)' : 'var(--yellow)';
                 const srcLabel = r.finalSource === 'rubric' ? '🩺 HealthBench 루브릭'
+                  : r.finalSource === 'v3' ? '🧭 온톨로지 판정(v3)'
                   : r.finalSource === 'gpt' ? '🤖 컴플라이언스'
                   : '📋 정규식 (참고)';
                 html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid var(--border);font-size:12px">' +

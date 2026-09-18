@@ -189,6 +189,8 @@ def _v3_log_summary(results):
     if not rows:
         return
     gate, pv, uv, errs, hits = {}, {}, {}, 0, {}
+    cross = {}      # v2 법률(pass/fail/-) × v3 legal gate(pass/fail) — 섀도 기간 일치율
+    v2_by_sid = {r.get('scenarioId'): (r.get('gptEval') or {}) for r in (results or [])}
     for sid, v in rows:
         if v.get('error'):
             errs += 1
@@ -200,8 +202,12 @@ def _v3_log_summary(results):
         for h in (v.get('legal_hits') or []):
             hits[h] = hits.get(h, 0) + 1
         rm = v.get('rag_meta') or {}
+        g = v2_by_sid.get(sid) or {}
+        v2 = ('pass' if g.get('passed') else 'fail') if g.get('grade') else '-'
+        key = f"v2:{v2}/v3:{v.get('legal_verdict')}"
+        cross[key] = cross.get(key, 0) + 1
         _job_log(
-            f"[v3] {sid} verdict={v.get('verdict')} legal={v.get('legal_verdict')} "
+            f"[v3] {sid} v2={g.get('grade') or '-'}/{v2} verdict={v.get('verdict')} legal={v.get('legal_verdict')} "
             f"hits={v.get('legal_hits') or []} review={v.get('legal_review_hits') or []} "
             f"{v.get('validity_axis') or 'PV'}={v.get('validity_grade')} unmet={v.get('validity_unmet') or []} "
             f"UV={v.get('uv_grade')} unmet={v.get('uv_unmet') or []} intent={v.get('uv_intent')} "
@@ -213,6 +219,10 @@ def _v3_log_summary(results):
         f"[v3] SUMMARY n={len(rows)} err={errs} gate={gate} PV/SV={pv} UV={uv} rule_hits={hits} "
         f"eval={meta.get('eval_version')} ontology={meta.get('ontology_version')} judge={meta.get('judge_model')}"
     )
+    agree = cross.get('v2:pass/v3:pass', 0) + cross.get('v2:fail/v3:fail', 0)
+    both = sum(n for k, n in cross.items() if not k.startswith('v2:-'))
+    _job_log(f"[v3] CROSS v2×v3 {cross} agree={agree}/{both}"
+             + (f" ({agree * 100 // both}%)" if both else ""))
 
 
 def main():

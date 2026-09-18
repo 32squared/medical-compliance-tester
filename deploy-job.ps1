@@ -9,7 +9,9 @@ param(
     [string]$VpcConnector = "medical-connector",
     # 온톨로지 기반 v3 판정 병존 실행. 켜면 답변 1건당 판정 모델 호출이 2회 늘어난다.
     [switch]$EvalV3,
-    [string]$EvalV3Model = ""
+    [string]$EvalV3Model = "",
+    # 평가 스위치 등 추가 환경변수. 예: -ExtraEnv "EVAL_PHR=0;EVAL_V2_LEGAL=0;EVAL_FINAL=v3"
+    [string]$ExtraEnv = ""
 )
 
 Write-Host "=== Cloud Run Jobs Deploy (batch-runner) ===" -ForegroundColor Cyan
@@ -68,6 +70,10 @@ if ($EvalV3) {
     Write-Host "EVAL_V3:    ON (판정 모델 호출 +2회/답변)" -ForegroundColor Yellow
 } else {
     Write-Host "EVAL_V3:    off (-EvalV3 로 켠다)" -ForegroundColor DarkGray
+}
+if ($ExtraEnv) {
+    $EnvPairs += ($ExtraEnv -split ';' | Where-Object { $_ -match '=' })
+    Write-Host "ExtraEnv:   $ExtraEnv" -ForegroundColor Yellow
 }
 $EnvSpec = "^;^" + ($EnvPairs -join ";")
 
