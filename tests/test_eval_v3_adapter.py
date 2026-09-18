@@ -234,8 +234,17 @@ def test_evaluate_scenario_reads_columns_and_tags(monkeypatch):
 
 
 def test_batch_fn_is_none_when_disabled(monkeypatch):
+    """꺼져 있으면 물론, 켜져 있어도 판정기를 못 쓰면 배치는 v3 없이 돈다."""
     monkeypatch.setattr(eval_v3, "ENABLED", False)
     assert eval_v3.batch_fn() is None
+
+    monkeypatch.setattr(eval_v3, "ENABLED", True)
+    monkeypatch.setattr(eval_v3, "available", lambda: (False, "서브모듈 없음"))
+    assert eval_v3.batch_fn() is None
+
+
+@needs_judge
+def test_batch_fn_returns_scenario_judge_when_enabled(monkeypatch):
     monkeypatch.setattr(eval_v3, "ENABLED", True)
     assert eval_v3.batch_fn() is eval_v3.evaluate_scenario
 
