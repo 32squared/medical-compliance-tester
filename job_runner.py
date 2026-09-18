@@ -72,9 +72,19 @@ def _auto_select_scenario_ids(mode):
     트리거 측에서 로컬 DB 접속(private IP) 불가할 때 Job 내부에서 추출하는 경로.
     """
     exclude_hb = (mode != 'all')
+    # 표본 추출(선택) — 트리거 측이 운영 DB 의 id 를 모를 때 카테고리·태그로 고른다.
+    #   SELECT_CATEGORY=phr_batch,phr_advisory   카테고리(쉼표 구분)
+    #   SELECT_TAG=v18회귀                        태그 포함
+    #   SELECT_PER_SUBCATEGORY=3                  서브카테고리(분과)별 앞 n건 (id 정렬)
+    #   SELECT_LIMIT=50                           전체 상한
+    sel_cat = {c.strip() for c in os.environ.get('SELECT_CATEGORY', '').split(',') if c.strip()}
+    sel_tag = os.environ.get('SELECT_TAG', '').strip()
+    per_sub = int(os.environ.get('SELECT_PER_SUBCATEGORY', '0') or 0)
+    limit = int(os.environ.get('SELECT_LIMIT', '0') or 0)
+
     data = db.get_scenarios()
     scenarios = data.get('scenarios', []) if isinstance(data, dict) else []
-    ids = []
+    picked = []
     src_dist = {}
     for s in scenarios:
         if not s.get('enabled', True):
@@ -85,10 +95,29 @@ def _auto_select_scenario_ids(mode):
             low = sid.lower()
             if low.startswith('hb-') or src == 'healthbench':
                 continue
-        ids.append(sid)
+        if sel_cat and (s.get('category') or '') not in sel_cat:
+            continue
+        if sel_tag and sel_tag not in (s.get('tags') or []):
+            continue
+        picked.append(s)
         src_dist[src or '(none)'] = src_dist.get(src or '(none)', 0) + 1
-    ids.sort()
-    _job_log(f"[auto-select] mode={mode} → {len(ids)}건 (HB제외={exclude_hb}) source분포={src_dist}")
+    picked.sort(key=lambda x: x.get('id', ''))
+    if per_sub > 0:
+        seen = {}
+        kept = []
+        for s in picked:
+            k = s.get('subcategory') or ''
+            seen[k] = seen.get(k, 0) + 1
+            if seen[k] <= per_sub:
+                kept.append(s)
+        picked = kept
+    if limit > 0:
+        picked = picked[:limit]
+    ids = [s.get('id', '') for s in picked]
+    _job_log(f"[auto-select] mode={mode} → {len(ids)}건 (HB제외={exclude_hb} category={sorted(sel_cat) or '-'} "
+             f"tag={sel_tag or '-'} per_sub={per_sub} limit={limit}) source분포={src_dist}")
+    if sel_cat or sel_tag or per_sub or limit:
+        _job_log(f"[auto-select] ids={ids}")
     return ids
 
 
