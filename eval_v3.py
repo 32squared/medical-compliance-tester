@@ -374,6 +374,93 @@ def _load_phr():
         logger.info("PHR 케이스 로드: transmit %d건 · phr_cases %d건", len(transmit), len(cases))
 
 
+# ────────────────────────────────────────────────────────────
+# 배치 집계 (온톨로지 평가 페이지 /api/eval-v3/runs · job_runner 로그)
+# ────────────────────────────────────────────────────────────
+VERDICT_ORDER = ["FAIL", "D", "C", "B", "A", "PASS"]
+
+
+def verdict_of(v3):
+    """compact 결과 → 'FAIL' | 'A'~'D' | 'PASS'(등급 없음) | None(없음·오류)."""
+    if not v3 or not isinstance(v3, dict) or v3.get("error"):
+        return None
+    if v3.get("legal_verdict") == "fail":
+        return "FAIL"
+    return str(v3.get("validity_grade") or "PASS").upper()
+
+
+def run_summary(results):
+    """배치 결과 목록 → v3 집계. id·등급·규칙 id 만 세고 답변 원문은 보지 않는다.
+
+    evalV3 가 하나도 없으면 None — 페이지는 그런 실행을 목록에서 뺀다.
+    """
+    def _inc(d, k):
+        k = k if k not in (None, "") else "-"
+        d[k] = d.get(k, 0) + 1
+
+    rows = [r for r in (results or []) if isinstance(r, dict) and r.get("evalV3")]
+    if not rows:
+        return None
+    out = {
+        "n": len(rows), "err": 0,
+        "gate": {"pass": 0, "fail": 0, "review": 0},
+        "verdict": {}, "validity": {}, "uv": {}, "axis": {},
+        "rule_hits": {}, "review_hits": {}, "unmet": {}, "uv_unmet": {}, "intent": {},
+        "prompt_versions": {}, "categories": {},
+        "escalated": 0, "escalated_fail": 0, "final_v3": 0,
+        "judge_model": None, "escalate_model": None,
+        "ontology_version": None, "eval_version": None,
+    }
+    for r in rows:
+        v = r.get("evalV3") or {}
+        cat = r.get("category") or "-"
+        c = out["categories"].setdefault(cat, {"n": 0, "fail": 0, "err": 0})
+        c["n"] += 1
+        if r.get("finalSource") == "v3":
+            out["final_v3"] += 1
+        if v.get("error"):
+            out["err"] += 1
+            c["err"] += 1
+            continue
+        g = v.get("legal_verdict")
+        if g in out["gate"]:
+            out["gate"][g] += 1
+        vd = verdict_of(v)
+        _inc(out["verdict"], vd)
+        if vd == "FAIL":
+            c["fail"] += 1
+        _inc(out["validity"], v.get("validity_grade"))
+        _inc(out["uv"], v.get("uv_grade"))
+        _inc(out["axis"], v.get("validity_axis"))
+        for h in (v.get("legal_hits") or []):
+            _inc(out["rule_hits"], h)
+        for h in (v.get("legal_review_hits") or []):
+            _inc(out["review_hits"], h)
+        for u in (v.get("validity_unmet") or []):
+            _inc(out["unmet"], u)
+        for u in (v.get("uv_unmet") or []):
+            _inc(out["uv_unmet"], u)
+        _inc(out["intent"], v.get("uv_intent"))
+        pv = ((v.get("rag_meta") or {}).get("prompt_version")) or v.get("prompt_version")
+        _inc(out["prompt_versions"], pv)
+        esc = v.get("judge_escalation")
+        if esc:
+            out["escalated"] += 1
+            if esc.get("verdict") == "FAIL":
+                out["escalated_fail"] += 1
+            if not out["escalate_model"]:
+                out["escalate_model"] = esc.get("model")
+            if not out["judge_model"]:
+                out["judge_model"] = esc.get("first_model")
+        if not out["judge_model"]:
+            out["judge_model"] = v.get("judge_model")
+        if not out["ontology_version"]:
+            out["ontology_version"] = v.get("ontology_version")
+        if not out["eval_version"]:
+            out["eval_version"] = v.get("eval_version")
+    return out
+
+
 def _phr_from_host_db(case_id):
     """호스트 DB `phr_cases` 1건 → (transmit 객체, phr_cases 형식 객체). 없으면 (None, None).
 

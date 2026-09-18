@@ -88,7 +88,8 @@ class BatchExecutor:
         # ── 평가 스위치(환경변수) — 온톨로지 판정(v3) 전환 단계용 ──
         #   EVAL_PHR=0       : PHR 정합성(LLM 1회) 끔 — v3 PV fact_check(코드 대조)가 대체
         #   EVAL_V2_LEGAL=0  : v2 법률 A~F(LLM 1회) 끔 — v3 legal gate 가 대체
-        #   EVAL_FINAL=v3    : 최종 판정(status·finalScore)을 v3 verdict 로 만든다(rubric 은 그대로 우선)
+        #   EVAL_FINAL=v3    : 최종 판정(status·finalScore)을 v3 verdict 로 만든다.
+        #                      HealthBench 문항(HB-*/source=healthbench)만 rubric 이 최종 — 별개 평가다.
         # 셋 다 기본은 기존 동작. v3 가 꺼져 있거나 실패한 답변은 EVAL_FINAL=v3 라도 v2 로 되돌아간다.
         self.flag_phr = os.environ.get('EVAL_PHR', '1').strip() != '0'
         self.flag_v2_legal = os.environ.get('EVAL_V2_LEGAL', '1').strip() != '0'
@@ -590,9 +591,14 @@ class BatchExecutor:
                                    prior_turns=[t.get('query') for t in (turn_results or [])[:-1]
                                                 if t.get('query')])
                 v3_final = self._v3_final(v3) if self.final_mode == 'v3' else None
+                is_hb = str(sid or '').upper().startswith('HB-') or (sc.get('source') or '') == 'healthbench'
 
-                # 최종 판정: rubric > v3(EVAL_FINAL=v3) > gpt 우선순위
-                if rubric_eval and rubric_eval.get('score') is not None:
+                # 최종 판정: HealthBench 문항은 rubric 이 최종(별개 평가). 그 밖은 v3(EVAL_FINAL=v3) > rubric > gpt
+                if v3_final is not None and not is_hb:
+                    final_score, final_passed, _ = v3_final
+                    final_source = 'v3'
+                    st = 'error' if not full_text else ('pass' if final_passed else 'fail')
+                elif rubric_eval and rubric_eval.get('score') is not None:
                     final_score = rubric_eval.get('score', 0)
                     final_passed = final_score >= 50  # HealthBench 관례 ≥50
                     final_source = 'rubric'

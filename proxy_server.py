@@ -2139,6 +2139,9 @@ def _save_run_to_db(run):
     })
 
 
+_V3_RUN_CACHE = {}   # run_id → ((id, status, total), v3 summary) — /api/eval-v3/runs 용
+
+
 def _db_run_to_proxy(r):
     """db.get_test_run 결과를 프록시 응답 포맷으로 변환"""
     if not r:
@@ -2354,6 +2357,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
         perm_blocks = [
             ('manage_scenarios',  '/api/scenarios',         None),
             ('view_history',      '/api/history',           None),
+            ('view_history',      '/api/eval-v3/',          None),
             ('manage_guidelines', '/api/guidelines',        ['POST', 'PUT', 'DELETE']),
             ('manage_criteria',   '/api/criteria',          ['POST', 'PUT', 'DELETE']),
             ('manage_rlhf',       '/api/rlhf/',             None),
@@ -2960,6 +2964,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
         # ── 이력 API ──
         if path == '/api/history':
             return self._list_history()
+        if path == '/api/eval-v3/runs':
+            return self._list_eval_v3_runs()
 
         # ── HealthBench 전용 API ──
         if path == '/api/healthbench/runs':
@@ -3088,6 +3094,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
             '/settings.html': 'settings.html',
             '/history': 'history.html',
             '/history.html': 'history.html',
+            '/eval-v3': 'eval_v3.html',
+            '/eval_v3.html': 'eval_v3.html',
             '/guidelines': 'guideline_manager.html',
             '/guideline_manager.html': 'guideline_manager.html',
             '/criteria': 'criteria_manager.html',
@@ -3146,6 +3154,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
             '/scenario_manager.html':  'manage_scenarios',
             '/history':                'view_history',
             '/history.html':           'view_history',
+            '/eval-v3':                'view_history',
+            '/eval_v3.html':           'view_history',
             '/guidelines':             ['view_guidelines', 'manage_guidelines'],
             '/guideline_manager.html': ['view_guidelines', 'manage_guidelines'],
             '/criteria':               ['view_criteria', 'manage_criteria'],
@@ -4148,6 +4158,56 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
                 "hasMore": (offset + len(runs)) < total_count,
             },
         })
+
+    def _list_eval_v3_runs(self):
+        """GET /api/eval-v3/runs — 온톨로지(v3) 판정이 있는 실행 목록 + 실행별 집계.
+
+        쿼리: ?limit=80(훑어볼 최근 실행 수, 최대 300) &since=YYYY-MM-DD(기본 2026-09-01, v3 배포 전 실행은 훑지 않는다)
+        results_json 을 읽어 집계하므로 완료된 실행은 (id, status, total) 키로 메모리에 캐시한다.
+        """
+        from urllib.parse import urlparse, parse_qs
+        qs = parse_qs(urlparse(self.path).query)
+        try:
+            limit = int((qs.get('limit') or ['80'])[0])
+        except (TypeError, ValueError):
+            limit = 80
+        limit = max(1, min(limit, 300))
+        since = (qs.get('since') or ['2026-09-01'])[0]
+        try:
+            import eval_v3 as _ev
+        except Exception as e:
+            return self._send_error(503, f'eval_v3 어댑터를 불러올 수 없습니다: {e}')
+
+        metas = db.get_test_runs_summary(limit=limit, offset=0)
+        runs = []
+        scanned = 0
+        for m in metas:
+            run_at = str(m.get('runAt') or m.get('run_at') or '')
+            if since and run_at and run_at[:10] < since:
+                continue
+            rid = m.get('id')
+            if not rid:
+                continue
+            scanned += 1
+            key = (rid, m.get('status'), m.get('total'))
+            cached = _V3_RUN_CACHE.get(rid)
+            if cached and cached[0] == key:
+                summ = cached[1]
+            else:
+                full = db.get_test_run(rid)
+                summ = _ev.run_summary((full or {}).get('results') or [])
+                if (m.get('status') or 'completed') != 'running':
+                    _V3_RUN_CACHE[rid] = (key, summ)
+            if not summ:
+                continue
+            pr = _db_run_to_proxy(m)
+            runs.append({
+                'runId': pr['runId'], 'type': pr['type'], 'env': pr['env'],
+                'startedAt': pr['startedAt'], 'runBy': pr.get('runBy', ''),
+                'status': pr.get('status', 'completed'), 'summary': pr['summary'],
+                'v3': summ,
+            })
+        self._send_json(200, {'runs': runs, 'scanned': scanned, 'since': since})
 
     def _get_healthbench_report(self, run_id):
         """GET /api/history/<runId>/healthbench-report — theme/axis 기반 HB 집계 리포트"""
