@@ -236,8 +236,10 @@ def evaluate(question: str, answer: str, *, api_key=None, **kwargs) -> dict:
     ok, why = available()
     if not ok:
         return {"error": why}
-    import medical_eval as me
-    model = MODEL or me.DEFAULT_MODEL
+    model = MODEL
+    if not model:                                     # 서브모듈 import 는 필요할 때만(CI 에는 없을 수 있다)
+        import medical_eval as me
+        model = me.DEFAULT_MODEL
     try:
         result = _judge(question, answer, model, api_key, kwargs)
     except Exception as e:
