@@ -350,11 +350,11 @@ def evaluate_one(scenario: dict, openai_key: str, model: str) -> dict:
     try:
         # ── 1. RAG 응답 생성 ──────────────────────────────────────
         # 시나리오에 PHR 케이스가 걸려 있으면 개인화(기록 모드)로 호출한다.
-        phr_transmit, phr_case = (None, None)
+        phr_transmit = None                        # RAG 주입용 transmit 원문
         case_id = scenario.get("phr_case_id")
         if case_id and _v3 is not None:
             try:
-                phr_transmit, phr_case = _v3.phr_for(case_id)
+                phr_transmit, _ = _v3.phr_for(case_id)   # 판정용 phr_cases 는 evaluate_scenario 가 읽는다
                 if not phr_transmit:
                     logger.debug("[%s] PHR 케이스 %s transmit 원문 없음 — 증상 모드로 진행", sid, case_id)
             except Exception as e:
@@ -446,20 +446,12 @@ def evaluate_one(scenario: dict, openai_key: str, model: str) -> dict:
             if rag.get("personal_injected") is not None:
                 rag_meta["personal_injected"] = rag["personal_injected"]
                 rag_meta["personal_injected_count"] = len(rag["personal_injected"])
-            expected = scenario.get("expected_behavior", "")
-            branch = scenario.get("branch") or ""
-            if branch and branch not in expected:
-                expected = f"{branch} 분기. {expected}".strip()
             try:
-                result["eval_v3"] = _v3.evaluate(
-                    prompt, response_text,
-                    api_key=openai_key,
-                    phr=phr_case,
-                    case_id=case_id or None,
-                    expected_behavior=expected or None,
-                    symptom_key=scenario.get("symptom_key") or None,
-                    rubric=scenario.get("rubric") or None,
-                    rag_meta=rag_meta,
+                # 시나리오 → 판정기 인자 매핑은 eval_v3.evaluate_scenario 한 곳뿐이다.
+                # 경로마다 따로 매핑하면 한쪽만 고쳐져 두 배치가 다른 판정을 내게 된다.
+                result["eval_v3"] = _v3.evaluate_scenario(
+                    scenario, prompt, response_text,
+                    api_key=openai_key, rag_meta=rag_meta,
                 )
             except Exception as e:                 # 어댑터가 이미 잡지만 배치는 절대 멈추지 않는다
                 logger.warning("[%s] v3 판정 실패: %s", sid, e)

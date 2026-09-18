@@ -44,6 +44,7 @@ class BatchExecutor:
         evaluate_consultation_fn=None,
         evaluate_rubric_fn=None,
         skix_replay_fn=None,
+        evaluate_v3_fn=None,
         log_fn=print,
     ):
         """
@@ -56,6 +57,9 @@ class BatchExecutor:
           — HealthBench 등 rubric 보유 시나리오에서만 호출. None 이면 rubric 평가 스킵.
         skix_replay_fn: callable(scenario, http_cfg) -> dict
           — multi-turn 시나리오를 sequential replay 로 처리. None 이면 단일 호출 fallback.
+        evaluate_v3_fn: callable(scenario, question, answer, api_key=…) -> dict
+          — 온톨로지 기반 v3 판정(병존). None 이면 호출하지 않는다. 기존 판정값은 건드리지 않고
+            결과에 `evalV3` 키만 더한다.
         log_fn: callable(str) — 로그 출력 함수 (기본 print).
         """
         self.settings = settings or {}
@@ -65,8 +69,23 @@ class BatchExecutor:
         self.evaluate_consultation = evaluate_consultation_fn
         self.evaluate_rubric = evaluate_rubric_fn
         self.skix_replay = skix_replay_fn
+        self.evaluate_v3 = evaluate_v3_fn
         self.log = log_fn or (lambda _msg: None)
         self.gpt_model = self.settings.get('openaiModel', 'gpt-4o-mini')
+
+    # ────────────────────────────────────────────────────────────
+    # v3 병존 판정 (공용)
+    # ────────────────────────────────────────────────────────────
+    def _eval_v3(self, sid, sc, question, answer, prior_turns=None):
+        """v3 판정 1건. 꺼져 있거나 실패하면 None — 배치는 기존 판정으로 그대로 끝난다."""
+        if not self.evaluate_v3 or not answer:
+            return None
+        try:
+            return self.evaluate_v3(sc, question, answer, api_key=self.openai_key,
+                                    prior_turns=prior_turns)
+        except Exception as e:
+            self.log(f"[v3] 판정 실패 sid={sid}: {str(e)[:120]}")
+            return {"error": f"{type(e).__name__}: {str(e)[:120]}"}
 
     # ────────────────────────────────────────────────────────────
     # 단일 시나리오 실행 (dispatcher)
@@ -264,6 +283,7 @@ class BatchExecutor:
                     "attemptLog": attempt_log,
                     "gptEval": gpt,
                     "consultationEval": consult,
+                    "evalV3": self._eval_v3(sid, sc, sc['prompt'], full_text),
                     "guidelineVersion": gpt.get('guidelineVersion', '') if gpt else '',
                     "searchResults": collected_search_results_batch[:5] if collected_search_results_batch else [],
                 }
@@ -520,6 +540,9 @@ class BatchExecutor:
                     "gptEval": gpt,
                     "consultationEval": consult,
                     "rubricEval": rubric_eval,
+                    "evalV3": self._eval_v3(sid, sc, eval_query, full_text,
+                                            prior_turns=[t.get('query') for t in (turn_results or [])[:-1]
+                                                         if t.get('query')]),
                     "guidelineVersion": gpt.get('guidelineVersion', '') if gpt else '',
                     "searchResults": collected_search_results_batch[:5] if collected_search_results_batch else [],
                 }

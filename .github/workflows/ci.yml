@@ -83,6 +83,9 @@ jobs:
           sys.exit(1 if bad else 0)
           PYEOF
 
+      - name: v3 UI — 이력 화면 렌더 로직 (교차표·배지)
+        run: node scripts/check_v3_ui.js
+
       - name: JS syntax — HTML 인라인 스크립트
         run: |
           node -e "const fs=require('fs');const files=fs.readdirSync('.').filter(f=>f.endsWith('.html'));let bad=0;for(const f of files){const html=fs.readFileSync(f,'utf8');const m=html.match(/<script>([\s\S]*?)<\/script>/g)||[];for(const t of m){const c=t.replace(/<\/?script>/g,'');if(c.length<500)continue;try{new Function(c)}catch(e){console.log(f+': '+e.message);bad++}}}console.log('js-syntax checked '+files.length+' html, '+bad+' errors');process.exit(bad?1:0)"

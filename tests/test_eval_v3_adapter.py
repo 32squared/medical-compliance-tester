@@ -205,3 +205,69 @@ def test_run_rag_without_phr_sends_no_consent(batch, monkeypatch):
     assert "phr" not in sent["body"] and "personal_consent" not in sent["body"]
     # 메타가 없으면 None — '주입 안 됨([])' 과 구분된다
     assert out["prompt_version"] is None and out["personal_injected"] is None
+
+
+# ── 시나리오 매핑 · 배치 실행기 연결 ────────────────────────────────────
+def test_evaluate_scenario_reads_columns_and_tags(monkeypatch):
+    """시나리오 → 판정기 인자 매핑은 이 함수 하나다(두 배치 경로가 같이 쓴다)."""
+    seen = {}
+
+    def fake_evaluate(question, answer, **kw):
+        seen.update(kw)
+        seen["question"] = question
+        return {"verdict": "A"}
+
+    monkeypatch.setattr(eval_v3, "evaluate", fake_evaluate)
+    eval_v3.evaluate_scenario(
+        {"symptomKey": "fever", "branch": "응급", "expectedBehavior": "위험 키워드 확인."},
+        "q", "a", api_key="k")
+    assert seen["symptom_key"] == "fever"
+    assert seen["expected_behavior"].startswith("응급 분기.")      # 분기를 기대 동작 앞에 붙인다
+
+    seen.clear()
+    eval_v3.evaluate_scenario({"tags": ["symptom:cough", "branch:당일"]}, "q", "a")
+    assert seen["symptom_key"] == "cough" and seen["expected_behavior"].startswith("당일 분기.")
+
+    seen.clear()
+    eval_v3.evaluate_scenario({"symptom_key": "headache"}, "q", "a")   # snake_case 도 받는다
+    assert seen["symptom_key"] == "headache"
+
+
+def test_batch_fn_is_none_when_disabled(monkeypatch):
+    monkeypatch.setattr(eval_v3, "ENABLED", False)
+    assert eval_v3.batch_fn() is None
+    monkeypatch.setattr(eval_v3, "ENABLED", True)
+    assert eval_v3.batch_fn() is eval_v3.evaluate_scenario
+
+
+def test_executor_adds_eval_v3_without_touching_v2():
+    """배치 실행기는 기존 판정값을 건드리지 않고 evalV3 키만 더한다."""
+    from batch_executor import BatchExecutor
+
+    calls = []
+
+    def fake_v3(sc, question, answer, api_key=None, prior_turns=None):
+        calls.append((sc.get("symptomKey"), question, answer))
+        return {"verdict": "B"}
+
+    exe = BatchExecutor(settings={}, openai_key="k", skix_config={}, evaluate_v3_fn=fake_v3)
+    out = exe._eval_v3("S1", {"symptomKey": "fever"}, "질문", "답변")
+    assert out == {"verdict": "B"} and calls == [("fever", "질문", "답변")]
+
+
+def test_executor_v3_failure_is_captured_not_raised():
+    from batch_executor import BatchExecutor
+
+    def boom(*a, **k):
+        raise RuntimeError("판정기 오류")
+
+    exe = BatchExecutor(settings={}, openai_key="k", skix_config={}, evaluate_v3_fn=boom,
+                        log_fn=lambda _m: None)
+    assert "판정기 오류" in exe._eval_v3("S1", {}, "q", "a")["error"]
+
+
+def test_executor_without_v3_fn_returns_none():
+    from batch_executor import BatchExecutor
+
+    exe = BatchExecutor(settings={}, openai_key="k", skix_config={})
+    assert exe._eval_v3("S1", {}, "q", "a") is None

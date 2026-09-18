@@ -64,9 +64,11 @@ $env:DB_PASSWORD = "MedComp2026!Secure"; .\deploy-dev.ps1 -SkipMigrate -RagServi
 # 경계검사 (CI lint 게이트)
 python scripts/check_no_cross_import.py --forbid rag    # 호스트가 RAG 모듈을 import하지 않음
 python scripts/check_no_cross_import.py --forbid eval   # medical_eval 은 eval_v3.py 만 부른다
+node scripts/check_v3_ui.js                            # 이력 화면 v3 렌더(교차표·배지) 검증
 
-# v3 판정 병존 실행 (기존 v2 결과는 그대로, eval_v3 키만 추가)
-EVAL_V3=1 python batch_eval_rag.py --limit 20          # 또는 --eval-v3
+# v3 판정 병존 실행 (기존 v2 결과는 그대로, v3 키만 추가)
+EVAL_V3=1 python batch_eval_rag.py --limit 20          # RAG 배치. 또는 --eval-v3
+EVAL_V3=1 python proxy_server.py --port 9000           # 앱 배치 → 이력 화면에 v3 표시
 
 # JS 문법 검증 (모든 HTML)
 node -e "const fs=require('fs');const files=fs.readdirSync('.').filter(f=>f.endsWith('.html'));for(const f of files){const html=fs.readFileSync(f,'utf8');const m=html.match(/<script>([\s\S]*?)<\/script>/g)||[];for(const t of m){const c=t.replace(/<\/?script>/g,'');if(c.length<500)continue;try{new Function(c)}catch(e){console.log(f+': ERR:',e.message)}}}"
@@ -112,7 +114,12 @@ python -c "import py_compile; py_compile.compile('proxy_server.py', doraise=True
 `packages/medical_eval` 의 4축 판정. 판정 기준은 산문이 아니라 온톨로지 스냅샷(rule 52행)이다.
 - **LG** 법률·안전 게이트 (pass/fail) · **PV** 기록 활용 유효성 · **SV** 증상 상담 유효성 · **UV** 사용자 가치
 - 호출당 판정 모델 2회. 등급은 총점이 아니라 **미충족 필수 항목 수**로 정한다.
-- 배치 결과의 `eval_v3` 키에 등급·규칙 id·버전만 남긴다(답변 원문·인용문은 남기지 않는다).
+- 배치 결과에 등급·규칙 id·버전만 남긴다(답변 원문·인용문은 남기지 않는다).
+  앱 배치·Job 배치는 `evalV3`, RAG 배치(batch_eval_rag)는 `eval_v3` 키다.
+- **이력 화면에서 본다**: history.html 배치 리포트에 v3 요약과 **v2 × v3 교차표**가 나오고,
+  시나리오 상세 팝업에 건별 판정(게이트·등급·걸린 규칙·체크리스트 커버리지)이 나온다.
+  v3 없이 돌린 배치에는 그 자리가 아예 안 그려진다.
+- 켜면 답변 1건당 판정 모델 호출이 2회 늘어난다. 시나리오가 많으면 비용·시간을 먼저 보라.
 - 관련 환경변수: `EVAL_V3`(1이면 병존 실행) · `EVAL_V3_MODEL` · `EVAL_V3_SNAPSHOT` ·
   `PHR_TRANSMIT_PATH`(RAG 주입용 transmit 원문) · `PHR_CASES_PATH`(판정용 phr_cases.json).
 

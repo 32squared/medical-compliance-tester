@@ -278,3 +278,75 @@ def phr_for(case_id):
     import json
     src = _phr_transmit.get(case_id)
     return (json.dumps(src, ensure_ascii=False) if src else None), _phr_cases.get(case_id)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 시나리오 1건 판정 (배치 공용)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def evaluate_scenario(scenario, question, answer, *, api_key=None, rag_meta=None,
+                      prior_turns=None) -> dict:
+    """호스트 시나리오 dict + 답변 → v3 판정(compact). 두 배치 경로가 같이 쓴다.
+
+    시나리오 키를 판정기 인자로 옮기는 자리는 여기 하나다 — 경로마다 따로 매핑하면
+    한쪽만 고쳐져 두 배치가 다른 판정을 내게 된다.
+
+    camelCase(`symptomKey`)와 snake_case(`symptom_key`) 를 모두 받는다. 앞은 DB·API 형식이고
+    뒤는 batch_eval_rag 의 내부 형식이다. 열이 생기기 전에 적재된 행은 같은 값이 `tags` 에
+    `case:` · `branch:` · `symptom:` 으로 들어 있어 거기서 회수한다.
+    """
+    sc = scenario or {}
+
+    def pick(*keys):
+        for k in keys:
+            v = sc.get(k)
+            if v:
+                return v
+        return None
+
+    tagged = {}
+    for t in (sc.get("tags") or []):
+        if isinstance(t, str) and ":" in t:
+            k, _, v = t.partition(":")
+            tagged.setdefault(k, v)
+
+    case_id = pick("phrCaseId", "phr_case_id") or tagged.get("case")
+    branch = pick("branch") or tagged.get("branch") or ""
+    symptom_key = pick("symptomKey", "symptom_key") or tagged.get("symptom")
+    expected = pick("expectedBehavior", "expected_behavior") or ""
+    if branch and branch not in expected:
+        expected = f"{branch} 분기. {expected}".strip()
+
+    phr_case = None
+    if case_id:
+        try:
+            _, phr_case = phr_for(case_id)
+        except Exception as e:
+            logger.warning("PHR 케이스 조회 실패(%s): %s", case_id, e)
+
+    return evaluate(
+        question, answer,
+        api_key=api_key,
+        phr=phr_case,
+        case_id=case_id or None,
+        symptom_key=symptom_key or None,
+        expected_behavior=expected or None,
+        rubric=sc.get("rubric") or None,
+        prior_turns=prior_turns or None,
+        rag_meta=rag_meta,
+    )
+
+
+def batch_fn():
+    """배치 실행기에 넘길 판정 함수. `EVAL_V3=1` 이고 판정기를 쓸 수 있을 때만 준다.
+
+    꺼져 있으면 None 이고, 그러면 배치는 v3 를 아예 부르지 않는다(기존 동작 그대로).
+    """
+    if not ENABLED:
+        return None
+    ok, why = available()
+    if not ok:
+        logger.warning("EVAL_V3=1 이지만 v3 판정기를 쓸 수 없습니다: %s", why)
+        return None
+    logger.info("v3 병존 판정 활성 | %s", versions())
+    return evaluate_scenario
