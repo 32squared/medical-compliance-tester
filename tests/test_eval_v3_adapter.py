@@ -109,21 +109,37 @@ def batch():
 
 def test_scenario_row_reads_columns(batch):
     row = batch._scenario_row({"id": "S1", "category": "phr_case", "prompt": "q",
-                               "expectedBehavior": "외래 진료 권고",
-                               "phrCaseId": "CASE-03", "branch": "외래"})
+                               "expectedBehavior": "외래 진료 권고", "phrCaseId": "CASE-03",
+                               "branch": "외래", "symptomKey": "headache"})
     assert row["phr_case_id"] == "CASE-03" and row["branch"] == "외래"
+    assert row["symptom_key"] == "headache"
 
 
 def test_scenario_row_falls_back_to_tags(batch):
     """열 신설 전에 적재된 행은 같은 값이 tags 에 들어 있다(export_host_scenarios.py)."""
     row = batch._scenario_row({"id": "S1", "prompt": "q",
-                               "tags": ["case:CASE-07", "branch:당일", "그냥태그"]})
+                               "tags": ["case:CASE-07", "branch:당일", "symptom:fever", "그냥태그"]})
     assert row["phr_case_id"] == "CASE-07" and row["branch"] == "당일"
+    assert row["symptom_key"] == "fever"
 
 
 def test_scenario_row_without_either_is_symptom_mode(batch):
     row = batch._scenario_row({"id": "S1", "prompt": "q"})
-    assert row["phr_case_id"] is None and row["branch"] == ""
+    assert row["phr_case_id"] is None and row["branch"] == "" and row["symptom_key"] == ""
+
+
+@needs_judge
+def test_symptom_key_picks_the_checklist(snapshot_free=None):
+    """증상군을 주면 질문 문장 추측을 건너뛴다 — SV 의 정식 경로(측정 근거는 커밋 메시지)."""
+    answer = ("본 정보는 참고용이며 진단을 의미하지 않습니다."
+              " 갑작스런 통증이 있었는지 확인해 보세요."
+              " 증상이 나아지지 않으면 의료진과 상담하세요.")
+    # 질문만으로는 두통·기침이 동점이라 증상군을 고르지 못한다(→ na).
+    q = "두통과 기침이 같이 있어요"
+    guessed = eval_v3.evaluate(q, answer, chat=stub_chat, use_cache=False)
+    told = eval_v3.evaluate(q, answer, symptom_key="headache", chat=stub_chat, use_cache=False)
+    assert (guessed.get("checklist") or {}).get("symptom_key") is None
+    assert (told.get("checklist") or {}).get("symptom_key") == "headache"
 
 
 def _sse(*events):

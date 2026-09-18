@@ -109,8 +109,13 @@ _SCENARIOS_JSON = os.path.join(_DIR, "scenarios.json")
 def _scenario_row(s: dict) -> dict:
     """시나리오 1행 → 배치 내부 형식.
 
-    `phrCaseId`·`branch` 는 v3 판정용 열이다(REQ-0007). 열이 생기기 전에 적재된 행은
-    같은 값이 `tags` 에 `case:<id>` · `branch:<분기>` 로 들어 있으므로 거기서 회수한다.
+    `phrCaseId`·`branch`·`symptomKey` 는 v3 판정용 열이다(REQ-0007). 열이 생기기 전에 적재된
+    행은 같은 값이 `tags` 에 `case:<id>` · `branch:<분기>` · `symptom:<증상군>` 으로 들어 있어
+    거기서 회수한다.
+
+    `symptomKey` 가 증상 모드(SV) 의 정식 경로다. 이것을 주지 않으면 판정기가 질문 문장에서
+    증상군을 추측하는데, 어느 증상이 주소(主訴)인지는 낱말만으로 갈리지 않아 절반 가까이
+    못 고르거나 틀린다(증상 골든 50건 측정). 시나리오에 달아 두는 편이 훨씬 정확하다.
     """
     tags = s.get("tags") or []
     tagged = {}
@@ -127,6 +132,7 @@ def _scenario_row(s: dict) -> dict:
         "risk_level":        s.get("riskLevel", "MEDIUM"),
         "phr_case_id":       s.get("phrCaseId") or tagged.get("case") or None,
         "branch":            s.get("branch") or tagged.get("branch") or "",
+        "symptom_key":       s.get("symptomKey") or tagged.get("symptom") or "",
         "rubric":            s.get("rubric") or [],
     }
 
@@ -451,6 +457,7 @@ def evaluate_one(scenario: dict, openai_key: str, model: str) -> dict:
                     phr=phr_case,
                     case_id=case_id or None,
                     expected_behavior=expected or None,
+                    symptom_key=scenario.get("symptom_key") or None,
                     rubric=scenario.get("rubric") or None,
                     rag_meta=rag_meta,
                 )

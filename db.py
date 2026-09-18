@@ -268,6 +268,7 @@ CREATE TABLE IF NOT EXISTS scenarios (
     rubric_json TEXT DEFAULT '[]',
     phr_case_id TEXT,
     branch TEXT DEFAULT '',
+    symptom_key TEXT DEFAULT '',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
@@ -555,6 +556,7 @@ CREATE TABLE IF NOT EXISTS scenarios (
     rubric_json JSONB DEFAULT '[]',
     phr_case_id TEXT,
     branch TEXT DEFAULT '',
+    symptom_key TEXT DEFAULT '',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
@@ -806,6 +808,7 @@ def init_db(db_path=None):
                 # v3 판정기 연결(eval_v3): 기록 모드 케이스 연결 + 증상 모드 기대 분기.
                 "ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS phr_case_id TEXT",
                 "ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS branch TEXT DEFAULT ''",
+                "ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS symptom_key TEXT DEFAULT ''",
                 # conversations EMERGENCY_REDIRECTED 상태머신 컬럼 — 호스트 소유.
                 # (RAG 마이그레이션 블록에서 이전: RAG 마이그레이션이 호스트 테이블을 변형하지 않도록)
                 "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS emergency_state TEXT DEFAULT 'NORMAL'",
@@ -1215,6 +1218,7 @@ def init_db(db_path=None):
             # v3 판정기 연결(eval_v3): 기록 모드 케이스 연결 + 증상 모드 기대 분기.
             "ALTER TABLE scenarios ADD COLUMN phr_case_id TEXT",
             "ALTER TABLE scenarios ADD COLUMN branch TEXT DEFAULT ''",
+            "ALTER TABLE scenarios ADD COLUMN symptom_key TEXT DEFAULT ''",
             # conversations EMERGENCY_REDIRECTED 상태머신 컬럼 — 호스트 소유.
             # (RAG 마이그레이션 블록에서 이전. SQLite: IF NOT EXISTS 미지원 — OperationalError 무시)
             "ALTER TABLE conversations ADD COLUMN emergency_state TEXT DEFAULT 'NORMAL'",
@@ -2014,6 +2018,7 @@ def get_scenarios():
             s['rubric'] = _pg_json_loads_or(s.pop('rubric_json', '[]'), [])
             s['phrCaseId'] = s.pop('phr_case_id', None)      # v3 기록 모드 케이스 연결
             s['branch'] = s.pop('branch', '') or ''          # v3 증상 모드 기대 분기
+            s['symptomKey'] = s.pop('symptom_key', '') or ''  # v3 증상군(SV-02~04 의 체크리스트 선택)
             s['createdAt'] = s.pop('created_at', '')
             s['updatedAt'] = s.pop('updated_at', '')
             scenarios.append(s)
@@ -2056,6 +2061,7 @@ def get_scenario(scenario_id):
         s['rubric'] = _pg_json_loads_or(s.pop('rubric_json', '[]'), [])
         s['phrCaseId'] = s.pop('phr_case_id', None)          # v3 기록 모드 케이스 연결
         s['branch'] = s.pop('branch', '') or ''              # v3 증상 모드 기대 분기
+        s['symptomKey'] = s.pop('symptom_key', '') or ''      # v3 증상군(SV-02~04 의 체크리스트 선택)
         s['createdAt'] = s.pop('created_at', '')
         s['updatedAt'] = s.pop('updated_at', '')
         return s
@@ -2088,8 +2094,8 @@ def create_scenario(data):
             f"""INSERT INTO scenarios (id, category, subcategory, prompt, expected_behavior, should_refuse,
                risk_level, tags_json, enabled, source, parent_id, generation_info_json,
                source_conversation_id, follow_ups_json, turns_json, rubric_json,
-               phr_case_id, branch, created_at, updated_at)
-               VALUES ({_ph(20)})""",
+               phr_case_id, branch, symptom_key, created_at, updated_at)
+               VALUES ({_ph(21)})""",
             (scenario_id, data.get('category', 'general'), data.get('subcategory', ''),
              prompt, data.get('expectedBehavior', ''), int(data.get('shouldRefuse', False)),
              data.get('riskLevel', 'MEDIUM'), json.dumps(tags, ensure_ascii=False),
@@ -2100,6 +2106,7 @@ def create_scenario(data):
              json.dumps(data.get('turns', []), ensure_ascii=False),
              json.dumps(data.get('rubric', []), ensure_ascii=False),
              data.get('phrCaseId') or None, data.get('branch', '') or '',
+             data.get('symptomKey', '') or '',
              now, now)
         )
     return get_scenario(scenario_id)
@@ -2113,7 +2120,7 @@ def update_scenario(scenario_id, data):
         'category': 'category', 'subcategory': 'subcategory', 'prompt': 'prompt',
         'expectedBehavior': 'expected_behavior', 'riskLevel': 'risk_level', 'source': 'source',
         'parentId': 'parent_id', 'sourceConversationId': 'source_conversation_id',
-        'phrCaseId': 'phr_case_id', 'branch': 'branch'
+        'phrCaseId': 'phr_case_id', 'branch': 'branch', 'symptomKey': 'symptom_key'
     }
     for camel, snake in field_map.items():
         if camel in data:
