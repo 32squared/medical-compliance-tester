@@ -34,6 +34,11 @@ _SNAPSHOT_DIR = os.path.join(_PKG, "ontology", "snapshot")
 ENABLED = os.environ.get("EVAL_V3", "0") == "1"
 #: 판정 모델. 미지정 시 medical_eval.DEFAULT_MODEL.
 MODEL = os.environ.get("EVAL_V3_MODEL", "").strip() or None
+#: 1차 판정 모델이 legal fail 을 내면 이 모델로 같은 답변을 한 번 더 판정한다(비용 절감형 2단 판정).
+#: 예: EVAL_V3_MODEL=gpt-5.4-mini + EVAL_V3_ESCALATE_MODEL=gpt-5.4 → 통과 답변은 mini 비용만,
+#: mini 가 fail 로 잡은 답변만 gpt-5.4 가 최종 판정. 2026-09-18 운영 표본 40건에서 mini 단독은
+#: 6건을 fail 로 냈고 gpt-5.4 는 모두 pass 였다(v2 법률과의 일치 85% → 100%).
+ESCALATE_MODEL = os.environ.get("EVAL_V3_ESCALATE_MODEL", "").strip() or None
 #: 스냅샷 경로 고정용(미지정 시 ontology/snapshot 최신 버전).
 SNAPSHOT_PATH = os.environ.get("EVAL_V3_SNAPSHOT", "").strip() or None
 
@@ -231,20 +236,43 @@ def evaluate(question: str, answer: str, *, api_key=None, **kwargs) -> dict:
     ok, why = available()
     if not ok:
         return {"error": why}
+    import medical_eval as me
+    model = MODEL or me.DEFAULT_MODEL
     try:
-        import medical_eval as me
-        result = me.evaluate(
-            question or "", answer or "",
-            model=MODEL or me.DEFAULT_MODEL,
-            ontology=get_snapshot(),
-            api_key=api_key or os.environ.get("OPENAI_API_KEY", ""),
-            with_quote=False,                          # 인용문은 호스트 로그에 남기지 않는다
-            **kwargs
-        )
+        result = _judge(question, answer, model, api_key, kwargs)
     except Exception as e:
         logger.warning("v3 판정 실패: %s", e)
         return {"error": f"{type(e).__name__}: {e}"}
-    return compact(result)
+    escalation = None
+    if ESCALATE_MODEL and ESCALATE_MODEL != model and (result.get("legal") or {}).get("verdict") == "fail":
+        first = compact(result)
+        try:
+            result = _judge(question, answer, ESCALATE_MODEL, api_key, kwargs)
+            escalation = {"first_model": model, "first_verdict": first.get("verdict"),
+                          "first_hits": first.get("legal_hits"), "model": ESCALATE_MODEL,
+                          "verdict": result.get("verdict")}
+        except Exception as e:                         # 2차 실패 → 1차 결과를 그대로 쓴다
+            logger.warning("v3 2차 판정 실패(%s): %s", ESCALATE_MODEL, e)
+            escalation = {"first_model": model, "first_verdict": first.get("verdict"),
+                          "first_hits": first.get("legal_hits"), "model": ESCALATE_MODEL,
+                          "error": f"{type(e).__name__}: {str(e)[:120]}"}
+    out = compact(result)
+    if escalation:
+        out["judge_escalation"] = escalation
+    return out
+
+
+def _judge(question, answer, model, api_key, kwargs):
+    """medical_eval.evaluate 1회 호출(모델 지정). 예외는 호출자가 처리한다."""
+    import medical_eval as me
+    return me.evaluate(
+        question or "", answer or "",
+        model=model,
+        ontology=get_snapshot(),
+        api_key=api_key or os.environ.get("OPENAI_API_KEY", ""),
+        with_quote=False,                              # 인용문은 호스트 로그에 남기지 않는다
+        **kwargs
+    )
 
 
 def evaluate_batch(items, *, api_key=None, max_workers=4, on_result=None, **defaults) -> list:

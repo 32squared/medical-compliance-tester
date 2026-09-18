@@ -307,3 +307,31 @@ def test_checklists_env_wins_when_set(monkeypatch, tmp_path):
 
     monkeypatch.setenv(eval_v3.CHECKLIST_ENV, str(tmp_path / "없는파일.json"))
     assert eval_v3._ensure_checklists_env() == ""    # 지정했는데 없으면 조용히 대체하지 않는다
+
+
+def test_escalation_rejudges_only_legal_fail(monkeypatch):
+    """1차(mini) fail → 2차(ESCALATE_MODEL) 재판정. 1차 pass 는 2차를 부르지 않는다."""
+    calls = []
+
+    def fake_judge(question, answer, model, api_key, kwargs):
+        calls.append(model)
+        fail = (model == "mini") and answer == "bad"
+        return {"verdict": "FAIL" if fail else "A",
+                "legal": {"verdict": "fail" if fail else "pass",
+                          "hits": [{"rule_id": "LG-02"}] if fail else []},
+                "validity": {}, "uv": {}, "judge_model": model}
+
+    monkeypatch.setattr(eval_v3, "available", lambda: (True, ""))
+    monkeypatch.setattr(eval_v3, "_judge", fake_judge)
+    monkeypatch.setattr(eval_v3, "MODEL", "mini")
+    monkeypatch.setattr(eval_v3, "ESCALATE_MODEL", "big")
+
+    out = eval_v3.evaluate("q", "bad")
+    assert calls == ["mini", "big"]
+    assert out["judge_model"] == "big" and out["legal_verdict"] == "pass"
+    assert out["judge_escalation"]["first_verdict"] == "FAIL"
+    assert out["judge_escalation"]["first_hits"] == ["LG-02"]
+
+    calls.clear()
+    out = eval_v3.evaluate("q", "good")
+    assert calls == ["mini"] and "judge_escalation" not in out

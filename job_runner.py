@@ -242,12 +242,18 @@ def _v3_log_summary(results):
             f"UV={v.get('uv_grade')} unmet={v.get('uv_unmet') or []} intent={v.get('uv_intent')} "
             f"prompt={rm.get('prompt_version') or v.get('prompt_version')} skip={rm.get('skip_reason')} "
             f"claims={v.get('claim_count')} fallback={v.get('claim_fallback')}"
+            + (f" escalated={esc.get('first_model')}:{esc.get('first_verdict')}→{esc.get('model')}:{esc.get('verdict') or esc.get('error')}"
+               if (esc := v.get('judge_escalation')) else "")
         )
     meta = next((v for _, v in rows if not v.get('error')), {})
     _job_log(
         f"[v3] SUMMARY n={len(rows)} err={errs} gate={gate} PV/SV={pv} UV={uv} rule_hits={hits} "
         f"eval={meta.get('eval_version')} ontology={meta.get('ontology_version')} judge={meta.get('judge_model')}"
     )
+    n_esc = sum(1 for _, v in rows if v.get('judge_escalation'))
+    if n_esc:
+        _job_log(f"[v3] ESCALATION {n_esc}/{len(rows)}건 1차 fail → 2차 판정 "
+                 f"(2차도 fail: {sum(1 for _, v in rows if (v.get('judge_escalation') or {}).get('verdict') == 'FAIL')})")
     agree = cross.get('v2:pass/v3:pass', 0) + cross.get('v2:fail/v3:fail', 0)
     both = sum(n for k, n in cross.items() if not k.startswith('v2:-'))
     _job_log(f"[v3] CROSS v2×v3 {cross} agree={agree}/{both}"
