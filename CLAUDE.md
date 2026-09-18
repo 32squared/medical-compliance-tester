@@ -70,6 +70,11 @@ node scripts/check_v3_ui.js                            # 이력 화면 v3 렌더
 EVAL_V3=1 python batch_eval_rag.py --limit 20          # RAG 배치. 또는 --eval-v3
 EVAL_V3=1 python proxy_server.py --port 9000           # 앱 배치 → 이력 화면에 v3 표시
 
+# 배포에서 켜기 — 안 켜면 컨테이너 안에 EVAL_V3 가 없어 v3 는 돌지 않는다.
+.\deploy-dev.ps1 -EvalV3        # DEV 서비스
+.\deploy.ps1 -EvalV3            # 운영 서비스 (앱 내 배치)
+.\deploy-job.ps1 -EvalV3        # Cloud Run Job (1100건 대량 배치가 도는 곳)
+
 # JS 문법 검증 (모든 HTML)
 node -e "const fs=require('fs');const files=fs.readdirSync('.').filter(f=>f.endsWith('.html'));for(const f of files){const html=fs.readFileSync(f,'utf8');const m=html.match(/<script>([\s\S]*?)<\/script>/g)||[];for(const t of m){const c=t.replace(/<\/?script>/g,'');if(c.length<500)continue;try{new Function(c)}catch(e){console.log(f+': ERR:',e.message)}}}"
 
@@ -121,7 +126,12 @@ python -c "import py_compile; py_compile.compile('proxy_server.py', doraise=True
   v3 없이 돌린 배치에는 그 자리가 아예 안 그려진다.
 - 켜면 답변 1건당 판정 모델 호출이 2회 늘어난다. 시나리오가 많으면 비용·시간을 먼저 보라.
 - 관련 환경변수: `EVAL_V3`(1이면 병존 실행) · `EVAL_V3_MODEL` · `EVAL_V3_SNAPSHOT` ·
+  `MEDICAL_EVAL_CHECKLISTS`(SV 체크리스트 경로) ·
   `PHR_TRANSMIT_PATH`(RAG 주입용 transmit 원문) · `PHR_CASES_PATH`(판정용 phr_cases.json).
+- ⚠ 배포 이미지에는 `packages/medical_eval/data/` 가 없다(.gcloudignore 의 `data/` 가 모든 깊이의
+  data 디렉터리를 제외한다). SV 체크리스트는 그래서 어댑터가 공유 번들
+  (`packages/medical_shared/compliance_rules/consultation_checklists.json`, 저장소 사본과 동일 파일)로
+  경로를 고정한다. 이 고정이 없으면 SV-02·03·04·06 이 **조용히 na** 가 되어 판정이 속 빈 채로 돈다.
 
 ### 배치 실행
 - ThreadPoolExecutor (max_workers=10)

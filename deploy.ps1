@@ -3,7 +3,10 @@ param(
     [string]$Region = "asia-northeast3",
     [string]$ServiceName = "medical-compliance-tester",
     [string]$SqlInstance = "medical-db",
-    [string]$DbPassword = ""
+    [string]$DbPassword = "",
+    # 온톨로지 기반 v3 판정 병존 실행. 켜면 답변 1건당 판정 모델 호출이 2회 늘어난다.
+    [switch]$EvalV3,
+    [string]$EvalV3Model = ""
 )
 
 Write-Host "=== Medical Compliance Tester - Cloud Run Deploy (Cloud SQL) ===" -ForegroundColor Cyan
@@ -37,6 +40,19 @@ Write-Host "DB Password:  ****" -ForegroundColor Green
 
 $DatabaseUrl = "postgresql://app_user:${DbPassword}@/medical_app?host=/cloudsql/${SqlConnection}"
 
+# --set-env-vars 는 기존 환경변수를 통째로 교체한다. v3 스위치도 여기서 함께 넘겨야 한다.
+# 구분자는 기본값(',') 그대로 둔다 — DB 비밀번호에 ',' 가 없다는 전제는 이 스크립트가
+# 원래부터 깔고 있던 것이라, 여기서 새로 생기는 위험은 없다.
+$EnvPairs = @("DATABASE_URL=$DatabaseUrl")
+if ($EvalV3) {
+    $EnvPairs += "EVAL_V3=1"
+    if ($EvalV3Model) { $EnvPairs += "EVAL_V3_MODEL=$EvalV3Model" }
+    Write-Host "EVAL_V3:      ON (판정 모델 호출 +2회/답변)" -ForegroundColor Yellow
+} else {
+    Write-Host "EVAL_V3:      off (-EvalV3 로 켠다)" -ForegroundColor DarkGray
+}
+$EnvSpec = $EnvPairs -join ","
+
 # [1/3] Docker 이미지 빌드
 Write-Host "[1/3] Building Docker image..." -ForegroundColor Yellow
 gcloud builds submit --tag "gcr.io/$ProjectId/$ServiceName" .
@@ -58,7 +74,7 @@ gcloud run deploy $ServiceName `
     --min-instances 0 --max-instances 10 `
     --concurrency 5 `
     --execution-environment gen2 `
-    --set-env-vars "DATABASE_URL=$DatabaseUrl" `
+    --set-env-vars "$EnvSpec" `
     --add-cloudsql-instances $SqlConnection `
     --vpc-connector=medical-connector `
     --vpc-egress=all-traffic `

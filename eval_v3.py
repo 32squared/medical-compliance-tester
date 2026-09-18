@@ -37,6 +37,28 @@ MODEL = os.environ.get("EVAL_V3_MODEL", "").strip() or None
 #: 스냅샷 경로 고정용(미지정 시 ontology/snapshot 최신 버전).
 SNAPSHOT_PATH = os.environ.get("EVAL_V3_SNAPSHOT", "").strip() or None
 
+#: SV 축(증상 상담)이 쓰는 42 증상군 체크리스트.
+#: medical_eval 저장소에도 같은 파일(data/ref)이 있지만, 배포 업로드 규칙(.gcloudignore 의
+#: `data/`)이 그 디렉터리를 통째로 제외하므로 컨테이너 안에는 없을 수 있다. 없으면 SV-02·03·
+#: 04·06 이 조용히 `na` 가 되어 판정이 속 빈 채로 돈다. 호스트가 반드시 싣는 공유 번들
+#: (medical_shared, 두 파일은 동일)을 기본 경로로 박아 그 경로 의존을 끊는다.
+CHECKLIST_ENV = "MEDICAL_EVAL_CHECKLISTS"
+_SHARED_CHECKLISTS = os.path.join(
+    _DIR, "packages", "medical_shared", "compliance_rules", "consultation_checklists.json")
+
+
+def _ensure_checklists_env() -> str:
+    """체크리스트 경로를 환경변수로 고정하고 그 경로를 돌려준다(없으면 빈 문자열)."""
+    given = os.environ.get(CHECKLIST_ENV, "").strip()
+    if given:
+        return given if os.path.isfile(given) else ""
+    for candidate in (_SHARED_CHECKLISTS,
+                      os.path.join(_PKG, "data", "ref", "consultation_checklists.json")):
+        if os.path.isfile(candidate):
+            os.environ[CHECKLIST_ENV] = candidate
+            return candidate
+    return ""
+
 _lock = threading.Lock()
 _snapshot = None
 _unavailable_reason = None
@@ -67,6 +89,7 @@ def available() -> tuple:
     except Exception as e:
         _unavailable_reason = f"medical_eval import 실패: {e}"
         return False, _unavailable_reason
+    _ensure_checklists_env()
     return True, ""
 
 
@@ -96,6 +119,7 @@ def versions() -> dict:
     import medical_eval as me
     out = {"available": True, "eval_version": me.EVAL_VERSION,
            "judge_model": MODEL or me.DEFAULT_MODEL, "enabled": ENABLED}
+    out["checklists"] = bool(_ensure_checklists_env())
     try:
         out["ontology_version"] = get_snapshot().version
     except Exception as e:
@@ -348,5 +372,9 @@ def batch_fn():
     if not ok:
         logger.warning("EVAL_V3=1 이지만 v3 판정기를 쓸 수 없습니다: %s", why)
         return None
+    if not _ensure_checklists_env():
+        logger.warning(
+            "SV 체크리스트를 못 찾았습니다(%s 미설정, 공유 번들·저장소 사본 모두 없음) — "
+            "증상 상담 축의 위험 신호·필수 질문 항목이 전부 na 로 나옵니다.", CHECKLIST_ENV)
     logger.info("v3 병존 판정 활성 | %s", versions())
     return evaluate_scenario

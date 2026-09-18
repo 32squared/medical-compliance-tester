@@ -280,3 +280,30 @@ def test_executor_without_v3_fn_returns_none():
 
     exe = BatchExecutor(settings={}, openai_key="k", skix_config={})
     assert exe._eval_v3("S1", {}, "q", "a") is None
+
+
+# ── 체크리스트 경로 ──────────────────────────────────────────────────────
+def test_checklists_resolve_without_medical_eval_data_dir(monkeypatch):
+    """SV 체크리스트는 호스트가 반드시 싣는 공유 번들에서 온다.
+
+    medical_eval 저장소의 data/ref 사본은 배포 업로드에서 제외될 수 있고, 없으면
+    SV-02·03·04·06 이 조용히 na 가 된다. 그 경로에 기대지 않는지 확인한다.
+    """
+    monkeypatch.delenv(eval_v3.CHECKLIST_ENV, raising=False)
+    path = eval_v3._ensure_checklists_env()
+    assert path and os.path.isfile(path)
+    assert "medical_shared" in path              # 저장소 사본이 아니라 공유 번들
+    assert os.environ[eval_v3.CHECKLIST_ENV] == path
+    with io.open(path, encoding="utf-8") as fh:
+        rows = json.load(fh)
+    assert len(rows) == 42
+
+
+def test_checklists_env_wins_when_set(monkeypatch, tmp_path):
+    f = tmp_path / "checklists.json"
+    f.write_text("[]", encoding="utf-8")
+    monkeypatch.setenv(eval_v3.CHECKLIST_ENV, str(f))
+    assert eval_v3._ensure_checklists_env() == str(f)
+
+    monkeypatch.setenv(eval_v3.CHECKLIST_ENV, str(tmp_path / "없는파일.json"))
+    assert eval_v3._ensure_checklists_env() == ""    # 지정했는데 없으면 조용히 대체하지 않는다
