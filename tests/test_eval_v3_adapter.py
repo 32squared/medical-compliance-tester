@@ -1,0 +1,186 @@
+# -*- coding: utf-8 -*-
+"""eval_v3 어댑터 + 배치 연결 — 판정기 호출은 stub 으로 대체(OpenAI 키·네트워크 불필요)."""
+import io
+import json
+import os
+import sys
+
+import pytest
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import eval_v3                                          # noqa: E402
+
+NOTICE = "본 정보는 참고용이며 진단을 의미하지 않습니다."
+ANSWER = (f"{NOTICE} 갑작스런 통증이 있었는지 확인해 보세요."
+          " 증상이 나아지지 않으면 의료진과 상담하세요.")
+
+pytestmark = pytest.mark.skipif(
+    not eval_v3.available()[0],
+    reason="packages/medical_eval 서브모듈 미초기화 — git submodule update --init --recursive",
+)
+
+
+def stub_chat(model, system, user):
+    """판정 모델 응답 없음 → claim_extractor 가 문장 폴백으로 내려간다(설계된 경로)."""
+    return {}
+
+
+# ── 어댑터 ──────────────────────────────────────────────────────────────
+def test_snapshot_and_versions():
+    v = eval_v3.versions()
+    assert v["available"] is True
+    assert v["ontology_version"] == eval_v3.get_snapshot().version
+    assert v["eval_version"]
+
+
+def test_evaluate_returns_compact_shape():
+    out = eval_v3.evaluate("요즘 두통이 자주 있어요.", ANSWER,
+                           expected_behavior="생활관리 분기.", chat=stub_chat, use_cache=False)
+    assert "error" not in out
+    assert out["mode"] == "symptom" and out["validity_axis"] == "SV"
+    assert out["legal_verdict"] in ("pass", "fail", "review")
+    assert out["verdict"] and out["ontology_version"] and out["judge_model"]
+    assert isinstance(out["validity_unmet"], list)
+    # 원문·인용문은 호스트 결과에 남기지 않는다(케이스 출처 미확인 규칙).
+    assert "claims" not in out
+    blob = json.dumps(out, ensure_ascii=False)
+    assert ANSWER[:20] not in blob
+
+
+def test_batch_preserves_order_and_isolates_failure():
+    items = [{"item_id": "S1", "question": "두통이 있어요.", "answer": ANSWER},
+             {"item_id": "S2", "question": "두통이 있어요.", "answer": ANSWER,
+              "prior_turns": 5},                        # 목록이어야 하는 자리에 숫자
+             {"item_id": "S3", "question": "두통이 있어요.", "answer": ANSWER}]
+    out = eval_v3.evaluate_batch(items, chat=stub_chat, use_cache=False, max_workers=2)
+    assert [r["item_id"] for r in out] == ["S1", "S2", "S3"]
+    assert out[1]["error"] and out[0]["error"] is None and out[2]["error"] is None
+
+
+def test_unavailable_submodule_is_not_an_exception(monkeypatch):
+    monkeypatch.setattr(eval_v3, "_SRC", "/does/not/exist")
+    out = eval_v3.evaluate("q", "a")
+    assert "error" in out and "서브모듈" in out["error"]
+
+
+def test_phr_for_reads_both_formats(tmp_path, monkeypatch):
+    transmit = tmp_path / "transmit.json"
+    cases = tmp_path / "phr_cases.json"
+    transmit.write_text(json.dumps({"CASE-03": {"period": {"from": "2019"}}}), encoding="utf-8")
+    cases.write_text(json.dumps([{"case_id": "CASE-03", "timeline": {}}]), encoding="utf-8")
+    monkeypatch.setattr(eval_v3, "PHR_TRANSMIT_PATH", str(transmit))
+    monkeypatch.setattr(eval_v3, "PHR_CASES_PATH", str(cases))
+    monkeypatch.setattr(eval_v3, "_phr_transmit", None)
+    monkeypatch.setattr(eval_v3, "_phr_cases", None)
+
+    raw, case = eval_v3.phr_for("CASE-03")
+    assert json.loads(raw)["period"]["from"] == "2019"   # RAG 에는 transmit 원문 문자열
+    assert case["case_id"] == "CASE-03"                  # 판정에는 phr_cases 객체
+    assert eval_v3.phr_for("CASE-99") == (None, None)
+    assert eval_v3.phr_for(None) == (None, None)
+
+
+# ── 배치 연결 ───────────────────────────────────────────────────────────
+@pytest.fixture(scope="module")
+def batch():
+    # proxy_server 는 import 시점에 sys.stdout/err 을 UTF-8 래퍼로 교체한다(한글 출력).
+    # pytest 의 캡처 객체가 그대로 날아가므로 import 전후로 원래 것을 되돌린다.
+    os.environ.setdefault("DATABASE_URL", "")
+    out, err = sys.stdout, sys.stderr
+    try:
+        import batch_eval_rag
+    finally:
+        # 새 래퍼를 그냥 버리면 GC 될 때 pytest 캡처 파일까지 닫는다 — detach 로 떼어낸다.
+        for stream, orig in ((sys.stdout, out), (sys.stderr, err)):
+            if stream is not orig:
+                try:
+                    stream.detach()
+                except Exception:
+                    pass
+        sys.stdout, sys.stderr = out, err
+    return batch_eval_rag
+
+
+def test_scenario_row_reads_columns(batch):
+    row = batch._scenario_row({"id": "S1", "category": "phr_case", "prompt": "q",
+                               "expectedBehavior": "외래 진료 권고",
+                               "phrCaseId": "CASE-03", "branch": "외래"})
+    assert row["phr_case_id"] == "CASE-03" and row["branch"] == "외래"
+
+
+def test_scenario_row_falls_back_to_tags(batch):
+    """열 신설 전에 적재된 행은 같은 값이 tags 에 들어 있다(export_host_scenarios.py)."""
+    row = batch._scenario_row({"id": "S1", "prompt": "q",
+                               "tags": ["case:CASE-07", "branch:당일", "그냥태그"]})
+    assert row["phr_case_id"] == "CASE-07" and row["branch"] == "당일"
+
+
+def test_scenario_row_without_either_is_symptom_mode(batch):
+    row = batch._scenario_row({"id": "S1", "prompt": "q"})
+    assert row["phr_case_id"] is None and row["branch"] == ""
+
+
+def _sse(*events):
+    body = "".join(f"data: {json.dumps(e, ensure_ascii=False)}\n\n" for e in events)
+    return io.BytesIO(body.encode("utf-8"))
+
+
+def test_run_rag_injects_phr_and_reads_stop_meta(batch, monkeypatch):
+    sent = {}
+
+    class _Resp:
+        def __init__(self, stream):
+            self._s = stream
+
+        def __enter__(self):
+            return self._s
+
+        def __exit__(self, *a):
+            return False
+
+    def fake_urlopen(req, timeout=None):
+        sent["body"] = json.loads(req.data.decode("utf-8"))
+        return _Resp(_sse(
+            {"type": "EVIDENCE_CHECK", "data": {"quality": "HIGH"}},
+            {"type": "STOP", "text": "답변입니다.", "citations": [],
+             "meta": {"prompt_version": "v18", "personal_injected": ["checkup"]}},
+        ))
+
+    monkeypatch.setattr(batch, "urlopen", fake_urlopen)
+    monkeypatch.setattr(batch, "_RAG_SERVICE_URL", "http://rag.test")
+    monkeypatch.setattr(batch, "_get_rag_id_token", lambda: "")
+
+    out = batch.run_rag("두통이 있어요.", phr_transmit='{"period": {}}')
+    assert sent["body"]["phr"] == '{"period": {}}'
+    assert sent["body"]["personal_consent"] is True
+    assert out["prompt_version"] == "v18"
+    assert out["personal_injected"] == ["checkup"]
+    assert out["evidence_quality"] == "HIGH" and out["text"] == "답변입니다."
+
+
+def test_run_rag_without_phr_sends_no_consent(batch, monkeypatch):
+    sent = {}
+
+    class _Resp:
+        def __init__(self, stream):
+            self._s = stream
+
+        def __enter__(self):
+            return self._s
+
+        def __exit__(self, *a):
+            return False
+
+    def fake_urlopen(req, timeout=None):
+        sent["body"] = json.loads(req.data.decode("utf-8"))
+        return _Resp(_sse({"type": "STOP", "text": "답변입니다."}))
+
+    monkeypatch.setattr(batch, "urlopen", fake_urlopen)
+    monkeypatch.setattr(batch, "_RAG_SERVICE_URL", "http://rag.test")
+    monkeypatch.setattr(batch, "_get_rag_id_token", lambda: "")
+
+    out = batch.run_rag("두통이 있어요.")
+    assert "phr" not in sent["body"] and "personal_consent" not in sent["body"]
+    # 메타가 없으면 None — '주입 안 됨([])' 과 구분된다
+    assert out["prompt_version"] is None and out["personal_injected"] is None

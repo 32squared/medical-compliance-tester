@@ -10,6 +10,9 @@
     # RAG repo에서 (호스트 모듈 import 금지):
     python scripts/split_staging/check_no_cross_import.py --forbid host
 
+    # 호스트 repo에서 (v3 판정기 직접 import 금지 — eval_v3.py 어댑터만 허용):
+    python scripts/check_no_cross_import.py --forbid eval
+
 반환:
     exit 0 — 위반 없음
     exit 1 — 위반 1건 이상
@@ -38,6 +41,11 @@ _RAG_MODULES = {
     'verify_db_005', 'reembed_missing', 'dur_collector',
     'reindex_korean_tsv',
 }
+
+# v3 판정기(medical-eval 서브모듈). 호스트에서 이것을 직접 import 할 수 있는 파일은
+# 어댑터 eval_v3.py 하나뿐이다 — 판정기 계약이 바뀔 때 고칠 곳을 한 곳으로 묶는다.
+_EVAL_MODULES = {'medical_eval'}
+_EVAL_ADAPTER = {'eval_v3'}
 
 # 호스트 핵심 모듈 (분리 후 RAG repo에서 import 금지)
 # 출처: docs/rag_phase4_split_plan.md 4-E "호스트 잔류" 목록
@@ -135,8 +143,9 @@ def main():
     parser = argparse.ArgumentParser(
         description='경계 검사: repo 분리 후 교차 import 금지 검사')
     parser.add_argument(
-        '--forbid', required=True, choices=['rag', 'host'],
-        help='rag: RAG 모듈 import 금지 (호스트 repo용) / host: 호스트 모듈 import 금지 (RAG repo용)')
+        '--forbid', required=True, choices=['rag', 'host', 'eval'],
+        help='rag: RAG 모듈 import 금지 (호스트 repo용) / host: 호스트 모듈 import 금지 (RAG repo용)'
+             ' / eval: medical_eval 직접 import 금지 (eval_v3.py 어댑터만 허용)')
     parser.add_argument(
         '--root', default=None,
         help='검사할 repo 루트 (기본: 이 스크립트의 상위 2단계)')
@@ -161,7 +170,12 @@ def main():
         else:
             root = os.getcwd()
 
-    if args.forbid == 'rag':
+    if args.forbid == 'eval':
+        forbidden = _EVAL_MODULES
+        # 어댑터 자신만 판정기를 안다. 그 테스트도 함께 허용한다.
+        skip_own = _EVAL_ADAPTER
+        label = 'EVAL'
+    elif args.forbid == 'rag':
         forbidden = _RAG_MODULES
         # RAG 파일 자신끼리의 import는 정상 — RAG 파일은 스캔 대상에서 제외.
         # (분리 후 호스트 repo에는 RAG 파일이 없으므로 이 제외 목록도 의미 없어짐)
