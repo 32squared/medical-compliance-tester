@@ -15,7 +15,9 @@ NOTICE = "본 정보는 참고용이며 진단을 의미하지 않습니다."
 ANSWER = (f"{NOTICE} 갑작스런 통증이 있었는지 확인해 보세요."
           " 증상이 나아지지 않으면 의료진과 상담하세요.")
 
-pytestmark = pytest.mark.skipif(
+#: 판정기 자체를 부르는 테스트만 서브모듈이 필요하다. 배치 연결(run_rag·시나리오 매핑)과
+#: '서브모듈 없을 때' 동작은 서브모듈 없이도 검증되므로 CI 에서 계속 돈다.
+needs_judge = pytest.mark.skipif(
     not eval_v3.available()[0],
     reason="packages/medical_eval 서브모듈 미초기화 — git submodule update --init --recursive",
 )
@@ -27,6 +29,7 @@ def stub_chat(model, system, user):
 
 
 # ── 어댑터 ──────────────────────────────────────────────────────────────
+@needs_judge
 def test_snapshot_and_versions():
     v = eval_v3.versions()
     assert v["available"] is True
@@ -34,6 +37,7 @@ def test_snapshot_and_versions():
     assert v["eval_version"]
 
 
+@needs_judge
 def test_evaluate_returns_compact_shape():
     out = eval_v3.evaluate("요즘 두통이 자주 있어요.", ANSWER,
                            expected_behavior="생활관리 분기.", chat=stub_chat, use_cache=False)
@@ -48,6 +52,7 @@ def test_evaluate_returns_compact_shape():
     assert ANSWER[:20] not in blob
 
 
+@needs_judge
 def test_batch_preserves_order_and_isolates_failure():
     items = [{"item_id": "S1", "question": "두통이 있어요.", "answer": ANSWER},
              {"item_id": "S2", "question": "두통이 있어요.", "answer": ANSWER,

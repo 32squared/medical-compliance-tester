@@ -6,10 +6,12 @@
 #   lint   — check_no_cross_import(--forbid rag/eval) + py_compile + js-syntax
 #   pytest — 호스트 안정 테스트 (DB/서버/키 불필요)
 #
-# ※ medical-shared(packages/medical_shared) · medical-eval(packages/medical_eval) 은 git submodule.
-#    private repo 이므로
-#    checkout 시 PAT 토큰이 필요하다 — repo Secrets 에 SHARED_REPO_TOKEN 추가 후
-#    아래 token 주석을 해제할 것. (미설정 시 submodule checkout 단계에서 실패)
+# ※ 서브모듈 두 개를 쓴다.
+#    - packages/medical_shared (medical-shared) — **공개** repo. 토큰 없이 받는다. 필수.
+#    - packages/medical_eval   (medical-eval)   — **비공개** repo. 워크플로 기본 GITHUB_TOKEN 은
+#      다른 repo 를 못 읽으므로 clone 이 실패한다. repo Secrets 에 읽기 권한 PAT 를
+#      EVAL_REPO_TOKEN 으로 넣으면 받아온다. 없으면 받지 않고 넘어가며, 이때
+#      v3 어댑터 판정 테스트만 skip 된다(경계검사·py_compile·나머지 테스트는 그대로 돈다).
 
 name: CI
 
@@ -31,8 +33,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
-          # token: ${{ secrets.SHARED_REPO_TOKEN }}   # private submodule 인증용
+          submodules: false          # 아래 단계에서 직접 받는다(비공개 medical_eval 실패 허용)
+
+      - name: Submodules — medical_shared 필수 / medical_eval 선택
+        env:
+          EVAL_REPO_TOKEN: ${{ secrets.EVAL_REPO_TOKEN }}
+        run: |
+          git submodule update --init --depth 1 packages/medical_shared
+          if [ -n "$EVAL_REPO_TOKEN" ]; then
+            git config --global url."https://x-access-token:$EVAL_REPO_TOKEN@github.com/".insteadOf "https://github.com/"
+          fi
+          git submodule update --init --depth 1 packages/medical_eval \
+            || echo "::notice::medical_eval 미획득(비공개 repo, EVAL_REPO_TOKEN 미설정) — v3 어댑터 테스트는 skip 된다"
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
@@ -93,8 +105,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
-          # token: ${{ secrets.SHARED_REPO_TOKEN }}   # private submodule 인증용
+          submodules: false          # 아래 단계에서 직접 받는다(비공개 medical_eval 실패 허용)
+
+      - name: Submodules — medical_shared 필수 / medical_eval 선택
+        env:
+          EVAL_REPO_TOKEN: ${{ secrets.EVAL_REPO_TOKEN }}
+        run: |
+          git submodule update --init --depth 1 packages/medical_shared
+          if [ -n "$EVAL_REPO_TOKEN" ]; then
+            git config --global url."https://x-access-token:$EVAL_REPO_TOKEN@github.com/".insteadOf "https://github.com/"
+          fi
+          git submodule update --init --depth 1 packages/medical_eval \
+            || echo "::notice::medical_eval 미획득(비공개 repo, EVAL_REPO_TOKEN 미설정) — v3 어댑터 테스트는 skip 된다"
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
