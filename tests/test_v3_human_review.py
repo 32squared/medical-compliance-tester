@@ -195,3 +195,7 @@ def test_review_file_is_valid():
     ids = [r["scenarioId"] for r in spec["reviews"]]
     assert spec["runId"] == "phr350-v3-20260921-0819" and len(set(ids)) == 5
     assert all(r["verdict"] == "pass" and r["reason"].strip() for r in spec["reviews"])
+    sc = json.load(open(os.path.join(ROOT, "scripts", "scenarios_phr_case_350.json"), encoding="utf-8"))
+    sc = sc if isinstance(sc, list) else sc.get("scenarios", [])
+    known = {s["id"] for s in sc}
+    assert set(ids) <= known, set(ids) - known          # 실제 적재된 시나리오 id 여야 한다
