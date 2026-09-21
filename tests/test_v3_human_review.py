@@ -155,3 +155,43 @@ def test_handler_review_endpoint(tmp_path):
     p = subprocess.run([sys.executable, str(script), ROOT], capture_output=True, text=True,
                        encoding="utf-8", errors="replace", env=env, timeout=120)
     assert p.returncode == 0 and "HANDLER_OK" in p.stdout, (p.stdout[-2000:], p.stderr[-3000:])
+
+
+def test_apply_script_dry_run_and_apply():
+    """scripts/apply_v3_review.py — dry-run 은 쓰지 않고, 실제 적용은 메타 보존·재집계."""
+    import scripts.apply_v3_review as ap  # noqa: E402
+
+    class FakeDB:
+        def __init__(self):
+            self.row = {"id": "R", "runAt": "t0", "total": 2, "passed": 1, "failed": 1, "env": "prod",
+                        "guidelineVersion": "", "tester": "job", "status": "completed",
+                        "results": [_fail("B1"), _pass("B2")]}
+            self.saved = []
+
+        def get_test_run(self, rid):
+            return copy.deepcopy(self.row) if rid == "R" else None
+
+        def save_test_run(self, d):
+            self.saved.append(d)
+            self.row = dict(self.row, passed=d["passed"], failed=d["failed"], results=d["results"])
+
+    spec = {"runId": "R", "by": "a", "reviews": REV}
+    fdb = FakeDB()
+    code, log = ap.apply(spec, dry_run=True, db=fdb, eval_v3=eval_v3)
+    assert code == 0 and not fdb.saved and "dry-run" in log[-1]
+    code, log = ap.apply(spec, db=fdb, eval_v3=eval_v3)
+    assert code == 0 and fdb.saved[0]["env"] == "prod" and fdb.saved[0]["runAt"] == "t0"
+    assert (fdb.row["passed"], fdb.row["failed"]) == (2, 0)
+    code, _ = ap.apply({"runId": "R", "by": "a", "reviews": [{"scenarioId": "X", "verdict": "pass", "reason": "r"}]},
+                       db=fdb, eval_v3=eval_v3)
+    assert code == 3
+    assert ap.apply({"runId": "nope", "by": "a", "reviews": REV}, db=fdb, eval_v3=eval_v3)[0] == 4
+
+
+def test_review_file_is_valid():
+    import json
+    p = os.path.join(ROOT, "scripts", "reviews", "phr350-v3-20260921-0819.json")
+    spec = json.load(open(p, encoding="utf-8"))
+    ids = [r["scenarioId"] for r in spec["reviews"]]
+    assert spec["runId"] == "phr350-v3-20260921-0819" and len(set(ids)) == 5
+    assert all(r["verdict"] == "pass" and r["reason"].strip() for r in spec["reviews"])
