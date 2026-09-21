@@ -36,7 +36,7 @@
 ```powershell
 .\scripts\run_phr350_v3.ps1
 ```
-결과: /eval-v3 (법률 게이트 분포, 규칙별 위반, PV·UV 미충족 항목, 카테고리별). 운영 환산 점수(finalScore)는
+결과: `python scripts/report_v3_run.py --run-id <RUN_ID>` → PV·UV 중심 보고서(항목별 미충족·질문 유형별·건별 필터·용어집, job 로그만 읽음). /eval-v3 (법률 게이트 분포, 규칙별 위반, PV·UV 미충족 항목, 카테고리별). 운영 환산 점수(finalScore)는
 legal fail=0, PV 등급 A100·B85·C70·D60, 등급 없음 90 — UV 는 점수에 들어가지 않으므로 UV 등급 분포를 따로 본다.
 
 ## 비용·영향
