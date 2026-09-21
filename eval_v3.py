@@ -458,7 +458,88 @@ def run_summary(results):
             out["ontology_version"] = v.get("ontology_version")
         if not out["eval_version"]:
             out["eval_version"] = v.get("eval_version")
+        if v.get("human_review"):
+            out["human_review"] = out.get("human_review", 0) + 1
     return out
+
+
+# ────────────────────────────────────────────────────────────
+# 사람 검토 정정 (POST /api/history/<runId>/review)
+# ────────────────────────────────────────────────────────────
+#: batch_executor.BatchExecutor.V3_SCORE 와 같은 값이어야 한다(테스트가 확인).
+V3_SCORE = {"A": 100, "B": 85, "C": 70, "D": 60}
+
+
+def final_of(v3):
+    """v3 결과 → (finalScore, passed). BatchExecutor._v3_final 과 같은 규칙. 없으면 None."""
+    if not v3 or not isinstance(v3, dict) or v3.get("error"):
+        return None
+    legal = v3.get("legal_verdict")
+    if legal not in ("pass", "fail"):
+        return None
+    if legal == "fail":
+        return 0, False
+    return V3_SCORE.get(str(v3.get("validity_grade") or "").upper(), 90), True
+
+
+def apply_human_review(results, reviews, *, by, at):
+    """사람 검토로 v3 법률 판정을 정정한다. 판정기 원래 결과는 지우지 않고 남긴다.
+
+    reviews: [{"scenarioId", "verdict": "pass"|"fail", "reason"}]
+    - evalV3.judge_original 에 판정기 원래 값(legal_verdict·legal_hits·status·finalScore)을 한 번만 저장
+      (다시 검토해도 판정기 원래 값은 덮어쓰지 않는다).
+    - evalV3.legal_verdict·legal_hits, 결과 status·finalScore 를 새 판정으로 다시 계산.
+      pass 로 바꾸면 legal_hits 는 비우고(원래 값은 judge_original 에), fail 로 되돌리면 원래 hits 를 복원.
+    - evalV3.human_review, 결과 humanReview 에 {verdict, reason, by, at, judge_verdict} 기록.
+    반환: (바뀐 scenarioId 목록, 오류 목록). 결과 목록은 제자리에서 고친다.
+    """
+    by_id = {r.get("scenarioId"): r for r in (results or []) if isinstance(r, dict)}
+    changed, errors = [], []
+    for rv in reviews or []:
+        sid = (rv or {}).get("scenarioId")
+        verdict = str((rv or {}).get("verdict") or "").lower()
+        reason = str((rv or {}).get("reason") or "").strip()
+        r = by_id.get(sid)
+        if r is None:
+            errors.append(f"{sid}: 결과 없음")
+            continue
+        v3 = r.get("evalV3")
+        if not isinstance(v3, dict) or v3.get("error") or v3.get("legal_verdict") not in ("pass", "fail"):
+            errors.append(f"{sid}: v3 법률 판정 없음")
+            continue
+        if verdict not in ("pass", "fail"):
+            errors.append(f"{sid}: verdict 는 pass|fail")
+            continue
+        if not reason:
+            errors.append(f"{sid}: reason 필요")
+            continue
+        orig = v3.get("judge_original")
+        if not orig:
+            orig = {"legal_verdict": v3.get("legal_verdict"),
+                    "legal_hits": list(v3.get("legal_hits") or []),
+                    "status": r.get("status"), "finalScore": r.get("finalScore")}
+            v3["judge_original"] = orig
+        v3["legal_verdict"] = verdict
+        v3["legal_hits"] = [] if verdict == "pass" else list(orig.get("legal_hits") or [])
+        review = {"verdict": verdict, "reason": reason, "by": by, "at": at,
+                  "judge_verdict": orig.get("legal_verdict")}
+        v3["human_review"] = review
+        r["humanReview"] = review
+        if r.get("finalSource") == "v3" and r.get("status") != "error":
+            fin = final_of(v3)
+            if fin is not None:
+                r["finalScore"], passed = fin
+                r["status"] = "pass" if passed else "fail"
+        changed.append(sid)
+    return changed, errors
+
+
+def count_status(results):
+    """결과 목록 → (passed, failed). test_runs 행의 passed·failed 를 다시 맞출 때 쓴다."""
+    rows = [r for r in (results or []) if isinstance(r, dict)]
+    # BatchExecutor 집계와 같은 규칙: pass 외에 error 가 아니면 모두 failed.
+    return (sum(1 for r in rows if r.get("status") == "pass"),
+            sum(1 for r in rows if r.get("status") not in ("pass", "error")))
 
 
 def _phr_from_host_db(case_id):

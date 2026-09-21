@@ -31,6 +31,12 @@ elif [ "$RUN_MODE" = "seed_scenarios" ]; then
     if [ "$SEED_DRY_RUN" = "1" ]; then SEED_ARGS="--dry-run"; fi
     echo "[entrypoint] mode=seed_scenarios → scripts/seed_scenarios_json.py ${SEED_ARGS}"
     exec python /app/scripts/seed_scenarios_json.py --file "${SEED_SCENARIOS_JSON:-/app/scripts/scenarios_v18_regression.json}" ${SEED_ARGS}
+elif [ "$RUN_MODE" = "apply_v3_review" ]; then
+    # v3 법률 판정 사람 검토 정정 (Cloud Run Job 전용) — scripts/apply_v3_review.py 참고.
+    SEED_ARGS=""
+    if [ "$SEED_DRY_RUN" = "1" ]; then SEED_ARGS="--dry-run"; fi
+    echo "[entrypoint] mode=apply_v3_review → scripts/apply_v3_review.py ${REVIEW_FILE} ${SEED_ARGS}"
+    exec python /app/scripts/apply_v3_review.py --file "/app/${REVIEW_FILE}" ${SEED_ARGS}
 elif [ "$RUN_MODE" = "seed_phr_batch" ]; then
     # PHR 배치 평가 문항 시드 (Cloud Run Job 전용) — scripts/seed_phr_batch.py 참고.
     SEED_ARGS=""
