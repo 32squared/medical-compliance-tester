@@ -47,18 +47,45 @@ def load(path):
     return out
 
 
+def missing_cases(rows, get_cases=None):
+    """rows 의 phrCaseId 중 호스트 phr_cases 에 없는 것(정렬). phrCaseId 가 없으면 []."""
+    want = {r.get('phrCaseId') for r in rows if r.get('phrCaseId')}
+    if not want:
+        return []
+    cases = (get_cases or db.get_phr_cases)()
+    have = set()
+    for c in cases:
+        have.add(c.get('id'))
+        have.add(c.get('case_no'))
+    return sorted(want - have)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--file', default=os.environ.get('SEED_SCENARIOS_JSON', ''))
     ap.add_argument('--dry-run', action='store_true')
     ap.add_argument('--no-replace', action='store_true', help='같은 id 가 있으면 덮어쓰지 않고 건너뛴다')
+    ap.add_argument('--allow-missing-cases', action='store_true',
+                    help='phrCaseId 가 phr_cases 에 없어도 적재한다(기본은 중단)')
     args = ap.parse_args()
     if not args.file or not os.path.isfile(args.file):
         print(f'[seed_scenarios] 파일 없음: {args.file!r}')
         return 2
 
     rows = load(args.file)
-    print(f'[seed_scenarios] {os.path.basename(args.file)} → {len(rows)}건  ids={[r["id"] for r in rows]}')
+    ids = [r["id"] for r in rows]
+    shown = ids if len(ids) <= 20 else ids[:10] + ['…'] + ids[-5:]
+    print(f'[seed_scenarios] {os.path.basename(args.file)} → {len(rows)}건  ids={shown}')
+
+    # 케이스 존재 검사 — 케이스 없는 PHR 문항은 기록 없이 나가 PV·UV 가 채점되지 않는다.
+    missing = missing_cases(rows)
+    if missing:
+        print(f'[seed_scenarios] PHR 케이스 미존재 {len(missing)}종: {missing[:10]}')
+        if not args.allow_missing_cases:
+            print('[seed_scenarios] 중단 (--allow-missing-cases 로 무시)')
+            return 3
+    elif any(r.get('phrCaseId') for r in rows):
+        print(f'[seed_scenarios] 케이스 검사 OK ({len({r["phrCaseId"] for r in rows if r.get("phrCaseId")})}종 전부 존재)')
     if args.dry_run:
         print('[seed_scenarios] dry-run — 저장하지 않음')
         return 0
