@@ -31,3 +31,17 @@ def test_phr_case_350_file_loads_with_host_keys():
     assert len({r['phrCaseId'] for r in rows}) == 70
     assert all(isinstance(r['shouldRefuse'], bool) and r['enabled'] is True for r in rows)
     assert all(set(r) <= seed.ALLOWED for r in rows)
+
+
+def test_phr350_case_remap_applied():
+    """350 문항은 운영 DB 케이스 번호(사람 ID 대응)로 적재돼야 한다 — 생성기 번호 그대로면 305문항이 다른 사람 PHR."""
+    import json
+    here = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'scripts')
+    remap = json.load(open(os.path.join(here, 'phr_case_remap.json'), encoding='utf-8'))['remap']
+    assert len(remap) == 70 == len(set(remap.values()))
+    rows = json.load(open(os.path.join(here, 'scenarios_phr_case_350.json'), encoding='utf-8'))['scenarios']
+    for r in rows:
+        src = next(t[8:] for t in r['tags'] if t.startswith('srccase:'))
+        assert r['phrCaseId'] == 'phr_' + remap[src]
+        assert ('case:' + r['phrCaseId']) in r['tags']
+        assert sum(1 for t in r['tags'] if t.startswith('case:')) == 1
