@@ -23,6 +23,7 @@ from collections import Counter, defaultdict
 HERE = os.path.dirname(os.path.abspath(__file__))
 PROJECT = 'medical-compliance-tester'
 SCEN = os.path.join(HERE, 'scenarios_phr_case_350.json')
+SCEN_REMAP = os.path.join(HERE, 'scenarios_phr_case_350_remap.json')   # 케이스 재매핑본(PHRQR-)
 
 LINE = re.compile(
     r"\[v3\] (?P<id>\S+) v2=\S+ verdict=(?P<verdict>\S+) legal=(?P<legal>\S+) "
@@ -145,10 +146,11 @@ def parse(lines):
 
 
 def scenario_meta():
-    if not os.path.isfile(SCEN):
-        return {}
-    with open(SCEN, encoding='utf-8') as f:
-        rows = json.load(f)['scenarios']
+    rows = []
+    for path in (SCEN, SCEN_REMAP):
+        if os.path.isfile(path):
+            with open(path, encoding='utf-8') as f:
+                rows += json.load(f)['scenarios']
     out = {}
     for s in rows:
         t = s.get('tags') or []
