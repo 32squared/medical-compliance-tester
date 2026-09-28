@@ -551,6 +551,22 @@ CREATE TABLE IF NOT EXISTS advisory_reviews (
 CREATE INDEX IF NOT EXISTS idx_adv_reviews_reviewer ON advisory_reviews(reviewer_id);
 CREATE INDEX IF NOT EXISTS idx_adv_reviews_case ON advisory_reviews(case_id);
 CREATE INDEX IF NOT EXISTS idx_adv_reviews_msg ON advisory_reviews(message_id);
+
+-- 정답지(골드셋) 라벨 — 사람이 v3 판정 결과를 검토해 붙인 정답. 검토자별 1행(2인 교차 라벨 가능).
+CREATE TABLE IF NOT EXISTS gold_labels (
+    id TEXT PRIMARY KEY,
+    run_id TEXT NOT NULL,
+    scenario_id TEXT NOT NULL,
+    labeler_id TEXT NOT NULL,
+    labeler_name TEXT DEFAULT '',
+    labels_json TEXT DEFAULT '{}',
+    judge_json TEXT DEFAULT '{}',
+    note TEXT DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_gold_labels_run ON gold_labels(run_id);
+CREATE INDEX IF NOT EXISTS idx_gold_labels_labeler ON gold_labels(labeler_id);
 """
 
 # ── 스키마 (PostgreSQL) ──
@@ -892,6 +908,22 @@ CREATE TABLE IF NOT EXISTS advisory_reviews (
 CREATE INDEX IF NOT EXISTS idx_adv_reviews_reviewer ON advisory_reviews(reviewer_id);
 CREATE INDEX IF NOT EXISTS idx_adv_reviews_case ON advisory_reviews(case_id);
 CREATE INDEX IF NOT EXISTS idx_adv_reviews_msg ON advisory_reviews(message_id);
+
+-- 정답지(골드셋) 라벨 — 사람이 v3 판정 결과를 검토해 붙인 정답. 검토자별 1행(2인 교차 라벨 가능).
+CREATE TABLE IF NOT EXISTS gold_labels (
+    id TEXT PRIMARY KEY,
+    run_id TEXT NOT NULL,
+    scenario_id TEXT NOT NULL,
+    labeler_id TEXT NOT NULL,
+    labeler_name TEXT DEFAULT '',
+    labels_json JSONB DEFAULT '{}'::jsonb,
+    judge_json JSONB DEFAULT '{}'::jsonb,
+    note TEXT DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_gold_labels_run ON gold_labels(run_id);
+CREATE INDEX IF NOT EXISTS idx_gold_labels_labeler ON gold_labels(labeler_id);
 """
 
 # Keep backward compat alias
@@ -4090,6 +4122,61 @@ def get_advisory_reviews(message_id=None, reviewer_id=None, case_id=None, limit=
         d['createdAt'] = d.pop('created_at', '') or ''
         d['updatedAt'] = d.pop('updated_at', '') or ''
         out.append(d)
+    return out
+
+
+def gold_label_id(run_id, scenario_id, labeler_id):
+    return f"gold_{run_id}_{scenario_id}_{labeler_id}"
+
+
+def save_gold_label(row):
+    """정답지 라벨 저장 — (run, 문항, 검토자) 1행. 같은 검토자가 다시 저장하면 갱신(생성 시각 유지)."""
+    now_iso = datetime.now(timezone.utc).isoformat()
+    ph = _p()
+    rid = gold_label_id(row['run_id'], row['scenario_id'], row['labeler_id'])
+    with get_conn() as (conn, cur):
+        cur.execute(f"SELECT created_at FROM gold_labels WHERE id = {ph}", (rid,))
+        old = cur.fetchone()
+        created = (_row_to_dict(old).get('created_at') if old else None) or now_iso
+        cur.execute(f"DELETE FROM gold_labels WHERE id = {ph}", (rid,))
+        cur.execute(
+            f"""INSERT INTO gold_labels
+            (id, run_id, scenario_id, labeler_id, labeler_name, labels_json, judge_json, note,
+             created_at, updated_at) VALUES ({_ph(10)})""",
+            (rid, row['run_id'], row['scenario_id'], row['labeler_id'], row.get('labeler_name', ''),
+             json.dumps(row.get('labels') or {}, ensure_ascii=False),
+             json.dumps(row.get('judge') or {}, ensure_ascii=False),
+             (row.get('note') or '')[:2000], created, now_iso),
+        )
+    return rid
+
+
+def get_gold_labels(run_id=None, scenario_id=None, labeler_id=None, limit=5000):
+    """정답지 라벨 조회. 넘긴 조건은 모두 AND."""
+    ph = _p()
+    where, args = [], []
+    for col, val in (('run_id', run_id), ('scenario_id', scenario_id), ('labeler_id', labeler_id)):
+        if val:
+            where.append(f"{col} = {ph}")
+            args.append(val)
+    sql = "SELECT * FROM gold_labels"
+    if where:
+        sql += " WHERE " + " AND ".join(where)
+    sql += f" ORDER BY run_id, scenario_id, labeler_id LIMIT {int(limit)}"
+    with get_conn() as (conn, cur):
+        cur.execute(sql, tuple(args))
+        rows = cur.fetchall()
+    out = []
+    for r in rows:
+        d = _row_to_dict(r)
+        out.append({
+            'id': d.get('id'), 'runId': d.get('run_id'), 'scenarioId': d.get('scenario_id'),
+            'labelerId': d.get('labeler_id'), 'labelerName': d.get('labeler_name') or '',
+            'labels': _pg_json_loads_or(d.get('labels_json', '{}'), {}),
+            'judge': _pg_json_loads_or(d.get('judge_json', '{}'), {}),
+            'note': d.get('note') or '', 'createdAt': d.get('created_at') or '',
+            'updatedAt': d.get('updated_at') or '',
+        })
     return out
 
 
