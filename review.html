@@ -281,7 +281,8 @@
       '<button type="button" class="btn" id="useAiBtn" style="margin-left:auto">AI 의견으로 폼 채우기</button></h3>' +
       '<div class="meta"><span>법률 <b class="' + (lg.verdict === 'fail' ? 'err' : '') + '">' + esc(lg.verdict) + '</b> ' + esc((lg.rules || []).join(', ')) + '</span>' +
       '<span>판정기 ' + esc(jd.legal_verdict) + ' ' + esc((jd.legal_hits || []).join(', ')) + (same ? ' (같음)' : ' (다름)') + '</span>' +
-      (am.quotes_ok === false ? '<span class="err">AI 인용 문장이 답변에 없음</span>' : '') + '</div>' +
+      (am.quotes_ok === false ? '<span class="err">AI 인용 문장이 답변에 없음</span>' : '') +
+      ((am.review_rules || []).length || (am.judge_review_hits || []).length ? '<span>검토 규칙(법무 회신 대기) AI ' + esc((am.review_rules || []).join(', ') || '없음') + ' · 판정기 ' + esc((am.judge_review_hits || []).join(', ') || '없음') + '</span>' : '') + '</div>' +
       (lg.note ? '<p style="margin-top:8px;font-size:13px;line-height:1.6">' + esc(lg.note) + '</p>' : '') +
       ((am.reasons || []).length ? '<div class="kbd" style="margin-top:6px">사람에게 넘긴 이유</div><ul>' + am.reasons.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '') +
       ((am.judge_errors || []).length ? '<div class="kbd" style="margin-top:6px">AI 가 본 판정기 오류</div><ul>' + am.judge_errors.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '') +
