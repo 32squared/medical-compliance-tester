@@ -2602,6 +2602,13 @@ class ProxyHandler(BaseHTTPRequestHandler):
         if self.path == '/api/history/re-evaluate':
             return self._re_evaluate_history(body)
 
+        # ── v3 법률 판정 사람 검토 정정 (Admin) ──
+        m_review = re.match(r'^/api/history/([^/]+)/review$', self.path)
+        if m_review:
+            if not self._is_admin():
+                return self._send_error(403, 'Admin 권한이 필요합니다')
+            return self._review_history_run(m_review.group(1), body)
+
         # ── 여러 배치 결과 합쳐 단일 통합 runId 생성 ──
         if self.path == '/api/history/merge':
             if not self._is_admin():
@@ -3565,6 +3572,19 @@ class ProxyHandler(BaseHTTPRequestHandler):
         skipped = 0
 
         items = payload if isinstance(payload, list) else payload.get('scenarios', [])
+        # 무결성 검사 — PHR 문항이 연결된 사람의 기록과 맞지 않으면 가져오지 않는다(force 로 무시).
+        force = isinstance(payload, dict) and bool(payload.get('force'))
+        rows = [i for i in items if isinstance(i, dict)]
+        if any(r.get('phrCaseId') for r in rows):
+            import scenario_integrity
+            errors, warns = scenario_integrity.check_rows(rows, db.get_phr_case)
+            if errors and not force:
+                summ = scenario_integrity.summarize(errors)
+                n = len({e['id'] for e in errors})
+                return self._send_json(400, {
+                    'error': (f'무결성 검사 실패: 문항 {n}건이 연결된 PHR 기록과 맞지 않습니다 {summ["counts"]}. '
+                              f'가져오지 않았습니다. 예: {summ["examples"][0]["id"]} — {summ["examples"][0]["detail"]}'),
+                    'integrity': summ, 'warnings': scenario_integrity.summarize(warns)})
         for item in items:
             try:
                 item.setdefault('enabled', True)
@@ -4189,7 +4209,7 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
             if not rid:
                 continue
             scanned += 1
-            key = (rid, m.get('status'), m.get('total'))
+            key = (rid, m.get('status'), m.get('total'), m.get('passed'), m.get('failed'))
             cached = _V3_RUN_CACHE.get(rid)
             if cached and cached[0] == key:
                 summ = cached[1]
@@ -4257,6 +4277,47 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
             r['id'] = run_id
             _save_run_to_db(_db_run_to_proxy(r))
         return self._send_json(200, {"message": "이력 업데이트 완료"})
+
+    def _review_history_run(self, run_id, body):
+        """POST /api/history/<runId>/review — v3 법률 판정을 사람 검토로 정정 (Admin).
+
+        body: {"by": "검토자", "reviews": [{"scenarioId", "verdict": "pass"|"fail", "reason"}]}
+        판정기 원래 결과는 evalV3.judge_original 에 남기고, status·finalScore·실행 passed/failed 를 다시 맞춘다.
+        PUT /api/history/<runId> 와 달리 _db_run_to_proxy 왕복을 거치지 않아 실행 종류·시각·환경이 그대로다.
+        """
+        try:
+            payload = json.loads(body or b'{}')
+        except json.JSONDecodeError:
+            return self._send_error(400, '잘못된 JSON')
+        reviews = payload.get('reviews')
+        by = str(payload.get('by') or '').strip()
+        if not isinstance(reviews, list) or not reviews:
+            return self._send_error(400, 'reviews 목록이 필요합니다')
+        if not by:
+            return self._send_error(400, 'by(검토자)가 필요합니다')
+        r = db.get_test_run(run_id)
+        if not r:
+            return self._send_error(404, f'이력을 찾을 수 없습니다: {run_id}')
+        if (r.get('status') or '') == 'running':
+            return self._send_error(409, '실행 중인 이력은 정정할 수 없습니다')
+        import eval_v3 as _ev
+        at = datetime.now(timezone.utc).isoformat(timespec='seconds')
+        results = r.get('results') or []
+        changed, errors = _ev.apply_human_review(results, reviews, by=by, at=at)
+        if errors:
+            # 하나라도 틀리면 아무것도 쓰지 않는다(부분 반영 방지)
+            return self._send_json(400, {'error': '정정 실패', 'errors': errors})
+        before = (r.get('passed', 0), r.get('failed', 0))
+        passed, failed = _ev.count_status(results)
+        db.save_test_run({
+            'id': run_id, 'runAt': r.get('runAt', ''), 'total': r.get('total', 0),
+            'passed': passed, 'failed': failed, 'env': r.get('env', 'dev'),
+            'guidelineVersion': r.get('guidelineVersion', ''), 'tester': r.get('tester', ''),
+            'results': results, 'status': r.get('status', 'completed'),
+        })
+        _V3_RUN_CACHE.pop(run_id, None)
+        return self._send_json(200, {'runId': run_id, 'changed': changed,
+                                     'passed': [before[0], passed], 'failed': [before[1], failed]})
 
     def _delete_history_run(self, run_id):
         """DELETE /api/history/<runId> — 이력 삭제 (PostgreSQL/SQLite 양쪽 호환)"""

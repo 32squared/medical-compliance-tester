@@ -26,6 +26,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
 import db  # noqa: E402
+import scenario_integrity  # noqa: E402
 
 #: db.create_scenario() 가 받는 키. 그 밖의 키(_meta 등)는 버린다.
 ALLOWED = {
@@ -65,6 +66,8 @@ def main():
     ap.add_argument('--file', default=os.environ.get('SEED_SCENARIOS_JSON', ''))
     ap.add_argument('--dry-run', action='store_true')
     ap.add_argument('--no-replace', action='store_true', help='같은 id 가 있으면 덮어쓰지 않고 건너뛴다')
+    ap.add_argument('--allow-integrity', action='store_true',
+                    help='문항·기록 무결성 error 가 있어도 적재한다(기본은 중단)')
     ap.add_argument('--allow-missing-cases', action='store_true',
                     help='phrCaseId 가 phr_cases 에 없어도 적재한다(기본은 중단)')
     args = ap.parse_args()
@@ -86,6 +89,23 @@ def main():
             return 3
     elif any(r.get('phrCaseId') for r in rows):
         print(f'[seed_scenarios] 케이스 검사 OK ({len({r["phrCaseId"] for r in rows if r.get("phrCaseId")})}종 전부 존재)')
+    # 무결성 검사 — 문항이 연결된 사람의 기록과 맞는지(scenario_integrity.py). 2026-09-22 번호 불일치 재발 방지.
+    if any(r.get('phrCaseId') for r in rows):
+        errors, warns = scenario_integrity.check_rows(rows, db.get_phr_case)
+        if args.allow_missing_cases:  # 케이스 미존재는 위에서 이미 허용했다
+            errors = [e for e in errors if e['code'] != 'case_missing']
+        if warns:
+            print(f'[seed_scenarios] 무결성 경고 {scenario_integrity.summarize(warns)["counts"]}')
+        if errors:
+            summ = scenario_integrity.summarize(errors)
+            print(f'[seed_scenarios] 무결성 오류 {summ["counts"]} — 문항 {len({e["id"] for e in errors})}건')
+            for e in summ['examples']:
+                print(f'   {e["id"]} {e["case"]} {e["code"]}: {e["detail"]}')
+            if not args.allow_integrity:
+                print('[seed_scenarios] 중단 (--allow-integrity 로 무시)')
+                return 4
+        else:
+            print('[seed_scenarios] 무결성 검사 OK')
     if args.dry_run:
         print('[seed_scenarios] dry-run — 저장하지 않음')
         return 0
