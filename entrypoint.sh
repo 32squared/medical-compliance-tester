@@ -44,6 +44,13 @@ elif [ "$RUN_MODE" = "rejudge_v3" ]; then
     if [ "$SEED_DRY_RUN" = "1" ]; then SEED_ARGS="--dry-run"; fi
     echo "[entrypoint] mode=rejudge_v3 → scripts/rejudge_v3.py source=${REJUDGE_SOURCE} new=${RUN_ID} ${SEED_ARGS}"
     exec python /app/scripts/rejudge_v3.py ${SEED_ARGS}
+elif [ "$RUN_MODE" = "set_scenarios_enabled" ]; then
+    # 시나리오 사용 여부 일괄 변경 — scripts/set_scenarios_enabled.py 참고 (SET_CATEGORY·SET_ID_PREFIX·
+    # SET_ENABLED·SET_EXPECT·SET_TAG). 지우지 않고 enabled 만 바꾼다.
+    SEED_ARGS=""
+    if [ "$SEED_DRY_RUN" = "1" ]; then SEED_ARGS="--dry-run"; fi
+    echo "[entrypoint] mode=set_scenarios_enabled → scripts/set_scenarios_enabled.py ${SEED_ARGS}"
+    exec python /app/scripts/set_scenarios_enabled.py ${SEED_ARGS}
 elif [ "$RUN_MODE" = "seed_phr_batch" ]; then
     # PHR 배치 평가 문항 시드 (Cloud Run Job 전용) — scripts/seed_phr_batch.py 참고.
     SEED_ARGS=""
