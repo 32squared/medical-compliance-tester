@@ -105,6 +105,7 @@
       <select id="runSel" aria-label="실행 선택"></select>
       <select id="filterSel" aria-label="목록 필터">
         <option value="ai">AI 검수: 사람 확인 필요</option>
+        <option value="aiitem">AI 검수: 항목(PV·SV·UV) 이견</option>
         <option value="aiok">AI 검수: 문제 없음</option>
         <option value="all">전체</option>
         <option value="todo">검토 안 한 것</option>
@@ -200,7 +201,7 @@
       // AI 검수가 끝난 실행이면 '사람 확인 필요' 목록부터 보여 준다. 검수가 없으면 전체.
       var hasAi = Object.keys(ai).length > 0, fs = $('filterSel');
       if (hasAi && !selectRun._touched) fs.value = 'ai';
-      if (!hasAi && (fs.value === 'ai' || fs.value === 'aiok')) fs.value = 'all';
+      if (!hasAi && /^ai/.test(fs.value)) fs.value = 'all';
       renderList();
       var sid = decodeURIComponent((location.hash || '').split('/')[1] || '');
       if (sid) openItem(sid);
@@ -219,7 +220,8 @@
       if (f === 'fail') return judgeLegal(r) === 'fail';
       if (f === 'diff') return differs(r);
       if (f === 'ai') return !!(ai[r.scenarioId] && ai[r.scenarioId].needs_human);
-      if (f === 'aiok') return !!(ai[r.scenarioId] && !ai[r.scenarioId].needs_human);
+      if (f === 'aiitem') return !!(ai[r.scenarioId] && ai[r.scenarioId].item_review);
+      if (f === 'aiok') return !!(ai[r.scenarioId] && !ai[r.scenarioId].needs_human && !ai[r.scenarioId].item_review);
       return true;
     });
   }
@@ -236,7 +238,7 @@
         '<span class="done">' + (mine[r.scenarioId] ? '✓' : '') + '</span>' +
         '<span class="sid">' + esc(r.scenarioId) + '</span>' +
         (differs(r) ? '<span class="chip c-diff">다름</span>' : '') +
-        (ai[r.scenarioId] ? (ai[r.scenarioId].needs_human ? '<span class="chip c-ai">AI 확인</span>' : '<span class="chip c-aiok">AI ✓</span>') : '') +
+        (ai[r.scenarioId] ? (ai[r.scenarioId].needs_human ? '<span class="chip c-ai">AI 확인</span>' : ai[r.scenarioId].item_review ? '<span class="chip c-aiok">항목 이견</span>' : '<span class="chip c-aiok">AI ✓</span>') : '') +
         '<span class="chip ' + (jl === 'fail' ? 'c-fail' : 'c-pass') + '">' + esc(jl) + '</span>' +
         '<span class="chip c-grade">' + esc(g) + '</span></div>';
     }).join('') || '<div class="empty">해당하는 문항이 없습니다</div>';
@@ -275,7 +277,7 @@
     var lg = al.legal || {}, same = lg.verdict === jd.legal_verdict;
     var items = Object.keys(al.items || {}).filter(function (k) { return (jd.items || {})[k] && (jd.items || {})[k] !== al.items[k]; });
     return '<div class="sec ai"><h3>AI 검수 의견<span class="hint">' + esc(A.labelerName || A.labelerId) + ' · 확신 ' + esc(am.confidence || '-') + '</span>' +
-      (am.needs_human ? '<span class="chip c-ai">사람 확인 필요</span>' : '<span class="chip c-aiok">판정기와 같음</span>') +
+      (am.needs_human ? '<span class="chip c-ai">사람 확인 필요</span>' : '<span class="chip c-aiok">법률 판단 판정기와 같음</span>') + (am.item_review ? '<span class="chip c-aiok">항목 이견</span>' : '') +
       '<button type="button" class="btn" id="useAiBtn" style="margin-left:auto">AI 의견으로 폼 채우기</button></h3>' +
       '<div class="meta"><span>법률 <b class="' + (lg.verdict === 'fail' ? 'err' : '') + '">' + esc(lg.verdict) + '</b> ' + esc((lg.rules || []).join(', ')) + '</span>' +
       '<span>판정기 ' + esc(jd.legal_verdict) + ' ' + esc((jd.legal_hits || []).join(', ')) + (same ? ' (같음)' : ' (다름)') + '</span>' +
