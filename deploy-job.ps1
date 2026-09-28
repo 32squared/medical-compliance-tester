@@ -96,7 +96,10 @@ $gcloudArgs = @(
     "--vpc-egress=all-traffic",
     "--execution-environment=gen2"
 )
-Write-Host "[DEBUG] gcloud $($gcloudArgs -join ' ')" -ForegroundColor DarkGray
+# 출력용 문자열에서만 DB 비밀번호를 가린다 (실행 인자 $gcloudArgs 는 그대로).
+# 비밀번호는 URL 인코딩 없이 들어가 '@' ':' ';' 를 품을 수 있으므로 정규식 대신 값 자체를 치환한다.
+$gcloudArgsDisplay = ($gcloudArgs -join ' ').Replace($DbPassword, '****')
+Write-Host "[DEBUG] gcloud $gcloudArgsDisplay" -ForegroundColor DarkGray
 & gcloud @gcloudArgs
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Job $Action failed!" -ForegroundColor Red
