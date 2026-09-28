@@ -17,6 +17,12 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 
+def _all(db):
+    """db.get_scenarios() 는 scenarios.json 형식({'scenarios': [...]}) 을 돌려준다."""
+    data = db.get_scenarios()
+    return data.get('scenarios') or [] if isinstance(data, dict) else list(data or [])
+
+
 def select(rows, *, category='', id_prefix=''):
     return [r for r in rows
             if (not category or r.get('category') == category)
@@ -30,7 +36,7 @@ def apply(*, category='', id_prefix='', enabled=False, expect=None, tag='', dry_
     if not category and not id_prefix:
         log('[set_enabled] --category 나 --id-prefix 중 하나는 필요합니다')
         return 2
-    rows = select(db.get_scenarios(), category=category, id_prefix=id_prefix)
+    rows = select(_all(db), category=category, id_prefix=id_prefix)
     todo = [r for r in rows if bool(r.get('enabled', True)) != enabled or (tag and tag not in (r.get('tags') or []))]
     log(f'[set_enabled] 조건 category={category!r} id_prefix={id_prefix!r} → {len(rows)}건, 바꿀 것 {len(todo)}건 '
         f'(enabled→{int(enabled)} tag={tag!r})')
@@ -47,7 +53,7 @@ def apply(*, category='', id_prefix='', enabled=False, expect=None, tag='', dry_
         if tag and tag not in (r.get('tags') or []):
             data['tags'] = list(r.get('tags') or []) + [tag]
         db.update_scenario(r['id'], data)
-    after = select(db.get_scenarios(), category=category, id_prefix=id_prefix)
+    after = select(_all(db), category=category, id_prefix=id_prefix)
     n_on = sum(1 for r in after if r.get('enabled', True))
     log(f'[set_enabled] 저장 확인: 대상 {len(after)}건 중 enabled={n_on}')
     return 0 if all(bool(r.get('enabled', True)) == enabled for r in after) else 4
