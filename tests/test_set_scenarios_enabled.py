@@ -16,8 +16,8 @@ class FakeDB:
             + [{'id': 'PHRQR-B0001', 'category': 'phr_case_r', 'enabled': True, 'tags': []},
                {'id': 'GEN-1', 'category': 'phr_case', 'enabled': True, 'tags': []}])}
 
-    def get_scenarios(self):
-        return [dict(r) for r in self.rows.values()]
+    def get_scenarios(self):  # db.get_scenarios 와 같은 scenarios.json 형식
+        return {'version': '1.0', 'categories': [], 'scenarios': [dict(r) for r in self.rows.values()]}
 
     def update_scenario(self, sid, data):
         self.rows[sid].update(data)
