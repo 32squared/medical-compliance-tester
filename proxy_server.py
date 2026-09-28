@@ -4337,7 +4337,12 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
         want_all = (params.get('all') or [''])[0] == '1' and self._is_admin()
         labels = db.get_gold_labels(run_id=run_id, scenario_id=sid, labeler_id=None if want_all else me)
         import gold_labels
+        # AI 검수(scripts/ai_verify.py, labeler 'ai:*') 의견은 사람 라벨과 따로 늘 보여 준다.
+        ai = [l for l in db.get_gold_labels(run_id=run_id, scenario_id=sid)
+              if str(l.get('labelerId') or '').startswith('ai:')]
+        labels = [l for l in labels if not str(l.get('labelerId') or '').startswith('ai:')]
         return self._send_json(200, {'runId': run_id, 'result': res, 'case': case, 'labels': labels,
+                                     'aiLabels': [dict(l, meta=gold_labels.ai_meta(l)) for l in ai],
                                      'judge': gold_labels.judge_snapshot(res), 'labeler': me,
                                      'rules': gold_labels.rule_names()})
 
@@ -4350,11 +4355,18 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
             if not self._is_admin():
                 return self._send_error(403, 'Admin 권한이 필요합니다')
             rows = db.get_gold_labels(run_id=run_id)
-            return self._send_json(200, {'labels': rows, 'stats': gold_labels.agreement(rows)})
+            human = [r for r in rows if not str(r.get('labelerId') or '').startswith('ai:')]
+            ai = [r for r in rows if str(r.get('labelerId') or '').startswith('ai:')]
+            return self._send_json(200, {'labels': rows, 'stats': gold_labels.agreement(human),
+                                         'aiStats': gold_labels.agreement(ai)})
         if not me:
             return self._send_error(403, '인증이 필요합니다')
         rows = db.get_gold_labels(run_id=run_id, labeler_id=me)
-        return self._send_json(200, {'labels': rows, 'labeler': me})
+        # 목록 필터('AI: 확인 필요')용 AI 검수 요약 — 문항 id·판단·플래그만, 답변 내용 없음.
+        ai = [{'scenarioId': r['scenarioId'], 'verdict': ((r.get('labels') or {}).get('legal') or {}).get('verdict'),
+               **{k: v for k, v in gold_labels.ai_meta(r).items() if k in ('needs_human', 'confidence', 'reasons')}}
+              for r in db.get_gold_labels(run_id=run_id) if str(r.get('labelerId') or '').startswith('ai:')]
+        return self._send_json(200, {'labels': rows, 'labeler': me, 'ai': ai})
 
     def _v3_save_label(self, body):
         """POST /api/eval-v3/labels — {runId, scenarioId, labels:{legal, items}, note}. 검토자별 1행."""
