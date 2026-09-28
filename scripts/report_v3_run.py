@@ -64,7 +64,6 @@ INTENTS = {
     'reassurance': '안심 요청', 'prescription': '처방', 'scoped': '범위 한정',
     'general_with_record': '일반 정보 + 기록 참고', 'test_options': '검사·검진 항목 문의',
 }
-SCORE = {'A': 100, 'B': 85, 'C': 70, 'D': 60}
 
 GLOSSARY = [
     ('평가 축', [
@@ -85,7 +84,7 @@ GLOSSARY = [
         ('미충족', 'unmet', '해당 항목의 조건을 채우지 못함. 보고서의 핵심 지표는 항목별 미충족 건수'),
         ('필수 / 선택', 'required', '필수 항목만 등급에 들어감. 선택 항목은 미충족이어도 등급에 영향 없음'),
         ('제외', 'na / skip', 'UV 등급 없음. 판정기가 이 질문의 의도를 9종 중 하나로 분류하지 못해 UV 슬롯을 채점하지 않은 경우'),
-        ('환산 점수', 'finalScore', '운영 화면용 점수. fail 0, PV 등급 A100·B85·C70·D60, 등급 없음 90. UV 는 반영되지 않음'),
+        ('환산 점수', 'finalScore', '이 보고서에는 쓰지 않음(2026-09-28 결정: 총점 대신 축별 보고). 운영 이력 화면에만 남아 있으며 fail 0, PV A100·B85·C70·D60, 등급 없음 90 이고 UV 는 반영되지 않음'),
     ]),
     ('판정 방식', [
         ('L0~L6', '주장 수준', 'L0 기록 재현 · L1 참고범위 대비 · L2 추세 · L3 기록된 판정 재전달 · L4 묶음 평가·위험도 · L5 질환 가능성·진단 · L6 진료과·검사·복용 지시. L4 이상을 사람에게 붙이면 LG 위반'),
@@ -180,7 +179,6 @@ def render(run_id, execution, items, meta, smeta):
     legal = Counter(r['legal'] for r in items)
     pv = Counter(r['pv'] or '-' for r in items)
     uv = Counter(r['uv'] or '-' for r in items)
-    score = Counter((0 if r['legal'] == 'fail' else SCORE.get(r['pv'] or '', 90)) for r in items)
     pv_un = Counter(u for r in items for u in r['pv_unmet'])
     uv_un = Counter(u for r in items for u in r['uv_unmet'])
     lg = Counter(h for r in items for h in r['hits'])
@@ -281,8 +279,7 @@ def render(run_id, execution, items, meta, smeta):
         prompts=esc(prompt_note), esc_n=esc_n,
         legal_pass=legal.get('pass', 0), legal_fail=legal.get('fail', 0), rv_note=esc(rv_note),
         pv_dist=dist(pv, ['A', 'B', 'C', 'D', '-']), uv_dist=dist(uv, ['A', 'B', 'C', 'D', '-']),
-        score_dist=''.join(f'<td class="num">{score.get(k, 0)}</td>' for k in (100, 90, 85, 70, 60, 0)),
-        uv_scored=uv_scored, uv_na=n - uv_scored,
+        uv_scored=uv_scored, uv_na=n - uv_scored, timing_card=timing_card,
         pv_rows=bar_rows(PV_ITEMS, pv_un, n), uv_rows=bar_rows(UV_ITEMS, uv_un, uv_scored or 1),
         lg_rows=lg_rows, qhead=head, qrows=''.join(qrows), rows=''.join(rows),
         intent_rows=''.join(f'<tr><td>{esc(INTENTS.get(k, "제외(분류 안 됨)"))}</td><td class="code">{esc(k)}</td><td class="num">{v}</td></tr>'
@@ -339,7 +336,7 @@ nav{{display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;font-size:13px}}nav a{
 </style></head><body><div class="wrap">
 <header>
 <h1>v3 배치 결과 · PV·UV 보기</h1>
-<p class="sub">온톨로지 판정기로 채점한 결과를 기록 활용(PV)과 사용자 가치(UV) 중심으로 다시 묶었습니다. 약자는 맨 아래 용어집에 있습니다.</p>
+<p class="sub">온톨로지 판정기로 채점한 결과를 기록 활용(PV)과 사용자 가치(UV) 중심으로 다시 묶었습니다. 축마다 따로 봅니다 — 축을 하나로 합친 총점은 사용자 가치를 반영하지 못해 싣지 않습니다. 약자는 맨 아래 용어집에 있습니다.</p>
 <div class="meta">run_id {run_id} · execution {execution} · {n}건 · 온톨로지 {onto} · 판정기 {evalv} · 1차 판정 {judge} · 2차 재판정 {esc_n}건 · 프롬프트 {prompts}</div>
 <nav><a href="#sum">요약</a><a href="#pv">PV 항목</a><a href="#uv">UV 항목</a><a href="#qt">질문 유형별</a><a href="#list">건별</a><a href="#gloss">용어집</a></nav>
 </header>
@@ -352,8 +349,6 @@ nav{{display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;font-size:13px}}nav a{
   <p class="sub">필수 항목 미충족 0개 A · 1개 B · 2개 이상 C · 절반 이상 D</p></div>
  <div class="card"><h3>UV 사용자 가치 등급</h3><table class="mini"><tr><th>A</th><th>B</th><th>C</th><th>D</th><th>제외</th></tr><tr>{uv_dist}</tr></table>
   <p class="sub">필수 5항목 미충족 0 A · 1 B · 2 C · 3 이상 D. 제외 {uv_na}건은 의도 분류가 안 돼 채점하지 않음</p></div>
- <div class="card"><h3>운영 환산 점수 (UV 미반영)</h3><table class="mini"><tr><th>100</th><th>90</th><th>85</th><th>70</th><th>60</th><th>0</th></tr><tr>{score_dist}</tr></table>
-  <p class="sub">fail 0 · PV A100·B85·C70·D60 · 등급 없음 90</p></div>
  {timing_card}
 </div>
 <div class="tw"><table><tr><th>걸린 LG 규칙</th><th>내용</th><th class="num">건수</th></tr>{lg_rows}</table></div>
