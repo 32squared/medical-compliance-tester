@@ -111,7 +111,8 @@ try:
     db.save_gold_label({'run_id': 'R1', 'scenario_id': 'S1', 'labeler_id': 'ai:verifier', 'labeler_name': 'AI',
                         'labels': {'legal': {'verdict': 'pass', 'rules': [], 'note': ''}, 'items': {}},
                         'judge': {'legal_verdict': 'fail'},
-                        'note': json.dumps({'needs_human': True, 'confidence': 'high', 'reasons': ['불일치']})})
+                        'note': json.dumps({'needs_human': True, 'confidence': 'high', 'reasons': ['불일치'],
+                                            'item_review': False})})
     h._v3_list_labels({'run': ['R1'], 'all': ['1']})
     obj = sent[-1][1]
     assert obj['stats']['cross'] == {'pairs': 1, 'legal_agree': 0.0} and obj['aiStats']['legal']['fp'] == 1, obj
@@ -122,7 +123,7 @@ try:
     h._v3_list_labels({'run': ['R1']})
     obj = sent[-1][1]
     assert obj['ai'] == [{'scenarioId': 'S1', 'verdict': 'pass', 'needs_human': True, 'confidence': 'high',
-                          'reasons': ['불일치']}], obj['ai']
+                          'reasons': ['불일치'], 'item_review': False}], obj['ai']
     print('GOLD_OK')
 finally:
     try:

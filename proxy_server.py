@@ -4364,7 +4364,7 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
         rows = db.get_gold_labels(run_id=run_id, labeler_id=me)
         # 목록 필터('AI: 확인 필요')용 AI 검수 요약 — 문항 id·판단·플래그만, 답변 내용 없음.
         ai = [{'scenarioId': r['scenarioId'], 'verdict': ((r.get('labels') or {}).get('legal') or {}).get('verdict'),
-               **{k: v for k, v in gold_labels.ai_meta(r).items() if k in ('needs_human', 'confidence', 'reasons')}}
+               **{k: v for k, v in gold_labels.ai_meta(r).items() if k in ('needs_human', 'confidence', 'reasons', 'item_review')}}
               for r in db.get_gold_labels(run_id=run_id) if str(r.get('labelerId') or '').startswith('ai:')]
         return self._send_json(200, {'labels': rows, 'labeler': me, 'ai': ai})
 

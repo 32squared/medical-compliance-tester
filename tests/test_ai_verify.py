@@ -79,6 +79,26 @@ def test_postprocess_flags():
            "items": {"PV-01": {"value": "unmet"}, "PV-03": {"value": "met"}, "UV-01": {"value": "met"}}}
     _, meta = av.postprocess(_res("S"), out, ids, NAMES)
     assert any("확신" in x for x in meta["reasons"]) and meta["item_diff_required"] == ["PV-01", "PV-03"]
+    # 항목 이견만으로는 사람에게 넘기지 않는다 — item_review 로 따로
+    out["confidence"] = "high"
+    _, meta = av.postprocess(_res("S"), out, ids, NAMES)
+    assert meta["needs_human"] is False and meta["item_review"] is True
+    assert meta["item_diff"] == {"PV-01": ["met", "unmet"], "PV-03": ["unmet", "met"]}
+
+
+def test_prompt_includes_rule_notes():
+    names = dict(NAMES, **{"PV-01": {"title": "수치 일치", "required": True, "note": "단위까지 같아야 met"},
+                           "LG-02": {"title": "질환 가능성 부여", "level": "L5", "note": "헷지 포함"}})
+    user, _ = av.build_user_prompt(_res("S"), None, names)
+    assert "LG-02 질환 가능성 부여 [L5] — 헷지 포함" in user and "PV-01 수치 일치 — 단위까지 같아야 met" in user
+
+
+def test_fit_note_keeps_valid_json():
+    meta = {"confidence": "high", "needs_human": True, "reasons": ["x"], "quotes_ok": True, "item_review": True,
+            "item_diff": {}, "quotes": [{"rule": "LG-02", "quote": "가" * 240}] * 4,
+            "judge_errors": ["나" * 200] * 5, "item_reasons": {f"PV-{i:02d}": "다" * 160 for i in range(20)}}
+    s = av.fit_note(meta)
+    assert len(s) <= av.NOTE_MAX and json.loads(s)["needs_human"] is True
 
 
 class _DB:
@@ -135,7 +155,7 @@ def test_run_saves_ai_labels_and_logs_no_content(monkeypatch):
     assert all(k == "k" for _, k in ev.calls)
     text = "\n".join(logs)
     assert "고지혈증" not in text and "콜레스테롤" not in text                  # 로그에 내용 없음
-    assert "SUMMARY total=4 needs_human=1 errors=1" in text
+    assert "SUMMARY total=4 needs_human=1 errors=1" in text and "item_review=0" in text
     # dry-run 은 저장하지 않는다
     db2 = _DB(rs[:3])
     assert av.run(["R"], [3], db=db2, eval_v3=_EV(), model="m", dry_run=True, log=lambda *_: None) == 0

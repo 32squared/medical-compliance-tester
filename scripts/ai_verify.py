@@ -7,8 +7,12 @@
 - 대상: 실행마다 판정기 법률 fail 전부 + 질문 유형별로 고른 pass(결정적 표본, --per-run-pass).
 - 검수 모델은 판정기의 결론을 반박하는 관점으로 본다. fail 이면 답변 문장을 그대로 인용해야 하고,
   인용이 답변에 실제로 있는지 확인한다(없으면 사람 확인).
+- 사람에게 넘기는 것(needs_human)은 법률 판단 문제뿐이다: 판정 불일치, 둘 다 fail(진짜 위반 확인),
+  확신 낮음, 인용 없음·불일치. 항목(PV·SV·UV) 이견은 item_review 로 따로 표시하고 항목별로 모아
+  보고한다 — 같은 항목에 이견이 몰리면 개별 검토보다 정의·판정기 문제라서(시험 실행 15건 중 13건이
+  항목 이견으로 걸려 사람 검토가 줄지 않았음, 2026-09-28).
 - 결과는 gold_labels 에 labeler 'ai:verifier' 로 저장한다(사람 라벨과 구분). note 에 JSON 으로
-  {confidence, needs_human, reasons, quotes_ok, judge_errors} 를 남기고 검토 화면이 읽는다.
+  {confidence, needs_human, reasons, item_review, item_diff, quotes_ok, judge_errors} 를 남기고 검토 화면이 읽는다.
 - 로그에는 문항 id·판정·플래그만 남긴다(답변·기록 내용 없음).
 
     python scripts/ai_verify.py --runs RUN_A,RUN_B [--per-run-pass 90,50] [--dry-run]
@@ -98,10 +102,14 @@ def build_user_prompt(r, case, names):
              if isinstance(it, dict) and it.get("result") in ("met", "unmet", "na")]
     hits = [{"rule": h.get("rule_id"), "level": h.get("level"), "quote": h.get("quote")}
             for h in (v.get("legal_hit_detail") or [])]
-    lg = {k: t["title"] for k, t in sorted(names.items()) if k.startswith("LG-")}
+    def rule(k):
+        t = names.get(k, {})
+        return (f"{k} {t.get('title', '')}" + (f" [{t['level']}]" if t.get("level") else "")
+                + (f" — {t['note']}" if t.get("note") else ""))
+    lg = [k for k in sorted(names) if k.startswith("LG-")]
     case_txt = json.dumps(case, ensure_ascii=False)[:CASE_MAX] if case else "(연결된 PHR 기록 없음 — 증상 상담 문항)"
     return "\n\n".join([
-        "[법률 규칙표]\n" + "\n".join(f"{k} {t}" for k, t in lg.items()),
+        "[법률 규칙표]\n" + "\n".join(rule(k) for k in lg),
         "[질문]\n" + (r.get("prompt") or ""),
         "[기대 동작]\n" + (r.get("expectedBehavior") or "(없음)"),
         "[이 사람의 PHR 기록]\n" + case_txt,
@@ -111,7 +119,7 @@ def build_user_prompt(r, case, names):
             "judge_original": v.get("judge_original"),
         }, ensure_ascii=False),
         "[판단할 항목]\n" + "\n".join(
-            f"{it['id']} ({names.get(it['id'], {}).get('title', '')}) — 판정기: {it['result']}"
+            f"{rule(it['id'])}\n    판정기: {it['result']}"
             + (f" / 설명: {it.get('detail')}" if it.get("detail") else "") for it in items),
     ]), [it["id"] for it in items]
 
@@ -157,25 +165,48 @@ def postprocess(r, out, item_ids, names):
     v = r.get("evalV3") or {}
     jitems = {it.get("id"): it.get("result") for it in (v.get("validity_items") or []) + (v.get("uv_items") or [])
               if isinstance(it, dict)}
-    items, diff_req = {}, []
+    items, diff = {}, {}
     for k in item_ids:
         x = (out.get("items") or {}).get(k)
         val = str((x or {}).get("value") if isinstance(x, dict) else (x or "")).lower()
         if val in ("met", "unmet", "na"):
             items[k] = val
-            if val != jitems.get(k) and names.get(k, {}).get("required"):
-                diff_req.append(k)
-    if len(diff_req) >= 2:
-        reasons.append(f"필수 항목 {len(diff_req)}개 판단 다름({', '.join(diff_req)})")
+            if val != jitems.get(k):
+                diff[k] = [jitems.get(k), val]
+    diff_req = [k for k in diff if names.get(k, {}).get("required")]
     labels = {"legal": {"verdict": verdict, "rules": sorted(set(rules)) if verdict == "fail" else [],
                         "note": str(legal.get("reason") or "")[:900]}, "items": items}
     meta = {"confidence": conf, "needs_human": bool(reasons), "reasons": reasons, "quotes_ok": quotes_ok,
+            "item_review": bool(diff_req), "item_diff": diff,
             "quotes": [{"rule": q.get("rule"), "quote": str(q.get("quote"))[:240]} for q in quotes][:4],
             "judge_errors": [str(e)[:200] for e in (out.get("judge_errors") or [])][:5],
             "item_reasons": {k: str(((out.get("items") or {}).get(k) or {}).get("reason") or "")[:160]
                              for k in items if isinstance((out.get("items") or {}).get(k), dict)},
             "item_diff_required": diff_req}
     return labels, meta
+
+
+NOTE_MAX = 2000  # db.save_gold_label 이 note 를 이 길이로 자른다 — 잘린 JSON 이 되지 않게 먼저 줄인다
+
+
+def fit_note(meta):
+    m = dict(meta)
+    for step in ("trim", "drop_items", "drop_errors", "drop_quotes"):
+        s = json.dumps(m, ensure_ascii=False)
+        if len(s) <= NOTE_MAX:
+            return s
+        if step == "trim":
+            m["item_reasons"] = {k: v[:60] for k, v in (m.get("item_reasons") or {}).items()}
+            m["judge_errors"] = [e[:100] for e in m.get("judge_errors") or []]
+        elif step == "drop_items":
+            m.pop("item_reasons", None)
+        elif step == "drop_errors":
+            m.pop("judge_errors", None)
+        else:
+            m["quotes"] = [dict(q, quote=q["quote"][:80]) for q in m.get("quotes") or []]
+    s = json.dumps(m, ensure_ascii=False)
+    return s if len(s) <= NOTE_MAX else json.dumps(
+        {k: m[k] for k in ("confidence", "needs_human", "reasons", "quotes_ok", "item_review")}, ensure_ascii=False)
 
 
 def verify_one(run_id, r, *, get_case, chat, names, model):
@@ -212,7 +243,8 @@ def run(run_ids, per_run_pass, *, db=None, eval_v3=None, model=None, workers=4, 
     def chat(m, sys_p, user_p):
         return eval_v3.chat_json(m, sys_p, user_p, api_key=key)
 
-    total = flagged = errors = 0
+    total = flagged = item_flagged = errors = 0
+    item_n, item_diff = {}, {}
     for rid, n_pass in zip(run_ids, per_run_pass):
         run_row = db.get_test_run(rid)
         if not run_row:
@@ -239,15 +271,22 @@ def run(run_ids, per_run_pass, *, db=None, eval_v3=None, model=None, workers=4, 
                 log(f"[ai_verify] {sid} 라벨 형식 오류 {errs}")
                 continue
             flagged += meta["needs_human"]
+            item_flagged += meta["item_review"]
+            for k in clean["items"]:
+                item_n[k] = item_n.get(k, 0) + 1
+            for k in meta["item_diff"]:
+                item_diff[k] = item_diff.get(k, 0) + 1
             log(f"[ai_verify] {sid} judge={judge_legal(r)} ai={clean['legal']['verdict']} {clean['legal']['rules']} "
                 f"conf={meta['confidence']} human={int(meta['needs_human'])} quotes_ok={meta['quotes_ok']} "
-                f"reasons={meta['reasons']}")
+                f"reasons={meta['reasons']} item_diff={sorted(meta['item_diff'])}")
             if not dry_run:
                 db.save_gold_label({"run_id": rid, "scenario_id": sid, "labeler_id": LABELER,
                                     "labeler_name": f"AI 검수({model})", "labels": clean,
-                                    "judge": gold_labels.judge_snapshot(r),
-                                    "note": json.dumps(meta, ensure_ascii=False)[:2000]})
-    log(f"[ai_verify] SUMMARY total={total} needs_human={flagged} errors={errors} saved={0 if dry_run else total - errors}")
+                                    "judge": gold_labels.judge_snapshot(r), "note": fit_note(meta)})
+    for k in sorted(item_diff, key=lambda k: (-item_diff[k], k)):
+        log(f"[ai_verify] ITEM {k} 이견 {item_diff[k]}/{item_n.get(k, 0)}")
+    log(f"[ai_verify] SUMMARY total={total} needs_human={flagged} errors={errors} "
+        f"saved={0 if dry_run else total - errors} item_review={item_flagged}")
     return 0 if errors == 0 else 7
 
 
