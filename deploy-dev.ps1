@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$ProjectId = "medical-compliance-tester",
     [string]$Region = "asia-northeast3",
     [string]$ServiceName = "medical-compliance-tester-dev",
@@ -116,7 +116,7 @@ gcloud run deploy $ServiceName `
     --min-instances 0 --max-instances 3 `
     --concurrency 5 `
     --execution-environment gen2 `
-    --set-env-vars $DevEnvVars `
+    --update-env-vars $DevEnvVars `
     --set-secrets "OPENAI_API_KEY=openai-api-key:latest,DB_PASSWORD=db-password:latest" `
     --add-cloudsql-instances $SqlConnection `
     --vpc-connector=medical-connector `

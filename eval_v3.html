@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>온톨로지 평가 — 나만의 주치의</title>
+<style>
+  :root {
+    --bg: #0f172a; --surface: #1e293b; --surface2: #334155; --surface3: #3b4a63;
+    --text: #e2e8f0; --text-dim: #94a3b8; --accent: #38bdf8; --accent-dim: #0c4a6e;
+    --green: #22c55e; --red: #ef4444; --yellow: #eab308; --orange: #f97316;
+    --purple: #a855f7; --border: #475569; --radius: 12px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Pretendard','Apple SD Gothic Neo',system-ui,sans-serif;
+         background:var(--bg); color:var(--text); height:100vh; display:flex; flex-direction:column; }
+
+  .topbar { display:flex; align-items:center; gap:10px; padding:10px 20px;
+            background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; flex-wrap:nowrap; overflow-x:auto; }
+  .nav-btn { background:none; border:1px solid var(--border); color:var(--text-dim); border-radius:8px;
+             padding:6px 12px; font-size:12px; font-weight:600; cursor:pointer; text-decoration:none; white-space:nowrap; }
+  .nav-btn:hover { background:var(--surface2); color:var(--text); }
+  .nav-btn.active { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
+
+  .layout { flex:1; display:flex; overflow:hidden; }
+  .sidebar { width:300px; background:var(--surface); border-right:1px solid var(--border);
+             display:flex; flex-direction:column; flex-shrink:0; }
+  .sidebar-header { padding:14px 16px; border-bottom:1px solid var(--border); }
+  .sidebar-header h3 { font-size:12px; font-weight:700; color:var(--text-dim); text-transform:uppercase; letter-spacing:.04em; }
+  .sidebar-header .sub { font-size:11px; color:var(--text-dim); margin-top:4px; line-height:1.5; }
+  .run-list { flex:1; overflow-y:auto; padding:8px; }
+  .run-item { padding:10px 12px; border:1px solid transparent; border-radius:8px; cursor:pointer; margin-bottom:4px; }
+  .run-item:hover { background:var(--surface2); }
+  .run-item.active { background:var(--accent-dim); border-color:var(--accent); }
+  .run-top { display:flex; align-items:center; gap:6px; margin-bottom:4px; }
+  .run-id { font-size:12px; font-weight:700; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .env-badge { font-size:10px; font-weight:700; padding:1px 6px; border-radius:4px; text-transform:uppercase; flex-shrink:0; }
+  .env-badge.dev { background:#38bdf822; color:var(--accent); }
+  .env-badge.stg { background:#eab30822; color:var(--yellow); }
+  .env-badge.prod { background:#ef444422; color:var(--red); }
+  .run-meta { font-size:11px; color:var(--text-dim); display:flex; gap:8px; flex-wrap:wrap; }
+  .run-bar { height:3px; border-radius:2px; background:var(--surface2); overflow:hidden; margin-top:6px; display:flex; }
+  .run-bar i { display:block; height:100%; }
+
+  .main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+  .detail-header { padding:16px 24px; background:var(--surface); border-bottom:1px solid var(--border); }
+  .detail-meta { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .detail-run-id { font-size:14px; font-weight:700; color:var(--accent); }
+  .pill { font-size:11px; color:var(--text-dim); background:var(--surface2); padding:3px 10px; border-radius:6px; }
+  .detail-actions { margin-left:auto; display:flex; gap:8px; align-items:center; }
+  .btn { padding:6px 12px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer;
+         border:1px solid var(--border); background:none; color:var(--text-dim); font-family:inherit; }
+  .btn:hover { background:var(--surface2); color:var(--text); }
+  select.btn { color:var(--text); background:var(--bg); }
+
+  .content { flex:1; overflow-y:auto; padding:18px 24px; }
+  .section { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; margin-bottom:14px; }
+  .section-title { font-size:13px; font-weight:700; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+  .section-title .hint { font-weight:400; font-size:11px; color:var(--text-dim); }
+  .cards { display:flex; flex-wrap:wrap; gap:10px; }
+  .card { flex:1; min-width:110px; text-align:center; padding:12px 10px; background:var(--bg); border:1px solid var(--border); border-radius:10px; }
+  .card .v { font-size:24px; font-weight:800; }
+  .card .l { font-size:11px; color:var(--text-dim); font-weight:600; margin-top:2px; }
+  .card.click { cursor:pointer; }
+  .card.click:hover { border-color:var(--accent); }
+  .card.on { border-color:var(--accent); background:var(--accent-dim); }
+
+  .dist { display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:14px; }
+  .dist-box { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:12px 14px; }
+  .dist-box h4 { font-size:12px; font-weight:700; color:var(--text-dim); margin-bottom:8px; }
+  .bar-row { display:flex; align-items:center; gap:8px; font-size:12px; margin:4px 0; cursor:pointer; }
+  .bar-row:hover .bar-lbl { color:var(--accent); }
+  .bar-row.on .bar-lbl { color:var(--accent); font-weight:700; }
+  .bar-lbl { width:46px; font-weight:700; }
+  .bar { flex:1; height:10px; background:var(--surface2); border-radius:5px; overflow:hidden; }
+  .bar i { display:block; height:100%; border-radius:5px; }
+  .bar-n { width:38px; text-align:right; color:var(--text-dim); }
+  .chips { display:flex; flex-wrap:wrap; gap:5px; }
+  .chip { font-size:11px; padding:3px 9px; border-radius:4px; cursor:pointer; border:1px solid transparent; }
+  .chip.on { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; }
+  .chip.rule { background:#dc262622; color:#f87171; }
+  .chip.review { background:#eab30822; color:#facc15; }
+  .chip.unmet { background:#f9731622; color:#fb923c; }
+  .chip.uv { background:#a855f722; color:#c084fc; }
+
+  .filters { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px; }
+  .filters input, .filters select { background:var(--bg); border:1px solid var(--border); color:var(--text);
+    padding:6px 10px; border-radius:8px; font-size:12px; font-family:inherit; outline:none; }
+  .filters input { min-width:220px; }
+  .filters .count { font-size:12px; color:var(--text-dim); margin-left:auto; }
+
+  table.grid { width:100%; min-width:1180px; border-collapse:collapse; font-size:12px; }
+  table.grid th { text-align:left; padding:8px 8px; color:var(--text-dim); font-weight:600; border-bottom:1px solid var(--border); white-space:nowrap; cursor:pointer; user-select:none; }
+  table.grid th.sorted { color:var(--accent); }
+  table.grid td { padding:8px 8px; border-bottom:1px solid #334155aa; vertical-align:top; }
+  table.grid tr.row { cursor:pointer; }
+  table.grid tr.row:hover td { background:var(--surface2); }
+  .q { max-width:360px; min-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text-dim); }
+  .badge { display:inline-block; padding:2px 8px; border-radius:5px; font-size:11px; font-weight:700; border:1px solid; white-space:nowrap; }
+  .mini { font-size:10.5px; padding:1px 6px; border-radius:3px; margin:1px 2px 1px 0; display:inline-block; white-space:nowrap; }
+  .mono { font-family:ui-monospace, Menlo, Consolas, monospace; font-size:11px; }
+  .delta-up { color:var(--green); font-weight:700; }
+  .delta-down { color:var(--red); font-weight:700; }
+
+  .empty { display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; color:var(--text-dim); text-align:center; padding:40px; }
+  .empty .ic { font-size:44px; margin-bottom:12px; opacity:.5; }
+  .empty .t { font-size:15px; font-weight:600; color:var(--text); margin-bottom:6px; }
+  .empty .d { font-size:13px; line-height:1.6; max-width:520px; }
+
+  /* 상세 모달 */
+  .modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:500; align-items:center; justify-content:center; }
+  .modal { background:var(--surface); border:1px solid var(--border); border-radius:14px; width:min(1100px, 94vw); max-height:90vh; display:flex; flex-direction:column; }
+  .modal-head { display:flex; align-items:center; gap:10px; padding:14px 18px; border-bottom:1px solid var(--border); }
+  .modal-head .x { margin-left:auto; cursor:pointer; color:var(--text-dim); font-size:18px; padding:0 6px; }
+  .modal-body { overflow-y:auto; padding:16px 18px; display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .modal-body .full { grid-column:1 / -1; }
+  .box { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:12px 14px; }
+  .box h4 { font-size:12px; font-weight:700; color:var(--text-dim); margin-bottom:8px; }
+  .pre { font-size:12.5px; line-height:1.7; white-space:pre-wrap; word-break:break-word; max-height:320px; overflow-y:auto; }
+  table.kv { width:100%; border-collapse:collapse; font-size:11.5px; }
+  table.kv th { text-align:left; color:var(--text-dim); font-weight:600; padding:4px 6px; border-bottom:1px solid var(--border); }
+  table.kv td { padding:4px 6px; border-bottom:1px solid #33415566; vertical-align:top; }
+  @media (max-width: 900px) { .modal-body { grid-template-columns:1fr; } .sidebar { width:220px; } }
+
+  .login-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:600; align-items:center; justify-content:center; }
+  .login { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:28px; width:min(380px, 90vw); text-align:center; }
+  .login input { width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:10px; border-radius:8px; font-size:13px; margin-bottom:10px; outline:none; }
+  .login button { width:100%; padding:10px; background:var(--accent); color:#0f172a; border:none; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; }
+  .toast { position:fixed; bottom:20px; right:20px; z-index:700; padding:10px 16px; border-radius:10px; font-size:12px; background:var(--surface2); color:var(--text); border:1px solid var(--border); display:none; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1 style="font-size:16px;font-weight:700">&#127973; 나만의 주치의</h1>
+  <a href="/" class="nav-btn">채팅 테스터</a>
+  <a href="/manager" class="nav-btn">시나리오 관리</a>
+  <a href="/history" class="nav-btn">테스트 이력</a>
+  <a href="/eval-v3" class="nav-btn active">🧬 온톨로지 평가</a>
+  <a href="/healthbench" class="nav-btn">🩺 HealthBench</a>
+  <a href="/guidelines" class="nav-btn">법률 평가 기준</a>
+  <a href="/settings" class="nav-btn" id="settingsNavLink">&#9881; 설정</a>
+  <span id="userBadge" style="margin-left:auto;display:none;font-size:11px;color:var(--accent);background:var(--accent-dim);padding:3px 10px;border-radius:6px;white-space:nowrap"></span>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h3>온톨로지 판정 실행</h3>
+      <div class="sub">v3(온톨로지 v3.5) 판정이 붙은 배치만 보인다. 법률 게이트 · 기록 활용(PV) · 증상 상담(SV) · 사용자 가치(UV) 네 축.<br>v2 법률 등급·문진·HealthBench 루브릭은 이 화면에 없다.</div>
+    </div>
+    <div class="run-list" id="runList"><div class="empty" style="padding:24px"><div class="d">불러오는 중…</div></div></div>
+  </div>
+
+  <div class="main">
+    <div id="detailEmpty" class="empty">
+      <div class="ic">🧬</div>
+      <div class="t">실행을 고르세요</div>
+      <div class="d">왼쪽 목록에서 배치 실행을 고르면 온톨로지 기준 판정만 모아서 보여 준다.<br>게이트 위반 규칙, 미충족 항목, 1차·2차 판정 모델, 프롬프트 버전으로 걸러 볼 수 있다.</div>
+    </div>
+    <div id="detail" style="display:none;flex:1;display:none;flex-direction:column;overflow:hidden">
+      <div class="detail-header">
+        <div class="detail-meta">
+          <span class="detail-run-id" id="dRunId"></span>
+          <span class="env-badge" id="dEnv"></span>
+          <span class="pill" id="dWhen"></span>
+          <span class="pill" id="dBy"></span>
+          <span class="pill" id="dVersions"></span>
+          <span class="pill" id="dPrompt"></span>
+          <div class="detail-actions">
+            <label style="font-size:11px;color:var(--text-dim)">비교</label>
+            <select class="btn" id="compareSel"><option value="">없음</option></select>
+            <button class="btn" id="btnCsv">CSV</button>
+            <a class="btn" id="btnHistory" href="#" style="text-decoration:none">이력 화면에서 보기</a>
+          </div>
+        </div>
+      </div>
+      <div class="content" id="content"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <div class="modal-head">
+      <span id="mTitle" style="font-size:14px;font-weight:700"></span>
+      <span id="mBadges"></span>
+      <span class="x" id="mClose">✕</span>
+    </div>
+    <div class="modal-body" id="mBody"></div>
+  </div>
+</div>
+
+<div class="login-bg" id="loginBg">
+  <div class="login">
+    <div style="font-size:28px;margin-bottom:8px">👤</div>
+    <div style="font-size:13px;color:var(--text-dim);margin-bottom:14px">테스터 로그인이 필요합니다</div>
+    <input type="text" id="loginId" placeholder="ID">
+    <input type="password" id="loginPw" placeholder="비밀번호">
+    <div id="loginErr" style="color:var(--red);font-size:11px;min-height:16px;margin-bottom:6px"></div>
+    <button id="loginBtn">로그인</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ── 상수 ──
+  var GRADE_COLOR = { A: '#22c55e', B: '#84cc16', C: '#eab308', D: '#f97316', F: '#dc2626', FAIL: '#dc2626', PASS: '#38bdf8' };
+  var VERDICT_RANK = { FAIL: 0, D: 1, C: 2, B: 3, A: 4, PASS: 4 };
+  var AXIS_LABEL = { PV: '기록 활용', SV: '증상 상담' };
+  var INTENT_LABEL = {
+    judgment: '판단 요청', trend: '추이', prescription: '복약', reassurance: '안심', general_with_record: '생활+기록',
+    test_options: '검사 선택', lifestyle: '생활', emergency: '응급', summary: '요약', general: '일반'
+  };
+
+  // ── 상태 ──
+  var runs = [];                 // /api/eval-v3/runs
+  var current = null;            // 선택된 실행 상세 (results 포함)
+  var compare = null;            // 비교 실행 상세
+  var filter = { q: '', gate: '', axis: '', verdict: '', category: '', chip: null, esc: '', sort: 'id', dir: 1 };
+  var detailCache = {};
+
+  // ── 유틸 ──
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+  function fmtWhen(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso).slice(0, 16);
+    return d.toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  }
+  function toast(msg) { var t = $('toast'); if (!t) return; t.textContent = msg; t.style.display = 'block'; setTimeout(function () { t.style.display = 'none'; }, 2500); }
+  function badge(text, color) {
+    return '<span class="badge" style="background:' + color + '22;color:' + color + ';border-color:' + color + '">' + esc(text) + '</span>';
+  }
+  function mini(text, cls) { return '<span class="mini ' + cls + '" style="' + miniStyle(cls) + '">' + esc(text) + '</span>'; }
+  function miniStyle(cls) {
+    if (cls === 'rule') return 'background:#dc262622;color:#f87171';
+    if (cls === 'review') return 'background:#eab30822;color:#facc15';
+    if (cls === 'unmet') return 'background:#f9731622;color:#fb923c';
+    if (cls === 'uv') return 'background:#a855f722;color:#c084fc';
+    return 'background:var(--surface2);color:var(--text-dim)';
+  }
+  function verdictOf(v) {
+    if (!v || v.error) return null;
+    if (v.legal_verdict === 'fail') return 'FAIL';
+    return String(v.validity_grade || 'PASS').toUpperCase();
+  }
+  function verdictLabel(vd) { return vd === 'FAIL' ? '위반' : (vd === 'PASS' ? '통과' : vd); }
+  function promptOf(v) { return (v && ((v.rag_meta && v.rag_meta.prompt_version) || v.prompt_version)) || ''; }
+  function sum(obj) { var n = 0; for (var k in obj) n += obj[k]; return n; }
+  function sortedKeys(obj) { return Object.keys(obj || {}).sort(function (a, b) { return obj[b] - obj[a]; }); }
+
+  // ── 인증 ──
+  function initAuth() {
+    return fetch('/api/auth/status').then(function (r) { return r.json(); }).then(function (a) {
+      if (!a.isAdmin) { var sl = $('settingsNavLink'); if (sl) sl.style.display = 'none'; }
+      var b = $('userBadge');
+      if (a.tester && b) { b.style.display = ''; b.textContent = '👤 ' + (a.tester.alias || a.tester.id || ''); }
+      else if (a.isAdmin && b) { b.style.display = ''; b.textContent = '🛡️ 관리자'; }
+      else { var lb = $('loginBg'); if (lb) lb.style.display = 'flex'; return false; }
+      return true;
+    }).catch(function () { return true; });
+  }
+  function doLogin() {
+    var id = ($('loginId') || {}).value || '', pw = ($('loginPw') || {}).value || '';
+    if (!id.trim() || !pw) { $('loginErr').textContent = 'ID 와 비밀번호를 입력하세요'; return; }
+    fetch('/api/tester/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: id.trim(), password: pw }) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (x) {
+        if (!x.ok || x.j.error) { $('loginErr').textContent = x.j.error || '로그인 실패'; return; }
+        location.reload();
+      }).catch(function () { $('loginErr').textContent = '로그인 실패'; });
+  }
+
+  // ── 실행 목록 ──
+  function loadRuns() {
+    return fetch('/api/eval-v3/runs?limit=120').then(function (r) {
+      if (r.status === 403) throw new Error('이력 조회 권한이 없습니다');
+      return r.json();
+    }).then(function (j) {
+      runs = (j && j.runs) || [];
+      renderRunList(j);
+      fillCompareOptions();
+      var want = decodeURIComponent((location.hash || '').replace(/^#/, ''));
+      var first = runs.length ? runs[0].runId : null;
+      if (want && runs.some(function (r) { return r.runId === want; })) selectRun(want);
+      else if (first) selectRun(first);
+    }).catch(function (e) {
+      var rl = $('runList');
+      if (rl) rl.innerHTML = '<div class="empty" style="padding:24px"><div class="d">' + esc(e.message || e) + '</div></div>';
+    });
+  }
+
+  function renderRunList(j) {
+    var rl = $('runList');
+    if (!rl) return;
+    if (!runs.length) {
+      rl.innerHTML = '<div class="empty" style="padding:24px"><div class="t">v3 판정이 있는 실행이 없다</div><div class="d">' +
+        (j && j.scanned != null ? j.since + ' 이후 실행 ' + j.scanned + '건을 훑었다. ' : '') +
+        'EVAL_V3=1 로 배포된 배치를 돌리면 여기에 나타난다.</div></div>';
+      return;
+    }
+    var h = '';
+    for (var i = 0; i < runs.length; i++) {
+      var r = runs[i], v = r.v3 || {};
+      var n = v.n || 0, pass = (v.gate || {}).pass || 0, fail = (v.gate || {}).fail || 0, err = v.err || 0;
+      var pct = n ? Math.round(pass / n * 100) : 0;
+      h += '<div class="run-item" data-run="' + esc(r.runId) + '">' +
+        '<div class="run-top"><span class="run-id" title="' + esc(r.runId) + '">' + esc(r.runId) + '</span>' +
+        '<span class="env-badge ' + esc(r.env || 'dev') + '">' + esc(r.env || 'dev') + '</span></div>' +
+        '<div class="run-meta"><span>' + fmtWhen(r.startedAt) + '</span><span>' + n + '건</span>' +
+        '<span style="color:var(--green)">통과 ' + pass + '</span><span style="color:var(--red)">위반 ' + fail + '</span>' +
+        (err ? '<span style="color:var(--yellow)">실패 ' + err + '</span>' : '') +
+        (v.escalated ? '<span title="1차 fail → 2차 판정">↗ ' + v.escalated + '</span>' : '') +
+        '</div>' +
+        '<div class="run-meta" style="margin-top:2px"><span>' + esc(v.judge_model || '') + (v.escalate_model ? ' → ' + esc(v.escalate_model) : '') + '</span>' +
+        '<span>' + esc(Object.keys(v.prompt_versions || {}).filter(function (k) { return k !== '-'; }).join(', ')) + '</span></div>' +
+        '<div class="run-bar"><i style="width:' + pct + '%;background:var(--green)"></i><i style="width:' + (n ? Math.round(fail / n * 100) : 0) + '%;background:var(--red)"></i></div>' +
+        '</div>';
+    }
+    rl.innerHTML = h;
+    rl.querySelectorAll('.run-item').forEach(function (el) {
+      el.addEventListener('click', function () { selectRun(el.getAttribute('data-run')); });
+    });
+  }
+
+  function fillCompareOptions() {
+    var sel = $('compareSel');
+    if (!sel) return;
+    var h = '<option value="">없음</option>';
+    for (var i = 0; i < runs.length; i++) {
+      h += '<option value="' + esc(runs[i].runId) + '">' + esc(runs[i].runId) + ' (' + esc(promptKeys(runs[i])) + ')</option>';
+    }
+    sel.innerHTML = h;
+  }
+  function promptKeys(r) { return Object.keys((r.v3 || {}).prompt_versions || {}).filter(function (k) { return k !== '-'; }).join('/') || '-'; }
+
+  function fetchRun(runId) {
+    if (detailCache[runId]) return Promise.resolve(detailCache[runId]);
+    return fetch('/api/history/' + encodeURIComponent(runId)).then(function (r) {
+      if (!r.ok) throw new Error('실행을 불러오지 못했다 (' + r.status + ')');
+      return r.json();
+    }).then(function (j) { detailCache[runId] = j; return j; });
+  }
+
+  function selectRun(runId) {
+    document.querySelectorAll('.run-item').forEach(function (el) { el.classList.toggle('active', el.getAttribute('data-run') === runId); });
+    location.hash = encodeURIComponent(runId);
+    filter.chip = null; filter.gate = ''; filter.verdict = ''; filter.axis = ''; filter.category = ''; filter.esc = '';
+    fetchRun(runId).then(function (run) {
+      current = run;
+      var sel = $('compareSel');
+      if (sel && sel.value === runId) { sel.value = ''; compare = null; }
+      renderDetail();
+    }).catch(function (e) { toast(e.message || String(e)); });
+  }
+
+  // ── 상세 ──
+  function scoredRows(run) {
+    var out = [];
+    var results = (run && run.results) || [];
+    for (var i = 0; i < results.length; i++) {
+      var r = results[i];
+      if (r && r.evalV3) out.push({ idx: i, r: r, v: r.evalV3, vd: verdictOf(r.evalV3) });
+    }
+    return out;
+  }
+
+  function renderDetail() {
+    var run = current;
+    if (!run) return;
+    $('detailEmpty').style.display = 'none';
+    var d = $('detail'); d.style.display = 'flex';
+    var meta = runs.filter(function (x) { return x.runId === run.runId; })[0] || {};
+    var s = meta.v3 || summarize(scoredRows(run));
+
+    $('dRunId').textContent = run.runId || '';
+    var envEl = $('dEnv'); envEl.textContent = run.env || 'dev'; envEl.className = 'env-badge ' + (run.env || 'dev');
+    $('dWhen').textContent = fmtWhen(run.startedAt) + (run.status && run.status !== 'completed' ? ' · ' + run.status : '');
+    $('dBy').textContent = run.runBy ? '실행 ' + run.runBy : '';
+    $('dVersions').textContent = [s.eval_version, s.ontology_version ? '온톨로지 ' + s.ontology_version : '',
+      s.judge_model ? '판정 ' + s.judge_model + (s.escalate_model ? ' → ' + s.escalate_model : '') : ''].filter(Boolean).join(' · ');
+    var pv = Object.keys(s.prompt_versions || {}).filter(function (k) { return k !== '-'; });
+    $('dPrompt').textContent = pv.length ? '프롬프트 ' + pv.join(', ') : '프롬프트 버전 없음';
+    var bh = $('btnHistory'); if (bh) bh.href = '/history#' + encodeURIComponent(run.runId || '');
+
+    renderContent(s);
+  }
+
+  function summarize(rows) {
+    var s = { n: rows.length, err: 0, gate: { pass: 0, fail: 0, review: 0 }, verdict: {}, validity: {}, uv: {}, axis: {},
+      rule_hits: {}, review_hits: {}, unmet: {}, uv_unmet: {}, intent: {}, prompt_versions: {}, categories: {},
+      escalated: 0, escalated_fail: 0, final_v3: 0, judge_model: null, escalate_model: null, ontology_version: null, eval_version: null };
+    function inc(o, k) { k = (k == null || k === '') ? '-' : k; o[k] = (o[k] || 0) + 1; }
+    rows.forEach(function (x) {
+      var v = x.v, r = x.r;
+      var c = s.categories[r.category || '-'] = s.categories[r.category || '-'] || { n: 0, fail: 0, err: 0 };
+      c.n++;
+      if (r.finalSource === 'v3') s.final_v3++;
+      if (v.error) { s.err++; c.err++; return; }
+      if (s.gate[v.legal_verdict] != null) s.gate[v.legal_verdict]++;
+      inc(s.verdict, x.vd); if (x.vd === 'FAIL') c.fail++;
+      inc(s.validity, v.validity_grade); inc(s.uv, v.uv_grade); inc(s.axis, v.validity_axis);
+      (v.legal_hits || []).forEach(function (h) { inc(s.rule_hits, h); });
+      (v.legal_review_hits || []).forEach(function (h) { inc(s.review_hits, h); });
+      (v.validity_unmet || []).forEach(function (u) { inc(s.unmet, u); });
+      (v.uv_unmet || []).forEach(function (u) { inc(s.uv_unmet, u); });
+      inc(s.intent, v.uv_intent); inc(s.prompt_versions, promptOf(v));
+      if (v.judge_escalation) { s.escalated++; if (v.judge_escalation.verdict === 'FAIL') s.escalated_fail++; s.escalate_model = s.escalate_model || v.judge_escalation.model; s.judge_model = s.judge_model || v.judge_escalation.first_model; }
+      s.judge_model = s.judge_model || v.judge_model; s.ontology_version = s.ontology_version || v.ontology_version; s.eval_version = s.eval_version || v.eval_version;
+    });
+    return s;
+  }
+
+  function renderContent(s) {
+    var c = $('content');
+    if (!c) return;
+    var n = s.n || 0, g = s.gate || {};
+    var passPct = n ? Math.round((g.pass || 0) / n * 100) : 0;
+
+    var h = '<div class="section"><div class="section-title">판정 요약 <span class="hint">카드를 누르면 그 조건으로 표가 걸러진다</span></div><div class="cards">' +
+      card(n, '판정', 'var(--text)', 'gate', '') +
+      card((g.pass || 0) + '<span style="font-size:13px;color:var(--text-dim)"> · ' + passPct + '%</span>', '게이트 통과', 'var(--green)', 'gate', 'pass') +
+      card(g.fail || 0, '게이트 위반', 'var(--red)', 'gate', 'fail') +
+      card(g.review || 0, '검토 필요', 'var(--yellow)', 'gate', 'review') +
+      card(s.err || 0, '판정 실패', 'var(--yellow)', 'gate', 'error') +
+      card((s.escalated || 0) + (s.escalated ? '<span style="font-size:13px;color:var(--text-dim)"> · 확정 ' + (s.escalated_fail || 0) + '</span>' : ''), '1차 위반 → 2차 판정', 'var(--purple)', 'esc', '1') +
+      card(s.final_v3 || 0, '최종 판정 = v3', 'var(--accent)', '', '') +
+      '</div></div>';
+
+    // 분포
+    h += '<div class="section"><div class="section-title">축별 분포 <span class="hint">막대나 칩을 누르면 걸러진다. 다시 누르면 해제</span></div><div class="dist">';
+    h += distBox('기록 활용 · 증상 상담 등급 (PV/SV)', s.validity, 'verdict', ['A', 'B', 'C', 'D', '-'], n);
+    h += distBox('사용자 가치 등급 (UV)', s.uv, 'uv', ['A', 'B', 'C', 'D', '-'], n);
+    h += '<div class="dist-box"><h4>걸린 규칙 (게이트 위반 · 검토)</h4><div class="chips">' +
+      chips(s.rule_hits, 'rule', 'rule') + chips(s.review_hits, 'review', 'review') +
+      (sum(s.rule_hits) + sum(s.review_hits) === 0 ? '<span style="font-size:11px;color:var(--text-dim)">없음</span>' : '') + '</div></div>';
+    h += '<div class="dist-box"><h4>미충족 항목 (PV/SV · UV)</h4><div class="chips">' +
+      chips(s.unmet, 'unmet', 'unmet') + chips(s.uv_unmet, 'uv', 'uvunmet') +
+      (sum(s.unmet) + sum(s.uv_unmet) === 0 ? '<span style="font-size:11px;color:var(--text-dim)">없음</span>' : '') + '</div></div>';
+    h += '<div class="dist-box"><h4>카테고리별 위반</h4>' + catRows(s.categories) + '</div>';
+    h += '<div class="dist-box"><h4>질문 의도 (UV)</h4><div class="chips">' + chips(s.intent, '', 'intent', INTENT_LABEL) + '</div></div>';
+    h += '</div></div>';
+
+    // 비교
+    if (compare) h += compareSection();
+
+    // 표
+    h += '<div class="section"><div class="section-title">건별 판정 <span class="hint">행을 누르면 질문·답변·판정 근거가 열린다</span></div>' +
+      '<div class="filters">' +
+      '<input id="fq" placeholder="시나리오 id · 질문 검색" value="' + esc(filter.q) + '">' +
+      '<select id="fgate"><option value="">게이트 전체</option><option value="pass">통과</option><option value="fail">위반</option><option value="review">검토</option><option value="error">판정 실패</option></select>' +
+      '<select id="faxis"><option value="">축 전체</option><option value="PV">기록 활용(PV)</option><option value="SV">증상 상담(SV)</option></select>' +
+      '<select id="fcat"><option value="">카테고리 전체</option>' + Object.keys(s.categories || {}).sort().map(function (k) { return '<option value="' + esc(k) + '">' + esc(k) + '</option>'; }).join('') + '</select>' +
+      '<select id="fesc"><option value="">2차 판정 전체</option><option value="1">2차 판정 거침</option><option value="0">1차로 확정</option></select>' +
+      '<button class="btn" id="fclear">필터 해제</button>' +
+      '<span class="count" id="fcount"></span></div>' +
+      '<div style="overflow-x:auto"><table class="grid" id="grid"></table></div></div>';
+
+    c.innerHTML = h;
+    bindContent();
+    renderTable();
+  }
+
+  function card(val, label, color, key, value) {
+    var on = key && filter[key] === value && value !== '';
+    return '<div class="card' + (key ? ' click' : '') + (on ? ' on' : '') + '" data-key="' + esc(key) + '" data-val="' + esc(value) + '">' +
+      '<div class="v" style="color:' + color + '">' + val + '</div><div class="l">' + esc(label) + '</div></div>';
+  }
+  function distBox(title, obj, kind, order, n) {
+    var h = '<div class="dist-box"><h4>' + esc(title) + '</h4>';
+    var keys = order.filter(function (k) { return obj && obj[k]; });
+    if (!keys.length) h += '<span style="font-size:11px;color:var(--text-dim)">없음</span>';
+    keys.forEach(function (k) {
+      var cnt = obj[k], pct = n ? Math.round(cnt / n * 100) : 0;
+      var color = GRADE_COLOR[k] || '#64748b';
+      var on = filter.chip && filter.chip.kind === kind && filter.chip.key === k;
+      h += '<div class="bar-row' + (on ? ' on' : '') + '" data-kind="' + kind + '" data-key="' + esc(k) + '"><span class="bar-lbl" style="color:' + color + '">' + (k === '-' ? '없음' : esc(k)) + '</span>' +
+        '<div class="bar"><i style="width:' + pct + '%;background:' + color + '"></i></div><span class="bar-n">' + cnt + '</span></div>';
+    });
+    return h + '</div>';
+  }
+  function chips(obj, cls, kind, labels) {
+    var h = '';
+    sortedKeys(obj).forEach(function (k) {
+      if (k === '-') return;
+      var on = filter.chip && filter.chip.kind === kind && filter.chip.key === k;
+      var lbl = labels && labels[k] ? labels[k] + ' (' + k + ')' : k;
+      h += '<span class="chip ' + cls + (on ? ' on' : '') + '" style="' + (cls ? '' : miniStyle('')) + '" data-kind="' + kind + '" data-key="' + esc(k) + '">' + esc(lbl) + ' <b>' + obj[k] + '</b></span>';
+    });
+    return h;
+  }
+  function catRows(cats) {
+    var keys = Object.keys(cats || {}).sort(function (a, b) { return (cats[b].fail - cats[a].fail) || (cats[b].n - cats[a].n); });
+    if (!keys.length) return '<span style="font-size:11px;color:var(--text-dim)">없음</span>';
+    var h = '';
+    keys.slice(0, 8).forEach(function (k) {
+      var c = cats[k], pct = c.n ? Math.round(c.fail / c.n * 100) : 0;
+      var on = filter.category === k;
+      h += '<div class="bar-row' + (on ? ' on' : '') + '" data-kind="category" data-key="' + esc(k) + '"><span class="bar-lbl" style="width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(k) + '">' + esc(k) + '</span>' +
+        '<div class="bar"><i style="width:' + pct + '%;background:var(--red)"></i></div><span class="bar-n">' + c.fail + '/' + c.n + '</span></div>';
+    });
+    if (keys.length > 8) h += '<div style="font-size:11px;color:var(--text-dim)">… 외 ' + (keys.length - 8) + '개 카테고리</div>';
+    return h;
+  }
+
+  function bindContent() {
+    document.querySelectorAll('.card.click').forEach(function (el) {
+      el.addEventListener('click', function () {
+        var key = el.getAttribute('data-key'), val = el.getAttribute('data-val');
+        if (!key) return;
+        filter[key] = (filter[key] === val) ? '' : val;
+        renderContent(currentSummary());
+      });
+    });
+    document.querySelectorAll('.bar-row, .chip').forEach(function (el) {
+      el.addEventListener('click', function () {
+        var kind = el.getAttribute('data-kind'), key = el.getAttribute('data-key');
+        if (kind === 'category') { filter.category = (filter.category === key) ? '' : key; }
+        else if (filter.chip && filter.chip.kind === kind && filter.chip.key === key) filter.chip = null;
+        else filter.chip = { kind: kind, key: key };
+        renderContent(currentSummary());
+      });
+    });
+    var fq = $('fq'); if (fq) fq.addEventListener('input', function () { filter.q = fq.value; renderTable(); });
+    [['fgate', 'gate'], ['faxis', 'axis'], ['fcat', 'category'], ['fesc', 'esc']].forEach(function (p) {
+      var el = $(p[0]); if (!el) return;
+      el.value = filter[p[1]] || '';
+      el.addEventListener('change', function () { filter[p[1]] = el.value; renderTable(); });
+    });
+    var fc = $('fclear'); if (fc) fc.addEventListener('click', function () {
+      filter = { q: '', gate: '', axis: '', verdict: '', category: '', chip: null, esc: '', sort: filter.sort, dir: filter.dir };
+      renderContent(currentSummary());
+    });
+  }
+  function currentSummary() {
+    var meta = runs.filter(function (x) { return x.runId === current.runId; })[0] || {};
+    return meta.v3 || summarize(scoredRows(current));
+  }
+
+  // ── 표 ──
+  function passesFilter(x) {
+    var r = x.r, v = x.v;
+    if (filter.q) {
+      var q = filter.q.toLowerCase();
+      if (String(r.scenarioId || '').toLowerCase().indexOf(q) < 0 && String(r.prompt || '').toLowerCase().indexOf(q) < 0) return false;
+    }
+    if (filter.gate === 'error') { if (!v.error) return false; }
+    else if (filter.gate) { if (v.error || v.legal_verdict !== filter.gate) return false; }
+    if (filter.axis && v.validity_axis !== filter.axis) return false;
+    if (filter.category && (r.category || '-') !== filter.category) return false;
+    if (filter.esc === '1' && !v.judge_escalation) return false;
+    if (filter.esc === '0' && v.judge_escalation) return false;
+    var ch = filter.chip;
+    if (ch) {
+      if (ch.kind === 'verdict' && String(v.validity_grade || '-') !== ch.key) return false;
+      if (ch.kind === 'uv' && String(v.uv_grade || '-') !== ch.key) return false;
+      if (ch.kind === 'rule' && (v.legal_hits || []).indexOf(ch.key) < 0) return false;
+      if (ch.kind === 'review' && (v.legal_review_hits || []).indexOf(ch.key) < 0) return false;
+      if (ch.kind === 'unmet' && (v.validity_unmet || []).indexOf(ch.key) < 0) return false;
+      if (ch.kind === 'uvunmet' && (v.uv_unmet || []).indexOf(ch.key) < 0) return false;
+      if (ch.kind === 'intent' && String(v.uv_intent || '-') !== ch.key) return false;
+    }
+    return true;
+  }
+
+  function compareMap() {
+    var m = {};
+    if (!compare) return m;
+    scoredRows(compare).forEach(function (x) { m[x.r.scenarioId] = x; });
+    return m;
+  }
+
+  function renderTable() {
+    var g = $('grid');
+    if (!g || !current) return;
+    var rows = scoredRows(current).filter(passesFilter);
+    var cmp = compareMap();
+    var cols = [
+      ['id', '시나리오'], ['cat', '카테고리'], ['q', '질문'], ['gate', '게이트'], ['rules', '규칙'],
+      ['axis', 'PV/SV'], ['unmet', '미충족'], ['uv', 'UV'], ['intent', '의도'], ['prompt', '프롬프트'], ['esc', '판정 경로'], ['claims', 'claim']
+    ];
+    if (compare) cols.splice(4, 0, ['cmp', '비교(' + esc(compare.runId).slice(0, 18) + ')']);
+    rows.sort(function (a, b) { var c = cmpRows(a, b, cmp); return c * filter.dir; });
+
+    var h = '<thead><tr>' + cols.map(function (c) { return '<th data-sort="' + c[0] + '"' + (filter.sort === c[0] ? ' class="sorted"' : '') + '>' + c[1] + (filter.sort === c[0] ? (filter.dir > 0 ? ' ↑' : ' ↓') : '') + '</th>'; }).join('') + '</tr></thead><tbody>';
+    if (!rows.length) h += '<tr><td colspan="' + cols.length + '" style="color:var(--text-dim);padding:18px;text-align:center">조건에 맞는 판정이 없다</td></tr>';
+    rows.forEach(function (x) {
+      var r = x.r, v = x.v;
+      h += '<tr class="row" data-idx="' + x.idx + '">';
+      h += '<td class="mono" style="font-weight:700;white-space:nowrap">' + esc(r.scenarioId) + '</td>';
+      h += '<td style="white-space:nowrap;color:var(--text-dim)">' + esc(r.category || '') + (r.subcategory ? '<br><span style="font-size:10.5px">' + esc(r.subcategory) + '</span>' : '') + '</td>';
+      h += '<td class="q" title="' + esc(r.prompt || '') + '">' + esc(r.prompt || '') + '</td>';
+      if (v.error) {
+        h += '<td colspan="' + (cols.length - 3) + '" style="color:var(--yellow)">⚠ 판정 실패 — ' + esc(String(v.error).slice(0, 140)) + '</td></tr>';
+        return;
+      }
+      h += '<td>' + gateBadge(v) + '</td>';
+      if (compare) h += '<td>' + compareCell(x, cmp[r.scenarioId]) + '</td>';
+      h += '<td>' + (v.legal_hits || []).map(function (k) { return mini(k, 'rule'); }).join('') + (v.legal_review_hits || []).map(function (k) { return mini(k, 'review'); }).join('') + '</td>';
+      h += '<td style="white-space:nowrap">' + (v.validity_axis ? badge((AXIS_LABEL[v.validity_axis] || v.validity_axis) + ' ' + (v.validity_grade || '—'), GRADE_COLOR[v.validity_grade] || '#64748b') : '<span style="color:var(--text-dim)">—</span>') + '</td>';
+      h += '<td>' + (v.validity_unmet || []).map(function (k) { return mini(k, 'unmet'); }).join('') + (v.uv_unmet || []).map(function (k) { return mini(k, 'uv'); }).join('') + ((v.grade_cap || []).length ? '<br><span style="font-size:10.5px;color:var(--orange)">상한 ' + esc((v.grade_cap || []).join(',')) + '</span>' : '') + '</td>';
+      h += '<td>' + (v.uv_grade ? badge('UV ' + v.uv_grade, GRADE_COLOR[v.uv_grade] || '#64748b') : '<span style="color:var(--text-dim)">—</span>') + '</td>';
+      h += '<td style="white-space:nowrap;color:var(--text-dim)">' + esc(INTENT_LABEL[v.uv_intent] || v.uv_intent || '—') + '</td>';
+      h += '<td class="mono">' + esc(promptOf(v) || '—') + '</td>';
+      h += '<td style="white-space:nowrap;font-size:11px">' + escPath(v) + '</td>';
+      h += '<td style="color:var(--text-dim)">' + (v.claim_count != null ? v.claim_count : '—') + (v.claim_fallback ? ' <span style="color:var(--orange)" title="fallback claim">(' + v.claim_fallback + ')</span>' : '') + '</td>';
+      h += '</tr>';
+    });
+    g.innerHTML = h + '</tbody>';
+    var fc = $('fcount'); if (fc) fc.textContent = rows.length + ' / ' + scoredRows(current).length + '건';
+    g.querySelectorAll('tr.row').forEach(function (tr) {
+      tr.addEventListener('click', function () { openDetail(parseInt(tr.getAttribute('data-idx'), 10)); });
+    });
+    g.querySelectorAll('th[data-sort]').forEach(function (th) {
+      th.addEventListener('click', function () {
+        var k = th.getAttribute('data-sort');
+        if (filter.sort === k) filter.dir = -filter.dir; else { filter.sort = k; filter.dir = 1; }
+        renderTable();
+      });
+    });
+  }
+  function cmpRows(a, b, cmp) {
+    var k = filter.sort;
+    function s(x) { return String(x || ''); }
+    switch (k) {
+      case 'cat': return s(a.r.category).localeCompare(s(b.r.category)) || s(a.r.scenarioId).localeCompare(s(b.r.scenarioId));
+      case 'q': return s(a.r.prompt).localeCompare(s(b.r.prompt));
+      case 'gate': return rank(a) - rank(b) || s(a.r.scenarioId).localeCompare(s(b.r.scenarioId));
+      case 'cmp': return delta(a, cmp) - delta(b, cmp);
+      case 'rules': return ((b.v.legal_hits || []).length + (b.v.legal_review_hits || []).length) - ((a.v.legal_hits || []).length + (a.v.legal_review_hits || []).length);
+      case 'axis': return (VERDICT_RANK[a.v.validity_grade] || 0) - (VERDICT_RANK[b.v.validity_grade] || 0);
+      case 'unmet': return ((b.v.validity_unmet || []).length + (b.v.uv_unmet || []).length) - ((a.v.validity_unmet || []).length + (a.v.uv_unmet || []).length);
+      case 'uv': return (VERDICT_RANK[a.v.uv_grade] || 0) - (VERDICT_RANK[b.v.uv_grade] || 0);
+      case 'intent': return s(a.v.uv_intent).localeCompare(s(b.v.uv_intent));
+      case 'prompt': return s(promptOf(a.v)).localeCompare(s(promptOf(b.v)));
+      case 'esc': return (b.v.judge_escalation ? 1 : 0) - (a.v.judge_escalation ? 1 : 0);
+      case 'claims': return (b.v.claim_count || 0) - (a.v.claim_count || 0);
+      default: return s(a.r.scenarioId).localeCompare(s(b.r.scenarioId));
+    }
+  }
+  function rank(x) { if (x.v.error) return -1; return x.vd ? VERDICT_RANK[x.vd] : 0; }
+  function delta(x, cmp) { var o = cmp[x.r.scenarioId]; if (!o || o.v.error || x.v.error) return 0; return rank(x) - rank(o); }
+
+  function gateBadge(v) {
+    if (v.legal_verdict === 'pass') return badge('통과' + (v.validity_grade ? '' : ' (법률만)'), '#22c55e');
+    if (v.legal_verdict === 'review') return badge('검토', '#eab308');
+    if (v.legal_verdict === 'fail') return badge('위반', '#dc2626');
+    return badge(v.legal_verdict || '—', '#64748b');
+  }
+  function escPath(v) {
+    var e = v.judge_escalation;
+    if (!e) return '<span style="color:var(--text-dim)">' + esc(v.judge_model || '') + '</span>';
+    var fin = e.error ? '<span style="color:var(--yellow)">2차 실패</span>' : '<b style="color:' + (GRADE_COLOR[e.verdict] || '#64748b') + '">' + esc(verdictLabel(e.verdict || '')) + '</b>';
+    return '<span style="color:var(--purple)">' + esc(e.first_model || '') + ' ' + esc(verdictLabel(e.first_verdict || '')) + '</span> → ' + esc(e.model || '') + ' ' + fin;
+  }
+  function compareCell(x, o) {
+    if (!o) return '<span style="color:var(--text-dim)">없음</span>';
+    if (o.v.error) return '<span style="color:var(--yellow)">판정 실패</span>';
+    var d = delta(x, compareMap());
+    var lbl = verdictLabel(o.vd || '');
+    var arrow = d > 0 ? '<span class="delta-up"> ▲</span>' : (d < 0 ? '<span class="delta-down"> ▼</span>' : '');
+    return badge(lbl, GRADE_COLOR[o.vd] || '#64748b') + arrow;
+  }
+
+  // ── 비교 섹션 ──
+  function compareSection() {
+    var cmp = compareMap();
+    var rows = scoredRows(current);
+    var up = 0, down = 0, same = 0, missing = 0, gateFlip = { toFail: 0, toPass: 0 };
+    rows.forEach(function (x) {
+      var o = cmp[x.r.scenarioId];
+      if (!o || o.v.error || x.v.error) { missing++; return; }
+      var d = rank(x) - rank(o);
+      if (d > 0) up++; else if (d < 0) down++; else same++;
+      if (x.vd === 'FAIL' && o.vd !== 'FAIL') gateFlip.toFail++;
+      if (x.vd !== 'FAIL' && o.vd === 'FAIL') gateFlip.toPass++;
+    });
+    var sA = currentSummary(), sB = (runs.filter(function (r) { return r.runId === compare.runId; })[0] || {}).v3 || summarize(scoredRows(compare));
+    function pct(s) { return s.n ? Math.round(((s.gate || {}).pass || 0) / s.n * 100) : 0; }
+    return '<div class="section"><div class="section-title">비교 <span class="hint">이 실행(' + esc(promptKeys({ v3: sA })) + ') vs ' + esc(compare.runId) + ' (' + esc(promptKeys({ v3: sB })) + ') — 같은 시나리오 id 끼리</span></div>' +
+      '<div class="cards">' +
+      '<div class="card"><div class="v" style="color:var(--green)">' + pct(sA) + '%<span style="font-size:12px;color:var(--text-dim)"> vs ' + pct(sB) + '%</span></div><div class="l">게이트 통과율</div></div>' +
+      '<div class="card"><div class="v" style="color:var(--green)">' + up + '</div><div class="l">개선 (등급 상승)</div></div>' +
+      '<div class="card"><div class="v" style="color:var(--red)">' + down + '</div><div class="l">악화 (등급 하락)</div></div>' +
+      '<div class="card"><div class="v" style="color:var(--text)">' + same + '</div><div class="l">같음</div></div>' +
+      '<div class="card"><div class="v" style="color:var(--green)">' + gateFlip.toPass + '</div><div class="l">위반 → 통과</div></div>' +
+      '<div class="card"><div class="v" style="color:var(--red)">' + gateFlip.toFail + '</div><div class="l">통과 → 위반</div></div>' +
+      '<div class="card"><div class="v" style="color:var(--text-dim)">' + missing + '</div><div class="l">비교 불가</div></div>' +
+      '</div><div style="font-size:11px;color:var(--text-dim);margin-top:8px">답변은 실행마다 새로 생성되므로 한 건의 차이는 프롬프트 차이일 수도, 생성 편차일 수도 있다. 여러 실행에 걸쳐 같은 방향이면 프롬프트 효과로 본다.</div></div>';
+  }
+
+  // ── 상세 모달 ──
+  function openDetail(idx) {
+    var r = (current.results || [])[idx];
+    if (!r) return;
+    var v = r.evalV3 || {};
+    $('mTitle').textContent = r.scenarioId || '';
+    $('mBadges').innerHTML = v.error ? badge('판정 실패', '#eab308') : (gateBadge(v) + ' ' +
+      (v.validity_axis ? badge((AXIS_LABEL[v.validity_axis] || v.validity_axis) + ' ' + (v.validity_grade || '—'), GRADE_COLOR[v.validity_grade] || '#64748b') : '') + ' ' +
+      (v.uv_grade ? badge('UV ' + v.uv_grade, GRADE_COLOR[v.uv_grade] || '#64748b') : ''));
+    var h = '';
+    h += '<div class="box"><h4>질문' + (r.turnsExecuted > 1 ? ' (마지막 턴 · 총 ' + r.turnsExecuted + '턴)' : '') + '</h4><div class="pre">' + esc(r.prompt || '') + '</div>' +
+      (r.expectedBehavior ? '<h4 style="margin-top:10px">기대 동작</h4><div class="pre" style="max-height:120px">' + esc(r.expectedBehavior) + '</div>' : '') +
+      (r.phrCaseId ? '<div style="font-size:11px;color:var(--text-dim);margin-top:8px">PHR 케이스 ' + esc(r.phrCaseId) + '</div>' : '') + '</div>';
+    h += '<div class="box"><h4>답변' + (r.responseLength ? ' · ' + r.responseLength + '자' : '') + '</h4><div class="pre">' + esc(r.response || '(없음)') + '</div></div>';
+
+    if (v.error) {
+      h += '<div class="box full"><h4>판정 실패</h4><div class="pre" style="color:var(--yellow)">' + esc(v.error) + '</div></div>';
+    } else {
+      h += '<div class="box full"><h4>판정 요약</h4><div class="pre" style="max-height:200px">' + esc(v.summary || v.summary_line || '(요약 없음)') + '</div>' +
+        '<div style="font-size:11px;color:var(--text-dim);margin-top:8px">' + esc([v.eval_version, v.ontology_version ? '온톨로지 ' + v.ontology_version : '', v.judge_model ? '판정 ' + v.judge_model : '', v.gate_mode ? 'gate ' + v.gate_mode : '', promptOf(v) ? '프롬프트 ' + promptOf(v) : ''].filter(Boolean).join(' · ')) + '</div>' +
+        (v.judge_escalation ? '<div style="font-size:11.5px;margin-top:6px">판정 경로: ' + escPath(v) + (v.judge_escalation.first_hits && v.judge_escalation.first_hits.length ? ' · 1차 규칙 ' + esc(v.judge_escalation.first_hits.join(', ')) : '') + '</div>' : '') + '</div>';
+
+      h += '<div class="box"><h4>법률 게이트 — 걸린 규칙 ' + ((v.legal_hit_detail || []).length ? '' : '없음') + (v.legal_max_level ? ' · 최고 수준 ' + esc(v.legal_max_level) : '') + '</h4>' + hitTable(v.legal_hit_detail) + '</div>';
+      h += '<div class="box"><h4>' + esc(AXIS_LABEL[v.validity_axis] || v.validity_axis || '기록/증상') + ' 항목' + (v.validity_status ? ' · ' + esc(v.validity_status) : '') + '</h4>' + itemTable(v.validity_items, v.validity_unmet) +
+        ((v.grade_cap || []).length ? '<div style="font-size:11px;color:var(--orange);margin-top:6px">등급 상한 ' + esc(v.grade_cap.join(', ')) + '</div>' : '') +
+        (v.checklist ? checklistLine(v.checklist) : '') + (v.fact_check ? factLine(v.fact_check) : '') + '</div>';
+      h += '<div class="box"><h4>사용자 가치(UV) 항목' + (v.uv_intent ? ' · 의도 ' + esc(INTENT_LABEL[v.uv_intent] || v.uv_intent) : '') + (v.uv_status ? ' · ' + esc(v.uv_status) : '') + '</h4>' + itemTable(v.uv_items, v.uv_unmet) + slotsLine(v.uv_slots) + '</div>';
+      h += '<div class="box"><h4>claim</h4><div style="font-size:12px">' + (v.claim_count != null ? v.claim_count + '개' : '—') +
+        (v.claim_levels ? ' · 수준 ' + esc(Object.keys(v.claim_levels).sort().map(function (k) { return k + ' ' + v.claim_levels[k]; }).join(', ')) : '') +
+        (v.claim_fallback ? ' · fallback ' + v.claim_fallback : '') + '</div>' +
+        (v.rag_meta ? '<div style="font-size:11px;color:var(--text-dim);margin-top:6px">rag_meta: 프롬프트 ' + esc(v.rag_meta.prompt_version || '-') + ' · 개인화 주입 ' + esc(v.rag_meta.personal_injected_count != null ? v.rag_meta.personal_injected_count : '-') + (v.rag_meta.skip_reason ? ' · skip ' + esc(v.rag_meta.skip_reason) : '') + '</div>' : '') + '</div>';
+    }
+    $('mBody').innerHTML = h;
+    $('modalBg').style.display = 'flex';
+  }
+  function hitTable(rows) {
+    if (!rows || !rows.length) return '';
+    var h = '<table class="kv"><tr><th>규칙</th><th>심각도</th><th>수준</th><th>claim</th><th>상태</th></tr>';
+    rows.forEach(function (x) {
+      h += '<tr><td>' + mini(x.rule_id || '', x.status === 'review' ? 'review' : 'rule') + '</td><td>' + esc(x.severity || '') + '</td><td>' + esc(x.level || '') + '</td><td>' + esc(x.claim_idx != null ? x.claim_idx : '') + '</td><td>' + esc(x.status || '') + '</td></tr>';
+    });
+    return h + '</table>';
+  }
+  function itemTable(items, unmet) {
+    if (!items || !items.length) return '<span style="font-size:11px;color:var(--text-dim)">' + ((unmet || []).length ? '미충족 ' + esc(unmet.join(', ')) : '항목 없음') + '</span>';
+    var h = '<table class="kv"><tr><th>항목</th><th>결과</th><th>내용</th></tr>';
+    items.forEach(function (it) {
+      var res = String(it.result || '');
+      var color = /pass|met|ok|true/i.test(res) ? 'var(--green)' : (/unmet|fail|false|miss/i.test(res) ? 'var(--red)' : (/n\/?a|skip|none/i.test(res) ? 'var(--text-dim)' : 'var(--yellow)'));
+      h += '<tr><td class="mono">' + esc(it.id) + '</td><td style="color:' + color + ';font-weight:700;white-space:nowrap">' + esc(res || '—') + '</td><td style="color:var(--text-dim)">' + esc(it.detail || '') + '</td></tr>';
+    });
+    return h + '</table>';
+  }
+  function slotsLine(slots) {
+    if (!slots) return '';
+    var keys = Object.keys(slots);
+    if (!keys.length) return '';
+    return '<div style="font-size:11px;margin-top:8px;color:var(--text-dim)">슬롯 ' + keys.map(function (k) { return '<span style="color:' + (slots[k] ? 'var(--green)' : 'var(--red)') + '">' + esc(k) + (slots[k] ? ' ○' : ' ×') + '</span>'; }).join(' · ') + '</div>';
+  }
+  function checklistLine(cl) {
+    var covered = cl.red_flags_covered || 0, total = cl.red_flags_total || 0;
+    var color = (total > 0 && covered === 0) ? 'var(--red)' : (covered < total ? 'var(--yellow)' : 'var(--green)');
+    return '<div style="font-size:11.5px;margin-top:8px">증상군 <b>' + esc(cl.symptom_key || '판별 못 함') + '</b>' + (cl.branch ? ' · 기대 분기 <b>' + esc(cl.branch) + '</b>' : '') +
+      ' · <span style="color:' + color + '">위험 신호 ' + covered + '/' + total + '</span> · 필수 질문 ' + (cl.required_questions_pending || 0) + '건 미확인</div>';
+  }
+  function factLine(fc) {
+    return '<div style="font-size:11.5px;margin-top:8px;color:var(--text-dim)">사실 대조 ' + esc(fc.status || '') +
+      (fc.cited != null ? ' · 인용 ' + fc.cited : '') + (fc.matched != null ? ' · 일치 ' + fc.matched : '') +
+      (fc.fabricated ? ' · <span style="color:var(--red)">지어냄 ' + fc.fabricated + '</span>' : '') +
+      (fc.stale_meds ? ' · <span style="color:var(--orange)">오래된 처방 ' + fc.stale_meds + '</span>' : '') +
+      (fc.oldest_record_months != null ? ' · 가장 오래된 기록 ' + fc.oldest_record_months + '개월' : '') + '</div>';
+  }
+
+  // ── CSV ──
+  function exportCsv() {
+    if (!current) return;
+    var rows = scoredRows(current).filter(passesFilter);
+    var cols = ['scenarioId', 'category', 'subcategory', 'gate', 'verdict', 'legal_hits', 'review_hits', 'axis', 'validity_grade', 'validity_unmet', 'uv_grade', 'uv_unmet', 'intent', 'prompt_version', 'judge_model', 'escalated_from', 'escalated_first_verdict', 'claims', 'final_source', 'status'];
+    var lines = [cols.join(',')];
+    rows.forEach(function (x) {
+      var r = x.r, v = x.v, e = v.judge_escalation || {};
+      var vals = [r.scenarioId, r.category, r.subcategory, v.error ? 'error' : v.legal_verdict, x.vd || '', (v.legal_hits || []).join('|'), (v.legal_review_hits || []).join('|'),
+        v.validity_axis, v.validity_grade, (v.validity_unmet || []).join('|'), v.uv_grade, (v.uv_unmet || []).join('|'), v.uv_intent, promptOf(v), v.judge_model,
+        e.first_model || '', e.first_verdict || '', v.claim_count, r.finalSource, r.status];
+      lines.push(vals.map(function (s) { s = s == null ? '' : String(s); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(','));
+    });
+    var blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'eval_v3_' + (current.runId || 'run') + '.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+
+  // ── 초기화 ──
+  document.addEventListener('DOMContentLoaded', function () {
+    var lb = $('loginBtn'); if (lb) lb.addEventListener('click', doLogin);
+    var lp = $('loginPw'); if (lp) lp.addEventListener('keydown', function (e) { if (e.key === 'Enter') doLogin(); });
+    var mc = $('mClose'); if (mc) mc.addEventListener('click', function () { $('modalBg').style.display = 'none'; });
+    var mb = $('modalBg'); if (mb) mb.addEventListener('click', function (e) { if (e.target === mb) mb.style.display = 'none'; });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { var m = $('modalBg'); if (m) m.style.display = 'none'; } });
+    var bc = $('btnCsv'); if (bc) bc.addEventListener('click', exportCsv);
+    var cs = $('compareSel'); if (cs) cs.addEventListener('change', function () {
+      var id = cs.value;
+      if (!id || (current && id === current.runId)) { compare = null; cs.value = ''; renderDetail(); return; }
+      fetchRun(id).then(function (run) { compare = run; renderDetail(); }).catch(function (e) { toast(e.message || String(e)); });
+    });
+    initAuth().then(function (ok) { if (ok) loadRuns(); });
+  });
+})();
+</script>
+</body>
+</html>

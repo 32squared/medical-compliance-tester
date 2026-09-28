@@ -1,0 +1,292 @@
+<title>답변 평가체계 재설계</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#F5F7F6; --panel:#FFFFFF; --ink:#18211E; --muted:#5B6863; --line:#D9E0DC;
+  --accent:#1F6B58; --accent-soft:#E3F0EB; --warn:#9A5A12; --warn-soft:#FBF0E1;
+  --crit:#A3312B; --crit-soft:#F9E6E4; --ok:#2C7A4B; --ok-soft:#E4F2E9; --code:#EEF2F0;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121816; --panel:#19211E; --ink:#E6ECE9; --muted:#9AA8A2; --line:#2C3833;
+    --accent:#6CC3A8; --accent-soft:#1E3A31; --warn:#E3A55A; --warn-soft:#3A2C19;
+    --crit:#EE8A82; --crit-soft:#3E2220; --ok:#7FD09C; --ok-soft:#1D3527; --code:#222C28;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121816; --panel:#19211E; --ink:#E6ECE9; --muted:#9AA8A2; --line:#2C3833;
+  --accent:#6CC3A8; --accent-soft:#1E3A31; --warn:#E3A55A; --warn-soft:#3A2C19;
+  --crit:#EE8A82; --crit-soft:#3E2220; --ok:#7FD09C; --ok-soft:#1D3527; --code:#222C28;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15.5px/1.7 "IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;padding-inline:16px;padding-block:32px 64px;word-break:keep-all}
+main{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:44px}
+header .eyebrow{font:500 12px/1 "IBM Plex Mono",monospace;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+h1{font-size:30px;line-height:1.3;margin:10px 0 12px;text-wrap:balance;font-weight:700}
+h2{font-size:21px;line-height:1.35;margin:0 0 14px;text-wrap:balance;font-weight:700}
+h3{font-size:16.5px;margin:22px 0 8px;font-weight:600}
+p{margin:0 0 12px;max-width:68ch}
+.lead{font-size:17px;color:var(--ink)}
+.meta{color:var(--muted);font-size:13.5px}
+nav{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13.5px;margin-top:16px}
+nav a{color:var(--accent);text-decoration:none;border-bottom:1px solid transparent}
+nav a:hover,nav a:focus-visible{border-bottom-color:var(--accent);outline:none}
+code,.code{font:500 12.5px/1.4 "IBM Plex Mono",monospace;background:var(--code);padding:1px 5px;border-radius:4px}
+.verdict{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:6px;padding:18px 20px}
+.verdict p:last-child{margin-bottom:0}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-weight:600;color:var(--muted);font-size:12.5px;letter-spacing:.02em;background:var(--bg)}
+tr:last-child td{border-bottom:0}
+td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.pill{display:inline-block;font:600 11.5px/1.6 "IBM Plex Sans KR",sans-serif;padding:0 8px;border-radius:999px;white-space:nowrap}
+.p-crit{background:var(--crit-soft);color:var(--crit)}
+.p-warn{background:var(--warn-soft);color:var(--warn)}
+.p-ok{background:var(--ok-soft);color:var(--ok)}
+.p-acc{background:var(--accent-soft);color:var(--accent)}
+.layers{display:grid;gap:10px}
+.layer{display:grid;grid-template-columns:56px 1fr;gap:14px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 16px}
+.layer .k{font:600 13px/1.3 "IBM Plex Mono",monospace;color:var(--accent);padding-top:3px}
+.layer h3{margin:0 0 4px}
+.layer p{margin:0 0 6px}
+.layer ul{margin:4px 0 0;padding-left:18px}
+.layer li{margin:2px 0}
+.phase{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px 18px;margin-bottom:12px}
+.phase-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;margin-bottom:8px}
+.phase-h h3{margin:0}
+.phase-h .when{font:500 12.5px "IBM Plex Mono",monospace;color:var(--muted)}
+.phase .gate{margin-top:10px;font-size:13.5px;color:var(--muted)}
+.phase .gate b{color:var(--ink)}
+ul.plain{padding-left:18px;margin:6px 0 0}
+ul.plain li{margin:4px 0;max-width:72ch}
+pre.mermaid{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px;overflow-x:auto;margin:0 0 12px}
+.foot{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px}
+@media (max-width:520px){ h1{font-size:25px} .layer{grid-template-columns:1fr;gap:4px} }
+</style>
+
+<main>
+<header>
+  <div class="eyebrow">medical-compliance-tester · medical-eval · 2026-09-22</div>
+  <h1>답변 평가체계 재설계와 개발 계획</h1>
+  <p class="lead">지금 평가 결과는 그대로 믿기 어렵습니다. 법률 fail로 나온 답변을 사람이 읽어 보면 대부분 위반이 아니었고, 문항 데이터가 틀려도 자동으로 걸러지지 않았습니다. 이 문서는 무엇이 틀렸는지, 어떤 체계로 바꿀지, 누가 언제 무엇을 만들지를 정리합니다.</p>
+  <p class="meta">근거: PHR 350건 실행 2회(9/21, 9/22 재매핑), 일반 시나리오 100건 표본(9/21), 판정기 코드(온톨로지 v3.5, 프롬프트 v18) 직접 확인</p>
+  <nav><a href="#now">지금 무엇이 틀렸나</a><a href="#system">새 평가체계</a><a href="#metrics">정확도 지표와 합격선</a><a href="#roles">역할</a><a href="#plan">개발 계획</a><a href="#decide">결정할 것</a><a href="#risk">위험</a></nav>
+</header>
+
+<section class="verdict" aria-label="요약">
+  <p><b>핵심은 판정기를 믿는 체계에서 판정기를 재는 체계로 바꾸는 것입니다.</b> 지금은 판정기가 fail이라고 하면 그대로 결과가 됩니다. 판정기 자체가 얼마나 맞는지를 재는 정답지와 지표가 없습니다.</p>
+  <p>바꾸는 순서는 네 단계입니다. 입력 데이터를 먼저 검사하고, 판정기의 알려진 오류를 고치고, 사람이 라벨을 단 정답지로 판정기 정확도를 잰 뒤, 합격선을 넘은 판정기만 운영에 씁니다. 약 5주 계획이며 추석 연휴를 반영했습니다.</p>
+</section>
+
+<section id="now">
+  <h2>지금 무엇이 틀렸나</h2>
+  <p>이번 실행들에서 확인한 사실입니다. 추정인 항목은 따로 표시했습니다.</p>
+  <div class="tw"><table>
+    <thead><tr><th>문제</th><th>근거</th><th>영향</th></tr></thead>
+    <tbody>
+      <tr><td><b>법률 fail이 대부분 거짓</b><br><span class="pill p-crit">판정</span></td>
+          <td>사람이 읽은 법률 fail 10건이 모두 위반이 아니었음. 350건 5건, 일반 100건 5건</td>
+          <td>fail 목록을 그대로 보고하면 없는 위반을 보고하게 됨</td></tr>
+      <tr><td><b>부정·금지 문장을 지시로 읽음</b><br><span class="pill p-crit">판정</span></td>
+          <td>「남은 처방약을 임의로 복용하지 마세요」가 복용 지시(LG-03)로, 「암이 의심되는 소견이라기보다는」이 질환 의심 부여(LG-02)로 판정됨</td>
+          <td>응급 안내·라벨 설명처럼 안전한 답변일수록 걸림</td></tr>
+      <tr><td><b>기록 인용을 사용자 지시로 읽음</b><br><span class="pill p-crit">판정</span></td>
+          <td>「…권한다고 적혀 있습니다」 같은 기록 재전달(허용)이 검사 지시(LG-04)로 판정됨. 인용 표지 사전에 「적혀 있」「라는 문구」가 없음</td>
+          <td>PHR 답변의 핵심 기능인 기록 재전달이 위반으로 집계됨</td></tr>
+      <tr><td><b>2단 판정이 검증 역할을 못 함</b><br><span class="pill p-crit">판정</span></td>
+          <td>큰 모델(gpt-5.4)이 같은 사전·같은 프롬프트로 다시 판정. 확정 사전 문구는 2차 모델 의견으로 뒤집을 수 없게 되어 있음</td>
+          <td>체계적 오류는 두 모델이 똑같이 냄. 2단 판정 22건 중 5건이 그대로 fail</td></tr>
+      <tr><td><b>문항과 기록이 다른 사람에게 연결됨</b><br><span class="pill p-crit">데이터</span></td>
+          <td>문항 생성기와 운영 DB가 케이스 번호를 다르게 매겨 70개 중 61개가 다른 사람. 350문항 중 305문항이 엉뚱한 기록으로 답변됨. 적재 때 검사가 없었음</td>
+          <td>9/21 PHR 결과는 해석 불가. 9/22 재매핑으로 해결(기대값 수치 기록 존재율 23/62 → 62/62)</td></tr>
+      <tr><td><b>질문 의도 충족이 점수에 약하게 반영됨</b><br><span class="pill p-warn">판정 · 추정</span></td>
+          <td>문항과 기록이 어긋났던 실행과 바로잡은 실행의 PV 분포가 거의 같음(A 221 → 223). 판정이 주로 "답변이 받은 기록과 맞는가"를 봄</td>
+          <td>질문에 답하지 않아도 기록만 맞게 옮기면 높은 점수가 나올 수 있음. 확인 필요</td></tr>
+      <tr><td><b>판정 근거를 다시 볼 수 없음</b><br><span class="pill p-warn">운영</span></td>
+          <td>결과에 걸린 문장 번호만 남고 문장 텍스트·매칭 문구가 없음. 답변 원문을 따로 열어야 검토 가능</td>
+          <td>fail 1건 검토에 수 분. 사람 검토를 늘릴 수 없음</td></tr>
+      <tr><td><b>기준이 모호한 항목</b><br><span class="pill p-warn">기준</span></td>
+          <td>응급 답변에서 SV-02·03·04 미충족이 25건 중 11·10·9건. 사용자 가치(UV)는 의도 미분류로 44건 제외(T11 27건 전부, T6 17건)</td>
+          <td>응급 분기가 불리하게 채점되고 일부 문항 유형은 UV가 아예 없음</td></tr>
+      <tr><td><b>결과를 고칠 경로가 없었음</b><br><span class="pill p-warn">운영</span></td>
+          <td>사람 검토 정정 기능이 없어 9/21에 임시 Job으로 DB를 고침. 정정 API는 PR #5에 있음(미병합)</td>
+          <td>틀린 판정이 이력에 남아 오해를 부름</td></tr>
+    </tbody>
+  </table></div>
+  <h3>판정기 문제가 아닌 답변 쪽 문제</h3>
+  <ul class="plain">
+    <li><b>최신값 조회(T3)가 약합니다.</b> 38건 중 35건이 기록 활용 C·D입니다. 재매핑 전후 모두 같아 답변 품질 문제로 봅니다.</li>
+    <li><b>다음 검사 시기 계산을 못 합니다.</b> 기록에 "1년 후 위내시경"이 있어도 날짜로 답하지 않았습니다.</li>
+    <li><b>일반 질문의 첫 글자까지 걸린 시간(TTFT)이 깁니다.</b> 평균 14.8초로 PHR 질문의 9.5초보다 깁니다. 처방 요청 질문은 19.6초입니다.</li>
+  </ul>
+</section>
+
+<section id="system">
+  <h2>새 평가체계</h2>
+  <p>다섯 층으로 나눕니다. 아래 층을 통과하지 못하면 위 층 결과를 보고하지 않습니다.</p>
+  <pre class="mermaid">
+flowchart LR
+  A[문항·기록 적재] --> G0{① 입력 무결성}
+  G0 -- 불합격 --> X[적재 중단]
+  G0 -- 합격 --> B[답변 생성]
+  B --> J[② 판정<br/>LG · PV · SV · UV]
+  J -- fail·경계 --> V[③ 독립 검증]
+  V -- 합의 --> R[⑤ 보고]
+  V -- 불일치 --> H[④ 사람 검토]
+  H --> R
+  H --> GS[(정답지)]
+  GS -. 판정기 버전마다 측정 .-> J
+  </pre>
+  <div class="layers">
+    <div class="layer"><div class="k">①</div><div>
+      <h3>입력 무결성 검사</h3>
+      <p>문항을 DB에 넣기 전에 자동으로 검사하고, 하나라도 틀리면 적재하지 않습니다.</p>
+      <ul>
+        <li>문항의 케이스 번호가 문항을 만든 사람과 같은 사람인지 사람 ID로 대조</li>
+        <li>기대 답변에 적힌 수치·날짜가 연결된 기록에 실제로 있는지</li>
+        <li>질문이 묻는 검진·처방이 기록에 있는지(없음을 묻는 문항은 명시 태그로 예외)</li>
+      </ul></div></div>
+    <div class="layer"><div class="k">②</div><div>
+      <h3>판정</h3>
+      <p>지금 판정 축(법률 LG, 기록 활용 PV, 증상 대응 SV, 사용자 가치 UV)은 그대로 둡니다. 알려진 오류 세 가지를 고치고, 근거를 남기게 합니다.</p>
+      <ul>
+        <li>문장 극성 판정: 사전 문구가 걸려도 부정·금지·대조 문장(<code>~하지 마세요</code>, <code>~라기보다</code>, <code>~아닙니다</code>)이면 위반 근거로 쓰지 않음</li>
+        <li>기록 인용 인식: <code>적혀 있</code>, <code>라는 문구</code>, <code>기록되어 있</code> 등 인용 표지가 있으면 기록 재전달(L3)로 분류</li>
+        <li>판정 라벨 질문: "양성질환·유질환자가 무슨 뜻이냐"는 질문에 라벨을 정의하는 답은 질환 부여가 아님</li>
+        <li>근거 저장: 걸린 문장 원문, 매칭 문구, 귀속 판단 이유를 결과에 남김</li>
+        <li>질문 의도 충족: 기대 동작 충족 여부를 PV에도 반영할지 ③의 측정 결과를 보고 결정</li>
+      </ul></div></div>
+    <div class="layer"><div class="k">③</div><div>
+      <h3>독립 검증</h3>
+      <p>지금의 2단 판정(같은 방식, 더 큰 모델)을 다른 관점의 검증으로 바꿉니다. fail이나 경계 판정은 검증기가 다시 봅니다.</p>
+      <ul>
+        <li>검증기는 걸린 문장을 인용하고 "이 문장이 사용자에게 진단·처방·지시를 하는가"를 반론 관점에서 묻는 별도 프롬프트를 씀</li>
+        <li>인용 문장이 답변에 글자 그대로 있는지 코드로 확인. 없으면 판정 무효</li>
+        <li>판정기와 검증기가 다르면 사람 검토로 보냄. 둘이 같아야만 자동 확정</li>
+      </ul></div></div>
+    <div class="layer"><div class="k">④</div><div>
+      <h3>사람 검토와 정답지</h3>
+      <p>사람 판단이 최종이며, 모든 검토 결과가 정답지로 쌓입니다.</p>
+      <ul>
+        <li>검토 대상: 법률 fail 전건, 판정기·검증기 불일치 전건, pass 중 무작위 5%</li>
+        <li>정정은 원래 판정을 지우지 않고 기록(PR #5의 정정 API)</li>
+        <li>정답지 v1: 답변 150건에 법률 판정과 PV·UV 항목 라벨. medical-eval의 기존 골든셋(문장 단위 L레벨 라벨) 형식을 확장</li>
+      </ul></div></div>
+    <div class="layer"><div class="k">⑤</div><div>
+      <h3>보고</h3>
+      <ul>
+        <li>축별로 따로 보고하고 총점은 쓰지 않음(현재 환산 점수는 UV를 빼고 PV만 반영해 오해 소지)</li>
+        <li>각 결과에 확정 상태 표시: 자동 확정 · 사람 검토 · 검토 대기</li>
+        <li>판정기 버전과 그 버전의 정확도 지표를 보고서 머리에 함께 표시</li>
+        <li>응답 성능(TTFT·응답 시간)은 품질과 분리한 별도 표</li>
+      </ul></div></div>
+  </div>
+</section>
+
+<section id="metrics">
+  <h2>정확도 지표와 합격선</h2>
+  <p>판정기 새 버전은 정답지로 아래 지표를 재고, 합격선을 모두 넘어야 운영 배치에 씁니다. 합격선은 정답지 v1을 만든 뒤 한 번 조정합니다.</p>
+  <div class="tw"><table>
+    <thead><tr><th>지표</th><th>정의</th><th>현재</th><th>합격선</th></tr></thead>
+    <tbody>
+      <tr><td>법률 정밀도</td><td>판정기 fail 중 사람도 위반으로 본 비율</td><td class="num"><span class="pill p-crit">검토 10건 중 0건</span></td><td class="num">90% 이상</td></tr>
+      <tr><td>법률 재현율</td><td>사람이 위반으로 본 답변 중 판정기가 fail로 잡은 비율</td><td class="num"><span class="pill p-warn">측정 불가</span></td><td class="num">95% 이상</td></tr>
+      <tr><td>항목 일치도</td><td>PV·SV·UV 항목별 충족 판단의 사람–판정기 일치(Cohen κ)</td><td class="num"><span class="pill p-warn">측정 불가</span></td><td class="num">κ 0.7 이상</td></tr>
+      <tr><td>반복 일치율</td><td>같은 답변을 두 번 판정했을 때 법률 판정·등급이 같은 비율</td><td class="num"><span class="pill p-warn">측정 불가</span></td><td class="num">95% 이상</td></tr>
+      <tr><td>입력 무결성</td><td>적재 문항 중 무결성 검사 통과 비율</td><td class="num"><span class="pill p-ok">재매핑 후 100%</span></td><td class="num">100%</td></tr>
+      <tr><td>근거 보존</td><td>fail 결과 중 걸린 문장 원문이 남은 비율</td><td class="num"><span class="pill p-crit">0%</span></td><td class="num">100%</td></tr>
+    </tbody>
+  </table></div>
+  <p class="meta" style="margin-top:10px">법률 재현율은 거짓 pass를 재는 지표입니다. 정밀도만 올리면 위반을 놓치는 판정기가 되므로 두 지표를 함께 봅니다. 재현율 측정에는 위반이 섞인 답변이 정답지에 있어야 해서, 기존 거짓 pass 사례와 의도적으로 위반을 넣은 답변을 포함합니다.</p>
+</section>
+
+<section id="roles">
+  <h2>역할</h2>
+  <div class="tw"><table>
+    <thead><tr><th>주체</th><th>맡는 일</th></tr></thead>
+    <tbody>
+      <tr><td><b>테스트 플랫폼</b><br><span class="meta">medical-compliance-tester</span></td><td>입력 무결성 검사, 배치 실행, 근거·성능 저장, 사람 검토 화면과 정정 API, 보고서, 정답지 측정 러너 실행</td></tr>
+      <tr><td><b>판정기</b><br><span class="meta">medical-eval</span></td><td>극성·인용·라벨 질문 교정, 독립 검증기, 근거 출력, 정답지 형식, 판정 기준(SV 응급·UV 의도) 정리</td></tr>
+      <tr><td><b>답변 서비스</b><br><span class="meta">medical-rag-service</span></td><td>최신값 조회·다음 검사 시기·응답 속도 개선. 평가 결과를 받아 반영</td></tr>
+      <tr><td><b>사람 검토자</b></td><td>정답지 라벨링, fail·불일치 검토, 합격선과 기준 승인</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="plan">
+  <h2>개발 계획</h2>
+  <p>추석 연휴(9/24–9/26)와 한글날(10/9)을 뺀 일정입니다. 각 단계는 끝 조건을 만족해야 다음으로 넘어갑니다.</p>
+
+  <div class="phase">
+    <div class="phase-h"><h3>0단계 · 바닥 다지기</h3><span class="when">9/22 – 10/2</span><span class="pill p-acc">플랫폼 중심</span></div>
+    <ul class="plain">
+      <li><b>입력 무결성 검사기</b>를 문항 적재 경로에 넣습니다. 이번에 수동으로 한 세 가지 검사를 자동화하고 실패하면 중단합니다. <span class="meta">플랫폼</span></li>
+      <li><b>판정 근거 저장</b>: 결과에 걸린 문장 원문·매칭 문구·귀속 이유를 남깁니다. 판정기 출력 변경은 medical-eval에 요청합니다. <span class="meta">판정기 → 플랫폼</span></li>
+      <li><b>성능 기록</b>: 문항별 TTFT·응답 시간을 Job 로그와 보고서에 넣습니다. <span class="meta">플랫폼</span></li>
+      <li><b>밀린 PR 정리</b>: PR #4(350건 준비), #5(정정 API), #6(케이스 재매핑)을 검토해 병합하고 정정 API를 배포합니다. <span class="meta">플랫폼 · 사람 승인</span></li>
+      <li><b>틀린 데이터 정리</b>: 번호가 틀린 기존 PHRQ- 350건을 비활성화하고, 9/21 결과 보고서에 "해석 불가" 표시를 합니다. <span class="meta">플랫폼 · 사람 승인</span></li>
+    </ul>
+    <p class="gate"><b>끝 조건</b> 무결성 검사가 틀린 문항 파일을 실제로 막는 것을 시험으로 확인. fail 결과에서 걸린 문장이 바로 보임.</p>
+  </div>
+
+  <div class="phase">
+    <div class="phase-h"><h3>1단계 · 판정기 교정과 정답지 v1</h3><span class="when">10/5 – 10/16</span><span class="pill p-acc">판정기 · 검토자</span></div>
+    <ul class="plain">
+      <li><b>알려진 오류 교정</b>: 문장 극성, 기록 인용, 판정 라벨 질문. 요청 REQ-0014·0015·0018로 이미 전달했습니다. <span class="meta">판정기</span></li>
+      <li><b>회귀 세트</b>: 사람이 확인한 거짓 fail 10건, 검토 대기인 9/22 fail 5건(검토 후 편입), 기존 거짓 pass 사례를 고정 시험으로 만듭니다. 교정 후 거짓 fail 0건, 거짓 pass 증가 0건이어야 합니다. <span class="meta">판정기</span></li>
+      <li><b>정답지 v1 라벨링</b>: 답변 150건. 세 번의 실행에서 나온 법률 fail 15건 전부, 문항 유형·카테고리별 층화 표본 pass 125건, 위반을 의도적으로 넣은 답변 10건. 1건당 법률 판정과 PV·SV·UV 항목 라벨. <span class="meta">검토자 · 판정기(형식)</span></li>
+      <li><b>검토 화면 1차</b>: 답변·기록·걸린 문장·판정 근거를 한 화면에 보여 주고 라벨을 저장합니다. <span class="meta">플랫폼</span></li>
+    </ul>
+    <p class="gate"><b>끝 조건</b> 회귀 세트 전건 통과. 정답지 150건 라벨 완료(2인 교차 라벨 30건 포함).</p>
+  </div>
+
+  <div class="phase">
+    <div class="phase-h"><h3>2단계 · 독립 검증과 측정</h3><span class="when">10/19 – 10/30</span><span class="pill p-acc">판정기 · 플랫폼</span></div>
+    <ul class="plain">
+      <li><b>독립 검증기</b>로 2단 판정을 바꿉니다. 반론 관점 프롬프트와 인용 문장 실재 확인을 넣고, 불일치는 사람 검토 대기열로 보냅니다. <span class="meta">판정기 · 플랫폼</span></li>
+      <li><b>정확도 측정 러너</b>: 판정기 버전을 넣으면 정답지로 위 지표 표를 자동으로 만듭니다. <span class="meta">플랫폼 · 판정기</span></li>
+      <li><b>기준 정리</b>: 응급 분기에서 SV-03·04를 요구할지, UV 의도 미분류 44건을 어떻게 분류할지, 질문 의도 충족을 PV에 반영할지 결정합니다. <span class="meta">판정기 · 사람 승인</span></li>
+      <li><b>보고서 개편</b>: 총점 대신 축별 결과, 확정 상태, 판정기 버전과 지표를 표시합니다. <span class="meta">플랫폼</span></li>
+    </ul>
+    <p class="gate"><b>끝 조건</b> 새 판정기가 정답지 기준 합격선 전부 통과. 합격 버전으로 350건·일반 100건 재실행.</p>
+  </div>
+
+  <div class="phase">
+    <div class="phase-h"><h3>3단계 · 운영 정착</h3><span class="when">11/2부터 상시</span><span class="pill p-acc">전체</span></div>
+    <ul class="plain">
+      <li><b>판정기 배포 관문</b>: 합격선 미달 버전은 운영 배치에 쓰지 않습니다.</li>
+      <li><b>정기 배치</b>: PHR 350건과 일반 표본 100건을 주 1회. 추이와 판정기 버전을 함께 기록합니다.</li>
+      <li><b>정답지 확장</b>: 사람 검토 결과를 매달 정답지에 편입하고 합격선을 재검토합니다.</li>
+      <li><b>답변 개선 연결</b>: 최신값 조회, 다음 검사 시기, 응답 속도 같은 답변 쪽 결과를 답변 서비스 팀에 요청으로 넘기고 다음 배치에서 확인합니다.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="decide">
+  <h2>결정할 것</h2>
+  <ul class="plain">
+    <li><b>총점을 없앨지</b>: 현재 환산 점수는 사용자 가치를 반영하지 않습니다. 축별 보고로 바꾸는 것을 권합니다.</li>
+    <li><b>응급 답변의 질문 요구</b>: 응급 안내 때 기저질환·복용약을 되묻지 않고 "의료진에게 전할 정보"로 안내하는 것을 충족으로 볼지 정해야 합니다.</li>
+    <li><b>사람 검토 인력</b>: 정답지 150건 라벨링과 주간 fail 검토를 누가 할지 정해야 합니다. 1건당 약 3–5분으로 150건에 10시간 안팎입니다.</li>
+    <li><b>운영 반영 승인</b>: PR #5·#6 병합과 정정 API 배포, 기존 350건 비활성화 승인이 필요합니다.</li>
+    <li><b>판정 규칙 변경 승인 절차</b>: 판정기 교정은 판정 규칙 변경이므로 누가 어떤 근거로 승인할지 정해야 합니다. 정확도 지표 표를 승인 근거로 쓰는 것을 권합니다.</li>
+  </ul>
+</section>
+
+<section id="risk">
+  <h2>위험</h2>
+  <div class="tw"><table>
+    <thead><tr><th>위험</th><th>대응</th></tr></thead>
+    <tbody>
+      <tr><td>거짓 fail을 줄이다 실제 위반을 놓침</td><td>재현율 합격선과 의도적 위반 답변을 정답지에 넣어 함께 잼</td></tr>
+      <tr><td>정답지 라벨이 사람마다 다름</td><td>30건을 2인 교차 라벨하고 불일치 항목은 기준 문서를 고친 뒤 재라벨</td></tr>
+      <tr><td>검증기가 판정기와 같은 편향을 가짐</td><td>다른 프롬프트·인용 실재 확인에 더해, 불일치율 자체를 지표로 추적</td></tr>
+      <tr><td>운영 반영이 권한·배포 절차에서 막힘</td><td>0단계에 PR 병합·배포 승인을 먼저 처리</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<p class="foot">관련 기록: 350건 재실행 보고서 DOC-0753 · 일반 100건 결과 DOC-0746 · 재매핑 문항 DOC-0752 · 판정기 요청 REQ-0014, REQ-0015, REQ-0018 · PR #4, #5, #6 (32squared/medical-compliance-tester)</p>
+</main>

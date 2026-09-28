@@ -4,4 +4,4 @@
 [submodule "packages/medical_eval"]
 	path = packages/medical_eval
 	url = https://github.com/32squared/medical-eval.git
-	branch = claude/project-thread-iopruw
+	branch = main

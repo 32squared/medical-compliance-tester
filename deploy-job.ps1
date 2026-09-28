@@ -9,7 +9,9 @@ param(
     [string]$VpcConnector = "medical-connector",
     # 온톨로지 기반 v3 판정 병존 실행. 켜면 답변 1건당 판정 모델 호출이 2회 늘어난다.
     [switch]$EvalV3,
-    [string]$EvalV3Model = ""
+    [string]$EvalV3Model = "",
+    # 평가 스위치 등 추가 환경변수. 예: -ExtraEnv "EVAL_PHR=0;EVAL_V2_LEGAL=0;EVAL_FINAL=v3"
+    [string]$ExtraEnv = ""
 )
 
 Write-Host "=== Cloud Run Jobs Deploy (batch-runner) ===" -ForegroundColor Cyan
@@ -69,6 +71,10 @@ if ($EvalV3) {
 } else {
     Write-Host "EVAL_V3:    off (-EvalV3 로 켠다)" -ForegroundColor DarkGray
 }
+if ($ExtraEnv) {
+    $EnvPairs += ($ExtraEnv -split ';' | Where-Object { $_ -match '=' })
+    Write-Host "ExtraEnv:   $ExtraEnv" -ForegroundColor Yellow
+}
 $EnvSpec = "^;^" + ($EnvPairs -join ";")
 
 # 배열로 인자 구성해서 PowerShell line continuation 이슈 회피
@@ -90,7 +96,10 @@ $gcloudArgs = @(
     "--vpc-egress=all-traffic",
     "--execution-environment=gen2"
 )
-Write-Host "[DEBUG] gcloud $($gcloudArgs -join ' ')" -ForegroundColor DarkGray
+# 출력용 문자열에서만 DB 비밀번호를 가린다 (실행 인자 $gcloudArgs 는 그대로).
+# 비밀번호는 URL 인코딩 없이 들어가 '@' ':' ';' 를 품을 수 있으므로 정규식 대신 값 자체를 치환한다.
+$gcloudArgsDisplay = ($gcloudArgs -join ' ').Replace($DbPassword, '****')
+Write-Host "[DEBUG] gcloud $gcloudArgsDisplay" -ForegroundColor DarkGray
 & gcloud @gcloudArgs
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Job $Action failed!" -ForegroundColor Red
