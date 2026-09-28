@@ -209,6 +209,14 @@ def _make_sigterm_handler():
     return _handler
 
 
+def _ms(v):
+    """응답 시간 값 → 정수 ms 문자열(없으면 '-'). responseTime·firstTokenMs 는 ms 단위다."""
+    try:
+        return str(int(round(float(v)))) if v not in (None, '') else '-'
+    except (TypeError, ValueError):
+        return '-'
+
+
 def _v3_log_summary(results):
     """v3(온톨로지) 판정 요약을 로그로 남긴다 — id·등급·규칙 id 만 (답변 원문·케이스 값 없음).
 
@@ -217,6 +225,7 @@ def _v3_log_summary(results):
     rows = [(r.get('scenarioId'), r.get('evalV3')) for r in (results or []) if r.get('evalV3')]
     if not rows:
         return
+    timing = {r.get('scenarioId'): r for r in (results or [])}
     gate, pv, uv, errs, hits = {}, {}, {}, 0, {}
     cross = {}      # v2 법률(pass/fail/-) × v3 legal gate(pass/fail) — 섀도 기간 일치율
     v2_by_sid = {r.get('scenarioId'): (r.get('gptEval') or {}) for r in (results or [])}
@@ -241,7 +250,9 @@ def _v3_log_summary(results):
             f"{v.get('validity_axis') or 'PV'}={v.get('validity_grade')} unmet={v.get('validity_unmet') or []} "
             f"UV={v.get('uv_grade')} unmet={v.get('uv_unmet') or []} intent={v.get('uv_intent')} "
             f"prompt={rm.get('prompt_version') or v.get('prompt_version')} skip={rm.get('skip_reason')} "
-            f"claims={v.get('claim_count')} fallback={v.get('claim_fallback')}"
+            f"claims={v.get('claim_count')} fallback={v.get('claim_fallback')} "
+            f"ttft={_ms(timing.get(sid, {}).get('firstTokenMs'))} total={_ms(timing.get(sid, {}).get('responseTime'))} "
+            f"len={timing.get(sid, {}).get('responseLength')}"
             + (f" escalated={esc.get('first_model')}:{esc.get('first_verdict')}→{esc.get('model')}:{esc.get('verdict') or esc.get('error')}"
                if (esc := v.get('judge_escalation')) else "")
         )

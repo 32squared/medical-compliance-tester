@@ -30,6 +30,7 @@ LINE = re.compile(
     r"hits=(?P<hits>\[.*?\]) review=(?P<review>\[.*?\]) (?P<axis>PV|SV)=(?P<pv>\S+) unmet=(?P<pv_unmet>\[.*?\]) "
     r"UV=(?P<uv>\S+) unmet=(?P<uv_unmet>\[.*?\]) intent=(?P<intent>\S+) prompt=(?P<prompt>\S+) skip=(?P<skip>\S+)"
     r"(?:.*?escalated=(?P<esc>\S+))?")
+TIMING = re.compile(r"ttft=(?P<ttft>\d+|-) total=(?P<total>\d+|-)")
 SUMMARY = re.compile(r"\[v3\] SUMMARY .*?eval=(?P<eval>\S+) ontology=(?P<onto>\S+) judge=(?P<judge>\S+)")
 
 # ── 용어 (온톨로지 v3.5 rules.csv · intent_slots.csv · thresholds.csv 기준) ──
@@ -138,6 +139,10 @@ def parse(lines):
                 'intent': None if g['intent'] == 'None' else g['intent'], 'prompt': g['prompt'],
                 'skip': None if g['skip'] == 'None' else g['skip'], 'esc': g.get('esc'),
             }
+            tm = TIMING.search(t)
+            if tm:
+                items[g['id']]['ttft'] = None if tm['ttft'] == '-' else int(tm['ttft'])
+                items[g['id']]['total'] = None if tm['total'] == '-' else int(tm['total'])
             continue
         m = SUMMARY.search(t)
         if m:
@@ -184,6 +189,23 @@ def render(run_id, execution, items, meta, smeta):
     uv_scored = sum(1 for r in items if r['uv'])
     esc_n = sum(1 for r in items if r['esc'])
     intents = Counter(r['intent'] or '-' for r in items)
+
+    def _pct(vals, p):
+        vals = sorted(vals)
+        return vals[min(len(vals) - 1, int(p * len(vals)))] if vals else None
+
+    ttfts = [r['ttft'] for r in items if r.get('ttft')]
+    totals = [r['total'] for r in items if r.get('total')]
+    if ttfts:
+        timing_card = (
+            '<div class="card"><h3>응답 속도 (초)</h3><table class="mini"><tr><th>TTFT 평균</th><th>p50</th>'
+            '<th>p95</th><th>전체 평균</th></tr><tr>'
+            f'<td class="num">{sum(ttfts) / len(ttfts) / 1000:.1f}</td><td class="num">{_pct(ttfts, .5) / 1000:.1f}</td>'
+            f'<td class="num">{_pct(ttfts, .95) / 1000:.1f}</td>'
+            f'<td class="num">{(sum(totals) / len(totals) / 1000) if totals else 0:.1f}</td></tr></table>'
+            f'<p class="sub">TTFT = 첫 글자까지 걸린 시간 · {len(ttfts)}건 기준</p></div>')
+    else:
+        timing_card = ''
 
     def dist(c, order):
         cells = ''.join(f'<td class="num">{c.get(k, 0)}</td>' for k in order)
@@ -332,6 +354,7 @@ nav{{display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;font-size:13px}}nav a{
   <p class="sub">필수 5항목 미충족 0 A · 1 B · 2 C · 3 이상 D. 제외 {uv_na}건은 의도 분류가 안 돼 채점하지 않음</p></div>
  <div class="card"><h3>운영 환산 점수 (UV 미반영)</h3><table class="mini"><tr><th>100</th><th>90</th><th>85</th><th>70</th><th>60</th><th>0</th></tr><tr>{score_dist}</tr></table>
   <p class="sub">fail 0 · PV A100·B85·C70·D60 · 등급 없음 90</p></div>
+ {timing_card}
 </div>
 <div class="tw"><table><tr><th>걸린 LG 규칙</th><th>내용</th><th class="num">건수</th></tr>{lg_rows}</table></div>
 </section>

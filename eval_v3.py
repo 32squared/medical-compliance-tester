@@ -141,6 +141,28 @@ def _rule_ids(hits) -> list:
     return sorted({h.get("rule_id") for h in (hits or []) if h.get("rule_id")})
 
 
+QUOTE_MAX = 240
+_EV_KEYS = ("basis", "phrase_id", "id", "kind", "rule_id", "status", "text", "phrase", "example_code", "example_kind",
+            "same_as_nearest", "person_attributed", "attrib_source", "attrib_level", "rationale", "department")
+
+
+def evidence_rows(evidence, limit=6):
+    """판정 근거 목록을 저장용으로 줄인다(키 고정, 문자열 160자, 최대 limit 개)."""
+    out = []
+    for e in (evidence or [])[:limit]:
+        if not isinstance(e, dict):
+            continue
+        row = {}
+        for k in _EV_KEYS:
+            v = e.get(k)
+            if v is None or v == "" or v == []:
+                continue
+            row[k] = v[:160] if isinstance(v, str) else v
+        if row:
+            out.append(row)
+    return out
+
+
 def compact(result: dict) -> dict:
     """전체 결과 → 호스트가 저장·집계하는 최소 형태(원문·인용문 제외)."""
     if not result:
@@ -181,9 +203,20 @@ def compact(result: dict) -> dict:
         for h in (hits or []):
             if not isinstance(h, dict):
                 continue
-            rows.append({"rule_id": h.get("rule_id"), "severity": h.get("severity"),
-                         "level": h.get("level"), "claim_idx": h.get("claim_idx"),
-                         "status": h.get("status")})
+            row = {"rule_id": h.get("rule_id"), "severity": h.get("severity"),
+                   "level": h.get("level"), "claim_idx": h.get("claim_idx"),
+                   "status": h.get("status")}
+            # 판정 근거(2026-09-22 계획 0단계): 걸린 문장·검출기·사전·귀속 이유를 남겨 사람이
+            # 답변 원문을 따로 열지 않고 검토할 수 있게 한다. 문장은 답변의 일부라 새 데이터가 아니다.
+            if h.get("quote"):
+                row["quote"] = str(h["quote"])[:QUOTE_MAX]
+            for k in ("detectors", "decision", "review"):
+                if h.get(k):
+                    row[k] = h[k]
+            ev = evidence_rows(h.get("evidence"))
+            if ev:
+                row["evidence"] = ev
+            rows.append(row)
         return rows
 
     def _item_rows(items):

@@ -3572,6 +3572,19 @@ class ProxyHandler(BaseHTTPRequestHandler):
         skipped = 0
 
         items = payload if isinstance(payload, list) else payload.get('scenarios', [])
+        # 무결성 검사 — PHR 문항이 연결된 사람의 기록과 맞지 않으면 가져오지 않는다(force 로 무시).
+        force = isinstance(payload, dict) and bool(payload.get('force'))
+        rows = [i for i in items if isinstance(i, dict)]
+        if any(r.get('phrCaseId') for r in rows):
+            import scenario_integrity
+            errors, warns = scenario_integrity.check_rows(rows, db.get_phr_case)
+            if errors and not force:
+                summ = scenario_integrity.summarize(errors)
+                n = len({e['id'] for e in errors})
+                return self._send_json(400, {
+                    'error': (f'무결성 검사 실패: 문항 {n}건이 연결된 PHR 기록과 맞지 않습니다 {summ["counts"]}. '
+                              f'가져오지 않았습니다. 예: {summ["examples"][0]["id"]} — {summ["examples"][0]["detail"]}'),
+                    'integrity': summ, 'warnings': scenario_integrity.summarize(warns)})
         for item in items:
             try:
                 item.setdefault('enabled', True)

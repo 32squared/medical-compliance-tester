@@ -37,6 +37,13 @@ elif [ "$RUN_MODE" = "apply_v3_review" ]; then
     if [ "$SEED_DRY_RUN" = "1" ]; then SEED_ARGS="--dry-run"; fi
     echo "[entrypoint] mode=apply_v3_review → scripts/apply_v3_review.py ${REVIEW_FILE} ${SEED_ARGS}"
     exec python /app/scripts/apply_v3_review.py --file "/app/${REVIEW_FILE}" ${SEED_ARGS}
+elif [ "$RUN_MODE" = "rejudge_v3" ]; then
+    # 저장된 답변을 v3 판정기로 다시 판정해 새 이력(RUN_ID)으로 저장 — scripts/rejudge_v3.py 참고.
+    # REJUDGE_SOURCE=원본 runId, SCENARIO_IDS_JSON=대상 id(비우면 전체). EVAL_V3=1 이어야 판정기가 켜진다.
+    SEED_ARGS=""
+    if [ "$SEED_DRY_RUN" = "1" ]; then SEED_ARGS="--dry-run"; fi
+    echo "[entrypoint] mode=rejudge_v3 → scripts/rejudge_v3.py source=${REJUDGE_SOURCE} new=${RUN_ID} ${SEED_ARGS}"
+    exec python /app/scripts/rejudge_v3.py ${SEED_ARGS}
 elif [ "$RUN_MODE" = "seed_phr_batch" ]; then
     # PHR 배치 평가 문항 시드 (Cloud Run Job 전용) — scripts/seed_phr_batch.py 참고.
     SEED_ARGS=""
