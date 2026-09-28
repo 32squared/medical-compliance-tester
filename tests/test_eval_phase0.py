@@ -169,3 +169,14 @@ def test_report_axis_only_no_total_score():
     assert '운영 환산 점수' not in out and 'score_dist' not in out
     assert 'LG 법률 게이트' in out and 'PV 기록 활용 등급' in out and 'UV 사용자 가치 등급' in out
     assert '응답 속도' in out and '1 pass' in out
+def test_eval_v3_pkg_override(tmp_path):
+    """EVAL_V3_PKG 로 판정기 패키지 위치를 바꾼다(재판정 후보용). 기본은 packages/medical_eval."""
+    import subprocess
+    code = "import eval_v3 as e; print(e._PKG); print(e._SNAPSHOT_DIR)"
+    env = dict(os.environ, EVAL_V3_PKG=str(tmp_path), PYTHONIOENCODING='utf-8')
+    out = subprocess.run([sys.executable, '-c', code], cwd=ROOT, capture_output=True, text=True, env=env)
+    lines = out.stdout.strip().splitlines()
+    assert lines[-2] == str(tmp_path) and lines[-1] == os.path.join(str(tmp_path), 'ontology', 'snapshot'), out.stderr
+    env.pop('EVAL_V3_PKG')
+    out = subprocess.run([sys.executable, '-c', code], cwd=ROOT, capture_output=True, text=True, env=env)
+    assert out.stdout.strip().splitlines()[-2].endswith(os.path.join('packages', 'medical_eval'))

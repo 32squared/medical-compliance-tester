@@ -26,7 +26,10 @@ import threading
 logger = logging.getLogger("eval_v3")
 
 _DIR = os.path.dirname(os.path.abspath(__file__))
-_PKG = os.path.join(_DIR, "packages", "medical_eval")
+#: 판정기 패키지 위치. EVAL_V3_PKG 로 바꾸면 병합 전 판정기 후보(예: packages/medical_eval_candidate)를
+#: 그 실행에만 쓸 수 있다 — 재판정 잡이 운영 배치의 판정기를 바꾸지 않고 후보를 시험하는 용도.
+_PKG = (os.environ.get("EVAL_V3_PKG", "").strip()
+        or os.path.join(_DIR, "packages", "medical_eval"))
 _SRC = os.path.join(_PKG, "src")
 _SNAPSHOT_DIR = os.path.join(_PKG, "ontology", "snapshot")
 
