@@ -2602,6 +2602,12 @@ class ProxyHandler(BaseHTTPRequestHandler):
         if self.path == '/api/history/re-evaluate':
             return self._re_evaluate_history(body)
 
+        # ── 정답지 라벨 저장 (검토 화면 /review) ──
+        if self.path == '/api/eval-v3/labels':
+            if not self._require_auth():
+                return
+            return self._v3_save_label(body)
+
         # ── v3 법률 판정 사람 검토 정정 (Admin) ──
         m_review = re.match(r'^/api/history/([^/]+)/review$', self.path)
         if m_review:
@@ -2973,6 +2979,15 @@ class ProxyHandler(BaseHTTPRequestHandler):
             return self._list_history()
         if path == '/api/eval-v3/runs':
             return self._list_eval_v3_runs()
+        # ── 정답지 라벨 (평가체계 개선 1단계) — 검토 화면 /review ──
+        if path == '/api/eval-v3/review-item':
+            return self._v3_review_item(parse_qs(parsed.query))
+        if path == '/api/eval-v3/labels':
+            return self._v3_list_labels(parse_qs(parsed.query))
+        if path == '/api/eval-v3/labels/export':
+            if not self._require_admin():
+                return
+            return self._v3_export_labels()
 
         # ── HealthBench 전용 API ──
         if path == '/api/healthbench/runs':
@@ -3103,6 +3118,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
             '/history.html': 'history.html',
             '/eval-v3': 'eval_v3.html',
             '/eval_v3.html': 'eval_v3.html',
+            '/review': 'review.html',
+            '/review.html': 'review.html',
             '/guidelines': 'guideline_manager.html',
             '/guideline_manager.html': 'guideline_manager.html',
             '/criteria': 'criteria_manager.html',
@@ -3163,6 +3180,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
             '/history.html':           'view_history',
             '/eval-v3':                'view_history',
             '/eval_v3.html':           'view_history',
+            '/review':                 'view_history',
+            '/review.html':            'view_history',
             '/guidelines':             ['view_guidelines', 'manage_guidelines'],
             '/guideline_manager.html': ['view_guidelines', 'manage_guidelines'],
             '/criteria':               ['view_criteria', 'manage_criteria'],
@@ -4277,6 +4296,107 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
             r['id'] = run_id
             _save_run_to_db(_db_run_to_proxy(r))
         return self._send_json(200, {"message": "이력 업데이트 완료"})
+
+    # ── 정답지 라벨 (gold_labels.py) ──
+    def _labeler(self):
+        """(id, 이름) — 테스터 로그인이면 그 계정, 아니면 admin."""
+        t = self._get_tester_info() or {}
+        if t.get('id'):
+            return t['id'], t.get('name') or t.get('alias') or t['id']
+        return ('admin', 'admin') if self._is_admin() else (None, None)
+
+    @staticmethod
+    def _find_result(run, sid):
+        return next((x for x in (run.get('results') or [])
+                     if isinstance(x, dict) and x.get('scenarioId') == sid), None)
+
+    def _v3_review_item(self, params):
+        """GET /api/eval-v3/review-item?run=&sid=[&all=1] — 검토 1건: 결과 전체 + 연결 PHR 기록 + 라벨.
+
+        라벨은 기본으로 내 것만 준다(교차 라벨이 서로 영향받지 않게). all=1 은 Admin 만.
+        """
+        run_id = (params.get('run') or [''])[0]
+        sid = (params.get('sid') or [''])[0]
+        if not run_id or not sid:
+            return self._send_error(400, 'run 과 sid 가 필요합니다')
+        run = db.get_test_run(run_id)
+        if not run:
+            return self._send_error(404, f'이력을 찾을 수 없습니다: {run_id}')
+        res = self._find_result(run, sid)
+        if res is None:
+            return self._send_error(404, f'결과에 없는 문항: {sid}')
+        case = None
+        cid = res.get('phrCaseId') or ''
+        if cid:
+            try:
+                c = db.get_phr_case(cid)
+                case = (c or {}).get('case')
+            except Exception:
+                case = None
+        me, _ = self._labeler()
+        want_all = (params.get('all') or [''])[0] == '1' and self._is_admin()
+        labels = db.get_gold_labels(run_id=run_id, scenario_id=sid, labeler_id=None if want_all else me)
+        import gold_labels
+        return self._send_json(200, {'runId': run_id, 'result': res, 'case': case, 'labels': labels,
+                                     'judge': gold_labels.judge_snapshot(res), 'labeler': me,
+                                     'rules': gold_labels.rule_names()})
+
+    def _v3_list_labels(self, params):
+        """GET /api/eval-v3/labels?run=[&all=1] — 라벨 목록(기본 내 것). Admin 은 all=1 로 전체 + 일치율."""
+        import gold_labels
+        run_id = (params.get('run') or [''])[0] or None
+        me, _ = self._labeler()
+        if (params.get('all') or [''])[0] == '1':
+            if not self._is_admin():
+                return self._send_error(403, 'Admin 권한이 필요합니다')
+            rows = db.get_gold_labels(run_id=run_id)
+            return self._send_json(200, {'labels': rows, 'stats': gold_labels.agreement(rows)})
+        if not me:
+            return self._send_error(403, '인증이 필요합니다')
+        rows = db.get_gold_labels(run_id=run_id, labeler_id=me)
+        return self._send_json(200, {'labels': rows, 'labeler': me})
+
+    def _v3_save_label(self, body):
+        """POST /api/eval-v3/labels — {runId, scenarioId, labels:{legal, items}, note}. 검토자별 1행."""
+        import gold_labels
+        try:
+            payload = json.loads(body or b'{}')
+        except json.JSONDecodeError:
+            return self._send_error(400, '잘못된 JSON')
+        run_id = str(payload.get('runId') or '').strip()
+        sid = str(payload.get('scenarioId') or '').strip()
+        if not run_id or not sid:
+            return self._send_error(400, 'runId 와 scenarioId 가 필요합니다')
+        labels, errs = gold_labels.validate(payload.get('labels'))
+        if errs:
+            return self._send_json(400, {'error': '; '.join(errs), 'errors': errs})
+        run = db.get_test_run(run_id)
+        res = self._find_result(run, sid) if run else None
+        if res is None:
+            return self._send_error(404, f'이력·문항을 찾을 수 없습니다: {run_id} / {sid}')
+        me, name = self._labeler()
+        if not me:
+            return self._send_error(403, '검토자를 확인할 수 없습니다')
+        rid = db.save_gold_label({'run_id': run_id, 'scenario_id': sid, 'labeler_id': me, 'labeler_name': name,
+                                  'labels': labels, 'judge': gold_labels.judge_snapshot(res),
+                                  'note': payload.get('note') or ''})
+        ProxyHandler._add_log(f"[정답지] {me} · {run_id} · {sid} · legal={labels['legal']['verdict']}")
+        return self._send_json(200, {'success': True, 'id': rid, 'labels': labels})
+
+    def _v3_export_labels(self):
+        """GET /api/eval-v3/labels/export — 정답지 전건 JSON (Admin). 답변 원문은 넣지 않는다."""
+        import gold_labels
+        rows = db.get_gold_labels()
+        body = json.dumps({'exportedAt': datetime.now(timezone.utc).isoformat(timespec='seconds'),
+                           'count': len(rows), 'stats': gold_labels.agreement(rows), 'labels': rows},
+                          ensure_ascii=False, indent=1).encode('utf-8')
+        self.send_response(200)
+        self._set_cors_headers()
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Content-Disposition', 'attachment; filename="gold_labels.json"')
+        self.send_header('Content-Length', str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
     def _review_history_run(self, run_id, body):
         """POST /api/history/<runId>/review — v3 법률 판정을 사람 검토로 정정 (Admin).
