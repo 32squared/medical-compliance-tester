@@ -39,6 +39,10 @@
   .chip { font-size:10.5px; font-weight:700; padding:1px 6px; border-radius:4px; white-space:nowrap; }
   .c-fail { background:#ef444422; color:#f87171; } .c-pass { background:#22c55e22; color:#4ade80; }
   .c-grade { background:var(--surface2); color:var(--text-dim); } .c-diff { background:#eab30822; color:#facc15; }
+  .c-ai { background:#a855f722; color:#c084fc; } .c-aiok { background:var(--surface2); color:#a78bfa; }
+  .ai { border-color:#a855f766; } .ai h3 { color:#c084fc; }
+  .ai ul { margin:6px 0 0 18px; font-size:12.5px; line-height:1.6; }
+  mark.ai-q { background:#a855f744; }
   .main { flex:1; overflow-y:auto; padding:18px 24px 80px; }
   .sec { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; margin-bottom:12px; }
   .sec h3 { font-size:13px; margin-bottom:10px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
@@ -100,6 +104,8 @@
     <div class="side-head">
       <select id="runSel" aria-label="실행 선택"></select>
       <select id="filterSel" aria-label="목록 필터">
+        <option value="ai">AI 검수: 사람 확인 필요</option>
+        <option value="aiok">AI 검수: 문제 없음</option>
         <option value="all">전체</option>
         <option value="todo">검토 안 한 것</option>
         <option value="done">검토한 것</option>
@@ -129,7 +135,7 @@
 <script>
 (function () {
   'use strict';
-  var runs = [], runId = null, results = [], mine = {}, cur = null, curIdx = -1, isAdmin = false;
+  var runs = [], runId = null, results = [], mine = {}, ai = {}, cur = null, curIdx = -1, isAdmin = false;
   var RULES = {};
   var ITEM_VALUES = [['met', '충족'], ['unmet', '미충족'], ['na', '해당 없음']];
 
@@ -181,7 +187,7 @@
     }).catch(function (e) { $('list').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; });
   }
   function selectRun(id) {
-    runId = id; results = []; mine = {}; cur = null; curIdx = -1;
+    runId = id; results = []; mine = {}; ai = {}; cur = null; curIdx = -1;
     $('list').innerHTML = '<div class="empty">불러오는 중…</div>';
     $('main').innerHTML = '<div class="empty">왼쪽에서 문항을 고르세요.<br><span class="kbd">J / K 다음·이전 · Ctrl+Enter 저장</span></div>';
     return Promise.all([
@@ -190,6 +196,11 @@
     ]).then(function (x) {
       results = ((x[0] && x[0].results) || []).filter(function (r) { var v = v3(r); return v && !v.error && v.legal_verdict; });
       ((x[1] && x[1].labels) || []).forEach(function (l) { mine[l.scenarioId] = l; });
+      ((x[1] && x[1].ai) || []).forEach(function (a) { ai[a.scenarioId] = a; });
+      // AI 검수가 끝난 실행이면 '사람 확인 필요' 목록부터 보여 준다. 검수가 없으면 전체.
+      var hasAi = Object.keys(ai).length > 0, fs = $('filterSel');
+      if (hasAi && !selectRun._touched) fs.value = 'ai';
+      if (!hasAi && (fs.value === 'ai' || fs.value === 'aiok')) fs.value = 'all';
       renderList();
       var sid = decodeURIComponent((location.hash || '').split('/')[1] || '');
       if (sid) openItem(sid);
@@ -207,12 +218,17 @@
       if (f === 'done') return !!mine[r.scenarioId];
       if (f === 'fail') return judgeLegal(r) === 'fail';
       if (f === 'diff') return differs(r);
+      if (f === 'ai') return !!(ai[r.scenarioId] && ai[r.scenarioId].needs_human);
+      if (f === 'aiok') return !!(ai[r.scenarioId] && !ai[r.scenarioId].needs_human);
       return true;
     });
   }
   function renderList() {
     var vis = visible(), done = results.filter(function (r) { return mine[r.scenarioId]; }).length;
-    $('progress').innerHTML = '내 라벨 <b>' + done + '</b> / ' + results.length + '건 · 목록 ' + vis.length + '건';
+    var flagged = results.filter(function (r) { return ai[r.scenarioId] && ai[r.scenarioId].needs_human; });
+    var fdone = flagged.filter(function (r) { return mine[r.scenarioId]; }).length;
+    $('progress').innerHTML = (flagged.length ? '확인 필요 <b>' + fdone + '</b> / ' + flagged.length + '건 끝냄 · ' : '') +
+      '내 라벨 <b>' + done + '</b> / ' + results.length + '건 · 목록 ' + vis.length + '건';
     $('pbar').style.width = (results.length ? done / results.length * 100 : 0) + '%';
     $('list').innerHTML = vis.map(function (r) {
       var v = v3(r), jl = judgeLegal(r), g = v.validity_grade || '-';
@@ -220,13 +236,14 @@
         '<span class="done">' + (mine[r.scenarioId] ? '✓' : '') + '</span>' +
         '<span class="sid">' + esc(r.scenarioId) + '</span>' +
         (differs(r) ? '<span class="chip c-diff">다름</span>' : '') +
+        (ai[r.scenarioId] ? (ai[r.scenarioId].needs_human ? '<span class="chip c-ai">AI 확인</span>' : '<span class="chip c-aiok">AI ✓</span>') : '') +
         '<span class="chip ' + (jl === 'fail' ? 'c-fail' : 'c-pass') + '">' + esc(jl) + '</span>' +
         '<span class="chip c-grade">' + esc(g) + '</span></div>';
     }).join('') || '<div class="empty">해당하는 문항이 없습니다</div>';
   }
   $('list').onclick = function (e) { var it = e.target.closest('.it'); if (it) openItem(it.getAttribute('data-sid')); };
   $('runSel').onchange = function () { location.hash = encodeURIComponent(this.value); selectRun(this.value); };
-  $('filterSel').onchange = renderList;
+  $('filterSel').onchange = function () { selectRun._touched = true; renderList(); };
   $('searchBox').oninput = renderList;
 
   // ── 1건 ──
@@ -235,20 +252,40 @@
     $('main').innerHTML = '<div class="empty">불러오는 중…</div>';
     getJSON('/api/eval-v3/review-item?run=' + encodeURIComponent(runId) + '&sid=' + encodeURIComponent(sid)).then(function (j) {
       RULES = j.rules || RULES;
-      cur = j.result; cur._judge = j.judge; cur._case = j.case; cur._label = (j.labels || [])[0] || null;
+      cur = j.result; cur._judge = j.judge; cur._case = j.case; cur._label = (j.labels || [])[0] || null; cur._ai = (j.aiLabels || [])[0] || null;
       curIdx = visible().findIndex(function (r) { return r.scenarioId === sid; });
       renderList(); renderItem();
       var a = document.querySelector('.it.active'); if (a) a.scrollIntoView({ block: 'nearest' });
     }).catch(function (e) { $('main').innerHTML = '<div class="empty err">' + esc(e.message) + '</div>'; });
   }
   function ruleName(id) { return (RULES[id] && RULES[id].title) || ''; }
-  function highlight(text, quotes) {
+  // 판정기 문장(빨강)을 표시한 뒤 AI 검수 문장(보라)을 표시 — 같은 문장이면 겹쳐 보인다
+  function highlight(text, quotes, aiQuotes) {
     var h = esc(text);
-    quotes.filter(Boolean).sort(function (a, b) { return b.length - a.length; }).forEach(function (q) {
-      var e = esc(q.trim()); if (e.length < 4) return;
-      h = h.split(e).join('<mark>' + e + '</mark>');
-    });
+    function mark(list, cls) {
+      (list || []).filter(Boolean).sort(function (a, b) { return b.length - a.length; }).forEach(function (q) {
+        var e = esc(q.trim()); if (e.length < 4) return;
+        h = h.split(e).join('<mark' + cls + '>' + e + '</mark>');
+      });
+    }
+    mark(quotes, ''); mark(aiQuotes, ' class="ai-q"');
     return h;
+  }
+  function aiHtml(A, am, al, jd) {
+    var lg = al.legal || {}, same = lg.verdict === jd.legal_verdict;
+    var items = Object.keys(al.items || {}).filter(function (k) { return (jd.items || {})[k] && (jd.items || {})[k] !== al.items[k]; });
+    return '<div class="sec ai"><h3>AI 검수 의견<span class="hint">' + esc(A.labelerName || A.labelerId) + ' · 확신 ' + esc(am.confidence || '-') + '</span>' +
+      (am.needs_human ? '<span class="chip c-ai">사람 확인 필요</span>' : '<span class="chip c-aiok">판정기와 같음</span>') +
+      '<button type="button" class="btn" id="useAiBtn" style="margin-left:auto">AI 의견으로 폼 채우기</button></h3>' +
+      '<div class="meta"><span>법률 <b class="' + (lg.verdict === 'fail' ? 'err' : '') + '">' + esc(lg.verdict) + '</b> ' + esc((lg.rules || []).join(', ')) + '</span>' +
+      '<span>판정기 ' + esc(jd.legal_verdict) + ' ' + esc((jd.legal_hits || []).join(', ')) + (same ? ' (같음)' : ' (다름)') + '</span>' +
+      (am.quotes_ok === false ? '<span class="err">AI 인용 문장이 답변에 없음</span>' : '') + '</div>' +
+      (lg.note ? '<p style="margin-top:8px;font-size:13px;line-height:1.6">' + esc(lg.note) + '</p>' : '') +
+      ((am.reasons || []).length ? '<div class="kbd" style="margin-top:6px">사람에게 넘긴 이유</div><ul>' + am.reasons.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '') +
+      ((am.judge_errors || []).length ? '<div class="kbd" style="margin-top:6px">AI 가 본 판정기 오류</div><ul>' + am.judge_errors.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '') +
+      (items.length ? '<table style="margin-top:8px"><tr><th>판정기와 다른 항목</th><th>판정기</th><th>AI</th><th>AI 이유</th></tr>' + items.map(function (k) {
+        return '<tr><td class="code">' + esc(k) + ' ' + esc(ruleName(k)) + '</td><td class="code">' + esc(jd.items[k]) + '</td><td class="code">' + esc(al.items[k]) + '</td><td>' + esc((am.item_reasons || {})[k] || '') + '</td></tr>';
+      }).join('') + '</table>' : '') + '</div>';
   }
   function hitHtml(h) {
     var ev = (h.evidence || []).map(function (e) {
@@ -275,6 +312,8 @@
     var r = cur, v = v3(r), jd = r._judge || {}, lab = (r._label && r._label.labels) || null;
     var hits = v.legal_hit_detail || [];
     var quotes = hits.map(function (h) { return h.quote; });
+    var A = r._ai, am = (A && A.meta) || {}, al = (A && A.labels) || {};
+    var aiQuotes = (am.quotes || []).map(function (q) { return q.quote; });
     var items = (v.validity_items || []).concat(v.uv_items || []);
     var legalDefault = lab ? lab.legal.verdict : jd.legal_verdict;
     var rulesDefault = lab ? lab.legal.rules : (jd.legal_verdict === 'fail' ? jd.legal_hits : []);
@@ -286,7 +325,8 @@
       '<span>' + esc(v.validity_axis || '') + ' ' + esc(v.validity_grade || '-') + '</span><span>UV ' + esc(v.uv_grade || '-') + ' (' + esc(v.uv_intent || '의도 미분류') + ')</span></div>' +
       '<p class="qtext" style="margin-top:10px">' + esc(r.prompt) + '</p>' +
       (r.expectedBehavior ? '<details style="margin-top:8px"><summary>기대 동작</summary><pre>' + esc(r.expectedBehavior) + '</pre></details>' : '') + '</div>';
-    html += '<div class="sec"><h3>답변<span class="hint">빨간 표시 = 판정기가 걸었던 문장</span></h3><div class="answer">' + highlight(r.response || '', quotes) + '</div></div>';
+    if (A) html += aiHtml(A, am, al, jd);
+    html += '<div class="sec"><h3>답변<span class="hint">빨간 표시 = 판정기가 걸었던 문장' + (aiQuotes.length ? ' · 보라 = AI 검수가 위반으로 본 문장' : '') + '</span></h3><div class="answer">' + highlight(r.response || '', quotes, aiQuotes) + '</div></div>';
     html += '<div class="sec"><h3>판정기가 걸은 규칙 ' + hits.length + '건</h3>' + (hits.map(hitHtml).join('') || '<div class="kbd">없음</div>') + '</div>';
     html += '<div class="sec"><h3>PHR 기록</h3>' + caseHtml(r._case) + '</div>';
     // 라벨 폼
@@ -310,7 +350,21 @@
       '<div class="savebar"><button class="btn primary" id="saveBtn">저장하고 다음 (Ctrl+Enter)</button><button class="btn" id="prevBtn">이전 (K)</button><button class="btn" id="nextBtn">다음 (J)</button>' +
       '<span class="err" id="saveErr"></span></div></div>';
     $('main').innerHTML = html; $('main').scrollTop = 0;
+    if ($('useAiBtn')) $('useAiBtn').onclick = function () { fillForm(al); toast('AI 의견으로 채웠습니다 — 확인 후 저장하세요'); };
     $('saveBtn').onclick = save; $('prevBtn').onclick = function () { move(-1); }; $('nextBtn').onclick = function () { move(1); };
+  }
+  function setSeg(name, val) {
+    var s = document.querySelector('.seg[data-name="' + name + '"]'); if (!s) return;
+    [].forEach.call(s.children, function (x) { x.classList.toggle('on', x.getAttribute('data-v') === val); });
+    var tr = s.closest('tr[data-item]');
+    if (tr) tr.classList.toggle('changed', !!val && val !== tr.getAttribute('data-judge'));
+  }
+  function fillForm(l) {
+    var lg = (l && l.legal) || {};
+    setSeg('legal', lg.verdict);
+    [].forEach.call(document.querySelectorAll('#ruleBox input'), function (c) { c.checked = (lg.rules || []).indexOf(c.value) >= 0; });
+    if (lg.note) $('legalNote').value = lg.note;
+    Object.keys((l && l.items) || {}).forEach(function (k) { setSeg('item:' + k, l.items[k]); });
   }
   function seg(name, opts, val) {
     return '<span class="seg" data-name="' + esc(name) + '">' + opts.map(function (o) {

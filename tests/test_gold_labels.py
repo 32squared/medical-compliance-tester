@@ -107,6 +107,22 @@ try:
     assert obj['stats']['legal']['fp'] == 1 and obj['stats']['legal']['tp'] == 1
     stored = db.get_gold_labels(run_id='R1', labeler_id='u1')[0]
     assert stored['judge']['legal_hits'] == ['LG-02'] and stored['labelerName'] == 'reviewer1'
+    # AI 검수 라벨: 사람 라벨 목록·일치율에 섞이지 않고 aiLabels / ai 요약으로 따로 나온다
+    db.save_gold_label({'run_id': 'R1', 'scenario_id': 'S1', 'labeler_id': 'ai:verifier', 'labeler_name': 'AI',
+                        'labels': {'legal': {'verdict': 'pass', 'rules': [], 'note': ''}, 'items': {}},
+                        'judge': {'legal_verdict': 'fail'},
+                        'note': json.dumps({'needs_human': True, 'confidence': 'high', 'reasons': ['불일치']})})
+    h._v3_list_labels({'run': ['R1'], 'all': ['1']})
+    obj = sent[-1][1]
+    assert obj['stats']['cross'] == {'pairs': 1, 'legal_agree': 0.0} and obj['aiStats']['legal']['fp'] == 1, obj
+    who.update(admin=False, tester={'id': 'u1', 'name': 'reviewer1'})
+    h._v3_review_item({'run': ['R1'], 'sid': ['S1']})
+    obj = sent[-1][1]
+    assert [l['labelerId'] for l in obj['labels']] == ['u1'] and obj['aiLabels'][0]['meta']['needs_human'] is True
+    h._v3_list_labels({'run': ['R1']})
+    obj = sent[-1][1]
+    assert obj['ai'] == [{'scenarioId': 'S1', 'verdict': 'pass', 'needs_human': True, 'confidence': 'high',
+                          'reasons': ['불일치']}], obj['ai']
     print('GOLD_OK')
 finally:
     try:

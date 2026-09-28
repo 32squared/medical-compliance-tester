@@ -11,6 +11,7 @@
 판정기 스냅샷(judge)은 라벨을 저장할 때 서버가 그 결과의 evalV3 에서 떠 둔다 — 나중에 재판정으로
 결과가 바뀌어도 '그때 판정기가 뭐라 했고 사람이 뭐라 했는지' 가 남는다.
 """
+import json
 import re
 
 LEGAL_VERDICTS = ("pass", "fail")
@@ -139,3 +140,14 @@ def rule_names():
         except Exception:
             _RULE_NAMES = {}
     return _RULE_NAMES
+
+
+def ai_meta(row):
+    """AI 검수 라벨(scripts/ai_verify.py)의 note JSON → dict. 사람 라벨·깨진 값이면 {}."""
+    if not str((row or {}).get('labelerId') or '').startswith('ai:'):
+        return {}
+    try:
+        m = json.loads(row.get('note') or '{}')
+    except (TypeError, ValueError):
+        return {}
+    return m if isinstance(m, dict) else {}

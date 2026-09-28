@@ -713,6 +713,17 @@ def evaluate_scenario(scenario, question, answer, *, api_key=None, rag_meta=None
     )
 
 
+def chat_json(model, system_prompt, user_prompt, *, api_key=None, timeout=120):
+    """판정 모델에 JSON 응답 1회 요청 (medical_eval.judge_client 재사용 — 재시도·파싱 재요청 포함).
+
+    호스트는 medical_eval 을 이 어댑터로만 쓴다. 독립 검수(scripts/ai_verify.py)가 쓴다.
+    캐시는 쓰지 않는다(컨테이너에 답변이 파일로 남지 않게).
+    """
+    _import_medical_eval()
+    from medical_eval.judge_client import chat_json as _cj
+    return _cj(model, system_prompt, user_prompt, api_key=api_key, timeout=timeout, use_cache=False)
+
+
 def batch_fn():
     """배치 실행기에 넘길 판정 함수. `EVAL_V3=1` 이고 판정기를 쓸 수 있을 때만 준다.
 
