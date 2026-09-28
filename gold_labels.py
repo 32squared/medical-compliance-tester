@@ -136,7 +136,8 @@ def rule_names():
             import eval_v3
             snap = eval_v3.get_snapshot()
             _RULE_NAMES = {str(r["id"]): {"title": r.get("title") or "", "required": bool(r.get("required")),
-                                          "level": r.get("level") or "", "note": r.get("note") or ""}
+                                          "level": r.get("level") or "", "note": r.get("note") or "",
+                                          "review": r.get("review") or "", "method": r.get("check_method") or ""}
                            for r in snap.table("rule") if r.get("id") and not r.get("version_to")}
         except Exception:
             _RULE_NAMES = {}

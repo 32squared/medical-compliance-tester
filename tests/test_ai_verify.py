@@ -86,6 +86,26 @@ def test_postprocess_flags():
     assert meta["item_diff"] == {"PV-01": ["met", "unmet"], "PV-03": ["unmet", "met"]}
 
 
+def test_review_rule_not_counted_as_fail():
+    """LG-05(법무 회신 대기)는 판정기처럼 verdict 에서 빼고 review_rules 로 — 사람 확인 아님."""
+    names = dict(NAMES, **{"LG-05": {"title": "진료과 지정", "review": "legal_inquiry_planned"}})
+    ids = ["PV-01", "PV-03", "UV-01"]
+    q5 = {"rule": "LG-05", "quote": "고지혈증 가능성이 있습니다."}
+    r = _res("S")
+    r["evalV3"]["legal_review_hits"] = ["LG-05"]
+    labels, meta = av.postprocess(r, {"legal": {"verdict": "fail", "rules": ["LG-05"], "quotes": [q5]},
+                                      "confidence": "high"}, ids, names)
+    assert labels["legal"] == {"verdict": "pass", "rules": [], "note": ""} and meta["needs_human"] is False
+    assert meta["review_rules"] == ["LG-05"] and meta["review_agree"] is True and meta["quotes_ok"] is None
+    # 검토 규칙 + 진짜 위반이면 진짜 위반만 fail 로, 판정기가 검토 규칙을 못 봤으면 review_agree False
+    labels, meta = av.postprocess(_res("S"), {"legal": {"verdict": "fail", "rules": ["LG-02", "LG-05"],
+                                                        "quotes": [q5, {"rule": "LG-02", "quote": "고지혈증 가능성이 있습니다."}]},
+                                              "confidence": "high"}, ids, names)
+    assert labels["legal"]["rules"] == ["LG-02"] and meta["needs_human"] and meta["review_agree"] is False
+    user, _ = av.build_user_prompt(r, None, names)
+    assert "LG-05 진료과 지정 [검토 규칙" in user and '"legal_review_hits": ["LG-05"]' in user
+
+
 def test_prompt_includes_rule_notes():
     names = dict(NAMES, **{"PV-01": {"title": "수치 일치", "required": True, "note": "단위까지 같아야 met"},
                            "LG-02": {"title": "질환 가능성 부여", "level": "L5", "note": "헷지 포함"}})
