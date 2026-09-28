@@ -154,3 +154,18 @@ def test_import_endpoint_blocks_integrity_errors(tmp_path):
     p = subprocess.run([sys.executable, str(script), ROOT, json.dumps(CASE, ensure_ascii=False)],
                        capture_output=True, text=True, encoding='utf-8', errors='replace', env=env, timeout=120)
     assert p.returncode == 0 and 'IMPORT_OK' in p.stdout, (p.stdout[-2000:], p.stderr[-3000:])
+
+
+def test_report_axis_only_no_total_score():
+    """보고서는 축별로만 — 총점(환산 점수) 카드는 없다(2026-09-28 결정)."""
+    import report_v3_run as rep
+    items = [{'id': 'Q1', 'verdict': 'pass', 'legal': 'pass', 'hits': [], 'review': [], 'axis': 'PV', 'pv': 'A',
+              'pv_unmet': [], 'uv': 'B', 'uv_unmet': ['UV-01'], 'intent': None, 'prompt': 'v18', 'skip': None,
+              'esc': None, 'ttft': 1200, 'total': 9000},
+             {'id': 'Q2', 'verdict': 'fail', 'legal': 'fail', 'hits': ['LG-02'], 'review': [], 'axis': 'PV',
+              'pv': 'C', 'pv_unmet': ['PV-01'], 'uv': None, 'uv_unmet': [], 'intent': None, 'prompt': 'v18',
+              'skip': None, 'esc': '1'}]
+    out = rep.render('run-x', 'ex-1', items, {}, {})
+    assert '운영 환산 점수' not in out and 'score_dist' not in out
+    assert 'LG 법률 게이트' in out and 'PV 기록 활용 등급' in out and 'UV 사용자 가치 등급' in out
+    assert '응답 속도' in out and '1 pass' in out
