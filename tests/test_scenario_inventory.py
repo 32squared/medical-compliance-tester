@@ -67,6 +67,9 @@ class _EV:
     def available(self):
         return True, ""
 
+    def load_checklists(self):
+        return [{"symptom_key": "headache", "symptom_name": "두통", "category": "neuro"}]
+
     def chat_json(self, model, sp, up, api_key=None):
         return {"mode": "symptom", "symptom_key": "headache", "branch": "응급", "targets": ["LG-09"],
                 "usable": True, "issues": []}
@@ -75,10 +78,6 @@ class _EV:
 def test_run_no_prompt_text_in_output(monkeypatch):
     import gold_labels
     monkeypatch.setattr(gold_labels, "rule_names", lambda: {"LG-09": {"title": "119 누락"}})
-    import types
-    fake = types.ModuleType("medical_eval.validity_symptom")
-    fake.load_checklists = lambda: [{"symptom_key": "headache", "symptom_name": "두통", "category": "neuro"}]
-    monkeypatch.setitem(sys.modules, "medical_eval.validity_symptom", fake)
     rows = [_s("E1"), _s("E2", prompt="가슴이 조여요"), _s("OFF", enabled=False),
             _s("PHRQR-B0001", cat="phr_case_r", phrCaseId="phr_CASE-01", tags=["qtype:T3"])]
     logs = []

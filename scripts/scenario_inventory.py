@@ -239,8 +239,7 @@ def run(*, db=None, eval_v3=None, use_llm=True, limit=0, model=None, workers=8, 
         if not ok:
             log(f"[inventory] 판정기 패키지를 쓸 수 없습니다: {why}")
             return 6, None
-        from medical_eval.validity_symptom import load_checklists
-        groups = load_checklists()
+        groups = eval_v3.load_checklists()
         groups_txt = "\n".join(f"{g['symptom_key']} {g.get('symptom_name', '')} ({g.get('category', '')})"
                                for g in groups if g.get("symptom_key"))
         rules_txt = "\n".join(f"{k} {v['title']}" for k, v in sorted(gold_labels.rule_names().items())
