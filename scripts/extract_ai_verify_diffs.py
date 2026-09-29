@@ -14,7 +14,8 @@ AI 검수 라벨(gold_labels labeler ai:verifier)과 저장된 판정기 결과(
 subject·predicate·source 는 없고, 귀속 요지는 hits.evidence 의 attribution 행으로 대신한다.
 
     python scripts/extract_ai_verify_diffs.py --runs RUN1,RUN2 [--out gs://…/x.json | 파일] [--dry-run]
-    env: DIFF_RUNS EXTRACT_OUT
+    python scripts/extract_ai_verify_diffs.py --judge-runs REJUDGE1,REJUDGE2 [--judge-ids A,B] [--out …]
+    env: DIFF_RUNS EXTRACT_OUT JUDGE_RUNS JUDGE_IDS
 """
 import argparse
 import json
@@ -89,7 +90,7 @@ def quote_refs(meta, v3, answer):
     ans = _norm(answer)
     out = []
     for q in meta.get("quotes") or []:
-        if not isinstance(q, dict) or not q.get("quote"):
+        if not isinstance(q, dict) or not q.get("quote") or q.get("rule") in EXCLUDE_RULES:
             continue
         n = _norm(q["quote"])
         m = [ci for ci, hq in hits if n and hq and (n in hq or hq in n)]
@@ -178,12 +179,85 @@ def extract(runs, *, db, log=print):
     }
 
 
+def judge_rows(runs, *, db, ids=(), log=print):
+    """재판정 이력(REQ-0013) — AI 라벨 없이 판정기 결과만. 법률 fail·판정이 바뀐 행·지정 id 를 낸다.
+
+    원본 판정(rejudgeOf)과 새 판정의 hits·review_hits·cap_hits·판정 근거(evidence 안전 키)를 싣는다.
+    """
+    scen = {s["id"]: s for s in ((db.get_scenarios() or {}).get("scenarios") or []) if s.get("id")}
+    rows, per_run = [], {}
+    for rid in runs:
+        run = db.get_test_run(rid)
+        if not run:
+            log(f"[extract] 이력 없음: {rid}")
+            continue
+        res = [r for r in run.get("results") or [] if isinstance(r, dict)]
+        flips = Counter()
+        for r in res:
+            sid, v3, old = r.get("scenarioId"), r.get("evalV3") or {}, r.get("rejudgeOf") or {}
+            a, b = old.get("legal_verdict"), v3.get("legal_verdict")
+            if old:
+                flips[f"{a}→{b}"] += 1
+            if not (b == "fail" or (old and a != b) or sid in ids):
+                continue
+            sc = scen.get(sid) or {}
+            qtype = next((t[6:] for t in sc.get("tags") or [] if isinstance(t, str) and t.startswith("qtype:")),
+                         "") or sc.get("subcategory") or ""
+            esc = v3.get("judge_escalation") or {}
+            rows.append(dict(
+                _dim(qtype, sc), run_id=rid, scenario_id=sid, source_run=old.get("runId"),
+                prior_legal=a, prior_hits=old.get("legal_hits"), legal=b,
+                hits=[x for x in v3.get("legal_hits") or [] if x not in EXCLUDE_RULES],
+                review_hits=v3.get("legal_review_hits") or [], cap_hits=v3.get("legal_cap_hits") or [],
+                hit_detail=hit_rows(v3), claim_count=v3.get("claim_count"), claim_levels=v3.get("claim_levels"),
+                escalation={k: esc.get(k) for k in ("first_model", "first_verdict", "first_hits", "model", "verdict")
+                            if k in esc} or None,
+                validity_grade=v3.get("validity_grade"), validity_grade_source=v3.get("validity_grade_source"),
+                eval_version=v3.get("eval_version"), ontology_version=v3.get("ontology_version"),
+                error=(str(v3.get("error"))[:120] if v3.get("error") else None)))
+        per_run[rid] = {"results": len(res),
+                        "legal": dict(Counter(str((r.get("evalV3") or {}).get("legal_verdict")) for r in res)),
+                        "prior_to_new": dict(flips)}
+    return {"generatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"), "request": ["REQ-0013"],
+            "runs": runs, "per_run": per_run, "excluded_rules": sorted(EXCLUDE_RULES),
+            "notes": ["답변 원문·판정기 quote·evidence text/phrase/rationale·케이스 수치 제외.",
+                      "행 = 새 판정 법률 fail + 원본과 판정이 바뀐 행 + 지정 id."],
+            "counts": {"rows": len(rows)}, "rows": sorted(rows, key=lambda d: (d["run_id"], d["scenario_id"]))}
+
+
+def _write(doc, out):
+    if out.startswith("gs://"):
+        import scenario_inventory as si
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8") as f:
+            json.dump(doc, f, ensure_ascii=False, indent=1)
+            path = f.name
+        print(f"[extract] 업로드 {out} status={si.upload(path, out)}")
+    else:
+        with open(out, "w", encoding="utf-8") as f:
+            json.dump(doc, f, ensure_ascii=False, indent=1)
+        print(f"[extract] 저장 {out}")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--runs", default=os.environ.get("DIFF_RUNS", ""))
     ap.add_argument("--out", default=os.environ.get("EXTRACT_OUT", ""))
+    ap.add_argument("--judge-runs", default=os.environ.get("JUDGE_RUNS", ""),
+                    help="재판정 이력 — 판정기 단독 행(REQ-0013). 주면 --runs 대신 이것을 뽑는다")
+    ap.add_argument("--judge-ids", default=os.environ.get("JUDGE_IDS", ""))
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args(argv)
+    jr = [x for x in a.judge_runs.split(",") if x]
+    if jr:
+        import db
+        doc = judge_rows(jr, db=db, ids={x for x in a.judge_ids.split(",") if x})
+        print("[extract] JUDGE " + json.dumps(dict(doc["counts"], per_run=doc["per_run"]), ensure_ascii=False))
+        for r in doc["rows"]:
+            print(f"[extract] {r['run_id']} {r['scenario_id']} {r['prior_legal']}{r['prior_hits']}→{r['legal']}"
+                  f"{r['hits']} review={r['review_hits']} cap={r['cap_hits']}")
+        if not a.dry_run and a.out:
+            _write(doc, a.out)
+        return 0
     runs = [x for x in a.runs.split(",") if x]
     if not runs:
         print("[extract] --runs 또는 DIFF_RUNS 가 필요합니다")
@@ -196,16 +270,7 @@ def main(argv=None):
     if a.dry_run or not a.out:
         print("[extract] 저장 안 함 (dry-run 또는 출력 경로 없음)")
         return 0
-    if a.out.startswith("gs://"):
-        import scenario_inventory as si
-        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8") as f:
-            json.dump(doc, f, ensure_ascii=False, indent=1)
-            path = f.name
-        print(f"[extract] 업로드 {a.out} status={si.upload(path, a.out)}")
-    else:
-        with open(a.out, "w", encoding="utf-8") as f:
-            json.dump(doc, f, ensure_ascii=False, indent=1)
-        print(f"[extract] 저장 {a.out}")
+    _write(doc, a.out)
     return 0
 
 
