@@ -72,6 +72,13 @@ elif [ "$RUN_MODE" = "gen_gap_items" ]; then
     if [ "$SEED_DRY_RUN" = "1" ]; then SEED_ARGS="--dry-run"; fi
     echo "[entrypoint] mode=gen_gap_items → scripts/gen_gap_items.py out=${GEN_OUT} ${SEED_ARGS}"
     exec python /app/scripts/gen_gap_items.py ${SEED_ARGS}
+elif [ "$RUN_MODE" = "extract_diffs" ]; then
+    # AI 독립 검수 이견 추출(REQ-E3FL·REQ-YM3P) — scripts/extract_ai_verify_diffs.py 참고.
+    # DIFF_RUNS=run1,run2 · EXTRACT_OUT=gs://… (원문·인용·케이스 수치 제외). SEED_DRY_RUN=1 이면 올리지 않음.
+    SEED_ARGS=""
+    if [ "$SEED_DRY_RUN" = "1" ]; then SEED_ARGS="--dry-run"; fi
+    echo "[entrypoint] mode=extract_diffs → scripts/extract_ai_verify_diffs.py runs=${DIFF_RUNS} out=${EXTRACT_OUT} ${SEED_ARGS}"
+    exec python /app/scripts/extract_ai_verify_diffs.py ${SEED_ARGS}
 elif [ "$RUN_MODE" = "set_scenarios_enabled" ]; then
     # 시나리오 사용 여부 일괄 변경 — scripts/set_scenarios_enabled.py 참고 (SET_CATEGORY·SET_ID_PREFIX·
     # SET_ENABLED·SET_EXPECT·SET_TAG). 지우지 않고 enabled 만 바꾼다.
