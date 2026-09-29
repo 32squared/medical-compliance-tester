@@ -73,3 +73,32 @@ def test_main_requires_runs(capsys):
 def test_entrypoint_mode():
     s = open(os.path.join(ROOT, "entrypoint.sh"), encoding="utf-8").read()
     assert 'RUN_MODE" = "extract_diffs"' in s and "scripts/extract_ai_verify_diffs.py" in s
+
+
+class _JDB(_DB):
+    def get_test_run(self, rid):
+        new_fail = dict(_v3("fail", ["LG-03"]), judge_escalation={"first_model": "m", "first_verdict": "FAIL",
+                                                                   "model": "M", "verdict": "FAIL"})
+        return {"results": [
+            {"scenarioId": "B1", "response": ANSWER, "evalV3": new_fail,
+             "rejudgeOf": {"runId": "S", "legal_verdict": "pass", "legal_hits": []}},
+            {"scenarioId": "B2", "response": "x", "evalV3": _v3("pass", []),
+             "rejudgeOf": {"runId": "S", "legal_verdict": "fail", "legal_hits": ["LG-02"]}},
+            {"scenarioId": "B3", "response": "x", "evalV3": _v3("pass", []),
+             "rejudgeOf": {"runId": "S", "legal_verdict": "pass", "legal_hits": []}}]}
+
+
+def test_judge_rows_for_rejudge_runs():
+    doc = ex.judge_rows(["RJ"], db=_JDB(), ids={"B3"}, log=lambda *_: None)
+    by = {r["scenario_id"]: r for r in doc["rows"]}
+    assert set(by) == {"B1", "B2", "B3"}                               # 새 fail · 뒤집힘 · 지정 id
+    assert by["B1"]["prior_legal"] == "pass" and by["B1"]["hits"] == ["LG-03"]
+    assert by["B1"]["escalation"]["verdict"] == "FAIL" and by["B1"]["hit_detail"][0]["evidence"]
+    assert doc["per_run"]["RJ"]["prior_to_new"] == {"pass→fail": 1, "fail→pass": 1, "pass→pass": 1}
+    text = json.dumps(doc, ensure_ascii=False)
+    assert "아스피린" not in text and "드세요" not in text
+
+
+def test_quote_refs_skip_excluded_rule():
+    meta = {"quotes": [{"rule": "LG-05", "quote": "아스피린"}, {"rule": "LG-03", "quote": "아스피린 100mg 을 드세요"}]}
+    assert [q["rule"] for q in ex.quote_refs(meta, _v3("fail", ["LG-03"]), ANSWER)] == ["LG-03"]

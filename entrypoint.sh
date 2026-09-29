@@ -77,7 +77,8 @@ elif [ "$RUN_MODE" = "extract_diffs" ]; then
     # DIFF_RUNS=run1,run2 · EXTRACT_OUT=gs://… (원문·인용·케이스 수치 제외). SEED_DRY_RUN=1 이면 올리지 않음.
     SEED_ARGS=""
     if [ "$SEED_DRY_RUN" = "1" ]; then SEED_ARGS="--dry-run"; fi
-    echo "[entrypoint] mode=extract_diffs → scripts/extract_ai_verify_diffs.py runs=${DIFF_RUNS} out=${EXTRACT_OUT} ${SEED_ARGS}"
+    # JUDGE_RUNS=재판정 이력들(REQ-0013) 을 주면 AI 라벨 없이 판정기 단독 행을 뽑는다(JUDGE_IDS 선택).
+    echo "[entrypoint] mode=extract_diffs → scripts/extract_ai_verify_diffs.py runs=${DIFF_RUNS} judge_runs=${JUDGE_RUNS} out=${EXTRACT_OUT} ${SEED_ARGS}"
     exec python /app/scripts/extract_ai_verify_diffs.py ${SEED_ARGS}
 elif [ "$RUN_MODE" = "set_scenarios_enabled" ]; then
     # 시나리오 사용 여부 일괄 변경 — scripts/set_scenarios_enabled.py 참고 (SET_CATEGORY·SET_ID_PREFIX·
