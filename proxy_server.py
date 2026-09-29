@@ -29,6 +29,7 @@ import ssl
 import os
 import signal
 import threading
+import time
 import db
 
 
@@ -2571,6 +2572,9 @@ class ProxyHandler(BaseHTTPRequestHandler):
         # ── ChatGPT 평가 API ──
         if self.path == '/api/evaluate':
             return self._evaluate_with_llm(body)
+        # ── 온톨로지(v3) 답변 1건 판정 — 채팅·외부 답변 평가 공용 ──
+        if self.path == '/api/evaluate-v3':
+            return self._evaluate_v3_api(body)
         if self.path == '/api/evaluate-consultation':
             return self._evaluate_consultation_api(body)
         if self.path == '/api/evaluate-consultation-checklist':
@@ -6254,6 +6258,45 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
     # ChatGPT 의료법 준수 평가
     # ════════════════════════════════════════════
 
+    def _evaluate_v3_api(self, body):
+        """POST /api/evaluate-v3 — 답변 1건을 온톨로지(v3) 판정기로 판정 (로그인 필요).
+
+        Body: {question, answer, priorTurns?, phrCaseId?, symptomKey?, expectedBehavior?}
+        Response: eval_v3.compact() 형태 + verdictLabel('FAIL'|'A'~'D'|'PASS').
+        판정 실패는 200 + {error} 로 돌려준다(화면이 다른 평가와 나란히 오류를 표시).
+        """
+        if not self._get_tester_info() and not self._is_admin():
+            return self._send_error(401, '로그인이 필요합니다')
+        try:
+            payload = json.loads(body) if body else {}
+        except json.JSONDecodeError:
+            return self._send_error(400, '잘못된 JSON')
+        question = (payload.get('question') or '').strip()
+        answer = (payload.get('answer') or '').strip()
+        if not answer:
+            return self._send_error(400, '판정할 답변이 없습니다.')
+        try:
+            import eval_v3 as _ev
+        except Exception as e:
+            return self._send_error(503, f'eval_v3 어댑터를 불러올 수 없습니다: {e}')
+        settings = db.get_settings()
+        openai_key = (settings.get('openaiKey', '') or settings.get('openai_api_key', '')
+                      or os.environ.get('OPENAI_API_KEY', ''))
+        if not openai_key:
+            return self._send_error(400, 'OpenAI API Key가 설정되지 않았습니다.')
+        scenario = {k: payload.get(k) for k in ('phrCaseId', 'symptomKey', 'expectedBehavior')
+                    if payload.get(k)}
+        prior = payload.get('priorTurns') if isinstance(payload.get('priorTurns'), list) else None
+        t0 = time.time()
+        result = _ev.evaluate_scenario(scenario, question, answer,
+                                       api_key=openai_key, prior_turns=prior)
+        result = dict(result or {})
+        result['verdictLabel'] = _ev.verdict_of(result)
+        ProxyHandler._add_log(
+            f"[eval-v3] 1건 판정 {result.get('verdictLabel') or result.get('error', '')[:60]} "
+            f"({time.time() - t0:.1f}s)")
+        return self._send_json(200, result)
+
     def _evaluate_with_llm(self, body):
         """POST /api/evaluate — ChatGPT로 의료법 준수 평가"""
         try:
@@ -7316,9 +7359,9 @@ has_top_disclaimer=false 인데 legal_violation 미부여 시 평가 오류로 �
     def _share_create_api(self, body):
         """POST /api/share/create — 평가 결과를 공유 페이지로 등록 (인증 필요).
 
-        Body: {prompt, response, evalGpt, evalV11, evalV15, title?, createdBy?}
+        Body: {prompt, response, evalV3, evalV11, evalV15, title?, createdBy?}
         Response: {id, url}
-        v2.0 평가 결과는 받지 않음 (공유 페이지에서 표시 안 함).
+        evalV3 = /api/evaluate-v3 결과. 문진 v2.0 결과는 받지 않음 (공유 페이지에서 표시 안 함).
         """
         # 인증된 사용자만 등록 가능 (admin/tester/advisor)
         auth = self._get_tester_info()
@@ -7330,7 +7373,10 @@ has_top_disclaimer=false 인데 legal_violation 미부여 시 평가 오류로 �
             return self._send_error(400, '잘못된 JSON')
         prompt = payload.get('prompt', '') or ''
         response = payload.get('response', '') or ''
-        eval_gpt = payload.get('evalGpt') or {}
+        # v3 판정은 eval_gpt_json 열에 schema 표식과 함께 저장한다(열 추가 이관 없이).
+        # v2 법률 평가(evalGpt)는 더 이상 받지 않는다.
+        eval_v3 = payload.get('evalV3') or {}
+        eval_gpt = dict(eval_v3, schema='v3') if eval_v3 else {}
         eval_v11 = payload.get('evalV11') or {}
         eval_v15 = payload.get('evalV15') or {}
         title = (payload.get('title') or '')[:200]

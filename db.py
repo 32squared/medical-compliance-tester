@@ -3876,9 +3876,17 @@ def get_shared_eval(sid):
             'prompt': rd.get('prompt') or '',
             'response': rd.get('response') or '',
             'evalGpt': _j(rd.get('eval_gpt_json')),
+            'evalV3': None,
             'evalV11': _j(rd.get('eval_v11_json')),
             'evalV15': _j(rd.get('eval_v15_json')),
         }
+        # v3 판정은 eval_gpt_json 열에 schema='v3' 표식으로 저장된다(create_shared_eval 호출부).
+        # 표식이 없으면 이전 기준(v2 법률) 공유 — 화면은 판정을 표시하지 않는다.
+        eg = data.get('evalGpt')
+        if isinstance(eg, dict) and eg.get('schema') == 'v3':
+            data['evalV3'] = eg
+        data['evalGpt'] = None
+        data['legacyVerdict'] = bool(eg) and data['evalV3'] is None
         cur.execute(
             f"""SELECT id, comment_type, target_version, author, content, created_at
                 FROM shared_eval_comments WHERE eval_id = {ph}
