@@ -6,12 +6,12 @@
   // 권한 표기: null=누구나, 'auth'=로그인 필요, 'admin'=관리자 전용,
   // 'a|b'=둘 중 하나, 그 외=권한 코드
   var MENUS = [
-    { id: 'chat', label: '대화 테스트', items: [
-      { label: '채팅 테스터', href: '/', perm: null },
-      { label: 'Arena', href: '/arena', perm: 'use_arena' }
+    { id: 'chat', label: '대화 테스트', segmented: true, items: [
+      { label: '채팅 테스터', tab: '단일 대화', href: '/', perm: null },
+      { label: 'Arena', tab: 'A·B 비교', href: '/arena', perm: 'use_arena' }
     ] },
     { id: 'scenario', label: '시나리오', items: [
-      { label: '시나리오 관리', href: '/manager', perm: 'manage_scenarios' },
+      { label: '시나리오 관리', tab: '시나리오', href: '/manager', perm: 'manage_scenarios' },
       { label: 'HealthBench', href: '/healthbench', perm: 'view_history|run_batch' },
       { label: 'PHR 케이스', href: '/phr', perm: 'admin' }
     ] },
@@ -55,8 +55,9 @@
     '/search_probe.html': '/admin/search-probe'
   };
 
-  function activeHref() {
-    var p = (window.location.pathname || '/').replace(/\/+$/, '') || '/';
+  function activeHref(pathname) {
+    var raw = pathname !== undefined ? pathname : (window.location.pathname || '/');
+    var p = String(raw).replace(/\/+$/, '') || '/';
     if (ALIASES[p]) return ALIASES[p];
     if (p === '/healthbench' || p.indexOf('/healthbench/') === 0) return '/healthbench';
     if (p.indexOf('/hb_') === 0) return '/healthbench';
@@ -82,7 +83,20 @@
     '.appnav-item{display:block;color:var(--an-text-dim);text-decoration:none;font-size:12px;',
     'padding:7px 12px;border-radius:6px;white-space:nowrap}',
     '.appnav-item:hover,.appnav-item:focus-visible{background:var(--an-surface2);color:var(--an-text);outline:none}',
-    '.appnav-item.active{background:var(--an-accent-dim);color:var(--an-accent)}'
+    '.appnav-item.active{background:var(--an-accent-dim);color:var(--an-accent)}',
+    '.appnav-tabs{--an-bg:#0f172a;--an-surface:#1e293b;--an-surface2:#334155;--an-accent:#38bdf8;--an-accent-dim:#0c4a6e;--an-border:#475569;--an-text:#e2e8f0;--an-text-dim:#94a3b8;',
+    'display:flex;align-items:stretch;gap:2px;flex:0 0 auto;flex-shrink:0;width:100%;box-sizing:border-box;padding:0 20px;',
+    'background:var(--an-bg);border-bottom:1px solid var(--an-border);overflow-x:auto;overflow-y:hidden}',
+    '.appnav-tabs-tab{display:inline-flex;align-items:center;min-height:36px;padding:0 16px;font-size:13px;line-height:1.4;',
+    'color:var(--an-text-dim);text-decoration:none;white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-1px;box-sizing:border-box}',
+    '.appnav-tabs-tab:hover,.appnav-tabs-tab:focus-visible{color:var(--an-text);background:var(--an-surface)}',
+    '.appnav-tabs-tab:focus-visible{outline:2px solid var(--an-accent);outline-offset:-2px}',
+    '.appnav-tabs-tab.active{color:var(--an-accent);border-bottom-color:var(--an-accent);font-weight:600}',
+    '.appnav-tabs.seg{justify-content:center;padding:6px 20px}',
+    '.appnav-tabs.seg .appnav-tabs-seg{display:inline-flex;gap:0;border:1px solid var(--an-border);border-radius:8px;overflow:hidden;background:var(--an-surface)}',
+    '.appnav-tabs.seg .appnav-tabs-tab{border-bottom:0;margin:0;padding:0 22px;border-radius:0}',
+    '.appnav-tabs.seg .appnav-tabs-tab+.appnav-tabs-tab{border-left:1px solid var(--an-border)}',
+    '.appnav-tabs.seg .appnav-tabs-tab.active{background:var(--an-accent-dim)}'
   ].join('');
 
   function injectStyle() {
@@ -122,9 +136,25 @@
         if (!isAdmin && role === 'advisor') return it.href === '/';
         return allow(it.perm);
       });
-      if (items.length) out.push({ id: m.id, label: m.label, gear: m.gear, items: items });
+      if (items.length) out.push({ id: m.id, label: m.label, gear: m.gear, segmented: m.segmented, items: items });
     });
     return out;
+  }
+
+  // 현재 경로가 속한 그룹의 섹션 탭. 보이는 항목이 2개 미만이거나 어느 그룹에도 속하지 않으면 null
+  function sectionFor(pathname, menus) {
+    var active = activeHref(pathname);
+    for (var i = 0; i < (menus || []).length; i++) {
+      var m = menus[i];
+      var cur = m.items.filter(function (it) { return it.href === active; })[0];
+      if (!cur) continue;
+      if (m.items.length < 2) return null;
+      return {
+        id: m.id, segmented: !!m.segmented, active: active,
+        tabs: m.items.map(function (it) { return { label: it.tab || it.label, href: it.href, active: it.href === active }; })
+      };
+    }
+    return null;
   }
 
   function el(tag, cls, text) {
@@ -199,6 +229,42 @@
     });
   }
 
+  function findTopBar(nav) {
+    var n = nav;
+    while (n && n.parentNode && n.parentNode !== document.body) {
+      var c = n.parentNode;
+      var cls = ' ' + (c.className || '') + ' ';
+      if (c.tagName === 'HEADER' || cls.indexOf(' topbar ') >= 0 || cls.indexOf(' top-nav ') >= 0 || cls.indexOf(' app-header ') >= 0) return c;
+      n = c;
+    }
+    return null;
+  }
+
+  function renderSectionTabs(nav, auth) {
+    var old = document.querySelector('.appnav-tabs');
+    if (old && old.parentNode) old.parentNode.removeChild(old);
+    var sec = sectionFor(window.location.pathname, visibleMenus(auth));
+    var slot = document.getElementById('appSectionTabs');
+    if (!sec) { if (slot) slot.textContent = ''; return; }
+    var bar = slot || el('div');
+    bar.textContent = '';
+    bar.className = 'appnav-tabs' + (sec.segmented ? ' seg' : '');
+    bar.setAttribute('role', 'navigation');
+    bar.setAttribute('aria-label', '섹션 탭');
+    var wrap = sec.segmented ? el('div', 'appnav-tabs-seg') : bar;
+    sec.tabs.forEach(function (t) {
+      var a = el('a', 'appnav-tabs-tab' + (t.active ? ' active' : ''), t.label);
+      a.href = t.href;
+      if (t.active) a.setAttribute('aria-current', 'page');
+      wrap.appendChild(a);
+    });
+    if (wrap !== bar) bar.appendChild(wrap);
+    if (!slot) {
+      var top = findTopBar(nav) || nav;
+      if (top && top.parentNode) top.parentNode.insertBefore(bar, top.nextSibling);
+    }
+  }
+
   var bound = false;
   function bindGlobal() {
     if (bound) return;
@@ -240,13 +306,17 @@
     var host = document.getElementById('appNav');
     // 인증 응답 전에도 기본 메뉴(채팅 테스터만)가 깜빡이지 않도록 응답 후에 그린다
     fetchAuth().then(function (auth) {
-      if (host) render(host, auth);
+      if (host) { render(host, auth); renderSectionTabs(host, auth); }
       resolveReady(auth);
     });
   }
 
   var resolveReady;
-  window.AppNav = { ready: new Promise(function (res) { resolveReady = res; }) };
+  window.AppNav = {
+    ready: new Promise(function (res) { resolveReady = res; }),
+    _visibleMenus: visibleMenus,
+    _sectionFor: sectionFor
+  };
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
