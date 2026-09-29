@@ -15,7 +15,7 @@
   body { font-family:'Pretendard','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;
          background:var(--bg); color:var(--text); height:100vh; display:flex; flex-direction:column; font-size:14px; }
   .topbar { display:flex; align-items:center; gap:10px; padding:10px 20px; background:var(--surface);
-            border-bottom:1px solid var(--border); flex-shrink:0; overflow-x:auto; }
+            border-bottom:1px solid var(--border); flex-shrink:0; overflow:visible; }
   .nav-btn { background:none; border:1px solid var(--border); color:var(--text-dim); border-radius:8px; padding:6px 12px;
              font-size:12px; font-weight:600; cursor:pointer; text-decoration:none; white-space:nowrap; }
   .nav-btn:hover { background:var(--surface2); color:var(--text); }
@@ -91,9 +91,7 @@
 <body>
 <div class="topbar">
   <h1 style="font-size:16px;font-weight:700;white-space:nowrap">&#127973; 나만의 주치의</h1>
-  <a href="/history" class="nav-btn">테스트 이력</a>
-  <a href="/eval-v3" class="nav-btn">🧬 온톨로지 평가</a>
-  <a href="/review" class="nav-btn active">✍️ 정답지 검토</a>
+  <nav id="appNav"></nav>
   <button class="nav-btn" id="statsBtn" style="display:none">일치율 보기</button>
   <a href="/api/eval-v3/labels/export" class="nav-btn" id="exportBtn" style="display:none">정답지 내보내기</a>
   <span id="userBadge" style="margin-left:auto;display:none;font-size:11px;color:var(--accent);background:var(--accent-dim);padding:3px 10px;border-radius:6px;white-space:nowrap"></span>
@@ -443,5 +441,6 @@
   initAuth().then(function (ok) { if (ok) loadRuns(); });
 })();
 </script>
+<script src="/app_nav.js"></script>
 </body>
 </html>

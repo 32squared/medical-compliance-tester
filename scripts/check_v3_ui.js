@@ -93,8 +93,11 @@ check('건별 v3 없으면 빈 값', mod.buildEvalV3Html({ scenarioId: 'X' }) ==
   for (const b of ['/api/evaluate\'', '/api/evaluate"', 'evaluate-phr', '정규식', 'regexScore']) {
     check(`scenario_manager.html 에 '${b}' 없음`, !sm0.includes(b));
   }
-  const gm = fs.readFileSync(path.join(ROOT, 'guideline_manager.html'), 'utf8');
-  check('guideline_manager.html 에 guidelines/test 호출 없음', !gm.includes('guidelines/test'));
+  // 법률 기준 관리 화면(정규식·v2 전용)은 삭제됨 — 파일도, 서버 라우트도 없어야 한다
+  check('guideline_manager.html 삭제됨', !fs.existsSync(path.join(ROOT, 'guideline_manager.html')));
+  const ps = fs.readFileSync(path.join(ROOT, 'proxy_server.py'), 'utf8');
+  check('서버에 /guidelines 화면·guidelines/test 라우트 없음',
+    !ps.includes("'/guidelines':") && !ps.includes('guidelines/test'));
   check('이력 헤더에 단일 다시 평가 버튼', html.includes('다시 평가</button>') && !html.includes('reEvaluateBatch'));
   check('판정 필터(segFilterVerdict)', html.includes('segFilterVerdict'));
 }

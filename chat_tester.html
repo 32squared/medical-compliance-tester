@@ -27,7 +27,7 @@
 
   /* ── Top Bar ── */
   .topbar { display:flex; align-items:center; gap:8px; padding:12px 20px;
-            background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; flex-wrap:nowrap; overflow-x:auto; }
+            background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; flex-wrap:nowrap; overflow:visible; }
   .topbar h1 { font-size:16px; font-weight:700; white-space:nowrap; }
   .topbar .right { display:flex; gap:8px; align-items:center; }
   .status-dot { width:8px; height:8px; border-radius:50%; background:var(--red); flex-shrink:0; }
@@ -398,17 +398,7 @@
        화면에서 바로 보여야 자문위원이 문항 선택기를 찾아 헤매지 않는다 -->
   <span id="advQuestionHint" style="display:none;font-size:11px;color:var(--text-dim);white-space:nowrap"></span>
   <span id="advProgress" style="display:none;font-size:11px;color:var(--text);white-space:nowrap;padding-left:10px;margin-left:2px;border-left:1px solid var(--border)"></span>
-  <a href="/" class="nav-btn active">채팅 테스터</a>
-  <a href="/manager" class="nav-btn">시나리오 관리</a>
-  <a href="/history" class="nav-btn">테스트 이력</a>
-  <a href="/eval-v3" class="nav-btn">🧬 온톨로지 평가</a>
-      <a href="/healthbench" class="nav-btn">🩺 HealthBench</a>
-  <a href="/guidelines" class="nav-btn">법률 평가 기준</a>
-  <a href="/criteria" class="nav-btn">문진 평가 기준</a>
-  <a href="/external-eval" class="nav-btn">📋 외부 답변 평가</a>
-  <a href="/rlhf" class="nav-btn">RLHF 관리</a>
-  <a href="/kb_manager" class="nav-btn">KB 관리</a>
-  <a href="/settings" class="nav-btn" id="settingsNavLink">&#9881; 설정</a>
+  <nav id="appNav"></nav>
   <button class="btn-icon sidebar-toggle-btn" onclick="toggleSidebar()" title="대화 목록" style="font-size:14px">&#9776;</button>
   <button class="btn-icon" onclick="newConversation()" title="새 대화" style="font-size:12px">&#128465;</button>
   <button class="btn-icon" onclick="exportChat()" title="내보내기" style="font-size:12px">&#128190;</button>
@@ -650,12 +640,6 @@ function showToast(msg, type = 'info') {
 function applyRoleBasedUI(auth) {
   const userRole = auth.userRole || (auth.tester && auth.tester.role) || '';
 
-  // 비-Admin: 설정 링크 숨김
-  if (!auth.isAdmin) {
-    const sl = document.getElementById('settingsNavLink');
-    if (sl) sl.style.display = 'none';
-  }
-
   // 비-Admin: 엔드포인트를 SKIX 로 고정하고 선택 영역 자체를 감춘다.
   // (선택지를 지우는 대신 통째로 숨겨야 "고를 수 있다"는 오해가 없다)
   if (!auth.isAdmin) {
@@ -671,25 +655,7 @@ function applyRoleBasedUI(auth) {
     if (envSel) envSel.style.display = 'none';
   }
 
-  // 비-Admin 상단 메뉴 — 역할별 화이트리스트.
-  // tester 의 업무 화면은 채팅·시나리오 관리·테스트 이력 셋뿐이다. 권한이 더 있어도
-  // (view_guidelines 등) 메뉴는 늘리지 않는다 — 평가 기준·HealthBench 는 관리자 화면.
-  // advisor 는 채팅 테스터만 (자문 화면 단순화). 표시 여부와 별개로 접근 통제는 서버가 한다.
-  if (!auth.isAdmin) {
-    var ROLE_NAV = {
-      tester: ['/', '/chat_tester.html', '/manager', '/history'],
-      advisor: ['/', '/chat_tester.html'],
-    };
-    var NAV_PERMS = { '/manager': 'manage_scenarios', '/history': 'view_history' };
-    var myPerms = auth.permissions || [];
-    var allowedHrefs = ROLE_NAV[userRole] || ROLE_NAV.advisor;   // 알 수 없는 역할은 최소로
-    document.querySelectorAll('.topbar .nav-btn').forEach(function(el) {
-      var href = el.getAttribute('href') || '';
-      var ok = allowedHrefs.indexOf(href) >= 0 &&
-        (!NAV_PERMS[href] || myPerms.indexOf(NAV_PERMS[href]) >= 0);
-      if (!ok) el.style.display = 'none';
-    });
-  }
+  // 상단 메뉴 노출·역할별 필터는 공통 컴포넌트(app_nav.js)가 맡는다.
 
   // advisor: 평가 결과까지 숨김 (중립적 자문 의견 수집 위함)
   if (userRole === 'advisor') {
@@ -4404,5 +4370,6 @@ async function saveEnhancementReport() {
     </div>
   </div>
 </div>
+<script src="/app_nav.js"></script>
 </body>
 </html>

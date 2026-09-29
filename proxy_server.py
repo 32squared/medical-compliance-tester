@@ -2630,10 +2630,6 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 return
             return self._save_checklist_api(body)
 
-        # ── 가이드라인 테스트 API ──
-        if self.path == '/api/guidelines/test':
-            return self._test_guidelines(body)
-
         # ── 이력 저장 API (프론트에서 결과 직접 전달) ──
         if self.path == '/api/history/save':
             return self._save_history_result(body)
@@ -3160,8 +3156,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
             '/eval_v3.html': 'eval_v3.html',
             '/review': 'review.html',
             '/review.html': 'review.html',
-            '/guidelines': 'guideline_manager.html',
-            '/guideline_manager.html': 'guideline_manager.html',
+            # 공통 상단 메뉴 컴포넌트 (모든 화면이 불러 쓴다)
+            '/app_nav.js': 'app_nav.js',
             '/criteria': 'criteria_manager.html',
             '/criteria_manager.html': 'criteria_manager.html',
             '/rlhf': 'rlhf_manager.html',
@@ -3222,8 +3218,6 @@ class ProxyHandler(BaseHTTPRequestHandler):
             '/eval_v3.html':           'view_history',
             '/review':                 'view_history',
             '/review.html':            'view_history',
-            '/guidelines':             ['view_guidelines', 'manage_guidelines'],
-            '/guideline_manager.html': ['view_guidelines', 'manage_guidelines'],
             '/criteria':               ['view_criteria', 'manage_criteria'],
             '/criteria_manager.html':  ['view_criteria', 'manage_criteria'],
             '/rlhf':                   'manage_rlhf',
@@ -3363,68 +3357,6 @@ class ProxyHandler(BaseHTTPRequestHandler):
         """GET /api/guidelines/history — 변경 이력"""
         import guideline_loader
         self._send_json(200, {"history": guideline_loader.get_change_history()})
-
-    def _test_guidelines(self, body):
-        """POST /api/guidelines/test — 샘플 텍스트로 가이드라인 검증"""
-        try:
-            payload = json.loads(body.decode('utf-8'))
-            sample_text = payload.get('text', '')
-            if not sample_text:
-                return self._send_error(400, "테스트할 텍스트가 필요합니다")
-
-            from analyzer import ComplianceAnalyzer
-            analyzer = ComplianceAnalyzer()
-            result = analyzer.analyze(sample_text)
-
-            regex_score = result.compliance_score
-            response_data = {
-                "score": regex_score,
-                "regexScore": regex_score,
-                "passed": result.passed,
-                "violations": [
-                    {
-                        "rule_id": v.rule_id,
-                        "rule_name": v.rule_name,
-                        "severity": v.severity,
-                        "matched": v.matched_text,
-                        "matched_text": v.matched_text,
-                        "match_type": v.match_type,
-                        "description": v.description,
-                        "law": v.law,
-                        "context": v.context,
-                    }
-                    for v in result.violations
-                ],
-                "has_disclaimer": result.has_disclaimer,
-                "has_top_notice": result.has_top_notice,
-                "has_bottom_notice": result.has_bottom_notice,
-                "guideline_version": result.guideline_version,
-                "summary": result.summary,
-            }
-
-            # GPT 하이브리드 평가 (옵션)
-            if payload.get('includeGptEval'):
-                settings = db.get_settings()
-                openai_key = settings.get('openaiKey', '')
-                model = settings.get('gptModel', 'gpt-4o-mini')
-                if openai_key:
-                    gpt_result = _evaluate_gpt('', sample_text, openai_key, model)
-                    if gpt_result:
-                        gpt_score = gpt_result.get('score', 100)
-                        response_data['gptEval'] = gpt_result
-                        response_data['gptScore'] = gpt_score
-                        response_data['finalScore'] = gpt_score
-                        response_data['finalSource'] = 'gpt'
-                        response_data['score'] = gpt_score  # GPT 기준
-                        response_data['passed'] = gpt_result.get('passed', True)  # GPT 기준
-
-            self._send_json(200, response_data)
-        except Exception as e:
-            self._send_error(500, f"테스트 실행 실패: {str(e)}")
-
-    # ════════════════════════════════════════════
-    # 시나리오 CRUD API
-    # ════════════════════════════════════════════
 
     def _list_scenarios(self, query_string):
         """GET /api/scenarios — 시나리오 목록 (필터링 지원)
