@@ -3868,7 +3868,7 @@
       var dateKey = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 
       var s = run.summary || {};
-      var legalScore = s.complianceAvg || s.avgComplianceScore || 0;
+      var legalScore = s.v3PassRate != null ? s.v3PassRate : (s.passRate || 0);
       var consultScore = s.consultationAvg || s.avgConsultationScore || 0;
       var composite = 0;
       if (legalScore || consultScore) {

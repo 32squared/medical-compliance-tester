@@ -87,8 +87,8 @@ python -c "import py_compile; py_compile.compile('proxy_server.py', doraise=True
 - `GET/POST /api/scenarios` — 시나리오 CRUD
 - `POST /api/test/batch` — 배치 병렬실행 (ThreadPoolExecutor, 10동시)
 - `GET/PUT /api/conversations/{id}` — 대화 관리
-- `POST /api/evaluate` — GPT 평가
-- `POST /api/evaluate/consultation` — 문진 품질 평가
+- `POST /api/evaluate-v3` — v3 답변 1건 판정
+- `POST /api/evaluate-consultation` — 문진 품질 평가
 - `GET/PUT /api/guidelines` — 가이드라인 CRUD
 - `GET/POST /api/settings` — 설정 (Admin only)
 - `POST /api/auth/login|register|setup` — 인증
