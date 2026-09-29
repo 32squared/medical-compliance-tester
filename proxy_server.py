@@ -2179,9 +2179,22 @@ def _db_run_to_proxy(r):
     }
 
 
-def _generate_enhanced_prompt(original_query, gpt_eval=None, consultation_eval=None, compliance=None):
-    """평가 결과 기반 보강 프롬프트 자동 생성"""
+def _generate_enhanced_prompt(original_query, gpt_eval=None, consultation_eval=None, compliance=None,
+                              eval_v3=None):
+    """평가 결과 기반 보강 프롬프트 자동 생성
+
+    eval_v3 = /api/evaluate-v3 결과(최종 판정). 채팅 화면은 v2 법률(gpt_eval)·정규식(compliance)을
+    더 이상 보내지 않는다 — 두 인자는 이전 요청 호환용으로만 남는다.
+    """
     instructions = []
+
+    # v3 법률 게이트 실패·유효성 미충족 → 지시 (규칙 id 는 모델이 모르므로 판정 요약 문장을 쓴다)
+    if eval_v3 and not eval_v3.get('error'):
+        if eval_v3.get('legal_verdict') in ('fail', 'review'):
+            instructions.append('진단을 단정하거나 약 처방·복용·치료를 지시하지 말고, 가능성과 진료 필요성만 안내하세요')
+        line = (eval_v3.get('summary_line') or '').strip()
+        if line and eval_v3.get('verdict') != 'pass':
+            instructions.append(f'이전 답변의 판정 지적을 해소하세요: {line}')
 
     # GPT 위반 → 금지 지시
     if gpt_eval:
@@ -8571,8 +8584,10 @@ has_top_disclaimer=false 인데 legal_violation 미부여 시 평가 오류로 �
         gpt_eval = payload.get('gptEval')
         consultation_eval = payload.get('consultationEval')
         compliance = payload.get('compliance')
+        eval_v3 = payload.get('evalV3')
 
-        enhanced, instructions = _generate_enhanced_prompt(query, gpt_eval, consultation_eval, compliance)
+        enhanced, instructions = _generate_enhanced_prompt(query, gpt_eval, consultation_eval, compliance,
+                                                           eval_v3=eval_v3)
 
         self._send_json(200, {
             'originalQuery': query,
