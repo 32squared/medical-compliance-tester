@@ -55,7 +55,7 @@ class _FakeHandler:
         self.sent = None
 
     def _get_tester_info(self):
-        return {'id': 't1', 'role': 'tester'} if self._logged_in else None
+        return {'id': 't1', 'name': 'tester1', 'role': 'tester'} if self._logged_in else None
 
     def _is_admin(self):
         return False
@@ -125,3 +125,69 @@ def test_evaluate_v3_rejects_empty_answer(proxy):
     h = _FakeHandler()
     ps.ProxyHandler._evaluate_v3_api(h, json.dumps({'question': 'q', 'answer': '  '}))
     assert h.sent[0] == 400
+
+
+# ── 최종 판정 규칙 · 이력 저장 · 재평가 (v3 전환) ─────────────────────────────
+def test_v3_final_of_matches_batch_table():
+    ps = _import_proxy()
+    import batch_executor
+    assert ps._V3_FINAL_SCORE == batch_executor.BatchExecutor.V3_SCORE
+    assert ps._v3_final_of({'legal_verdict': 'fail'}) == (0, False)
+    assert ps._v3_final_of({'legal_verdict': 'pass', 'validity_grade': 'b'}) == (85, True)
+    assert ps._v3_final_of({'legal_verdict': 'pass'}) == (90, True)
+    assert ps._v3_final_of({'legal_verdict': 'review'}) is None
+    assert ps._v3_final_of({'error': 'x'}) is None
+
+
+def _seed_scenario(sid):
+    if not db.get_scenario(sid):
+        db.create_scenario({'id': sid, 'prompt': '사흘째 두통이 있어요', 'category': 'test'})
+
+
+def test_history_save_uses_v3_not_regex(proxy):
+    ps, calls = proxy
+    _seed_scenario('SC-V3-SAVE')
+    h = _FakeHandler()
+    h._eval_v3_for_save = lambda sc, text: ps.ProxyHandler._eval_v3_for_save(h, sc, text)
+    ps.ProxyHandler._save_history_result(h, json.dumps({'scenarioId': 'SC-V3-SAVE', 'response': '답변'}))
+    code, out = h.sent
+    assert code == 200 and out['status'] == 'fail'          # stub v3 = legal fail
+    assert calls['answer'] == '답변'                          # 프론트가 안 보내면 서버가 판정
+    run = db.get_test_run(out['runId'])
+    r = ps._db_run_to_proxy(run)['results'][0]
+    assert r['finalSource'] == 'v3' and r['finalScore'] == 0
+    assert 'compliance' not in r and 'gptEval' not in r
+
+
+def test_history_save_accepts_client_v3(proxy):
+    ps, calls = proxy
+    _seed_scenario('SC-V3-SAVE')
+    calls.clear()
+    h = _FakeHandler()
+    v3 = {'legal_verdict': 'pass', 'validity_grade': 'A'}
+    ps.ProxyHandler._save_history_result(h, json.dumps({'scenarioId': 'SC-V3-SAVE', 'response': '답변',
+                                                        'evalV3': v3}))
+    assert h.sent[1]['status'] == 'pass'
+    assert calls == {}                                       # 재판정하지 않음
+
+
+def test_re_evaluate_overwrites_with_v3_and_keeps_healthbench(proxy):
+    ps, _ = proxy
+    _seed_scenario('SC-V3-RE')
+    run_id = 'run-test-reeval'
+    ps._save_run_to_db({'runId': run_id, 'runAt': '2026-09-29T00:00:00Z',
+                        'summary': {'total': 2, 'passed': 2, 'failed': 0},
+                        'results': [
+                            {'scenarioId': 'SC-V3-RE', 'prompt': 'q', 'response': 'a',
+                             'status': 'pass', 'finalScore': 85, 'finalSource': 'v3'},
+                            {'scenarioId': 'HB-0001', 'prompt': 'q', 'response': 'a',
+                             'status': 'pass', 'finalScore': 70, 'finalSource': 'rubric'},
+                        ]})
+    h = _FakeHandler()
+    ps.ProxyHandler._re_evaluate_history(h, json.dumps({'runId': run_id, 'includeConsultation': False}))
+    code, out = h.sent
+    assert code == 200 and out['v3ReEvaluated'] == 1
+    results = ps._db_run_to_proxy(db.get_test_run(run_id))['results']
+    first, hb = results
+    assert first['status'] == 'fail' and first['finalSource'] == 'v3' and first['prevStatus'] == 'pass'
+    assert hb['status'] == 'pass' and hb['finalSource'] == 'rubric'   # HealthBench 는 그대로

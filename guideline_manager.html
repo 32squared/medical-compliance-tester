@@ -123,12 +123,6 @@
   .tag-input-row button { padding:8px 16px; background:var(--accent); color:#0f172a; border:none;
                           border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; }
 
-  /* Test panel */
-  .test-panel { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:16px; margin-top:16px; }
-  .test-result { margin-top:12px; padding:12px; border-radius:8px; font-size:13px; }
-  .test-pass { background:#14532d; color:#86efac; }
-  .test-fail { background:#7f1d1d; color:#fca5a5; }
-
   /* History panel */
   .history-item { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border);
                   font-size:12px; color:var(--text-dim); }
@@ -232,7 +226,6 @@
     <button class="tab" data-tab="allowed" onclick="switchTab('allowed')">허용 표현</button>
     <button class="tab" data-tab="grayzone" onclick="switchTab('grayzone')">회색지대</button>
     <button class="tab" data-tab="emergency" onclick="switchTab('emergency')">응급 키워드</button>
-    <button class="tab" data-tab="test" onclick="switchTab('test')">테스트</button>
     <button class="tab" data-tab="history" onclick="switchTab('history')">변경 이력</button>
   </div>
 
@@ -328,23 +321,6 @@
       <input type="text" id="newEmergencyKeyword" placeholder="새 응급 키워드 입력">
       <button onclick="addEmergencyKeyword()">추가</button>
     </div>
-  </div>
-
-  <!-- Tab: 테스트 -->
-  <div class="card" id="tab-test">
-    <h2>가이드라인 적용 테스트</h2>
-    <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px">샘플 텍스트를 입력하면 현재 가이드라인 기준으로 검증합니다.</p>
-    <div class="field">
-      <label>테스트할 AI 응답 텍스트</label>
-      <textarea id="testText" rows="6" placeholder="예: 이 증상은 위염입니다. 타이레놀 500mg을 하루 3번 복용하세요."></textarea>
-    </div>
-    <div style="margin:8px 0;display:flex;align-items:center;gap:8px">
-      <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer">
-        <input type="checkbox" id="includeGptEval"> 컴플라이언스 평가 포함 (하이브리드 점수)
-      </label>
-    </div>
-    <button class="btn-save" onclick="runTest()">검증 실행</button>
-    <div class="test-panel" id="testResult" style="display:none"></div>
   </div>
 
   <!-- Tab: 변경 이력 -->
@@ -699,74 +675,6 @@ async function saveAll() {
   } finally {
     btn.disabled = false;
     btn.textContent = '저장';
-  }
-}
-
-// ── 테스트 ──
-async function runTest() {
-  const text = document.getElementById('testText').value.trim();
-  if (!text) { toast('텍스트를 입력하세요', 'error'); return; }
-  const includeGptEval = document.getElementById('includeGptEval').checked;
-  const panel = document.getElementById('testResult');
-  panel.style.display = 'block';
-  panel.className = 'test-panel';
-  panel.innerHTML = includeGptEval ? '검증 중 (컴플라이언스 평가 포함)...' : '검증 중...';
-  try {
-    const bodyObj = includeGptEval ? { text, includeGptEval: true } : { text };
-    const res = await fetch(`${API}/api/guidelines/test`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(bodyObj)
-    });
-    const r = await res.json();
-    const regexScore = r.regexScore != null ? r.regexScore : r.score;
-    const gptEval = r.gptEval || null;
-    const gptScore = (gptEval && gptEval.score != null) ? gptEval.score : null;
-    const hybridScore = gptScore !== null ? Math.min(regexScore, gptScore) : regexScore;
-    const displayScore = gptScore !== null ? hybridScore : regexScore;
-    const cls = r.passed ? 'test-pass' : 'test-fail';
-    let html = '';
-
-    if (gptEval) {
-      // GPT-first: Show GPT as primary result
-      const gradeColors = { A: '#22c55e', B: '#38bdf8', C: '#eab308', D: '#f97316', F: '#ef4444' };
-      const gc = gradeColors[gptEval.grade] || '#94a3b8';
-      html += '<div style="margin-bottom:12px;padding:12px;background:var(--surface2);border-radius:8px;border:1px solid ' + gc + '44">';
-      html += '<div style="font-weight:600;margin-bottom:6px;color:var(--purple)">\uD83E\uDD16 컴플라이언스 평가 (최종 판정 기준)</div>';
-      html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">';
-      html += '<span style="font-size:18px;font-weight:800;color:' + gc + ';background:' + gc + '22;padding:2px 10px;border-radius:6px">' + (gptEval.grade || '?') + '</span>';
-      html += '<span style="font-weight:600">' + (gptEval.score != null ? gptEval.score + '점' : '') + ' — ' + (gptEval.passed ? '<span style="color:var(--green)">PASS</span>' : '<span style="color:var(--red)">FAIL</span>') + '</span>';
-      html += '</div>';
-      if (gptEval.summary) html += '<div style="color:var(--text-dim);font-size:13px">' + esc(gptEval.summary) + '</div>';
-      if (gptEval.recommendation) html += '<div style="margin-top:4px;padding:6px;background:var(--accent-dim);border-radius:4px;color:var(--accent);font-size:13px">' + esc(gptEval.recommendation) + '</div>';
-      html += '</div>';
-
-      // Regex as reference
-      html += `<div class="test-result ${cls}" style="opacity:0.85">
-        <strong>\uD83D\uDCCB 참고 — 정규식 패턴 분석: ${regexScore}/100 (${r.passed ? 'PASS' : 'FAIL'})</strong><br>
-        <span>${esc(r.summary)}</span>
-      </div>`;
-    } else {
-      // No GPT: regex is primary
-      html += `<div class="test-result ${cls}">
-        <strong>\uD83D\uDCCB 정규식 패턴 분석: ${regexScore}/100 (${r.passed ? 'PASS' : 'FAIL'})</strong><br>
-        <span>${esc(r.summary)}</span>
-      </div>`;
-    }
-    if (r.violations && r.violations.length > 0) {
-      html += '<div style="margin-top:12px">';
-      r.violations.forEach(v => {
-        html += `<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
-          <span class="severity-badge severity-${v.severity}">${v.severity}</span>
-          <strong>${esc(v.rule_name)}</strong>: ${esc(v.matched_text)}
-          <div style="color:var(--text-dim);margin-top:2px">${esc(v.context)}</div>
-        </div>`;
-      });
-      html += '</div>';
-    }
-    panel.innerHTML = html;
-  } catch(e) {
-    panel.innerHTML = `<div class="test-result test-fail">오류: ${e.message}</div>`;
   }
 }
 
