@@ -58,6 +58,13 @@ elif [ "$RUN_MODE" = "scenario_inventory" ]; then
     if [ "$SEED_DRY_RUN" = "1" ]; then SEED_ARGS="--dry-run"; fi
     echo "[entrypoint] mode=scenario_inventory → scripts/scenario_inventory.py out=${INVENTORY_OUT} ${SEED_ARGS}"
     exec python /app/scripts/scenario_inventory.py ${SEED_ARGS}
+elif [ "$RUN_MODE" = "apply_scenario_set" ]; then
+    # v3 시험 세트 반영 — scripts/apply_scenario_set.py 참고. SET_PLAN(기본: 이미지 안 v3set-1 plan)의
+    # 태그·증상군을 붙이고 세트 밖 문항은 enabled 만 끈다(retired:<set>-unselected 태그, 지우지 않음).
+    SEED_ARGS=""
+    if [ "$SEED_DRY_RUN" = "1" ]; then SEED_ARGS="--dry-run"; fi
+    echo "[entrypoint] mode=apply_scenario_set → scripts/apply_scenario_set.py plan=${SET_PLAN:-/app/scripts/v3set_1_plan.json} ${SEED_ARGS}"
+    exec python /app/scripts/apply_scenario_set.py --plan "${SET_PLAN:-/app/scripts/v3set_1_plan.json}" ${SEED_ARGS}
 elif [ "$RUN_MODE" = "set_scenarios_enabled" ]; then
     # 시나리오 사용 여부 일괄 변경 — scripts/set_scenarios_enabled.py 참고 (SET_CATEGORY·SET_ID_PREFIX·
     # SET_ENABLED·SET_EXPECT·SET_TAG). 지우지 않고 enabled 만 바꾼다.

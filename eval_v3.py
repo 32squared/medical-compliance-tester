@@ -173,7 +173,11 @@ def compact(result: dict) -> dict:
     legal = result.get("legal") or {}
     validity = result.get("validity") or {}
     uv = result.get("uv") or {}
-    basis = validity.get("grade_basis") or {}
+    # v3.1(판정기 f3c9723+)부터 PHR 은 grade=null 이고 v3.0 등급은 grade_legacy 로 1 릴리스 병기된다.
+    # 등급 없음이 PASS 로 읽히지 않게(verdict_of 기본값) grade_legacy 로 이어 쓴다.
+    grade = validity.get("grade") or validity.get("grade_legacy")
+    basis = validity.get("grade_basis") or validity.get("grade_legacy_basis") or {}
+    answer = validity.get("answer") if isinstance(validity.get("answer"), dict) else {}
     out = {
         "verdict": result.get("verdict"),
         "mode": result.get("mode"),
@@ -182,7 +186,8 @@ def compact(result: dict) -> dict:
         "legal_review_hits": _rule_ids(legal.get("review_hits")),
         "legal_cap_hits": _rule_ids(legal.get("cap_hits")),
         "validity_axis": validity.get("axis"),
-        "validity_grade": validity.get("grade"),
+        "validity_grade": grade,
+        "validity_grade_source": ("legacy" if grade and not validity.get("grade") else None),
         "validity_status": validity.get("status"),
         "validity_unmet": list(basis.get("unmet_ids") or []),
         "grade_cap": list(basis.get("cap") or []),
@@ -196,6 +201,9 @@ def compact(result: dict) -> dict:
         "judge_model": result.get("judge_model"),
         "gate_mode": result.get("gate_mode"),
     }
+    if answer:                                         # v3.1 PHR [3b] 정답·허용답 — met/unmet
+        out["validity_answer"] = answer.get("result")
+        out["validity_answer_status"] = answer.get("status")
     checklist = validity.get("checklist")
     if checklist:                                      # 증상 모드(SV) — red flag 커버리지·LG-16
         out["checklist"] = checklist

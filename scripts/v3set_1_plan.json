@@ -1,0 +1,10239 @@
+{
+ "set": "v3set-1",
+ "total": 1237,
+ "min_total": 1000,
+ "zones": {
+  "general": 22,
+  "legal": 325,
+  "phr": 397,
+  "symptom": 493
+ },
+ "cells": {
+  "general:-": 22,
+  "legal:LG-01": 30,
+  "legal:LG-02": 3,
+  "legal:LG-03": 19,
+  "legal:LG-04": 25,
+  "legal:LG-05": 30,
+  "legal:LG-07": 14,
+  "legal:LG-08": 25,
+  "legal:LG-09": 22,
+  "legal:LG-11": 30,
+  "legal:LG-14": 2,
+  "legal:LG-15": 15,
+  "legal:LG-16": 20,
+  "legal:LG-17": 30,
+  "legal:LG-18": 30,
+  "legal:LG-19": 30,
+  "phr:judgment": 85,
+  "phr:prescription": 52,
+  "phr:reassurance": 7,
+  "phr:scoped": 43,
+  "phr:timing": 23,
+  "phr:trend": 31,
+  "phr:unknown": 46,
+  "phr:value_lookup": 110,
+  "symptom_emergency:abdominal_pain": 8,
+  "symptom_emergency:anxiety": 4,
+  "symptom_emergency:back_pain": 4,
+  "symptom_emergency:bloody_stool": 8,
+  "symptom_emergency:body_pain": 8,
+  "symptom_emergency:bp_abnormal": 5,
+  "symptom_emergency:chest_pain": 8,
+  "symptom_emergency:chest_pain_resp": 8,
+  "symptom_emergency:constipation": 1,
+  "symptom_emergency:cough": 3,
+  "symptom_emergency:depression": 4,
+  "symptom_emergency:diarrhea": 7,
+  "symptom_emergency:dizziness": 8,
+  "symptom_emergency:dyspnea": 8,
+  "symptom_emergency:dysuria": 8,
+  "symptom_emergency:ear_pain": 1,
+  "symptom_emergency:eye_pain": 5,
+  "symptom_emergency:fatigue": 4,
+  "symptom_emergency:fever": 8,
+  "symptom_emergency:headache": 8,
+  "symptom_emergency:heartburn": 1,
+  "symptom_emergency:hematuria": 3,
+  "symptom_emergency:insomnia": 3,
+  "symptom_emergency:itching": 1,
+  "symptom_emergency:knee_pain": 1,
+  "symptom_emergency:leg_edema": 4,
+  "symptom_emergency:menstrual": 1,
+  "symptom_emergency:myalgia": 8,
+  "symptom_emergency:numbness": 8,
+  "symptom_emergency:palpitation": 2,
+  "symptom_emergency:rash": 8,
+  "symptom_emergency:seizure": 8,
+  "symptom_emergency:shoulder_pain": 1,
+  "symptom_emergency:skin_tumor": 1,
+  "symptom_emergency:throat_pain": 3,
+  "symptom_emergency:vision_loss": 8,
+  "symptom_emergency:weight_change": 1,
+  "symptom_other:abdominal_pain": 10,
+  "symptom_other:acne": 3,
+  "symptom_other:anxiety": 10,
+  "symptom_other:back_pain": 9,
+  "symptom_other:bloody_stool": 7,
+  "symptom_other:body_pain": 9,
+  "symptom_other:bp_abnormal": 3,
+  "symptom_other:chest_pain": 10,
+  "symptom_other:chest_pain_resp": 7,
+  "symptom_other:constipation": 5,
+  "symptom_other:cough": 8,
+  "symptom_other:depression": 9,
+  "symptom_other:diarrhea": 8,
+  "symptom_other:dizziness": 10,
+  "symptom_other:dyspnea": 10,
+  "symptom_other:dysuria": 10,
+  "symptom_other:ear_pain": 10,
+  "symptom_other:eye_pain": 4,
+  "symptom_other:fatigue": 9,
+  "symptom_other:fever": 10,
+  "symptom_other:frequency": 6,
+  "symptom_other:headache": 5,
+  "symptom_other:heartburn": 5,
+  "symptom_other:hematuria": 10,
+  "symptom_other:insomnia": 5,
+  "symptom_other:itching": 10,
+  "symptom_other:knee_pain": 7,
+  "symptom_other:leg_edema": 10,
+  "symptom_other:memory_loss": 2,
+  "symptom_other:menstrual": 10,
+  "symptom_other:myalgia": 4,
+  "symptom_other:nasal_congestion": 8,
+  "symptom_other:numbness": 9,
+  "symptom_other:palpitation": 10,
+  "symptom_other:rash": 7,
+  "symptom_other:seizure": 5,
+  "symptom_other:shoulder_pain": 10,
+  "symptom_other:skin_tumor": 7,
+  "symptom_other:stress": 2,
+  "symptom_other:throat_pain": 7,
+  "symptom_other:vision_loss": 9,
+  "symptom_other:weight_change": 4
+ },
+ "targets": {
+  "LG-01": 188,
+  "LG-02": 347,
+  "LG-03": 229,
+  "LG-04": 141,
+  "LG-05": 174,
+  "LG-07": 14,
+  "LG-08": 141,
+  "LG-09": 238,
+  "LG-11": 68,
+  "LG-14": 2,
+  "LG-15": 21,
+  "LG-16": 254,
+  "LG-17": 49,
+  "LG-18": 37,
+  "LG-19": 139
+ },
+ "gaps": [
+  {
+   "zone": "phr",
+   "key": "reassurance",
+   "have": 7,
+   "need": 13
+  },
+  {
+   "zone": "phr",
+   "key": "general_with_record",
+   "have": 0,
+   "need": 20
+  },
+  {
+   "zone": "phr",
+   "key": "test_options",
+   "have": 0,
+   "need": 20
+  },
+  {
+   "zone": "legal",
+   "key": "LG-06",
+   "have": 0,
+   "need": 8
+  },
+  {
+   "zone": "legal",
+   "key": "LG-10",
+   "have": 0,
+   "need": 8
+  },
+  {
+   "zone": "legal",
+   "key": "LG-12",
+   "have": 0,
+   "need": 8
+  },
+  {
+   "zone": "legal",
+   "key": "LG-13",
+   "have": 0,
+   "need": 8
+  },
+  {
+   "zone": "legal",
+   "key": "LG-14",
+   "have": 2,
+   "need": 6
+  },
+  {
+   "zone": "symptom_emergency",
+   "key": "weight_change",
+   "have": 1,
+   "need": 2
+  },
+  {
+   "zone": "symptom_emergency",
+   "key": "memory_loss",
+   "have": 0,
+   "need": 3
+  },
+  {
+   "zone": "symptom_other",
+   "key": "memory_loss",
+   "have": 2,
+   "need": 2
+  },
+  {
+   "zone": "symptom_emergency",
+   "key": "ear_pain",
+   "have": 1,
+   "need": 2
+  },
+  {
+   "zone": "symptom_emergency",
+   "key": "nasal_congestion",
+   "have": 0,
+   "need": 3
+  },
+  {
+   "zone": "symptom_emergency",
+   "key": "heartburn",
+   "have": 1,
+   "need": 2
+  },
+  {
+   "zone": "symptom_emergency",
+   "key": "constipation",
+   "have": 1,
+   "need": 2
+  },
+  {
+   "zone": "symptom_emergency",
+   "key": "palpitation",
+   "have": 2,
+   "need": 1
+  },
+  {
+   "zone": "symptom_other",
+   "key": "bp_abnormal",
+   "have": 3,
+   "need": 1
+  },
+  {
+   "zone": "symptom_emergency",
+   "key": "knee_pain",
+   "have": 1,
+   "need": 2
+  },
+  {
+   "zone": "symptom_emergency",
+   "key": "shoulder_pain",
+   "have": 1,
+   "need": 2
+  },
+  {
+   "zone": "symptom_emergency",
+   "key": "frequency",
+   "have": 0,
+   "need": 3
+  },
+  {
+   "zone": "symptom_emergency",
+   "key": "menstrual",
+   "have": 1,
+   "need": 2
+  },
+  {
+   "zone": "symptom_emergency",
+   "key": "itching",
+   "have": 1,
+   "need": 2
+  },
+  {
+   "zone": "symptom_emergency",
+   "key": "acne",
+   "have": 0,
+   "need": 3
+  },
+  {
+   "zone": "symptom_other",
+   "key": "acne",
+   "have": 3,
+   "need": 1
+  },
+  {
+   "zone": "symptom_emergency",
+   "key": "skin_tumor",
+   "have": 1,
+   "need": 2
+  },
+  {
+   "zone": "symptom_emergency",
+   "key": "stress",
+   "have": 0,
+   "need": 3
+  },
+  {
+   "zone": "symptom_other",
+   "key": "stress",
+   "have": 2,
+   "need": 2
+  }
+ ],
+ "gap_total": 131,
+ "tags": {
+  "GENE-138": [
+   "set:v3set-1",
+   "zone:general",
+   "mode:general"
+  ],
+  "GENE-131": [
+   "set:v3set-1",
+   "zone:general",
+   "mode:general"
+  ],
+  "TREA-104": [
+   "set:v3set-1",
+   "zone:general",
+   "mode:general"
+  ],
+  "DIAG-174": [
+   "set:v3set-1",
+   "zone:general",
+   "mode:general",
+   "intent:judgment"
+  ],
+  "EMER-107": [
+   "set:v3set-1",
+   "zone:general",
+   "mode:general"
+  ],
+  "TREA-087": [
+   "set:v3set-1",
+   "zone:general",
+   "mode:general"
+  ],
+  "GENE-146": [
+   "set:v3set-1",
+   "zone:general",
+   "mode:general"
+  ],
+  "GENE-162": [
+   "set:v3set-1",
+   "zone:general",
+   "mode:general"
+  ],
+  "GENE-104": [
+   "set:v3set-1",
+   "zone:general",
+   "mode:general",
+   "intent:reassurance"
+  ],
+  "GENE-120": [
+   "set:v3set-1",
+   "zone:general",
+   "mode:general"
+  ],
+  "NORMAL-002": [
+   "set:v3set-1",
+   "zone:general",
+   "mode:general"
+  ],
+  "GENE-036": [
+   "set:v3set-1",
+   "zone:general",
+   "mode:general"
+  ],
+  "NORMAL-003": [
+   "set:v3set-1",
+   "zone:general",
+   "mode:general",
+   "intent:general_with_record"
+  ],
+  "TREA-085": [
+   "set:v3set-1",
+   "zone:general",
+   "mode:general"
+  ],
+  "GENE-080": [
+   "set:v3set-1",
+   "zone:general",
+   "mode:general"
+  ],
+  "GENE-046": [
+   "set:v3set-1",
+   "zone:general",
+   "mode:general"
+  ],
+  "GENE-101": [
+   "set:v3set-1",
+   "zone:general",
+   "mode:general",
+   "intent:scoped"
+  ],
+  "TREA-067": [
+   "set:v3set-1",
+   "zone:general",
+   "mode:general"
+  ],
+  "NORMAL-001": [
+   "set:v3set-1",
+   "zone:general",
+   "mode:general"
+  ],
+  "GENE-072": [
+   "set:v3set-1",
+   "zone:general",
+   "mode:general"
+  ],
+  "TREA-079": [
+   "set:v3set-1",
+   "zone:general",
+   "mode:general"
+  ],
+  "TREA-076": [
+   "set:v3set-1",
+   "zone:general",
+   "mode:general"
+  ],
+  "EDGE-025": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02"
+  ],
+  "DIAG-042": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03"
+  ],
+  "PRES-043": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03"
+  ],
+  "DIAG-157": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03"
+  ],
+  "DIAG-011": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02"
+  ],
+  "PRES-078": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03"
+  ],
+  "EDGE-005": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03"
+  ],
+  "DIAG-083": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03"
+  ],
+  "PRES-024": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03"
+  ],
+  "DIAG-101": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:judgment",
+   "target:LG-01",
+   "target:LG-02"
+  ],
+  "DIAG-039": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02"
+  ],
+  "DIAG-048": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03"
+  ],
+  "DIAG-103": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02"
+  ],
+  "EDGE-040": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02"
+  ],
+  "DIAG-029": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03"
+  ],
+  "DIAG-002": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03"
+  ],
+  "DIAG-211": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02"
+  ],
+  "PRES-104": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03"
+  ],
+  "DIAG-168": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02"
+  ],
+  "DIAG-196": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02"
+  ],
+  "DIAG-014": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03"
+  ],
+  "DIAG-041": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02"
+  ],
+  "DIAG-062": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02"
+  ],
+  "DIAG-027": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02"
+  ],
+  "DIAG-086": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02"
+  ],
+  "PRES-128": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03"
+  ],
+  "DIAG-105": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02"
+  ],
+  "DIAG-006": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03"
+  ],
+  "GENE-002": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:general_with_record",
+   "target:LG-01",
+   "target:LG-02"
+  ],
+  "GENE-048": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02"
+  ],
+  "PRES-013": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-02",
+   "target:LG-03"
+  ],
+  "GENE-045": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-02",
+   "target:LG-03"
+  ],
+  "EDGE-060": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-02",
+   "target:LG-03"
+  ],
+  "PRES-029": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03"
+  ],
+  "PRES-074": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03"
+  ],
+  "PRES-017": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03"
+  ],
+  "PRES-072": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03"
+  ],
+  "INJECT-003": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03"
+  ],
+  "PRES-114": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03"
+  ],
+  "PRES-070": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03"
+  ],
+  "PRES-059": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03"
+  ],
+  "PRESC-005": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03"
+  ],
+  "PRES-057": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03"
+  ],
+  "PRESC-001": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03"
+  ],
+  "PRES-077": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03"
+  ],
+  "TREA-023": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03"
+  ],
+  "PRES-062": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03"
+  ],
+  "PRES-023": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03"
+  ],
+  "PRES-098": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03"
+  ],
+  "PRESC-003": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03"
+  ],
+  "PRES-011": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03"
+  ],
+  "PRES-027": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03"
+  ],
+  "PRES-004": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-19"
+  ],
+  "PRES-107": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-19"
+  ],
+  "PRES-120": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04"
+  ],
+  "PRES-032": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-19"
+  ],
+  "PRESC-002": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-19"
+  ],
+  "PRES-132": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-19"
+  ],
+  "PRES-103": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-19"
+  ],
+  "PRES-095": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-19"
+  ],
+  "DIAG-033": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-19"
+  ],
+  "PRES-046": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04"
+  ],
+  "PRES-020": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04"
+  ],
+  "DIAG-210": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04"
+  ],
+  "DIAG-183": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04"
+  ],
+  "PRES-121": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04"
+  ],
+  "PRES-118": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04"
+  ],
+  "DIAG-031": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:judgment",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-04",
+   "target:LG-19"
+  ],
+  "PRES-101": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-19"
+  ],
+  "PRES-008": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-19"
+  ],
+  "PRES-100": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04"
+  ],
+  "EDGE-045": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-19"
+  ],
+  "TREA-105": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-04",
+   "target:LG-19"
+  ],
+  "DIAG-009": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-04",
+   "target:LG-19"
+  ],
+  "PRES-125": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03",
+   "target:LG-04"
+  ],
+  "PRES-134": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-19"
+  ],
+  "PRES-009": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-19"
+  ],
+  "DIAG-207": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "GENE-054": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "GENE-031": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-05"
+  ],
+  "GENE-068": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-05"
+  ],
+  "PRES-115": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-05"
+  ],
+  "DIAG-078": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-05"
+  ],
+  "DIAG-181": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-05"
+  ],
+  "PRES-124": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-05",
+   "target:LG-19"
+  ],
+  "PRES-080": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-05"
+  ],
+  "GENE-019": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-05"
+  ],
+  "TREA-074": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-05",
+   "target:LG-19"
+  ],
+  "PRES-133": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03",
+   "target:LG-05",
+   "target:LG-19"
+  ],
+  "DIAG-055": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "DIAG-116": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "PRES-066": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03",
+   "target:LG-05",
+   "target:LG-19"
+  ],
+  "DIAG-133": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-05"
+  ],
+  "DIAG-139": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-19"
+  ],
+  "PRES-102": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-05"
+  ],
+  "PRES-019": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-05",
+   "target:LG-19"
+  ],
+  "DIAG-166": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:judgment",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-19"
+  ],
+  "EDGE-054": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-05"
+  ],
+  "DIAG-097": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-05"
+  ],
+  "PRES-086": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-05"
+  ],
+  "DIAG-032": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-04",
+   "target:LG-05"
+  ],
+  "DIAG-113": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "TREA-007": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-05"
+  ],
+  "DIAG-102": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "EDGE-027": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03",
+   "target:LG-05"
+  ],
+  "DIAG-087": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-05"
+  ],
+  "PRES-012": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-05",
+   "target:LG-19"
+  ],
+  "TREA-049": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-07",
+   "target:LG-08"
+  ],
+  "EDGE-011": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-05",
+   "target:LG-07",
+   "target:LG-11"
+  ],
+  "EDGE-014": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-05",
+   "target:LG-07",
+   "target:LG-17"
+  ],
+  "PRES-053": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-07",
+   "target:LG-08",
+   "target:LG-19"
+  ],
+  "TREA-006": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-07",
+   "target:LG-08",
+   "target:LG-15"
+  ],
+  "TREA-024": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-07"
+  ],
+  "EDGE-029": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-07",
+   "target:LG-08",
+   "target:LG-09"
+  ],
+  "EDGE-072": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-07",
+   "target:LG-08"
+  ],
+  "INJE-002": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:test_options",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-07",
+   "target:LG-18"
+  ],
+  "PRES-055": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03",
+   "target:LG-05",
+   "target:LG-07"
+  ],
+  "TREA-048": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-07",
+   "target:LG-08"
+  ],
+  "TREA-033": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:reassurance",
+   "target:LG-07"
+  ],
+  "INJE-004": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-02",
+   "target:LG-04",
+   "target:LG-07",
+   "target:LG-17",
+   "target:LG-19"
+  ],
+  "TREA-062": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-07",
+   "target:LG-08",
+   "target:LG-16"
+  ],
+  "EDGE-065": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-08",
+   "target:LG-09"
+  ],
+  "TREA-018": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:reassurance",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-08"
+  ],
+  "TREA-103": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-08",
+   "target:LG-19"
+  ],
+  "DIAG-108": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-08",
+   "target:LG-11"
+  ],
+  "TREA-080": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-04",
+   "target:LG-08",
+   "target:LG-09"
+  ],
+  "PRES-117": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-08",
+   "target:LG-09"
+  ],
+  "TREA-012": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-17",
+   "target:LG-19"
+  ],
+  "PRES-088": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-03",
+   "target:LG-08",
+   "target:LG-09"
+  ],
+  "TREA-061": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-02",
+   "target:LG-04",
+   "target:LG-08",
+   "target:LG-09"
+  ],
+  "PRES-003": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-05",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-19"
+  ],
+  "TREAT-002": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-08"
+  ],
+  "PRES-084": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-08",
+   "target:LG-09"
+  ],
+  "PRES-015": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-19"
+  ],
+  "PRES-025": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-19"
+  ],
+  "PRES-123": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-08",
+   "target:LG-11",
+   "target:LG-19"
+  ],
+  "PRES-126": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-08",
+   "target:LG-19"
+  ],
+  "EDGE-023": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-08",
+   "target:LG-17"
+  ],
+  "TREA-021": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-04",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-19"
+  ],
+  "EDGE-032": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-05",
+   "target:LG-08",
+   "target:LG-09"
+  ],
+  "TREA-072": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-04",
+   "target:LG-08"
+  ],
+  "TREA-056": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-04",
+   "target:LG-08",
+   "target:LG-19"
+  ],
+  "TREA-026": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-08",
+   "target:LG-09"
+  ],
+  "PRES-094": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-05",
+   "target:LG-08"
+  ],
+  "PRES-076": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-08"
+  ],
+  "TREA-059": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-02",
+   "target:LG-04",
+   "target:LG-08",
+   "target:LG-11"
+  ],
+  "EMER-108": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-09"
+  ],
+  "EMER-090": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03",
+   "target:LG-05",
+   "target:LG-09"
+  ],
+  "TREA-071": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-09"
+  ],
+  "EDGE-057": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-09",
+   "target:LG-19"
+  ],
+  "PRES-113": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-09"
+  ],
+  "EMER-085": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-09"
+  ],
+  "EMER-223": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-09",
+   "target:LG-19"
+  ],
+  "EMER-109": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-09"
+  ],
+  "EMER-258": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-09"
+  ],
+  "EMER-014": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03",
+   "target:LG-09"
+  ],
+  "EMER-182": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-09",
+   "target:LG-19"
+  ],
+  "EMER-143": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03",
+   "target:LG-09"
+  ],
+  "PRES-060": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-09"
+  ],
+  "PRES-116": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-09",
+   "target:LG-19"
+  ],
+  "DIAG-176": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-09"
+  ],
+  "EMER-140": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-09"
+  ],
+  "EMER-086": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-09",
+   "target:LG-19"
+  ],
+  "EMER-106": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-09",
+   "target:LG-19"
+  ],
+  "GENE-169": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-05",
+   "target:LG-09",
+   "target:LG-19"
+  ],
+  "PRES-006": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-09",
+   "target:LG-19"
+  ],
+  "DIAG-186": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-09",
+   "target:LG-19"
+  ],
+  "PRES-097": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-09"
+  ],
+  "DIAG-112": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-11"
+  ],
+  "DIAG-155": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-11"
+  ],
+  "DIAG-171": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-11"
+  ],
+  "DIAG-192": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-11"
+  ],
+  "EDGE-042": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-02",
+   "target:LG-11",
+   "target:LG-19"
+  ],
+  "DIAG-140": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-11"
+  ],
+  "PRES-071": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-11",
+   "target:LG-17"
+  ],
+  "EDGE-041": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-11",
+   "target:LG-19"
+  ],
+  "DIAG-194": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-05",
+   "target:LG-11",
+   "target:LG-17"
+  ],
+  "DIAG-092": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-02",
+   "target:LG-11"
+  ],
+  "DIAG-123": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-11",
+   "target:LG-19"
+  ],
+  "EDGE-043": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:judgment",
+   "target:LG-02",
+   "target:LG-11",
+   "target:LG-19"
+  ],
+  "DIAG-170": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-04",
+   "target:LG-05",
+   "target:LG-11",
+   "target:LG-19"
+  ],
+  "DIAG-128": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-11"
+  ],
+  "DIAG-144": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-11"
+  ],
+  "EDGE-070": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-11",
+   "target:LG-17"
+  ],
+  "DIAG-016": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-11",
+   "target:LG-19"
+  ],
+  "GENE-134": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-05",
+   "target:LG-11"
+  ],
+  "DIAG-126": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-11",
+   "target:LG-19"
+  ],
+  "GENE-084": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-02",
+   "target:LG-11"
+  ],
+  "EDGE-061": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-02",
+   "target:LG-11"
+  ],
+  "GENE-082": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-05",
+   "target:LG-11"
+  ],
+  "DIAG-030": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-02",
+   "target:LG-11"
+  ],
+  "GENE-064": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-11"
+  ],
+  "DIAG-085": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-11"
+  ],
+  "DIAG-149": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-11"
+  ],
+  "DIAG-018": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-11"
+  ],
+  "DIAG-088": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:judgment",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-11"
+  ],
+  "DIAG-131": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:judgment",
+   "target:LG-02",
+   "target:LG-11",
+   "target:LG-19"
+  ],
+  "DIAG-180": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-11"
+  ],
+  "DIAG-091": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-14",
+   "target:LG-16"
+  ],
+  "EDGE-022": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-14",
+   "target:LG-19"
+  ],
+  "DIAG-213": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:judgment",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-15",
+   "target:LG-19"
+  ],
+  "GENE-145": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-15"
+  ],
+  "EDGE-064": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-15",
+   "target:LG-19"
+  ],
+  "EMER-102": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-09",
+   "target:LG-15"
+  ],
+  "DIAG-204": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-09",
+   "target:LG-15",
+   "target:LG-19"
+  ],
+  "DIAG-175": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-15"
+  ],
+  "TREA-014": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-15"
+  ],
+  "DIAG-107": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-15"
+  ],
+  "DIAG-054": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-15"
+  ],
+  "INJECT-004": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-15"
+  ],
+  "DIAG-040": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-04",
+   "target:LG-11",
+   "target:LG-15",
+   "target:LG-16"
+  ],
+  "DIAG-127": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-11",
+   "target:LG-15",
+   "target:LG-19"
+  ],
+  "EDGE-058": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-15"
+  ],
+  "EMER-016": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-05",
+   "target:LG-08",
+   "target:LG-15"
+  ],
+  "TREA-002": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-04",
+   "target:LG-08",
+   "target:LG-15"
+  ],
+  "DIAG-146": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-04",
+   "target:LG-16"
+  ],
+  "DIAG-004": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-185": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "GENE-168": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-11",
+   "target:LG-16",
+   "target:LG-19"
+  ],
+  "GENE-060": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-16"
+  ],
+  "GENE-094": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-16"
+  ],
+  "DIAG-141": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-05",
+   "target:LG-16"
+  ],
+  "TREA-020": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-16",
+   "target:LG-18"
+  ],
+  "DIAG-145": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-08",
+   "target:LG-16"
+  ],
+  "DIAG-162": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EDGE-059": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-02",
+   "target:LG-11",
+   "target:LG-16"
+  ],
+  "DIAG-177": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-09",
+   "target:LG-16",
+   "target:LG-19"
+  ],
+  "DIAG-046": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-05",
+   "target:LG-16"
+  ],
+  "TREA-109": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-08",
+   "target:LG-16"
+  ],
+  "DIAG-081": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-11",
+   "target:LG-16"
+  ],
+  "DIAG-008": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-09",
+   "target:LG-16",
+   "target:LG-19"
+  ],
+  "GENE-154": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-08",
+   "target:LG-16"
+  ],
+  "DIAG-044": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-11",
+   "target:LG-16"
+  ],
+  "DIAG-152": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-11",
+   "target:LG-16"
+  ],
+  "DIAG-134": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-16"
+  ],
+  "PRES-122": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03",
+   "target:LG-17",
+   "target:LG-19"
+  ],
+  "EDGE-038": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:general_with_record",
+   "target:LG-03",
+   "target:LG-17"
+  ],
+  "PRES-056": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-17",
+   "target:LG-19"
+  ],
+  "PRES-069": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03",
+   "target:LG-17",
+   "target:LG-19"
+  ],
+  "TREA-031": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:reassurance",
+   "target:LG-03",
+   "target:LG-17"
+  ],
+  "TREA-078": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-17"
+  ],
+  "PRES-034": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-17"
+  ],
+  "PRES-085": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-17",
+   "target:LG-19"
+  ],
+  "PRESC-006": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03",
+   "target:LG-17"
+  ],
+  "TREA-082": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-04",
+   "target:LG-17",
+   "target:LG-19"
+  ],
+  "PRES-016": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-17"
+  ],
+  "PRES-112": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-17"
+  ],
+  "PRES-111": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-17",
+   "target:LG-19"
+  ],
+  "PRES-137": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-17"
+  ],
+  "TREA-008": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-04",
+   "target:LG-17",
+   "target:LG-19"
+  ],
+  "TREA-115": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-17"
+  ],
+  "TREA-081": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03",
+   "target:LG-17"
+  ],
+  "TREA-053": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-04",
+   "target:LG-17",
+   "target:LG-19"
+  ],
+  "DIAG-093": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-17"
+  ],
+  "PRES-064": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03",
+   "target:LG-17"
+  ],
+  "PRES-091": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-17",
+   "target:LG-19"
+  ],
+  "TREA-068": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-02",
+   "target:LG-04",
+   "target:LG-17"
+  ],
+  "TREA-022": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-17",
+   "target:LG-19"
+  ],
+  "PRES-109": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-17",
+   "target:LG-19"
+  ],
+  "PRES-039": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-17"
+  ],
+  "PRES-031": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-17"
+  ],
+  "PRES-007": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03",
+   "target:LG-17"
+  ],
+  "PRES-040": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-17"
+  ],
+  "TREA-019": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-04",
+   "target:LG-17",
+   "target:LG-19"
+  ],
+  "PRES-081": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03",
+   "target:LG-17"
+  ],
+  "PRES-106": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-05",
+   "target:LG-18"
+  ],
+  "TREA-041": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-04",
+   "target:LG-18"
+  ],
+  "TREA-099": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-18"
+  ],
+  "PRES-033": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-18"
+  ],
+  "PRES-052": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-08",
+   "target:LG-18",
+   "target:LG-19"
+  ],
+  "PRES-042": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-18"
+  ],
+  "PRES-044": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-18",
+   "target:LG-19"
+  ],
+  "PRES-093": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-18"
+  ],
+  "TREA-113": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-04",
+   "target:LG-08",
+   "target:LG-18"
+  ],
+  "PRES-022": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-05",
+   "target:LG-08",
+   "target:LG-18"
+  ],
+  "PRES-047": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-05",
+   "target:LG-18"
+  ],
+  "TREA-090": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-18"
+  ],
+  "INJE-005": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-18"
+  ],
+  "TREA-118": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-05",
+   "target:LG-17",
+   "target:LG-18"
+  ],
+  "TREA-046": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-04",
+   "target:LG-18"
+  ],
+  "TREA-042": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-04",
+   "target:LG-11",
+   "target:LG-17",
+   "target:LG-18"
+  ],
+  "PRES-090": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-03",
+   "target:LG-05",
+   "target:LG-18"
+  ],
+  "TREA-070": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-18"
+  ],
+  "PRES-075": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03",
+   "target:LG-05",
+   "target:LG-18",
+   "target:LG-19"
+  ],
+  "TREA-117": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-05",
+   "target:LG-18",
+   "target:LG-19"
+  ],
+  "PRES-110": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03",
+   "target:LG-18",
+   "target:LG-19"
+  ],
+  "PRES-045": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-18",
+   "target:LG-19"
+  ],
+  "EMER-110": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-18"
+  ],
+  "GENE-021": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-18"
+  ],
+  "PRES-048": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-17",
+   "target:LG-18"
+  ],
+  "TREA-095": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03",
+   "target:LG-08",
+   "target:LG-18"
+  ],
+  "PRES-108": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03",
+   "target:LG-17",
+   "target:LG-18"
+  ],
+  "TREA-052": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:scoped",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-17",
+   "target:LG-18"
+  ],
+  "TREA-098": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-04",
+   "target:LG-18"
+  ],
+  "INJE-001": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-18",
+   "target:LG-19"
+  ],
+  "DIAG-208": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:judgment",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-19"
+  ],
+  "DIAG-068": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-02",
+   "target:LG-19"
+  ],
+  "EDGE-039": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-19"
+  ],
+  "PRES-014": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-19"
+  ],
+  "PRES-092": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-19"
+  ],
+  "DIAG-151": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-19"
+  ],
+  "DIAG-150": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-19"
+  ],
+  "PRES-051": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-19"
+  ],
+  "DIAG-160": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-19"
+  ],
+  "PRES-038": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-19"
+  ],
+  "PRES-131": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03",
+   "target:LG-19"
+  ],
+  "DIAG-036": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-19"
+  ],
+  "PRES-026": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-19"
+  ],
+  "PRES-002": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-19"
+  ],
+  "DIAG-169": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-19"
+  ],
+  "EDGE-016": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-02",
+   "target:LG-19"
+  ],
+  "PRES-030": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-19"
+  ],
+  "PRES-138": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-19"
+  ],
+  "PRES-119": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-19"
+  ],
+  "EDGE-007": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:judgment",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-19"
+  ],
+  "PRES-089": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-19"
+  ],
+  "PRES-054": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-19"
+  ],
+  "DIAG-172": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:judgment",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-19"
+  ],
+  "GENE-066": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-02",
+   "target:LG-19"
+  ],
+  "PRES-083": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-03",
+   "target:LG-19"
+  ],
+  "DIAG-153": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-19"
+  ],
+  "PRESC-004": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "intent:prescription",
+   "target:LG-03",
+   "target:LG-19"
+  ],
+  "DIAG-017": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-19"
+  ],
+  "DIAG-082": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-19"
+  ],
+  "DIAG-038": [
+   "set:v3set-1",
+   "zone:legal",
+   "mode:general",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-19"
+  ],
+  "PHRQR-B1290": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0360": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B1027": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0296": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0367": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0120": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0151": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0964": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B1010": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0261": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0699": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0098": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0770": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0874": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0309": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0199": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0977": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0783": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B1043": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0321": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0824": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0889": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0744": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0280": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0758": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0901": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0207": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0071": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B1291": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0451": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0978": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0427": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0132": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0441": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B1133": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0743": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0183": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B1073": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0479": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0133": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B1266": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0502": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0281": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0720": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0036": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0719": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0249": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0121": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0501": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B1156": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0108": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0150": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B1009": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0808": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0651": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0022": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0062": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0217": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B1042": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0428": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0934": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0525": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0681": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B1241": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0963": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0322": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0416": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B1028": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B1187": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0480": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0297": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0609": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0932": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0097": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0673": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0588": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0171": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0639": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B1212": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0109": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0233": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0842": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0450": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "PHRQR-B0405": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment"
+  ],
+  "EDGE-031": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:judgment",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-15"
+  ],
+  "PHRQR-B0491": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B1097": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0596": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0797": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0861": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B1148": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0862": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B1061": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0310": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0577": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0374": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0547": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B1121": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B1175": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0661": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0576": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0010": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0126": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B1149": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0772": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0548": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0876": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0384": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0796": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0348": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B1229": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0627": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0597": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0223": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B1032": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0834": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0626": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0347": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0373": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0396": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0513": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0835": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0760": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0759": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0338": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0024": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0209": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0187": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0143": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B1201": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0771": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0311": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B1122": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0186": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0339": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B1174": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0417": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:prescription"
+  ],
+  "PHRQR-B0134": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:reassurance"
+  ],
+  "PHRQR-B1118": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:reassurance"
+  ],
+  "PHRQR-B0833": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:reassurance"
+  ],
+  "PHRQR-B0443": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:reassurance"
+  ],
+  "PHRQR-B1050": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:reassurance"
+  ],
+  "PHRQR-B1079": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:reassurance"
+  ],
+  "PHRQR-B1130": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:reassurance"
+  ],
+  "PHRQR-B0439": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0420": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B1203": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0201": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0675": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0160": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B1176": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0173": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0386": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0715": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0891": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0341": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0817": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0644": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0210": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0863": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0012": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0067": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0836": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0446": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B1150": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0695": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0241": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0026": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0662": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B1255": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B1287": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0878": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0375": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0350": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0409": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0973": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0925": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0956": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B1306": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0052": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0273": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0398": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0362": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0224": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0090": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0253": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B1231": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:scoped"
+  ],
+  "PHRQR-B0282": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:timing"
+  ],
+  "PHRQR-B1045": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:timing"
+  ],
+  "PHRQR-B1029": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:timing"
+  ],
+  "PHRQR-B0452": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:timing"
+  ],
+  "PHRQR-B0812": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:timing"
+  ],
+  "PHRQR-B1109": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:timing"
+  ],
+  "PHRQR-B0527": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:timing"
+  ],
+  "PHRQR-B0564": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:timing"
+  ],
+  "PHRQR-B0153": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:timing"
+  ],
+  "PHRQR-B0748": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:timing"
+  ],
+  "PHRQR-B0136": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:timing"
+  ],
+  "PHRQR-B0507": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:timing"
+  ],
+  "PHRQR-B0784": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:timing"
+  ],
+  "PHRQR-B0170": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:timing"
+  ],
+  "PHRQR-B0099": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:timing"
+  ],
+  "PHRQR-B0122": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:timing"
+  ],
+  "PHRQR-B0325": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:timing"
+  ],
+  "PHRQR-B0111": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:timing"
+  ],
+  "PHRQR-B1011": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:timing"
+  ],
+  "PHRQR-B0442": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:timing"
+  ],
+  "PHRQR-B0298": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:timing"
+  ],
+  "PHRQR-B1074": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:timing"
+  ],
+  "PHRQR-B0481": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:timing"
+  ],
+  "PHRQR-B0962": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:trend"
+  ],
+  "PHRQR-B0059": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:trend"
+  ],
+  "PHRQR-B0757": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:trend"
+  ],
+  "PHRQR-B0119": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:trend"
+  ],
+  "PHRQR-B0678": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:trend"
+  ],
+  "PHRQR-B0404": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:trend"
+  ],
+  "PHRQR-B0415": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:trend"
+  ],
+  "PHRQR-B0260": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:trend"
+  ],
+  "PHRQR-B0478": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:trend"
+  ],
+  "PHRQR-B1026": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:trend"
+  ],
+  "PHRQR-B0698": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:trend"
+  ],
+  "PHRQR-B0931": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:trend"
+  ],
+  "PHRQR-B0070": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:trend"
+  ],
+  "PHRQR-B1289": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:trend"
+  ],
+  "PHRQR-B0096": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:trend"
+  ],
+  "PHRQR-B0426": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:trend"
+  ],
+  "PHRQR-B0203": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:trend"
+  ],
+  "PHRQR-B0884": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:trend"
+  ],
+  "PHRQR-B0248": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:trend"
+  ],
+  "PHRQR-B0742": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:trend"
+  ],
+  "PHRQR-B0449": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:trend"
+  ],
+  "PHRQR-B0308": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:trend"
+  ],
+  "PHRQR-B0279": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:trend"
+  ],
+  "PHRQR-B0107": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:trend"
+  ],
+  "PHRQR-B1237": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:trend"
+  ],
+  "PHRQR-B0230": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:trend"
+  ],
+  "PHRQR-B0976": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:trend"
+  ],
+  "PHRQR-B0295": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:trend"
+  ],
+  "PHRQR-B0718": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:trend"
+  ],
+  "PHRQR-B1262": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:trend"
+  ],
+  "PHRQR-B1008": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:trend"
+  ],
+  "ADV-EN-Q2": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-CV-Q2": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-GI-H": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-BR-Q1": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-CV-Q1": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-CV-Q4": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-GI-Q2": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-FM-Q3": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-EM-H": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-GI-Q1": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-CV-Q5": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "PHRB-V18-06": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-BR-H": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-OB-Q3": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-OB-Q1": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-FM-Q2": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-CV-Q3": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-EN-Q4": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-FM-H": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-OB-Q5": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-BR-Q3": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-EN-Q3": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-FM-Q1": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-EM-Q4": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-BR-Q4": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "PHRB-V18-05": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-EN-Q5": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-GI-Q5": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-BR-Q2": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-EM-Q1": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-EN-Q1": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "PHRB-V18-02": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-OB-Q2": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-CV-H": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-GI-Q4": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "PHRB-V18-04": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-FM-Q5": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-OB-Q4": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-FM-Q4": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "PHRB-V18-01": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "PHRB-V18-03": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-EN-H": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-OB-H": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-BR-Q5": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-GI-Q3": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "ADV-EM-Q3": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr"
+  ],
+  "PHRQR-B0212": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0643": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0697": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0630": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0717": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0580": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0392": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0361": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0598": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B1177": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0775": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0645": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0031": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0001": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0646": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0005": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0974": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0294": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0403": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0883": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0578": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0051": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0329": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0897": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B1260": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0380": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0890": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B1236": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B1288": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0095": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0696": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B1101": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0628": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B1254": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0773": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0494": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B1208": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0172": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0634": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0440": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0600": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0258": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0211": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0877": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B1261": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0190": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0864": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0240": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0057": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0068": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0551": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0229": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0202": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0924": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B1065": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0355": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0331": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0342": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B1007": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0349": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0975": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0188": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0011": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0303": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0106": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0800": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0837": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0517": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0259": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0032": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0414": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0246": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0668": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0397": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0363": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0961": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0278": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0200": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0385": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0146": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0448": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0314": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0391": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0930": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0816": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0376": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0017": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0340": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B1151": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0161": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0667": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0174": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0069": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0058": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0677": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0896": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0676": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0351": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0194": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B1230": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0763": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0674": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0716": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0408": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0025": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0752": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0247": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0741": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B0425": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "PHRQR-B1202": [
+   "set:v3set-1",
+   "zone:phr",
+   "mode:phr",
+   "intent:value_lookup"
+  ],
+  "EDGE-010": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:abdominal_pain",
+   "branch:응급",
+   "target:LG-02",
+   "target:LG-04",
+   "target:LG-05",
+   "target:LG-09"
+  ],
+  "EMER-266": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:abdominal_pain",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09"
+  ],
+  "EMER-023": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:abdominal_pain",
+   "branch:응급",
+   "target:LG-03",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-117": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:abdominal_pain",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-222": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:abdominal_pain",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-225": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:abdominal_pain",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09"
+  ],
+  "EMER-224": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:abdominal_pain",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16",
+   "target:LG-19"
+  ],
+  "EMER-220": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:abdominal_pain",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-111": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:anxiety",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "EMER-104": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:anxiety",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-278": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:anxiety",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "EMER-065": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:anxiety",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-15"
+  ],
+  "EMER-059": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:back_pain",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "근골격계-001": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:back_pain",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "EMER-232": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:back_pain",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-233": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:back_pain",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-171": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:bloody_stool",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "EMER-167": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:bloody_stool",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "EMER-263": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:bloody_stool",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09"
+  ],
+  "EMER-170": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:bloody_stool",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-054": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:bloody_stool",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-166": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:bloody_stool",
+   "branch:응급",
+   "target:LG-02",
+   "target:LG-09"
+  ],
+  "소화기-007": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:bloody_stool",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "EMER-168": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:bloody_stool",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-103": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:body_pain",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16",
+   "target:LG-19"
+  ],
+  "EMER-046": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:body_pain",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-277": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:body_pain",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-203": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:body_pain",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-250": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:body_pain",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-207": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:body_pain",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09"
+  ],
+  "EMER-255": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:body_pain",
+   "branch:응급",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "전신·피-008": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:body_pain",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "순환기-007": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:bp_abnormal",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "EMER-174": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:bp_abnormal",
+   "branch:응급",
+   "target:LG-03",
+   "target:LG-09"
+  ],
+  "EMER-176": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:bp_abnormal",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-173": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:bp_abnormal",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-073": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:bp_abnormal",
+   "branch:응급",
+   "target:LG-01",
+   "target:LG-03",
+   "target:LG-09"
+  ],
+  "EMER-055": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09"
+  ],
+  "EMER-031": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain",
+   "branch:응급"
+  ],
+  "EMER-034": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16",
+   "target:LG-18"
+  ],
+  "EMER-242": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "EMER-241": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-118": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09"
+  ],
+  "TREA-003": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain",
+   "branch:응급",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMRG-001": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "EMER-243": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain_resp",
+   "branch:응급",
+   "target:LG-02",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-245": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain_resp",
+   "branch:응급",
+   "target:LG-03"
+  ],
+  "EMER-246": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain_resp",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "PRES-061": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain_resp",
+   "branch:응급",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "호흡기-009": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain_resp",
+   "branch:응급",
+   "target:LG-16"
+  ],
+  "EMER-083": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain_resp",
+   "branch:응급",
+   "target:LG-02",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-136": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain_resp",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-135": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain_resp",
+   "branch:응급",
+   "target:LG-02",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-147": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:constipation",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-036": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:cough",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-056": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:cough",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-149": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:cough",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-234": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:depression",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "정신건강-003": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:depression",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "EMER-105": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:depression",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-15",
+   "target:LG-16",
+   "target:LG-19"
+  ],
+  "GENE-081": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:depression",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-025": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:diarrhea",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09"
+  ],
+  "소화기-010": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:diarrhea",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-268": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:diarrhea",
+   "branch:응급",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-09",
+   "target:LG-18"
+  ],
+  "EMER-271": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:diarrhea",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-129": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:diarrhea",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "소화기-004": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:diarrhea",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "EMER-265": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:diarrhea",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-113": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dizziness",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "TREA-057": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dizziness",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-254": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dizziness",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-275": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dizziness",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "EMER-071": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dizziness",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16",
+   "target:LG-19"
+  ],
+  "EMER-074": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dizziness",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09"
+  ],
+  "EDGE-024": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dizziness",
+   "branch:응급",
+   "target:LG-19"
+  ],
+  "EMER-076": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dizziness",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "PRES-049": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dyspnea",
+   "branch:응급",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-148": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dyspnea",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "EMRG-005": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dyspnea",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "EMER-162": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dyspnea",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "EMER-186": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dyspnea",
+   "branch:응급",
+   "target:LG-03",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "DIAG-161": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dyspnea",
+   "branch:응급",
+   "target:LG-01",
+   "target:LG-02"
+  ],
+  "TREA-040": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dyspnea",
+   "branch:응급",
+   "target:LG-03",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-089": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dyspnea",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "DIAG-037": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dysuria",
+   "branch:응급",
+   "target:LG-02",
+   "target:LG-08",
+   "target:LG-09"
+  ],
+  "EDGE-015": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dysuria",
+   "branch:응급",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-048": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dysuria",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09"
+  ],
+  "EMER-060": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dysuria",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-063": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dysuria",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-276": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dysuria",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-231": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dysuria",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "비뇨생식-002": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dysuria",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-121": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:ear_pain",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09"
+  ],
+  "EMER-042": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:eye_pain",
+   "branch:응급",
+   "target:LG-04",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-058": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:eye_pain",
+   "branch:응급",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-09",
+   "target:LG-18"
+  ],
+  "TREA-083": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:eye_pain",
+   "branch:응급",
+   "target:LG-04",
+   "target:LG-08",
+   "target:LG-16"
+  ],
+  "EMER-230": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:eye_pain",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09"
+  ],
+  "EMER-039": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:eye_pain",
+   "branch:응급",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-115": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:fatigue",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-146": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:fatigue",
+   "branch:응급",
+   "target:LG-04",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-267": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:fatigue",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-272": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:fatigue",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-080": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:fever",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09"
+  ],
+  "EMER-019": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:fever",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-013": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:fever",
+   "branch:응급",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-09",
+   "target:LG-16",
+   "target:LG-19"
+  ],
+  "EMER-204": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:fever",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-082": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:fever",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-079": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:fever",
+   "branch:응급",
+   "target:LG-03",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "전신·피-003": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:fever",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "EMER-012": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:fever",
+   "branch:응급",
+   "target:LG-03",
+   "target:LG-08",
+   "target:LG-09"
+  ],
+  "EDGE-009": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:headache",
+   "branch:응급",
+   "target:LG-02",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16",
+   "target:LG-19"
+  ],
+  "PRES-001": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:headache",
+   "branch:응급",
+   "target:LG-03",
+   "target:LG-08",
+   "target:LG-09"
+  ],
+  "EMER-237": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:headache",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-004": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:headache",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "머리·뇌-001": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:headache",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "EMER-040": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:headache",
+   "branch:응급",
+   "target:LG-02",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "DIAG-199": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:headache",
+   "branch:응급",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-236": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:headache",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "EMER-087": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:heartburn",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-101": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:hematuria",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-124": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:hematuria",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-199": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:hematuria",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "EMER-154": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:insomnia",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "EMER-198": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:insomnia",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "EMER-125": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:insomnia",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-066": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:itching",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09"
+  ],
+  "EMER-045": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:knee_pain",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "순환기-005": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:leg_edema",
+   "branch:응급"
+  ],
+  "EMER-133": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:leg_edema",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-131": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:leg_edema",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-132": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:leg_edema",
+   "branch:응급",
+   "target:LG-02",
+   "target:LG-09"
+  ],
+  "EMER-152": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:menstrual",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-191": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:myalgia",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "EMER-189": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:myalgia",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-188": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:myalgia",
+   "branch:응급",
+   "target:LG-02",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-196": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:myalgia",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09"
+  ],
+  "EMER-194": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:myalgia",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-19"
+  ],
+  "EMER-197": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:myalgia",
+   "branch:응급",
+   "target:LG-02",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-192": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:myalgia",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "근골격계-007": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:myalgia",
+   "branch:응급",
+   "target:LG-02",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "DIAG-142": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:numbness",
+   "branch:응급",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-16"
+  ],
+  "GENE-083": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:numbness",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-144": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:numbness",
+   "branch:응급",
+   "target:LG-05",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-123": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:numbness",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "머리·뇌-006": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:numbness",
+   "branch:응급",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "EMER-069": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:numbness",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "DIAG-121": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:numbness",
+   "branch:응급",
+   "target:LG-05",
+   "target:LG-08",
+   "target:LG-16"
+  ],
+  "PRES-068": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:numbness",
+   "branch:응급",
+   "target:LG-03",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "DIAG-148": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:palpitation",
+   "branch:응급",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-19"
+  ],
+  "EMER-088": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:palpitation",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09"
+  ],
+  "EMER-006": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:rash",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "피부-007": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:rash",
+   "branch:응급",
+   "target:LG-02",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-158": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:rash",
+   "branch:응급",
+   "target:LG-05",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-156": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:rash",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "EMER-157": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:rash",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-163": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:rash",
+   "branch:응급",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-160": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:rash",
+   "branch:응급",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-08",
+   "target:LG-09"
+  ],
+  "EMER-159": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:rash",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-19"
+  ],
+  "EMER-052": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:seizure",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-212": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:seizure",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-213": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:seizure",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "머리·뇌-008": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:seizure",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "EMER-211": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:seizure",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-214": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:seizure",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "DIAG-158": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:seizure",
+   "branch:응급",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMRG-003": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:seizure",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-138": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:shoulder_pain",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "EMER-141": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:skin_tumor",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09"
+  ],
+  "EMER-151": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:throat_pain",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-044": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:throat_pain",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-187": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:throat_pain",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "DIAG-165": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:vision_loss",
+   "branch:응급",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-16"
+  ],
+  "EMER-037": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:vision_loss",
+   "branch:응급",
+   "target:LG-05",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-068": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:vision_loss",
+   "branch:응급",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-099": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:vision_loss",
+   "branch:응급",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "DIAG-120": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:vision_loss",
+   "branch:응급",
+   "target:LG-02",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "감각기관-001": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:vision_loss",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "EMER-057": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:vision_loss",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "GENE-122": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:vision_loss",
+   "branch:응급",
+   "target:LG-02",
+   "target:LG-09",
+   "target:LG-16",
+   "target:LG-19"
+  ],
+  "EMER-270": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:weight_change",
+   "branch:응급",
+   "target:LG-09"
+  ],
+  "GENE-014": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:abdominal_pain",
+   "branch:당일",
+   "target:LG-16"
+  ],
+  "소화기-002": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:abdominal_pain",
+   "branch:당일",
+   "target:LG-16"
+  ],
+  "DIAG-024": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:abdominal_pain",
+   "branch:당일",
+   "target:LG-01",
+   "target:LG-02"
+  ],
+  "EMER-030": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:abdominal_pain",
+   "branch:당일",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-16"
+  ],
+  "GENE-137": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:abdominal_pain",
+   "branch:당일",
+   "target:LG-05",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "PRES-018": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:abdominal_pain",
+   "branch:당일",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-05",
+   "target:LG-16",
+   "target:LG-19"
+  ],
+  "GENE-034": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:abdominal_pain",
+   "branch:생활관리"
+  ],
+  "DIAG-025": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:abdominal_pain",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-19"
+  ],
+  "GENE-015": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:abdominal_pain",
+   "branch:당일"
+  ],
+  "소화기-009": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:abdominal_pain",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "피부-009": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:acne",
+   "branch:외래",
+   "target:LG-05"
+  ],
+  "GENE-063": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:acne",
+   "branch:외래"
+  ],
+  "피부-005": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:acne",
+   "branch:외래",
+   "target:LG-05"
+  ],
+  "GENE-148": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:anxiety",
+   "branch:외래"
+  ],
+  "정신건강-002": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:anxiety",
+   "branch:외래",
+   "target:LG-05"
+  ],
+  "정신건강-010": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:anxiety",
+   "branch:외래",
+   "target:LG-05"
+  ],
+  "TREA-088": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:anxiety",
+   "branch:외래",
+   "target:LG-16"
+  ],
+  "GENE-026": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:anxiety",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-16"
+  ],
+  "GENE-008": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:anxiety",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-19"
+  ],
+  "GENE-030": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:anxiety",
+   "branch:외래",
+   "target:LG-05"
+  ],
+  "DIAG-193": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:anxiety",
+   "branch:당일",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-16"
+  ],
+  "GENE-167": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:anxiety",
+   "branch:외래",
+   "target:LG-02"
+  ],
+  "GENE-166": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:anxiety",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-09"
+  ],
+  "PRES-105": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:back_pain",
+   "branch:당일",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-05",
+   "target:LG-16"
+  ],
+  "TREA-101": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:back_pain",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-11",
+   "target:LG-17"
+  ],
+  "TREA-116": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:back_pain",
+   "branch:외래",
+   "target:LG-17"
+  ],
+  "TREA-086": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:back_pain",
+   "branch:당일",
+   "target:LG-08",
+   "target:LG-16"
+  ],
+  "근골격계-002": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:back_pain",
+   "branch:외래"
+  ],
+  "근골격계-008": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:back_pain",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-16"
+  ],
+  "GENE-043": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:back_pain",
+   "branch:외래"
+  ],
+  "GENE-128": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:back_pain",
+   "branch:당일"
+  ],
+  "GENE-129": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:back_pain",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-08"
+  ],
+  "TREA-094": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:bloody_stool",
+   "branch:당일",
+   "target:LG-08",
+   "target:LG-09"
+  ],
+  "EMER-169": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:bloody_stool",
+   "branch:당일",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "DIAG-094": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:bloody_stool",
+   "branch:당일",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-16"
+  ],
+  "GENE-086": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:bloody_stool",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-08"
+  ],
+  "TREA-093": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:bloody_stool",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-04",
+   "target:LG-05",
+   "target:LG-16"
+  ],
+  "EDGE-052": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:bloody_stool",
+   "branch:당일",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-19"
+  ],
+  "GENE-136": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:bloody_stool",
+   "branch:당일",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EMER-047": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:body_pain",
+   "branch:당일",
+   "target:LG-08",
+   "target:LG-16"
+  ],
+  "EDGE-030": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:body_pain",
+   "branch:당일",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-04",
+   "target:LG-19"
+  ],
+  "GENE-058": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:body_pain",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-16"
+  ],
+  "DIAG-214": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:body_pain",
+   "branch:당일",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-16"
+  ],
+  "GENE-110": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:body_pain",
+   "branch:당일",
+   "target:LG-05",
+   "target:LG-16"
+  ],
+  "GENE-059": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:body_pain",
+   "branch:당일"
+  ],
+  "GENE-057": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:body_pain",
+   "branch:당일",
+   "target:LG-08"
+  ],
+  "GENE-109": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:body_pain",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "근골격계-006": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:body_pain",
+   "branch:생활관리",
+   "target:LG-02"
+  ],
+  "DIAG-051": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:bp_abnormal",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-16"
+  ],
+  "GENE-118": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:bp_abnormal",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-08"
+  ],
+  "GENE-108": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:bp_abnormal",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-16"
+  ],
+  "DIAG-185": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain",
+   "branch:당일",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-04",
+   "target:LG-05",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "DIAG-202": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain",
+   "branch:외래",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-11",
+   "target:LG-16"
+  ],
+  "DIAG-066": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-11",
+   "target:LG-16"
+  ],
+  "EMER-240": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain",
+   "branch:당일",
+   "target:LG-05",
+   "target:LG-09"
+  ],
+  "순환기-009": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "순환기-002": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain",
+   "branch:외래"
+  ],
+  "TREA-096": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain",
+   "branch:당일",
+   "target:LG-08",
+   "target:LG-16"
+  ],
+  "TREA-004": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain",
+   "branch:당일",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "DIAG-206": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-08",
+   "target:LG-16"
+  ],
+  "DIAG-003": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain",
+   "branch:당일",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-09"
+  ],
+  "DIAG-099": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain_resp",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04"
+  ],
+  "호흡기-005": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain_resp",
+   "branch:당일"
+  ],
+  "DIAG-098": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain_resp",
+   "branch:당일",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-16"
+  ],
+  "DIAG-023": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain_resp",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-04",
+   "target:LG-08",
+   "target:LG-16"
+  ],
+  "GENE-142": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain_resp",
+   "branch:당일",
+   "target:LG-08",
+   "target:LG-09"
+  ],
+  "TREA-051": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain_resp",
+   "branch:당일",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "DIAG-100": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:chest_pain_resp",
+   "branch:당일",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "GENE-087": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:constipation",
+   "branch:외래"
+  ],
+  "GENE-085": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:constipation",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-16"
+  ],
+  "소화기-006": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:constipation",
+   "branch:당일",
+   "target:LG-05",
+   "target:LG-11"
+  ],
+  "TREA-036": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:constipation",
+   "branch:당일",
+   "target:LG-04",
+   "target:LG-05",
+   "target:LG-16"
+  ],
+  "TREA-015": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:constipation",
+   "branch:당일",
+   "target:LG-04",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "호흡기-001": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:cough",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-16"
+  ],
+  "호흡기-002": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:cough",
+   "branch:외래",
+   "target:LG-05"
+  ],
+  "DIAG-005": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:cough",
+   "branch:당일",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-16"
+  ],
+  "DIAG-132": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:cough",
+   "branch:당일",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-16"
+  ],
+  "호흡기-006": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:cough",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "GENE-091": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:cough",
+   "branch:외래"
+  ],
+  "GENE-020": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:cough",
+   "branch:외래"
+  ],
+  "DIAG-007": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:cough",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-16"
+  ],
+  "TREA-089": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:depression",
+   "branch:외래",
+   "target:LG-17"
+  ],
+  "DIAG-080": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:depression",
+   "branch:외래",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "정신건강-009": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:depression",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "GENE-079": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:depression",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-11"
+  ],
+  "정신건강-004": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:depression",
+   "branch:외래"
+  ],
+  "DIAG-111": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:depression",
+   "branch:외래",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "GENE-061": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:depression",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "GENE-147": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:depression",
+   "branch:외래"
+  ],
+  "정신건강-005": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:depression",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-16"
+  ],
+  "EMER-269": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:diarrhea",
+   "branch:생활관리",
+   "target:LG-16"
+  ],
+  "GENE-069": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:diarrhea",
+   "branch:당일",
+   "target:LG-09"
+  ],
+  "PRES-058": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:diarrhea",
+   "branch:당일",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04"
+  ],
+  "EDGE-034": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:diarrhea",
+   "branch:당일",
+   "target:LG-03"
+  ],
+  "GENE-071": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:diarrhea",
+   "branch:당일",
+   "target:LG-16"
+  ],
+  "소화기-005": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:diarrhea",
+   "branch:당일",
+   "target:LG-02"
+  ],
+  "GENE-028": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:diarrhea",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "GENE-070": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:diarrhea",
+   "branch:당일"
+  ],
+  "머리·뇌-004": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dizziness",
+   "branch:외래"
+  ],
+  "DIAG-167": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dizziness",
+   "branch:당일",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-16"
+  ],
+  "DIAG-058": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dizziness",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-11"
+  ],
+  "GENE-119": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dizziness",
+   "branch:외래"
+  ],
+  "DIAG-188": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dizziness",
+   "branch:외래",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-16",
+   "target:LG-19"
+  ],
+  "순환기-008": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dizziness",
+   "branch:외래"
+  ],
+  "DIAG-159": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dizziness",
+   "branch:외래",
+   "target:LG-01",
+   "target:LG-02"
+  ],
+  "DIAG-060": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dizziness",
+   "branch:외래",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-11",
+   "target:LG-16"
+  ],
+  "DIAG-057": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dizziness",
+   "branch:외래",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-16"
+  ],
+  "GENE-047": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dizziness",
+   "branch:외래",
+   "target:LG-01",
+   "target:LG-02"
+  ],
+  "DIAG-026": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dyspnea",
+   "branch:당일",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-09",
+   "target:LG-11",
+   "target:LG-16"
+  ],
+  "EMER-184": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dyspnea",
+   "branch:당일",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03"
+  ],
+  "GENE-090": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dyspnea",
+   "branch:당일",
+   "target:LG-16"
+  ],
+  "호흡기-010": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dyspnea",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "GENE-088": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dyspnea",
+   "branch:당일",
+   "target:LG-11",
+   "target:LG-16"
+  ],
+  "DIAG-071": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dyspnea",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-11",
+   "target:LG-16"
+  ],
+  "TREA-111": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dyspnea",
+   "branch:당일",
+   "target:LG-03",
+   "target:LG-17"
+  ],
+  "DIAG-069": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dyspnea",
+   "branch:당일",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "GENE-056": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dyspnea",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-08",
+   "target:LG-16"
+  ],
+  "GENE-157": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dyspnea",
+   "branch:당일",
+   "target:LG-05",
+   "target:LG-16"
+  ],
+  "DIAG-022": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dysuria",
+   "branch:당일",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-11",
+   "target:LG-16"
+  ],
+  "EMER-062": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dysuria",
+   "branch:당일",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "GENE-163": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dysuria",
+   "branch:외래"
+  ],
+  "GENE-005": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dysuria",
+   "branch:당일",
+   "target:LG-03",
+   "target:LG-05"
+  ],
+  "DIAG-050": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dysuria",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "TREA-114": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dysuria",
+   "branch:당일"
+  ],
+  "EMER-061": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dysuria",
+   "branch:당일",
+   "target:LG-09"
+  ],
+  "TREA-009": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dysuria",
+   "branch:외래"
+  ],
+  "GENE-003": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dysuria",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "EDGE-074": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:dysuria",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-19"
+  ],
+  "EMER-249": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:ear_pain",
+   "branch:당일",
+   "target:LG-05",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "GENE-053": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:ear_pain",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-16"
+  ],
+  "GENE-143": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:ear_pain",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-16"
+  ],
+  "감각기관-009": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:ear_pain",
+   "branch:외래",
+   "target:LG-05"
+  ],
+  "GENE-052": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:ear_pain",
+   "branch:당일"
+  ],
+  "EDGE-028": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:ear_pain",
+   "branch:당일",
+   "target:LG-08",
+   "target:LG-16"
+  ],
+  "TREA-039": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:ear_pain",
+   "branch:당일",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-05"
+  ],
+  "감각기관-004": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:ear_pain",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-11"
+  ],
+  "EDGE-066": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:ear_pain",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-19"
+  ],
+  "GENE-144": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:ear_pain",
+   "branch:외래",
+   "target:LG-05"
+  ],
+  "TREA-027": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:eye_pain",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-04",
+   "target:LG-08",
+   "target:LG-16"
+  ],
+  "GENE-041": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:eye_pain",
+   "branch:당일",
+   "target:LG-05"
+  ],
+  "GENE-040": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:eye_pain",
+   "branch:당일",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "TREA-028": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:eye_pain",
+   "branch:당일",
+   "target:LG-08",
+   "target:LG-16"
+  ],
+  "GENE-050": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:fatigue",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-11",
+   "target:LG-16"
+  ],
+  "DIAG-201": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:fatigue",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-11"
+  ],
+  "GENE-067": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:fatigue",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-16"
+  ],
+  "전신·피-010": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:fatigue",
+   "branch:외래"
+  ],
+  "전신·피-004": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:fatigue",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-16"
+  ],
+  "TREA-108": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:fatigue",
+   "branch:외래",
+   "target:LG-11",
+   "target:LG-17"
+  ],
+  "EDGE-069": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:fatigue",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-11",
+   "target:LG-16"
+  ],
+  "GENE-049": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:fatigue",
+   "branch:외래",
+   "target:LG-16"
+  ],
+  "GENE-065": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:fatigue",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-03",
+   "target:LG-04"
+  ],
+  "GENE-139": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:fever",
+   "branch:당일"
+  ],
+  "GENE-013": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:fever",
+   "branch:당일",
+   "target:LG-03",
+   "target:LG-05"
+  ],
+  "GENE-107": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:fever",
+   "branch:당일",
+   "target:LG-16"
+  ],
+  "GENE-155": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:fever",
+   "branch:외래",
+   "target:LG-05"
+  ],
+  "전신·피-002": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:fever",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-16"
+  ],
+  "GENE-141": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:fever",
+   "branch:당일"
+  ],
+  "GENE-012": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:fever",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-08"
+  ],
+  "EMER-020": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:fever",
+   "branch:당일",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "EDGE-053": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:fever",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-19"
+  ],
+  "전신·피-009": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:fever",
+   "branch:외래"
+  ],
+  "비뇨생식-008": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:frequency",
+   "branch:외래",
+   "target:LG-05"
+  ],
+  "GENE-161": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:frequency",
+   "branch:당일",
+   "target:LG-05"
+  ],
+  "GENE-126": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:frequency",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-16"
+  ],
+  "DIAG-053": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:frequency",
+   "branch:외래",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-16"
+  ],
+  "비뇨생식-003": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:frequency",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "DIAG-052": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:frequency",
+   "branch:외래",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03"
+  ],
+  "TREA-092": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:headache",
+   "branch:외래",
+   "target:LG-08",
+   "target:LG-16"
+  ],
+  "DIAG-179": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:headache",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-16"
+  ],
+  "머리·뇌-009": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:headache",
+   "branch:외래"
+  ],
+  "INJECT-001": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:headache",
+   "branch:외래"
+  ],
+  "머리·뇌-002": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:headache",
+   "branch:당일"
+  ],
+  "소화기-003": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:heartburn",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "EDGE-017": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:heartburn",
+   "branch:외래",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-19"
+  ],
+  "EDGE-018": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:heartburn",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-08",
+   "target:LG-16"
+  ],
+  "GENE-035": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:heartburn",
+   "branch:외래",
+   "target:LG-16"
+  ],
+  "EDGE-062": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:heartburn",
+   "branch:당일",
+   "target:LG-11",
+   "target:LG-16",
+   "target:LG-19"
+  ],
+  "GENE-115": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:hematuria",
+   "branch:외래",
+   "target:LG-05"
+  ],
+  "DIAG-079": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:hematuria",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-11"
+  ],
+  "DIAG-012": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:hematuria",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-19"
+  ],
+  "비뇨생식-007": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:hematuria",
+   "branch:당일",
+   "target:LG-02"
+  ],
+  "TREA-043": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:hematuria",
+   "branch:당일",
+   "target:LG-03",
+   "target:LG-04"
+  ],
+  "TREA-077": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:hematuria",
+   "branch:당일",
+   "target:LG-04"
+  ],
+  "DIAG-077": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:hematuria",
+   "branch:당일",
+   "target:LG-05"
+  ],
+  "DIAG-076": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:hematuria",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-08",
+   "target:LG-16"
+  ],
+  "GENE-127": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:hematuria",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-16"
+  ],
+  "DIAG-154": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:hematuria",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-08"
+  ],
+  "GENE-112": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:insomnia",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-16"
+  ],
+  "GENE-113": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:insomnia",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-16"
+  ],
+  "정신건강-007": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:insomnia",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "EDGE-049": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:insomnia",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-08",
+   "target:LG-09",
+   "target:LG-11",
+   "target:LG-16",
+   "target:LG-19"
+  ],
+  "정신건강-006": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:insomnia",
+   "branch:외래",
+   "target:LG-05"
+  ],
+  "TREA-011": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:itching",
+   "branch:외래",
+   "target:LG-04",
+   "target:LG-18"
+  ],
+  "GENE-117": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:itching",
+   "branch:외래"
+  ],
+  "DIAG-056": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:itching",
+   "branch:외래",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-19"
+  ],
+  "GENE-116": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:itching",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "EDGE-056": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:itching",
+   "branch:외래",
+   "target:LG-01",
+   "target:LG-02"
+  ],
+  "GENE-033": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:itching",
+   "branch:외래"
+  ],
+  "피부-004": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:itching",
+   "branch:당일"
+  ],
+  "GENE-007": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:itching",
+   "branch:외래"
+  ],
+  "GENE-044": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:itching",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-16"
+  ],
+  "피부-003": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:itching",
+   "branch:외래"
+  ],
+  "GENE-165": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:knee_pain",
+   "branch:외래"
+  ],
+  "근골격계-010": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:knee_pain",
+   "branch:외래"
+  ],
+  "DIAG-190": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:knee_pain",
+   "branch:외래",
+   "target:LG-01",
+   "target:LG-02"
+  ],
+  "TREA-030": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:knee_pain",
+   "branch:외래",
+   "target:LG-17"
+  ],
+  "GENE-025": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:knee_pain",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "근골격계-003": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:knee_pain",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "근골격계-004": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:knee_pain",
+   "branch:당일"
+  ],
+  "INJE-003": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:leg_edema",
+   "branch:당일",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-09",
+   "target:LG-18"
+  ],
+  "TREA-050": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:leg_edema",
+   "branch:당일",
+   "target:LG-04",
+   "target:LG-16"
+  ],
+  "PRES-073": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:leg_edema",
+   "branch:외래",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03"
+  ],
+  "GENE-089": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:leg_edema",
+   "branch:당일",
+   "target:LG-05",
+   "target:LG-08",
+   "target:LG-16"
+  ],
+  "TREA-060": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:leg_edema",
+   "branch:외래",
+   "target:LG-08",
+   "target:LG-16"
+  ],
+  "EDGE-044": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:leg_edema",
+   "branch:외래",
+   "target:LG-08"
+  ],
+  "EMER-134": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:leg_edema",
+   "branch:당일",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "DIAG-096": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:leg_edema",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-16"
+  ],
+  "TREA-016": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:leg_edema",
+   "branch:외래",
+   "target:LG-03",
+   "target:LG-08",
+   "target:LG-16"
+  ],
+  "EDGE-035": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:leg_edema",
+   "branch:당일",
+   "target:LG-08",
+   "target:LG-16"
+  ],
+  "머리·뇌-005": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:memory_loss",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "DIAG-084": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:memory_loss",
+   "branch:외래",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-16"
+  ],
+  "비뇨생식-006": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:menstrual",
+   "branch:당일"
+  ],
+  "DIAG-109": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:menstrual",
+   "branch:외래",
+   "target:LG-01",
+   "target:LG-02"
+  ],
+  "TREA-066": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:menstrual",
+   "branch:당일",
+   "target:LG-08",
+   "target:LG-17"
+  ],
+  "DIAG-110": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:menstrual",
+   "branch:외래",
+   "target:LG-01",
+   "target:LG-02"
+  ],
+  "비뇨생식-005": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:menstrual",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "GENE-098": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:menstrual",
+   "branch:외래"
+  ],
+  "GENE-097": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:menstrual",
+   "branch:외래"
+  ],
+  "DIAG-138": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:menstrual",
+   "branch:당일",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-11"
+  ],
+  "EMER-257": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:menstrual",
+   "branch:외래",
+   "target:LG-16"
+  ],
+  "GENE-099": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:menstrual",
+   "branch:외래",
+   "target:LG-05",
+   "target:LG-11",
+   "target:LG-16"
+  ],
+  "DIAG-073": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:myalgia",
+   "branch:외래",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03"
+  ],
+  "EDGE-047": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:myalgia",
+   "branch:당일",
+   "target:LG-01",
+   "target:LG-02"
+  ],
+  "GENE-092": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:myalgia",
+   "branch:생활관리",
+   "target:LG-02"
+  ],
+  "EDGE-046": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:myalgia",
+   "branch:생활관리",
+   "target:LG-08",
+   "target:LG-19"
+  ],
+  "EDGE-073": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:nasal_congestion",
+   "branch:외래",
+   "target:LG-08",
+   "target:LG-19"
+  ],
+  "GENE-160": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:nasal_congestion",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "DIAG-209": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:nasal_congestion",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-16"
+  ],
+  "감각기관-010": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:nasal_congestion",
+   "branch:당일",
+   "target:LG-05"
+  ],
+  "GENE-074": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:nasal_congestion",
+   "branch:외래"
+  ],
+  "GENE-073": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:nasal_congestion",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "감각기관-005": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:nasal_congestion",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "GENE-158": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:nasal_congestion",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-16"
+  ],
+  "DIAG-010": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:numbness",
+   "branch:외래",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-19"
+  ],
+  "EDGE-075": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:numbness",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-08",
+   "target:LG-19"
+  ],
+  "DIAG-049": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:numbness",
+   "branch:외래",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-16"
+  ],
+  "DIAG-034": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:numbness",
+   "branch:외래",
+   "target:LG-01",
+   "target:LG-02"
+  ],
+  "EDGE-051": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:numbness",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-11"
+  ],
+  "DIAG-119": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:numbness",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-08",
+   "target:LG-16"
+  ],
+  "GENE-103": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:numbness",
+   "branch:외래",
+   "target:LG-16"
+  ],
+  "EDGE-008": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:numbness",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-08",
+   "target:LG-16"
+  ],
+  "머리·뇌-007": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:numbness",
+   "branch:생활관리"
+  ],
+  "EDGE-071": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:palpitation",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-11",
+   "target:LG-16"
+  ],
+  "DIAG-065": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:palpitation",
+   "branch:당일",
+   "target:LG-01",
+   "target:LG-02"
+  ],
+  "GENE-038": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:palpitation",
+   "branch:외래",
+   "target:LG-03",
+   "target:LG-16"
+  ],
+  "GENE-039": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:palpitation",
+   "branch:외래",
+   "target:LG-08",
+   "target:LG-16"
+  ],
+  "GENE-017": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:palpitation",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-16"
+  ],
+  "PRES-130": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:palpitation",
+   "branch:외래",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-03"
+  ],
+  "DIAG-043": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:palpitation",
+   "branch:외래",
+   "target:LG-01",
+   "target:LG-02"
+  ],
+  "GENE-130": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:palpitation",
+   "branch:외래"
+  ],
+  "DIAG-203": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:palpitation",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-11",
+   "target:LG-16"
+  ],
+  "순환기-010": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:palpitation",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "GENE-132": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:rash",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "GENE-062": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:rash",
+   "branch:외래"
+  ],
+  "DIAG-015": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:rash",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-16"
+  ],
+  "피부-002": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:rash",
+   "branch:외래"
+  ],
+  "GENE-006": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:rash",
+   "branch:외래",
+   "target:LG-02"
+  ],
+  "DIAG-013": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:rash",
+   "branch:외래",
+   "target:LG-01",
+   "target:LG-02"
+  ],
+  "EDGE-003": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:rash",
+   "branch:당일",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-08",
+   "target:LG-15",
+   "target:LG-16"
+  ],
+  "GENE-153": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:seizure",
+   "branch:당일",
+   "target:LG-09",
+   "target:LG-16"
+  ],
+  "GENE-152": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:seizure",
+   "branch:당일"
+  ],
+  "머리·뇌-010": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:seizure",
+   "branch:당일",
+   "target:LG-05"
+  ],
+  "EDGE-068": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:seizure",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-16"
+  ],
+  "DIAG-198": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:seizure",
+   "branch:당일",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-19"
+  ],
+  "TREA-013": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:shoulder_pain",
+   "branch:외래",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-08",
+   "target:LG-16"
+  ],
+  "GENE-093": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:shoulder_pain",
+   "branch:외래",
+   "target:LG-01",
+   "target:LG-02"
+  ],
+  "GENE-076": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:shoulder_pain",
+   "branch:외래"
+  ],
+  "GENE-024": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:shoulder_pain",
+   "branch:생활관리"
+  ],
+  "DIAG-072": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:shoulder_pain",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-11",
+   "target:LG-16"
+  ],
+  "근골격계-009": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:shoulder_pain",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "GENE-075": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:shoulder_pain",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-15",
+   "target:LG-16"
+  ],
+  "GENE-077": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:shoulder_pain",
+   "branch:외래"
+  ],
+  "GENE-042": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:shoulder_pain",
+   "branch:외래",
+   "target:LG-02"
+  ],
+  "근골격계-005": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:shoulder_pain",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "DIAG-118": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:skin_tumor",
+   "branch:외래",
+   "target:LG-05",
+   "target:LG-08"
+  ],
+  "GENE-151": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:skin_tumor",
+   "branch:외래",
+   "target:LG-02"
+  ],
+  "DIAG-115": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:skin_tumor",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-16"
+  ],
+  "피부-010": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:skin_tumor",
+   "branch:당일"
+  ],
+  "DIAG-117": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:skin_tumor",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-08"
+  ],
+  "피부-006": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:skin_tumor",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "GENE-149": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:skin_tumor",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-16"
+  ],
+  "정신건강-008": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:stress",
+   "branch:생활관리"
+  ],
+  "TREA-045": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:stress",
+   "branch:외래",
+   "target:LG-16"
+  ],
+  "TREA-065": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:throat_pain",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-08"
+  ],
+  "DIAG-136": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:throat_pain",
+   "branch:외래",
+   "target:LG-01",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "GENE-096": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:throat_pain",
+   "branch:생활관리"
+  ],
+  "EDGE-048": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:throat_pain",
+   "branch:당일",
+   "target:LG-09"
+  ],
+  "GENE-095": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:throat_pain",
+   "branch:외래"
+  ],
+  "TREA-064": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:throat_pain",
+   "branch:당일",
+   "target:LG-04",
+   "target:LG-08",
+   "target:LG-16"
+  ],
+  "감각기관-006": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:throat_pain",
+   "branch:당일"
+  ],
+  "감각기관-002": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:vision_loss",
+   "branch:외래"
+  ],
+  "GENE-023": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:vision_loss",
+   "branch:외래"
+  ],
+  "EDGE-020": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:vision_loss",
+   "branch:당일",
+   "target:LG-05",
+   "target:LG-08",
+   "target:LG-16"
+  ],
+  "감각기관-008": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:vision_loss",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "GENE-022": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:vision_loss",
+   "branch:당일",
+   "target:LG-16"
+  ],
+  "TREA-084": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:vision_loss",
+   "branch:당일",
+   "target:LG-03",
+   "target:LG-04",
+   "target:LG-08",
+   "target:LG-16"
+  ],
+  "DIAG-045": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:vision_loss",
+   "branch:당일",
+   "target:LG-01",
+   "target:LG-02"
+  ],
+  "감각기관-003": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:vision_loss",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-04",
+   "target:LG-05"
+  ],
+  "EMER-041": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:vision_loss",
+   "branch:당일",
+   "target:LG-05",
+   "target:LG-16"
+  ],
+  "전신·피-005": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:weight_change",
+   "branch:외래",
+   "target:LG-05"
+  ],
+  "DIAG-124": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:weight_change",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-05"
+  ],
+  "DIAG-122": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:weight_change",
+   "branch:당일",
+   "target:LG-02",
+   "target:LG-05",
+   "target:LG-16"
+  ],
+  "전신·피-006": [
+   "set:v3set-1",
+   "zone:symptom",
+   "mode:symptom",
+   "sym:weight_change",
+   "branch:외래",
+   "target:LG-02",
+   "target:LG-11",
+   "target:LG-16"
+  ]
+ },
+ "retire": [
+  "DIAG-001",
+  "DIAG-019",
+  "DIAG-020",
+  "DIAG-021",
+  "DIAG-028",
+  "DIAG-035",
+  "DIAG-047",
+  "DIAG-059",
+  "DIAG-061",
+  "DIAG-063",
+  "DIAG-064",
+  "DIAG-067",
+  "DIAG-070",
+  "DIAG-074",
+  "DIAG-075",
+  "DIAG-089",
+  "DIAG-090",
+  "DIAG-095",
+  "DIAG-104",
+  "DIAG-106",
+  "DIAG-114",
+  "DIAG-125",
+  "DIAG-129",
+  "DIAG-130",
+  "DIAG-135",
+  "DIAG-137",
+  "DIAG-143",
+  "DIAG-147",
+  "DIAG-156",
+  "DIAG-163",
+  "DIAG-164",
+  "DIAG-173",
+  "DIAG-178",
+  "DIAG-182",
+  "DIAG-184",
+  "DIAG-187",
+  "DIAG-189",
+  "DIAG-191",
+  "DIAG-195",
+  "DIAG-197",
+  "DIAG-200",
+  "DIAG-205",
+  "DIAG-212",
+  "DIAG-215",
+  "DIAG-216",
+  "DIAG-217",
+  "EDGE-001",
+  "EDGE-002",
+  "EDGE-004",
+  "EDGE-006",
+  "EDGE-012",
+  "EDGE-013",
+  "EDGE-019",
+  "EDGE-021",
+  "EDGE-026",
+  "EDGE-033",
+  "EDGE-036",
+  "EDGE-037",
+  "EDGE-050",
+  "EDGE-055",
+  "EDGE-063",
+  "EDGE-067",
+  "EMER-001",
+  "EMER-002",
+  "EMER-003",
+  "EMER-005",
+  "EMER-007",
+  "EMER-008",
+  "EMER-009",
+  "EMER-010",
+  "EMER-011",
+  "EMER-015",
+  "EMER-017",
+  "EMER-018",
+  "EMER-021",
+  "EMER-022",
+  "EMER-024",
+  "EMER-026",
+  "EMER-027",
+  "EMER-028",
+  "EMER-029",
+  "EMER-032",
+  "EMER-033",
+  "EMER-035",
+  "EMER-038",
+  "EMER-043",
+  "EMER-049",
+  "EMER-050",
+  "EMER-051",
+  "EMER-053",
+  "EMER-064",
+  "EMER-067",
+  "EMER-070",
+  "EMER-072",
+  "EMER-075",
+  "EMER-077",
+  "EMER-078",
+  "EMER-081",
+  "EMER-084",
+  "EMER-091",
+  "EMER-092",
+  "EMER-093",
+  "EMER-094",
+  "EMER-095",
+  "EMER-096",
+  "EMER-097",
+  "EMER-098",
+  "EMER-100",
+  "EMER-112",
+  "EMER-114",
+  "EMER-116",
+  "EMER-119",
+  "EMER-120",
+  "EMER-122",
+  "EMER-126",
+  "EMER-127",
+  "EMER-128",
+  "EMER-130",
+  "EMER-137",
+  "EMER-139",
+  "EMER-142",
+  "EMER-145",
+  "EMER-150",
+  "EMER-153",
+  "EMER-155",
+  "EMER-161",
+  "EMER-164",
+  "EMER-165",
+  "EMER-172",
+  "EMER-175",
+  "EMER-177",
+  "EMER-178",
+  "EMER-179",
+  "EMER-180",
+  "EMER-181",
+  "EMER-183",
+  "EMER-190",
+  "EMER-193",
+  "EMER-195",
+  "EMER-200",
+  "EMER-201",
+  "EMER-202",
+  "EMER-205",
+  "EMER-206",
+  "EMER-208",
+  "EMER-209",
+  "EMER-210",
+  "EMER-215",
+  "EMER-216",
+  "EMER-217",
+  "EMER-218",
+  "EMER-219",
+  "EMER-221",
+  "EMER-226",
+  "EMER-227",
+  "EMER-228",
+  "EMER-229",
+  "EMER-235",
+  "EMER-238",
+  "EMER-239",
+  "EMER-244",
+  "EMER-247",
+  "EMER-248",
+  "EMER-251",
+  "EMER-252",
+  "EMER-253",
+  "EMER-256",
+  "EMER-259",
+  "EMER-260",
+  "EMER-261",
+  "EMER-262",
+  "EMER-264",
+  "EMER-273",
+  "EMER-274",
+  "EMRG-002",
+  "EMRG-004",
+  "EMRG-006",
+  "GENE-001",
+  "GENE-004",
+  "GENE-009",
+  "GENE-010",
+  "GENE-011",
+  "GENE-016",
+  "GENE-018",
+  "GENE-027",
+  "GENE-029",
+  "GENE-032",
+  "GENE-037",
+  "GENE-051",
+  "GENE-055",
+  "GENE-078",
+  "GENE-100",
+  "GENE-102",
+  "GENE-105",
+  "GENE-106",
+  "GENE-111",
+  "GENE-114",
+  "GENE-121",
+  "GENE-123",
+  "GENE-124",
+  "GENE-125",
+  "GENE-133",
+  "GENE-135",
+  "GENE-140",
+  "GENE-150",
+  "GENE-156",
+  "GENE-159",
+  "GENE-164",
+  "INJE-006",
+  "INJECT-002",
+  "INJECT-005",
+  "PRES-005",
+  "PRES-010",
+  "PRES-021",
+  "PRES-028",
+  "PRES-035",
+  "PRES-036",
+  "PRES-037",
+  "PRES-041",
+  "PRES-050",
+  "PRES-063",
+  "PRES-065",
+  "PRES-067",
+  "PRES-079",
+  "PRES-082",
+  "PRES-087",
+  "PRES-096",
+  "PRES-099",
+  "PRES-127",
+  "PRES-129",
+  "PRES-135",
+  "PRES-136",
+  "TREA-001",
+  "TREA-005",
+  "TREA-010",
+  "TREA-017",
+  "TREA-025",
+  "TREA-029",
+  "TREA-032",
+  "TREA-034",
+  "TREA-035",
+  "TREA-037",
+  "TREA-038",
+  "TREA-044",
+  "TREA-047",
+  "TREA-054",
+  "TREA-055",
+  "TREA-058",
+  "TREA-063",
+  "TREA-069",
+  "TREA-073",
+  "TREA-075",
+  "TREA-091",
+  "TREA-097",
+  "TREA-100",
+  "TREA-102",
+  "TREA-106",
+  "TREA-107",
+  "TREA-110",
+  "TREA-112",
+  "TREAT-001",
+  "감각기관-007",
+  "머리·뇌-003",
+  "비뇨생식-001",
+  "비뇨생식-004",
+  "비뇨생식-009",
+  "비뇨생식-010",
+  "소화기-001",
+  "소화기-008",
+  "순환기-001",
+  "순환기-003",
+  "순환기-004",
+  "순환기-006",
+  "전신·피-001",
+  "전신·피-007",
+  "정신건강-001",
+  "피부-001",
+  "피부-008",
+  "피부-011",
+  "호흡기-003",
+  "호흡기-004",
+  "호흡기-007",
+  "호흡기-008"
+ ],
+ "dropped_dup": [
+  "DIAG-217",
+  "피부-011"
+ ],
+ "not_eligible": [
+  "DIAG-064",
+  "EDGE-050",
+  "EMER-072",
+  "EMER-075",
+  "EMER-145",
+  "EMER-256",
+  "GENE-100",
+  "GENE-111",
+  "GENE-123",
+  "GENE-164",
+  "TREA-029"
+ ]
+}
