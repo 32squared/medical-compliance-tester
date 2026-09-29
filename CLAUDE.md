@@ -141,9 +141,10 @@ python -c "import py_compile; py_compile.compile('proxy_server.py', doraise=True
   `EVAL_V3_ESCALATE_MODEL=gpt-5.4`(1차 모델이 legal fail 이면 같은 답변을 이 모델로 재판정 — mini 1차 + gpt-5.4 2차 2단 판정;
   결과 `judge_escalation` 에 1차 모델·verdict·hit 이 남고 `[v3] ESCALATION` 로그 줄에 건수).
   운영 설정(2026-09-18): EVAL_V3=1 · EVAL_V3_MODEL=gpt-5.4-mini · EVAL_V3_ESCALATE_MODEL=gpt-5.4 · EVAL_PHR=0 · EVAL_V2_LEGAL=0 · EVAL_FINAL=v3.
-- 온톨로지 평가 전용 화면 `eval_v3.html`(`/eval-v3`, view_history 권한): `GET /api/eval-v3/runs` 가 v3 판정이 붙은
-  실행만 집계(eval_v3.run_summary, 완료 실행은 메모리 캐시)해 주고, 건별은 `/api/history/<runId>` 를 쓴다.
-  v2 등급·문진·HealthBench 루브릭은 그 화면에 없다. 실행 간 비교(같은 id 끼리 등급 변화)·CSV 내보내기 포함.
+- 온톨로지 평가 전용 화면(`eval_v3.html`, `/eval-v3`)은 **history.html 로 병합**되어 삭제됐다(`/eval-v3` 는 `/history` 로 302).
+  결과 화면은 history.html 하나: v3 요약·판정 분포·PV/SV/UV 항목별 세부·건별 판정, 실행 헤더의 `v3 CSV` 내보내기,
+  'A/B 비교' 모달의 시나리오별 v3 판정 변화 표. `GET /api/eval-v3/runs`(eval_v3.run_summary, 완료 실행은 메모리 캐시)는
+  API 로 남아 있고 건별은 `/api/history/<runId>` 를 쓴다.
   배포는 `deploy.ps1 -EvalV3 -EvalV3Model gpt-5.4-mini -ExtraEnv "EVAL_PHR=0,..."` /
   `deploy-job.ps1 ... -ExtraEnv "EVAL_PHR=0;..."`(Job 은 `;` 구분). job_runner 는 `[v3] CROSS` 줄에 v2×v3 일치율을 남긴다.
 - ⚠ 배포 이미지에는 `packages/medical_eval/data/` 가 없다(.gcloudignore 의 `data/` 가 모든 깊이의

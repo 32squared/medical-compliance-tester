@@ -336,6 +336,7 @@
           <span class="detail-timestamp" id="detailTimestamp"></span>
           <span id="detailRunBy" style="display:none;font-size:11px;color:var(--text-dim);background:rgba(255,255,255,.08);padding:2px 8px;border-radius:4px">👤</span>
           <div class="detail-actions">
+            <button class="btn" id="btnV3Csv" onclick="exportV3Csv()" title="v3 판정 결과를 CSV 로 내려받기">v3 CSV</button>
             <button class="btn" style="background:var(--accent);color:#fff;border:none;cursor:pointer" onclick="reEvaluateRun()" title="이 이력을 현재 기준으로 다시 평가">&#128260; 다시 평가</button>
             <button class="btn btn-danger" onclick="deleteCurrentRun()">삭제</button>
           </div>
@@ -1632,8 +1633,102 @@
     }
     html += '</div>';
 
+    html += buildV3ChangeTable(resA, resB);
+
     area.innerHTML = html;
   }
+
+  // 같은 시나리오 id 끼리 v3 판정 변화 (A 기준 → B)
+  var V3_RANK = { FAIL: 0, D: 1, C: 2, B: 3, A: 4, PASS: 4 };
+  function buildV3ChangeTable(resA, resB) {
+    var mapA = {};
+    for (var i = 0; i < resA.length; i++) {
+      var ra = resA[i];
+      if (ra && ra.scenarioId != null && ra.evalV3) mapA[ra.scenarioId] = ra;
+    }
+    var up = 0, down = 0, same = 0, missing = 0, toPass = 0, toFail = 0;
+    var changed = [];
+    for (var j = 0; j < resB.length; j++) {
+      var rb = resB[j];
+      if (!rb || !rb.evalV3) continue;
+      var oa = mapA[rb.scenarioId];
+      var va = oa ? v3VerdictOf(oa) : null;
+      var vb = v3VerdictOf(rb);
+      if (!va || !vb) { missing++; continue; }
+      var d = (V3_RANK[vb] || 0) - (V3_RANK[va] || 0);
+      if (va === 'FAIL' && vb !== 'FAIL') toPass++;
+      if (va !== 'FAIL' && vb === 'FAIL') toFail++;
+      if (d > 0) up++; else if (d < 0) down++; else same++;
+      if (va !== vb) changed.push({ id: rb.scenarioId, cat: rb.category || '', a: va, b: vb, d: d });
+    }
+    if (!up && !down && !same && !missing) return '';
+    changed.sort(function (x, y) { return (x.d - y.d) || String(x.id).localeCompare(String(y.id)); });
+    function card(val, label, color) {
+      return '<div style="flex:1;min-width:90px;text-align:center;padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px">' +
+        '<div style="font-size:20px;font-weight:800;color:' + color + '">' + val + '</div>' +
+        '<div style="font-size:11px;color:var(--text-dim)">' + escapeHtml(label) + '</div></div>';
+    }
+    var h = '<div style="background:var(--bg);padding:14px;border-radius:8px;margin-top:12px;border:1px solid var(--border)">' +
+      '<div style="font-size:13px;font-weight:700;margin-bottom:4px">🔀 시나리오별 v3 판정 변화 <span style="font-weight:400;font-size:11px;color:var(--text-dim)">같은 시나리오 id 끼리 A → B</span></div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0">' +
+      card(up, '개선 (등급 상승)', 'var(--green)') + card(down, '악화 (등급 하락)', 'var(--red)') +
+      card(same, '같음', 'var(--text)') + card(toPass, '위반 → 통과', 'var(--green)') +
+      card(toFail, '통과 → 위반', 'var(--red)') + card(missing, '비교 불가', 'var(--text-dim)') + '</div>';
+    if (!changed.length) {
+      h += '<div style="font-size:12px;color:var(--text-dim)">판정이 바뀐 시나리오가 없습니다</div>';
+    } else {
+      h += '<table style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr style="border-bottom:1px solid var(--border)">' +
+        '<th style="text-align:left;padding:4px 8px">시나리오</th><th style="text-align:left;padding:4px 8px">카테고리</th>' +
+        '<th style="padding:4px 8px">A</th><th style="padding:4px 8px">B</th><th style="padding:4px 8px">변화</th></tr></thead><tbody>';
+      var shown = changed.slice(0, 200);
+      for (var k = 0; k < shown.length; k++) {
+        var c = shown[k];
+        var dCol = c.d > 0 ? 'var(--green)' : (c.d < 0 ? 'var(--red)' : 'var(--text-dim)');
+        h += '<tr style="border-bottom:1px solid var(--border)">' +
+          '<td style="padding:4px 8px;font-weight:700">' + escapeHtml(String(c.id)) + '</td>' +
+          '<td style="padding:4px 8px;color:var(--text-dim)">' + escapeHtml(c.cat) + '</td>' +
+          '<td style="padding:4px 8px;text-align:center;font-weight:700;color:' + (V3_VERDICT_COLOR[c.a] || 'var(--text)') + '">' + escapeHtml(c.a) + '</td>' +
+          '<td style="padding:4px 8px;text-align:center;font-weight:700;color:' + (V3_VERDICT_COLOR[c.b] || 'var(--text)') + '">' + escapeHtml(c.b) + '</td>' +
+          '<td style="padding:4px 8px;text-align:center;font-weight:700;color:' + dCol + '">' + (c.d > 0 ? '▲' : (c.d < 0 ? '▼' : '—')) + '</td></tr>';
+      }
+      h += '</tbody></table>';
+      if (changed.length > shown.length) h += '<div style="font-size:11px;color:var(--text-dim);margin-top:6px">… 외 ' + (changed.length - shown.length) + '건</div>';
+    }
+    h += '<div style="font-size:11px;color:var(--text-dim);margin-top:8px">답변은 실행마다 새로 생성되므로 한 건의 차이는 프롬프트 차이일 수도, 생성 편차일 수도 있다. 여러 실행에 걸쳐 같은 방향이면 프롬프트 효과로 본다.</div></div>';
+    return h;
+  }
+
+  // ── v3 판정 CSV 내보내기 (현재 열린 실행 전체) ──
+  function exportV3Csv() {
+    var run = _lastRenderedRun;
+    var results = (run && run.results) || [];
+    var cols = ['scenarioId', 'category', 'subcategory', 'gate', 'verdict', 'legal_hits', 'review_hits', 'axis', 'validity_grade', 'validity_unmet',
+      'uv_grade', 'uv_unmet', 'intent', 'prompt_version', 'judge_model', 'escalated_from', 'escalated_first_verdict', 'claims', 'final_source', 'status'];
+    var lines = [cols.join(',')];
+    var n = 0;
+    for (var i = 0; i < results.length; i++) {
+      var r = results[i], v = r && r.evalV3;
+      if (!v) continue;
+      n++;
+      var e = v.judge_escalation || {};
+      var pv = (v.rag_meta && v.rag_meta.prompt_version) || v.prompt_version || '';
+      var vals = [r.scenarioId, r.category, r.subcategory, v.error ? 'error' : v.legal_verdict, v3VerdictOf(r) || '',
+        (v.legal_hits || []).join('|'), (v.legal_review_hits || []).join('|'), v.validity_axis, v.validity_grade,
+        (v.validity_unmet || []).join('|'), v.uv_grade, (v.uv_unmet || []).join('|'), v.uv_intent, pv, v.judge_model,
+        e.first_model || '', e.first_verdict || '', v.claim_count, r.finalSource, r.status];
+      lines.push(vals.map(function (x) {
+        x = x == null ? '' : String(x);
+        return /[",\n]/.test(x) ? '"' + x.replace(/"/g, '""') + '"' : x;
+      }).join(','));
+    }
+    if (!n) { showToast('내보낼 v3 판정이 없습니다', 'error'); return; }
+    var blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'eval_v3_' + ((run && run.runId) || 'run') + '.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+  window.exportV3Csv = exportV3Csv;
 
   // ── Re-evaluate Run with current guidelines ──
   function reEvaluateRun() {
@@ -2531,6 +2626,44 @@
     box.style.display = '';
   };
 
+  // 기록 활용(PV) · 증상 상담(SV) · 사용자 가치(UV) 축별 등급 분포 + 미충족 항목 빈도 + 2차 판정 건수
+  function buildV3ItemBreakdown(results, scored) {
+    var axisGrade = { PV: {}, SV: {} }, uvGrade = {}, unmet = {}, uvUnmet = {}, esc = 0, escFail = 0;
+    function inc(o, k) { o[k] = (o[k] || 0) + 1; }
+    for (var i = 0; i < scored.length; i++) {
+      var v = results[scored[i]].evalV3;
+      if (!v || v.error) continue;
+      if (axisGrade[v.validity_axis]) inc(axisGrade[v.validity_axis], v.validity_grade || '-');
+      if (v.uv_grade) inc(uvGrade, v.uv_grade);
+      (v.validity_unmet || []).forEach(function (u) { inc(unmet, u); });
+      (v.uv_unmet || []).forEach(function (u) { inc(uvUnmet, u); });
+      if (v.judge_escalation) { esc++; if (v.judge_escalation.verdict === 'FAIL') escFail++; }
+    }
+    function gradeLine(label, o) {
+      var keys = Object.keys(o).sort();
+      if (!keys.length) return '';
+      return '<div style="margin-top:6px;font-size:13px"><b>' + escapeHtml(label) + '</b> ' + keys.map(function (k) {
+        return '<span style="color:' + (V3_GRADE_COLOR[k] || '#94a3b8') + ';font-weight:700;margin-left:8px">' +
+          escapeHtml(k === '-' ? '없음' : k) + ' ' + o[k] + '</span>';
+      }).join('') + '</div>';
+    }
+    function chipLine(label, o, color) {
+      var keys = Object.keys(o).sort(function (a, b) { return o[b] - o[a]; });
+      if (!keys.length) return '';
+      return '<div style="margin-top:6px;font-size:13px"><b>' + escapeHtml(label) + '</b> ' + keys.map(function (k) {
+        return '<span style="font-size:12px;padding:2px 8px;margin-left:4px;border-radius:3px;background:' + color + '22;color:' + color + '">' +
+          escapeHtml(k) + ' <b>' + o[k] + '</b></span>';
+      }).join('') + '</div>';
+    }
+    var body = gradeLine('기록 활용(PV) 등급', axisGrade.PV) + gradeLine('증상 상담(SV) 등급', axisGrade.SV) +
+      gradeLine('사용자 가치(UV) 등급', uvGrade) + chipLine('미충족 항목 (PV/SV)', unmet, '#fb923c') +
+      chipLine('미충족 항목 (UV)', uvUnmet, '#c084fc') +
+      (esc ? '<div style="margin-top:6px;font-size:13px"><b>2차 판정</b> 1차 위반 → 재판정 ' + esc + '건 (위반 확정 ' + escFail + '건)</div>' : '');
+    if (!body) return '';
+    return '<div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--border)">' +
+      '<div style="font-size:13px;color:var(--text-dim)">항목별 세부 (PV / SV / UV)</div>' + body + '</div>';
+  }
+
   function buildV3ReportSection(results) {
     var scored = [];
     for (var i = 0; i < results.length; i++) {
@@ -2594,6 +2727,8 @@
     }
     h += '</div><div id="v3CellList" data-key="" style="display:none;margin-top:10px;padding:10px 12px;' +
       'background:var(--bg);border:1px solid var(--border);border-radius:4px"></div>';
+
+    h += buildV3ItemBreakdown(results, scored);
 
     if (meta) {
       h += '<div style="margin-top:10px;font-size:12px;color:var(--text-dim)">' +
