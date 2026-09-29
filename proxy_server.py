@@ -3142,6 +3142,15 @@ class ProxyHandler(BaseHTTPRequestHandler):
             path = '/share-eval-page'  # file_map 으로 라우팅
             # path는 아래 file_map 처리에 사용됨
 
+        # ── 옛 온톨로지 평가 화면은 이력(결과) 화면으로 병합됨 — 북마크 유지용 리다이렉트 ──
+        if path in ('/eval-v3', '/eval_v3.html'):
+            self.send_response(302)
+            self.send_header('Location', '/history')
+            self.send_header('Content-Length', '0')
+            self.send_header('Connection', 'close')
+            self.end_headers()
+            return
+
         # ── 정적 파일 서빙 ──
         file_map = {
             '/': 'chat_tester.html',
@@ -3152,8 +3161,6 @@ class ProxyHandler(BaseHTTPRequestHandler):
             '/settings.html': 'settings.html',
             '/history': 'history.html',
             '/history.html': 'history.html',
-            '/eval-v3': 'eval_v3.html',
-            '/eval_v3.html': 'eval_v3.html',
             '/review': 'review.html',
             '/review.html': 'review.html',
             # 공통 상단 메뉴 컴포넌트 (모든 화면이 불러 쓴다)
@@ -3214,8 +3221,6 @@ class ProxyHandler(BaseHTTPRequestHandler):
             '/scenario_manager.html':  'manage_scenarios',
             '/history':                'view_history',
             '/history.html':           'view_history',
-            '/eval-v3':                'view_history',
-            '/eval_v3.html':           'view_history',
             '/review':                 'view_history',
             '/review.html':            'view_history',
             '/criteria':               ['view_criteria', 'manage_criteria'],

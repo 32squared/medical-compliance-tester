@@ -83,6 +83,26 @@ check('건별 판정 실패 안내', mod.buildEvalV3Html(results[4]).includes('�
 check('건별 v3 없으면 빈 값', mod.buildEvalV3Html({ scenarioId: 'X' }) === '');
 
 
+// ── eval_v3.html 병합 (결과 화면 = history.html 하나) ──────────────────
+{
+  console.log('[check_v3_ui] eval_v3.html 병합');
+  check('eval_v3.html 삭제됨', !fs.existsSync(path.join(ROOT, 'eval_v3.html')));
+  const ps = fs.readFileSync(path.join(ROOT, 'proxy_server.py'), 'utf8');
+  check("/eval-v3 는 /history 로 리다이렉트", ps.includes("path in ('/eval-v3', '/eval_v3.html')") && !ps.includes("'eval_v3.html'"));
+  check('v3 CSV 버튼', html.includes('id="btnV3Csv"') && html.includes('function exportV3Csv'));
+  check('CSV 열(verdict·escalated_from)', html.includes("'verdict'") && html.includes("'escalated_from'"));
+  check('A/B 비교에 시나리오별 v3 판정 변화 표', html.includes('function buildV3ChangeTable') && html.includes('html += buildV3ChangeTable(resA, resB)'));
+  check('v3 항목별 세부(PV/SV/UV)', html.includes('function buildV3ItemBreakdown') && html.includes('h += buildV3ItemBreakdown(results, scored)'));
+  const modSrc = shim + html.slice(popStart, popEnd) + html.slice(html.indexOf('  // 기록 활용(PV)'), end) +
+    '\nreturn { buildV3ItemBreakdown };';
+  const bd = new Function(modSrc)().buildV3ItemBreakdown(results, [0, 1, 2, 3, 4, 5]);
+  check('항목별 세부: SV 등급·미충족 SV-02 표시', bd.includes('증상 상담(SV) 등급') && bd.includes('SV-02'));
+  const chgSrc = shim + html.slice(popStart, popEnd) + html.slice(html.indexOf('  var V3_RANK'), html.indexOf('  // ── v3 판정 CSV'));
+  const chg = new Function(chgSrc + '\nreturn { buildV3ChangeTable };')().buildV3ChangeTable(
+    [mk('S1', sv('pass', 'A')), mk('S2', sv('fail', 'D'))], [mk('S1', sv('fail', 'A')), mk('S2', sv('pass', 'B'))]);
+  check('판정 변화 표: 통과→위반·위반→통과 각 1건', chg.includes('>1</div><div style="font-size:11px;color:var(--text-dim)">통과 → 위반') && chg.includes('>1</div><div style="font-size:11px;color:var(--text-dim)">위반 → 통과'));
+}
+
 // ── v2·정규식 UI 가 남지 않았는지 (v3 가 유일한 최종 판정) ──────────────
 {
   console.log('[check_v3_ui] v2·정규식 UI 제거');
