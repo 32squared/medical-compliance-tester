@@ -147,7 +147,8 @@ def code_class(row):
                 "usable": True, "issues": [], "by": "code"}
     if cat in PHR_CATEGORIES or row["phrCaseId"]:
         q = row["qtype"] or row["subcategory"]
-        return {"mode": "phr", "symptom_key": None, "branch": None, "intent": QTYPE_INTENT.get(q),
+        it = QTYPE_INTENT.get(q) or (_tag(row.get("tags"), "intent:") or None)   # 생성 문항은 intent: 태그
+        return {"mode": "phr", "symptom_key": None, "branch": None, "intent": it if it in INTENTS else None,
                 "targets": [], "usable": True, "issues": [], "by": "code"}
     return None
 

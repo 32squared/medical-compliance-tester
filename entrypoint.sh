@@ -65,6 +65,13 @@ elif [ "$RUN_MODE" = "apply_scenario_set" ]; then
     if [ "$SEED_DRY_RUN" = "1" ]; then SEED_ARGS="--dry-run"; fi
     echo "[entrypoint] mode=apply_scenario_set → scripts/apply_scenario_set.py plan=${SET_PLAN:-/app/scripts/v3set_1_plan.json} ${SEED_ARGS}"
     exec python /app/scripts/apply_scenario_set.py --plan "${SET_PLAN:-/app/scripts/v3set_1_plan.json}" ${SEED_ARGS}
+elif [ "$RUN_MODE" = "gen_gap_items" ]; then
+    # v3 세트 빈 칸 문항 AI 작성 + 자동 검사(형식·중복·분류) — scripts/gen_gap_items.py 참고.
+    # SET_PLAN·GEN_OUT(gs://…)·GEN_MODEL·GEN_ROUNDS·GEN_WORKERS·GEN_ONLY. SEED_DRY_RUN=1 이면 저장 안 함.
+    SEED_ARGS=""
+    if [ "$SEED_DRY_RUN" = "1" ]; then SEED_ARGS="--dry-run"; fi
+    echo "[entrypoint] mode=gen_gap_items → scripts/gen_gap_items.py out=${GEN_OUT} ${SEED_ARGS}"
+    exec python /app/scripts/gen_gap_items.py ${SEED_ARGS}
 elif [ "$RUN_MODE" = "set_scenarios_enabled" ]; then
     # 시나리오 사용 여부 일괄 변경 — scripts/set_scenarios_enabled.py 참고 (SET_CATEGORY·SET_ID_PREFIX·
     # SET_ENABLED·SET_EXPECT·SET_TAG). 지우지 않고 enabled 만 바꾼다.
