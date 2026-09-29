@@ -1956,7 +1956,7 @@ function renderEvalV3State(host, state, ctx, ev, errMsg) {
   } else if (state === 'loading') {
     host.appendChild(v3El('span', 'eval-loading', '온톨로지 판정 중… (10~40초)'));
   } else if (state === 'error') {
-    host.appendChild(v3El('span', 'v3-error', '\u2717 v3 판정 실패: ' + (errMsg || '알 수 없는 오류')));
+    host.appendChild(v3El('span', 'v3-error', '\u26a0 판정 오류: ' + (errMsg || '알 수 없는 오류')));
     var retry = v3El('button', 'eval-btn v3-eval-btn', '다시 시도');
     retry.style.cssText = 'font-size:13px;padding:6px 16px';
     retry.addEventListener('click', function() { runEvalV3(host, ctx); });

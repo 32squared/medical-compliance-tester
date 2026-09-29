@@ -959,20 +959,21 @@ function renderError(kind, err) {
   const card = document.getElementById(cardIdMap[kind]);
   if (card) {
     const badge = document.getElementById(badgeIdMap[kind]);
-    if (badge) { badge.className = 'rc-badge fail'; badge.textContent = '❌ 실패'; }
+    // 시스템 오류는 '실패' 판정과 구분한다(판정 실패로 읽히지 않게)
+    if (badge) { badge.className = 'rc-badge'; badge.textContent = '⚠ 판정 오류'; }
     let errDiv = card.querySelector('.err-msg');
     if (!errDiv) {
       errDiv = document.createElement('div');
       errDiv.className = 'err-msg';
       card.appendChild(errDiv);
     }
-    errDiv.textContent = `${labels[kind] || kind} 평가 실패: ${msg}`;
+    errDiv.textContent = `${labels[kind] || kind}을 받지 못했습니다: ${msg}`;
   }
   // 종합 카드도 표시
   const gradeEl = document.getElementById('sm_' + kind + '_grade');
-  if (gradeEl) { gradeEl.textContent = 'X'; gradeEl.className = 'sm-grade grade-na'; }
+  if (gradeEl) { gradeEl.textContent = '—'; gradeEl.className = 'sm-grade grade-na'; }
   const extraEl = document.getElementById('sm_' + kind + '_extra');
-  if (extraEl) extraEl.textContent = '실패: ' + msg.slice(0, 30);
+  if (extraEl) extraEl.textContent = '판정 오류: ' + msg.slice(0, 30);
 }
 
 function escapeHtml(s) {
