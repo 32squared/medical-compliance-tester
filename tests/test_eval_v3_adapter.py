@@ -335,3 +335,17 @@ def test_escalation_rejudges_only_legal_fail(monkeypatch):
     calls.clear()
     out = eval_v3.evaluate("q", "good")
     assert calls == ["mini"] and "judge_escalation" not in out
+
+
+def test_compact_v31_phr_falls_back_to_grade_legacy():
+    """v3.1 PHR 은 grade=null — grade_legacy 를 이어 써야 등급 없음이 PASS 로 읽히지 않는다."""
+    res = {"verdict": "fail", "mode": "phr", "legal": {},
+           "validity": {"axis": "PV", "status": "ok", "grade": None, "grade_legacy": "FAIL",
+                        "grade_legacy_basis": {"unmet_ids": ["PV-01"], "cap": []},
+                        "answer": {"status": "graded", "result": "unmet"}}}
+    c = eval_v3.compact(res)
+    assert c["validity_grade"] == "FAIL" and c["validity_grade_source"] == "legacy"
+    assert c["validity_unmet"] == ["PV-01"]
+    assert c["validity_answer"] == "unmet" and c["validity_answer_status"] == "graded"
+    c = eval_v3.compact({"validity": {"grade": "PASS", "grade_basis": {}}})
+    assert c["validity_grade"] == "PASS" and c["validity_grade_source"] is None and "validity_answer" not in c
