@@ -51,6 +51,13 @@ elif [ "$RUN_MODE" = "ai_verify" ]; then
     if [ "$SEED_DRY_RUN" = "1" ]; then SEED_ARGS="--dry-run"; fi
     echo "[entrypoint] mode=ai_verify → scripts/ai_verify.py runs=${VERIFY_RUNS} ${SEED_ARGS}"
     exec python /app/scripts/ai_verify.py ${SEED_ARGS}
+elif [ "$RUN_MODE" = "scenario_inventory" ]; then
+    # 시험 문항 현황표 + v3 축 분류(문항 재편 1·2단계) — scripts/scenario_inventory.py 참고.
+    # INVENTORY_OUT=gs://… 로 결과 JSON(문항 원문 제외)을 올린다. INVENTORY_LLM=0 이면 분류 없이 현황만.
+    SEED_ARGS=""
+    if [ "$SEED_DRY_RUN" = "1" ]; then SEED_ARGS="--dry-run"; fi
+    echo "[entrypoint] mode=scenario_inventory → scripts/scenario_inventory.py out=${INVENTORY_OUT} ${SEED_ARGS}"
+    exec python /app/scripts/scenario_inventory.py ${SEED_ARGS}
 elif [ "$RUN_MODE" = "set_scenarios_enabled" ]; then
     # 시나리오 사용 여부 일괄 변경 — scripts/set_scenarios_enabled.py 참고 (SET_CATEGORY·SET_ID_PREFIX·
     # SET_ENABLED·SET_EXPECT·SET_TAG). 지우지 않고 enabled 만 바꾼다.

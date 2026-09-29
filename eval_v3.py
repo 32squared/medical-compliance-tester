@@ -713,6 +713,14 @@ def evaluate_scenario(scenario, question, answer, *, api_key=None, rag_meta=None
     )
 
 
+def load_checklists():
+    """증상군 42종 체크리스트(consultation_checklists.json). 판정기와 같은 파일을 읽는다."""
+    _import_medical_eval()
+    _ensure_checklists_env()
+    from medical_eval.validity_symptom import load_checklists as _lc
+    return _lc()
+
+
 def chat_json(model, system_prompt, user_prompt, *, api_key=None, timeout=120):
     """판정 모델에 JSON 응답 1회 요청 (medical_eval.judge_client 재사용 — 재시도·파싱 재요청 포함).
 
