@@ -110,10 +110,13 @@ python -c "import py_compile; py_compile.compile('proxy_server.py', doraise=True
 - 평가 결과 폰트: 헤더 14-15px, 배지 18-20px, 본문 13px, 상세 12px
 
 ## 주요 패턴
-### 평가 시스템 (v2 — 현행 3중)
-1. **정규식** (즉시): analyzer.py → violation_rules.json 패턴 매칭
-2. **GPT** (3-5초): _evaluate_gpt() → 최종 판정 기준 (A~F)
-3. **문진 품질** (3-5초): _evaluate_consultation() → 5개 축 100점
+### 평가 시스템 (화면 기준, 2026-09-29 정리)
+화면에는 **v3 최종 판정 + 문진 품질** 두 가지만 나온다. 정규식 점수와 v2 법률 A~F 는 화면·재평가·이력 저장에서
+제거했다(배치 코드의 v2 경로는 `EVAL_V2_LEGAL` 스위치로만 남음).
+- 답변 1건 판정: `POST /api/evaluate-v3` (채팅 자동 판정·외부 답변 평가·시나리오 실행 모달 공용)
+- 이력 저장(`/api/history/save`)·다시 평가(`/api/history/re-evaluate`)는 v3 로 status·finalScore 를 정한다
+  (`_v3_final_of`, 배치 `BatchExecutor.V3_SCORE` 와 같은 표). HealthBench 문항은 rubric 이 최종이라 덮지 않는다.
+- 공유 평가(`/share/eval/<id>`)는 v3 를 `eval_gpt_json` 열에 `schema='v3'` 표식으로 저장한다. 이전 v2 공유는 판정 미표시.
 
 ### 평가 시스템 (v3 — 온톨로지 기반, 병존 단계)
 `packages/medical_eval` 의 4축 판정. 판정 기준은 산문이 아니라 온톨로지 스냅샷(rule 52행)이다.
@@ -125,7 +128,7 @@ python -c "import py_compile; py_compile.compile('proxy_server.py', doraise=True
   증상군(42 체크리스트에서 선택) · 기대 분기(응급/당일/외래/생활관리) · PHR 케이스 ID.
   비우면 질문 내용으로 자동 판별한다. 열이 생기기 전 시나리오는 태그(`symptom:` · `branch:` ·
   `case:`)에서 회수한다.
-- **이력 화면에서 본다**: history.html 배치 리포트에 v3 요약과 **v2 × v3 교차표**가 나오고,
+- **이력 화면에서 본다**: history.html 결과 카드·배치 리포트의 판정은 v3 하나다(판정 분포·걸린 규칙·카테고리×판정),
   시나리오 상세 팝업에 건별 판정(게이트·등급·걸린 규칙·체크리스트 커버리지)이 나온다.
   v3 없이 돌린 배치에는 그 자리가 아예 안 그려진다.
 - 켜면 답변 1건당 판정 모델 호출이 2회 늘어난다. 시나리오가 많으면 비용·시간을 먼저 보라.

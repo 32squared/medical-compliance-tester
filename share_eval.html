@@ -267,62 +267,69 @@ const AXIS_LABELS = {
 // ════════════════════════════════════════════════════════════
 // 렌더링
 // ════════════════════════════════════════════════════════════
-function renderGptLegalCard(gptData) {
-  if (!gptData) return '';
-  const e = gptData.evaluation || gptData;
-  const score = e.score != null ? e.score : '?';
-  const grade = e.grade || '?';
-  const passed = !!e.passed;
-  const violations = e.violations || [];
-  // v1.5.1 카테고리별 카운트
-  const _legalN = (e.legalViolationCount != null) ? e.legalViolationCount
-                 : violations.filter(v => (v.category || 'legal_violation') === 'legal_violation').length;
-  const _qualityN = (e.qualityIssueCount != null) ? e.qualityIssueCount
-                   : violations.filter(v => v.category === 'quality_issue').length;
-  const _safetyN = (e.safetyAdvisoryCount != null) ? e.safetyAdvisoryCount
-                  : violations.filter(v => v.category === 'safety_advisory').length;
-  // v1.5.2 상단/하단 면책
-  const _topDisc = (e.has_top_disclaimer === true);
-  const _topDiscKnown = (typeof e.has_top_disclaimer === 'boolean');
-  const _botDisc = (e.has_bottom_disclaimer === true);
-  const _botDiscKnown = (typeof e.has_bottom_disclaimer === 'boolean');
-  const catBadges = `<div style="display:flex;gap:6px;margin:8px 0;flex-wrap:wrap;align-items:center">
-    <span title="실제 한국 의료법 위반 (확진/처방/치료지시/과대효능/상단 면책 누락)" style="font-size:11px;padding:3px 8px;border-radius:4px;background:${_legalN > 0 ? '#ef444433' : '#22c55e22'};color:${_legalN > 0 ? '#ef4444' : '#22c55e'};font-weight:700">⚖️ 법위반 ${_legalN}</span>
-    <span title="내부 품질 표준 미달 (법위반 아님)" style="font-size:11px;padding:3px 8px;border-radius:4px;background:#eab30822;color:#a16207;font-weight:700">📋 품질 권고 ${_qualityN}</span>
-    <span title="환자 안전 권고 (법위반 아님)" style="font-size:11px;padding:3px 8px;border-radius:4px;background:#38bdf822;color:#0284c7;font-weight:700">🛡️ 안전 권고 ${_safetyN}</span>
-    <span style="margin-left:6px;width:1px;height:14px;background:#cbd5e1"></span>
-    ${_topDiscKnown
-      ? `<span title="상단 면책 (필수). 누락 시 법위반" style="font-size:11px;padding:3px 8px;border-radius:4px;background:${_topDisc ? '#22c55e22' : '#ef444433'};color:${_topDisc ? '#22c55e' : '#ef4444'};font-weight:700">📜 상단 면책 ${_topDisc ? '✓' : '✗'}</span>`
-      : `<span title="상단 면책 정보 없음 (구 데이터)" style="font-size:11px;padding:3px 8px;border-radius:4px;background:#94a3b822;color:#94a3b8;font-weight:700">📜 상단 면책 ?</span>`}
-    ${_botDiscKnown
-      ? `<span title="하단 면책 (권장)" style="font-size:11px;padding:3px 8px;border-radius:4px;background:${_botDisc ? '#22c55e22' : '#eab30822'};color:${_botDisc ? '#22c55e' : '#a16207'};font-weight:700">📜 하단 면책 ${_botDisc ? '✓' : '✗'}</span>`
-      : ''}
-  </div>`;
-  const violHtml = violations.length ? violations.map(v => {
-    const sev = (v.severity || 'LOW').toUpperCase();
-    const cat = (v.category || 'legal_violation');
-    const catLabel = cat === 'legal_violation' ? '⚖️ 법위반' : (cat === 'quality_issue' ? '📋 품질' : (cat === 'safety_advisory' ? '🛡️ 안전' : cat));
-    const catColor = cat === 'legal_violation' ? '#ef4444' : (cat === 'quality_issue' ? '#a16207' : '#0284c7');
-    const sevColor = {CRITICAL:'#ef4444',HIGH:'#f97316',MEDIUM:'#eab308',LOW:'#38bdf8'}[sev] || '#94a3b8';
-    return `<div class="vio">
-      <span class="sev" style="background:${catColor}22;color:${catColor};margin-right:4px">${catLabel}</span>
-      <span class="sev" style="background:${sevColor}22;color:${sevColor}">${sev}</span>
-      <b>${escapeHtml(v.name || v.type || '항목')}</b>${v.law ? ' · ' + escapeHtml(v.law) : ''}
-      ${(v.matched || v.matched_text) ? `<div class="match">「${escapeHtml(v.matched || v.matched_text)}」</div>` : ''}
-      ${v.description ? `<div class="desc">${escapeHtml(v.description)}</div>` : ''}
+function v3VerdictInfo(d) {
+  const vl = d && d.verdictLabel ? String(d.verdictLabel).toUpperCase() : '';
+  if (vl === 'FAIL') return { text: '실패', pass: false };
+  if (vl === 'PASS') return { text: '통과', pass: true };
+  if (['A', 'B', 'C', 'D'].includes(vl)) return { text: '통과 ' + vl, pass: true };
+  if (d && d.legal_verdict === 'fail') return { text: '실패', pass: false };
+  return { text: '판정 없음', pass: null };
+}
+
+function v3LegalText(v) {
+  return { pass: '통과', fail: '실패', review: '검토 필요' }[v] || (v || '—');
+}
+
+function renderV3Card(d, legacy) {
+  if (legacy) {
+    return `
+    <div class="eval-card">
+      <div class="ec-header"><div class="ec-title">[1] 최종 판정 (온톨로지 v3)</div></div>
+      <div class="text-box warn"><div class="lbl">안내</div>이 공유는 이전 판정 기준으로 만들어져 판정을 표시하지 않습니다.</div>
     </div>`;
-  }).join('') : '<div class="text-box good"><span class="lbl">결과</span>✓ 법위반·품질·안전 권고 없음</div>';
+  }
+  if (!d) {
+    return `
+    <div class="eval-card">
+      <div class="ec-header"><div class="ec-title">[1] 최종 판정 (온톨로지 v3)</div></div>
+      <div class="text-box">판정 데이터 없음</div>
+    </div>`;
+  }
+  const info = v3VerdictInfo(d);
+  const detail = Array.isArray(d.legal_hit_detail) ? d.legal_hit_detail : [];
+  const hits = detail.length ? detail
+    : [].concat(d.legal_hits || [], d.legal_review_hits || [], d.legal_cap_hits || []).map(id => ({ rule_id: id }));
+  const sevColors = { CRITICAL: '#ef4444', HIGH: '#f97316', MEDIUM: '#eab308', LOW: '#38bdf8' };
+  const hitHtml = hits.length ? hits.map(h => {
+    const sev = String(h.severity || '').toUpperCase();
+    const c = sevColors[sev] || '#94a3b8';
+    return `<div class="vio">
+      ${sev ? `<span class="sev" style="background:${c}22;color:${c}">${escapeHtml(sev)}</span>` : ''}
+      <b>${escapeHtml(h.rule_id)}</b>${h.level != null ? ' · 수준 ' + escapeHtml(h.level) : ''}${h.status ? ' · ' + escapeHtml(h.status) : ''}
+    </div>`;
+  }).join('') : '<div class="text-box good"><div class="lbl">결과</div>✓ 걸린 법률·안전 규칙 없음</div>';
+  const items = Array.isArray(d.validity_items) ? d.validity_items : [];
+  const unmet = Array.isArray(d.validity_unmet) ? d.validity_unmet : [];
+  const vt = (d.validity_axis || d.validity_grade)
+    ? (d.validity_axis || '') + ' 등급 ' + (d.validity_grade || '—') + (d.validity_status ? ' (' + d.validity_status + ')' : '')
+    : '';
+  const unmetHtml = vt ? (unmet.length ? unmet.map(id => {
+    const it = items.find(x => x && x.id === id);
+    return `<div class="vio"><span class="sev" style="background:#eab30822;color:#a16207">미충족</span><b>${escapeHtml(id)}</b>${it && it.detail ? `<div class="desc">${escapeHtml(it.detail)}</div>` : ''}</div>`;
+  }).join('') : '<div class="text-box good"><div class="lbl">결과</div>✓ 미충족 필수 항목 없음</div>') : '';
+  const meta = [d.eval_version, d.ontology_version, d.judge_model].filter(Boolean).join(' · ');
   return `
     <div class="eval-card">
       <div class="ec-header">
-        <div class="ec-title">[1] GPT 법률 평가</div>
-        <span class="ec-badge ${passed ? 'pass' : 'fail'}">${passed ? '✓ 통과' : '✗ 미달'} · 등급 ${grade}</span>
-        <span class="ec-meta">점수 <b>${score}</b> / 100</span>
+        <div class="ec-title">[1] 최종 판정 (온톨로지 v3)</div>
+        <span class="ec-badge ${info.pass === false ? 'fail' : (info.pass ? 'pass' : '')}" style="font-size:16px">${info.pass ? '✓ ' : (info.pass === false ? '✗ ' : '')}${escapeHtml(info.text)}</span>
+        <span class="ec-meta">${escapeHtml(meta)}</span>
       </div>
-      ${catBadges}
-      ${e.summary ? `<div class="text-box"><div class="lbl">평가 요약</div>${escapeHtml(e.summary)}</div>` : ''}
-      ${violHtml}
-      ${e.recommendation ? `<div class="text-box good"><div class="lbl">개선 권고</div>${escapeHtml(e.recommendation)}</div>` : ''}
+      ${(d.summary_line || d.summary) ? `<div class="text-box"><div class="lbl">판정 요약</div>${escapeHtml(d.summary_line || '')}${d.summary ? `<div style="margin-top:6px;color:var(--text-dim)">${escapeHtml(d.summary)}</div>` : ''}</div>` : ''}
+      <h3>법률 게이트: ${escapeHtml(v3LegalText(d.legal_verdict))}</h3>
+      ${hitHtml}
+      ${vt ? `<h3>유효성 축: ${escapeHtml(vt)}</h3>${unmetHtml}` : ''}
+      ${d.uv_grade ? `<div class="ec-meta" style="margin-top:8px">사용자 가치(UV) 등급 ${escapeHtml(d.uv_grade)}${(d.uv_unmet || []).length ? ' · 미충족 ' + escapeHtml(d.uv_unmet.join(', ')) : ''}</div>` : ''}
     </div>`;
 }
 
@@ -469,7 +476,7 @@ function renderPage() {
     ${renderFeedbackSection('answer_feedback', comments, '')}
 
     <h2>🎯 평가 결과</h2>
-    ${renderGptLegalCard(r.evalGpt)}
+    ${renderV3Card(r.evalV3, !!r.legacyVerdict)}
 
     <h3>[2] GPT 문진 품질 평가 — 2개 기준 비교</h3>
     <div class="cons-2col">
