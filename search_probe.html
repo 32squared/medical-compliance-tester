@@ -83,12 +83,7 @@ details > summary:hover { color: var(--accent); }
 <body>
 
 <div class="page">
-  <div class="nav">
-    <a href="/">🏠 채팅 테스터</a>
-    <a href="/manager">📋 시나리오</a>
-    <a href="/history">📊 이력</a>
-    <a href="/settings">⚙️ 설정</a>
-  </div>
+  <nav id="appNav" style="margin-bottom:16px"></nav>
 
   <div class="header">
     <h1>🔍 SKIX 검색 API 검증 도구</h1>
@@ -491,5 +486,6 @@ document.addEventListener('keydown', function(e) {
 });
 </script>
 
+<script src="/app_nav.js"></script>
 </body>
 </html>

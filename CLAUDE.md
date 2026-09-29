@@ -37,7 +37,7 @@ eval_v3.py               — v3 판정기 어댑터 (medical_eval 을 직접 imp
 chat_tester.html         — 채팅 테스터 (메인 페이지)
 scenario_manager.html    — 시나리오 관리
 history.html             — 테스트 이력 + 배치 리포트
-guideline_manager.html   — 가이드라인 관리
+app_nav.js               — 공통 상단 메뉴(대화 테스트·시나리오·결과·평가 + ⚙관리), /api/auth/status 권한으로 항목 필터
 settings.html            — 설정 (5개 탭: API/GPT/사용자/문진/로그)
 deploy.ps1 / deploy-dev.ps1 — Cloud Run 배포 (운영/DEV)
 scripts/check_no_cross_import.py — 경계검사(--forbid rag: RAG 모듈 / --forbid eval: medical_eval 직접 import 금지)

@@ -59,7 +59,7 @@
     grid-template-columns: auto minmax(0, 1fr) auto;
     gap: 16px; align-items: center;
     padding: 0 14px; height: 50px;
-    flex-shrink: 0; overflow: hidden;
+    flex-shrink: 0;
     background: #0f0f0f;
     border-bottom: 1px solid var(--line);
   }
@@ -458,7 +458,7 @@
         </div>
       </div>
     </div>
-    <nav class="hdr-nav" role="tablist" id="hdrNav"></nav>
+    <nav id="appNav" style="justify-self:center;min-width:0"></nav>
     <div class="hdr-right">
       <div class="meta-chip">
         <span class="chip-k">SESSION</span>
@@ -585,20 +585,6 @@
 </div>
 
 <script>
-// ============================================================
-// Nav items
-// ============================================================
-const NAV_ITEMS = [
-  { label: '채팅 테스터',    href: '/',           active: false },
-  { label: 'Arena',          href: '/arena',      active: true  },
-  { label: '시나리오 관리',  href: '/manager',    active: false },
-  { label: '테스트 이력',    href: '/history',    active: false },
-  { label: '법률 평가 기준', href: '/guidelines', active: false },
-  { label: '문진 평가 기준', href: '/criteria',   active: false },
-  { label: 'RLHF 관리',      href: '/rlhf',       active: false },
-  { label: '⚙ 설정',         href: '/settings',   active: false },
-];
-
 const CRITERIA = [
   { key: 'accuracy',    label: '정확성', sub: 'Accuracy' },
   { key: 'helpfulness', label: '유용성', sub: 'Helpfulness' },
@@ -691,18 +677,6 @@ function parseResponseText(rawText) {
   return rawText.split(/\n\n+/).map(function(t) {
     return { kind: 'p', t: t.trim() };
   }).filter(function(b) { return b.t.length > 0; });
-}
-
-// ============================================================
-// Render: Nav
-// ============================================================
-function renderNav() {
-  const nav = document.getElementById('hdrNav');
-  if (!nav) return;
-  nav.innerHTML = NAV_ITEMS.map(function(n) {
-    return '<a class="nav-item ' + (n.active ? 'active' : '') +
-           '" href="' + n.href + '">' + escapeHtml(n.label) + '</a>';
-  }).join('');
 }
 
 // ============================================================
@@ -1341,7 +1315,6 @@ function bindCardEvents() {
 // Init
 // ============================================================
 function init() {
-  renderNav();
   updateQueryChars();
   renderResponseCards();   // 초기: "실행 대기" 상태
   bindCardEvents();
@@ -1358,5 +1331,6 @@ function init() {
 
 document.addEventListener('DOMContentLoaded', init);
 </script>
+<script src="/app_nav.js"></script>
 </body>
 </html>

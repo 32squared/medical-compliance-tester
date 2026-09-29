@@ -102,9 +102,7 @@
 
 <div class="topbar">
   <h1>&#128203; 자문 판정 뷰어</h1>
-  <a href="/" class="nav-btn">채팅 테스터</a>
-  <a href="/phr" class="nav-btn">PHR 케이스</a>
-  <a href="/advisory" class="nav-btn active">자문 판정</a>
+  <nav id="appNav"></nav>
   <span class="spacer"></span>
   <a href="/api/advisory/export" class="nav-btn">엑셀 내려받기</a>
 </div>
@@ -406,5 +404,6 @@ function setBadOnly(v) {
 
 boot();
 </script>
+<script src="/app_nav.js"></script>
 </body>
 </html>
