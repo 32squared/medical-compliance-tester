@@ -141,4 +141,5 @@ jobs:
             tests/test_rag_legal_eval.py \
             tests/test_rlhf_db.py \
             tests/test_eval_v3_adapter.py \
+            tests/test_share_eval_v3.py \
             -v --tb=short -q
