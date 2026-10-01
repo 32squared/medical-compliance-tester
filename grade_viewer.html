@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>등급별 질답 — 나만의 주치의</title>
+<style>
+  :root {
+    --bg:#0f172a; --surface:#1e293b; --surface2:#334155; --text:#e2e8f0; --text-dim:#94a3b8;
+    --accent:#38bdf8; --accent-dim:#0c4a6e; --green:#22c55e; --red:#ef4444; --yellow:#eab308;
+    --orange:#f97316; --purple:#a855f7; --border:#475569; --radius:12px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Pretendard','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif; background:var(--bg);
+         color:var(--text); font-size:14px; min-height:100vh; display:flex; flex-direction:column; }
+  .topbar { display:flex; align-items:center; gap:10px; padding:10px 20px; background:var(--surface); border-bottom:1px solid var(--border); }
+  .nav-btn { background:none; border:1px solid var(--border); color:var(--text-dim); border-radius:8px; padding:6px 12px; font-size:12px;
+             font-weight:600; cursor:pointer; text-decoration:none; white-space:nowrap; }
+  .nav-btn:hover { background:var(--surface2); color:var(--text); }
+  .nav-btn.active { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
+  .wrap { max-width:1280px; width:100%; margin:0 auto; padding:16px 20px 80px; }
+  .bar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:12px; }
+  select, input[type=text] { font:inherit; font-size:12.5px; color:var(--text); background:var(--surface); border:1px solid var(--border);
+                             border-radius:8px; padding:6px 8px; }
+  select { min-width:280px; }
+  .seg { display:inline-flex; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+  .seg button { background:none; border:0; color:var(--text-dim); padding:6px 12px; font-size:12.5px; font-weight:600; cursor:pointer; border-right:1px solid var(--border); }
+  .seg button:last-child { border-right:0; }
+  .seg button.on { background:var(--accent-dim); color:var(--accent); }
+  .grades { display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 14px; }
+  .gbtn { border:1px solid var(--border); background:var(--surface); border-radius:10px; padding:8px 14px; cursor:pointer; min-width:92px; text-align:center; }
+  .gbtn.on { border-color:var(--accent); background:var(--accent-dim); }
+  .gbtn b { display:block; font-size:20px; font-weight:800; }
+  .gbtn small { color:var(--text-dim); font-size:11.5px; }
+  .g-A { color:var(--green); } .g-B { color:var(--accent); } .g-C { color:var(--yellow); } .g-D { color:var(--orange); }
+  .g-FAIL, .g-fail { color:var(--red); } .g-PASS, .g-pass { color:var(--green); } .g-NA, .g-null { color:var(--text-dim); }
+  .summary { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px 16px; margin-bottom:14px; font-size:12.5px; }
+  .summary h3 { font-size:13px; margin-bottom:8px; }
+  .summary table { border-collapse:collapse; width:100%; }
+  .summary th, .summary td { padding:4px 8px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top; }
+  .summary th { color:var(--text-dim); font-size:11px; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px 16px; margin-bottom:10px; }
+  .head { display:flex; gap:8px; align-items:center; flex-wrap:wrap; font-size:12px; color:var(--text-dim); }
+  .head .sid { font-family:Consolas,monospace; color:var(--text); font-weight:700; }
+  .chip { font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:4px; white-space:nowrap; background:var(--surface2); color:var(--text-dim); }
+  .chip.pv-A, .chip.uv-A, .chip.lg-pass { background:#22c55e22; color:#4ade80; }
+  .chip.pv-B, .chip.uv-B { background:#38bdf822; color:#7dd3fc; }
+  .chip.pv-C, .chip.uv-C { background:#eab30822; color:#facc15; }
+  .chip.pv-D, .chip.uv-D { background:#f9731622; color:#fdba74; }
+  .chip.lg-fail { background:#ef444422; color:#f87171; }
+  .q { font-size:14.5px; font-weight:600; line-height:1.6; margin:8px 0 6px; }
+  .a { white-space:pre-wrap; line-height:1.7; font-size:13px; background:var(--bg); border-radius:8px; padding:10px 12px; max-height:220px; overflow:hidden; position:relative; }
+  .a.open { max-height:none; }
+  .more { font-size:11.5px; color:var(--accent); cursor:pointer; margin-top:4px; display:inline-block; }
+  .why { margin-top:8px; font-size:12.5px; }
+  .why .it { display:flex; gap:8px; padding:3px 0; border-bottom:1px dashed var(--border); }
+  .why .it:last-child { border-bottom:0; }
+  .why .id { font-family:Consolas,monospace; color:#f87171; min-width:52px; }
+  .why .t { color:var(--text); }
+  .why .n { color:var(--text-dim); font-size:11.5px; }
+  .exp { font-size:12px; color:var(--text-dim); white-space:pre-wrap; margin-top:6px; }
+  .empty { color:var(--text-dim); padding:30px; text-align:center; }
+  .count { font-size:12px; color:var(--text-dim); margin-left:auto; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <nav id="appNav"></nav>
+  <span class="count" id="runInfo"></span>
+</div>
+<div class="wrap">
+  <div class="bar">
+    <select id="runSel"></select>
+    <div class="seg" id="axisSeg">
+      <button data-axis="final" class="on">종합</button>
+      <button data-axis="pv">PV·SV 타당성</button>
+      <button data-axis="uv">UV 유용성</button>
+      <button data-axis="legal">법률</button>
+    </div>
+    <select id="qtypeSel" style="min-width:140px"><option value="">유형 전체</option></select>
+    <select id="intentSel" style="min-width:140px"><option value="">의도 전체</option></select>
+    <input type="text" id="searchBox" placeholder="문항 id·질문 검색" style="min-width:220px">
+    <label style="font-size:12px;color:var(--text-dim)"><input type="checkbox" id="openAll"> 답변 펼치기</label>
+  </div>
+  <div class="grades" id="grades"></div>
+  <div class="summary" id="summary"></div>
+  <div id="list"></div>
+</div>
+<script src="/app_nav.js"></script>
+<script>
+(function () {
+  'use strict';
+  var RULES = {}, RUN = null, RESULTS = [], state = { axis: 'final', grade: null, qtype: '', intent: '', q: '' };
+  var ORDER = ['A', 'B', 'C', 'D', 'FAIL', 'PASS', 'pass', 'fail', 'NA'];
+
+  function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+  function tag(r, p) { var ts = r.tags || []; for (var i = 0; i < ts.length; i++) if (typeof ts[i] === 'string' && ts[i].indexOf(p) === 0) return ts[i].slice(p.length); return ''; }
+  function v3(r) { return (r && r.evalV3 && !r.evalV3.error) ? r.evalV3 : null; }
+  function finalOf(r) { var v = v3(r); if (!v) return 'NA'; if (v.legal_verdict === 'fail') return 'FAIL'; return String(v.validity_grade || 'PASS').toUpperCase(); }
+  function gradeOf(r) {
+    var v = v3(r); if (!v) return 'NA';
+    if (state.axis === 'final') return finalOf(r);
+    if (state.axis === 'pv') return v.validity_grade || 'NA';
+    if (state.axis === 'uv') return v.uv_grade || 'NA';
+    return v.legal_verdict || 'NA';
+  }
+  function unmetOf(r) {
+    var v = v3(r); if (!v) return [];
+    if (state.axis === 'pv') return v.validity_unmet || [];
+    if (state.axis === 'uv') return v.uv_unmet || [];
+    if (state.axis === 'legal') return (v.legal_hits || []);
+    return (v.legal_hits || []).concat(v.validity_unmet || []);
+  }
+  function ruleLine(id) {
+    var ru = RULES[id] || {};
+    return '<div class="it"><span class="id">' + esc(id) + '</span><span><span class="t">' + esc(ru.title || '') + '</span>' +
+      (ru.note ? ' <span class="n">— ' + esc(String(ru.note).slice(0, 160)) + '</span>' : '') + '</span></div>';
+  }
+  function filtered() {
+    var q = state.q.trim().toLowerCase();
+    return RESULTS.filter(function (r) {
+      if (state.qtype && (tag(r, 'qtype:') || r.subcategory || '') !== state.qtype) return false;
+      if (state.intent && ((v3(r) || {}).uv_intent || '') !== state.intent) return false;
+      if (q && String(r.scenarioId || '').toLowerCase().indexOf(q) < 0 && String(r.prompt || '').toLowerCase().indexOf(q) < 0) return false;
+      return true;
+    });
+  }
+  function renderGrades(rows) {
+    var cnt = {};
+    rows.forEach(function (r) { var g = gradeOf(r); cnt[g] = (cnt[g] || 0) + 1; });
+    var keys = Object.keys(cnt).sort(function (a, b) { return (ORDER.indexOf(a) + 1 || 99) - (ORDER.indexOf(b) + 1 || 99); });
+    if (state.grade && !cnt[state.grade]) state.grade = null;
+    var el = document.getElementById('grades');
+    el.innerHTML = '<div class="gbtn' + (state.grade ? '' : ' on') + '" data-g=""><b>' + rows.length + '</b><small>전체</small></div>' +
+      keys.map(function (g) {
+        return '<div class="gbtn' + (state.grade === g ? ' on' : '') + '" data-g="' + esc(g) + '"><b class="g-' + esc(g) + '">' + esc(g) + '</b><small>' + cnt[g] + '건 · ' + Math.round(cnt[g] / rows.length * 100) + '%</small></div>';
+      }).join('');
+    Array.prototype.forEach.call(el.querySelectorAll('.gbtn'), function (b) {
+      b.onclick = function () { state.grade = b.getAttribute('data-g') || null; render(); };
+    });
+  }
+  function renderSummary(rows) {
+    var el = document.getElementById('summary');
+    if (state.axis === 'final') { el.style.display = 'none'; return; }
+    el.style.display = '';
+    var n = {}, solo = {}, topGrade = state.axis === 'legal' ? 'pass' : 'A';
+    rows.forEach(function (r) {
+      var u = unmetOf(r); u.forEach(function (id) { n[id] = (n[id] || 0) + 1; });
+      if (u.length === 1 && gradeOf(r) !== topGrade) solo[u[0]] = (solo[u[0]] || 0) + 1;
+    });
+    var ids = Object.keys(n).sort(function (a, b) { return n[b] - n[a]; });
+    var top = rows.filter(function (r) { return gradeOf(r) === topGrade; }).length;
+    el.innerHTML = '<h3>' + (state.axis === 'legal' ? '걸린 규칙' : '미충족 항목') + ' — 선택한 문항 ' + rows.length + '건 중 ' + topGrade + ' ' + top + '건' +
+      '<span style="font-weight:400;color:var(--text-dim)"> · "이것만 고치면 ' + topGrade + '" = 이 항목 하나만 미충족인 문항 수</span></h3>' +
+      '<table><tr><th>항목</th><th>제목</th><th>미충족</th><th>이것만 고치면 ' + topGrade + '</th><th>판정 방법</th></tr>' +
+      ids.map(function (id) {
+        var ru = RULES[id] || {};
+        return '<tr><td class="id" style="font-family:Consolas,monospace">' + esc(id) + '</td><td>' + esc(ru.title || '') + '</td><td>' + n[id] + '</td><td>' + (solo[id] || 0) + '</td><td style="color:var(--text-dim)">' + esc(ru.method || '') + '</td></tr>';
+      }).join('') + '</table>';
+  }
+  function renderList(rows) {
+    var el = document.getElementById('list');
+    var open = document.getElementById('openAll').checked;
+    var sel = state.grade ? rows.filter(function (r) { return gradeOf(r) === state.grade; }) : rows;
+    if (!sel.length) { el.innerHTML = '<div class="empty">문항이 없습니다</div>'; return; }
+    el.innerHTML = sel.map(function (r) {
+      var v = v3(r) || {};
+      var qt = tag(r, 'qtype:') || r.subcategory || '';
+      var u = unmetOf(r);
+      return '<div class="card">' +
+        '<div class="head"><span class="sid">' + esc(r.scenarioId) + '</span>' +
+        (qt ? '<span class="chip">' + esc(qt) + '</span>' : '') +
+        (v.uv_intent ? '<span class="chip">' + esc(v.uv_intent) + '</span>' : '') +
+        '<span class="chip lg-' + esc(v.legal_verdict || 'na') + '">법률 ' + esc(v.legal_verdict || '—') + (v.legal_hits && v.legal_hits.length ? ' ' + esc(v.legal_hits.join(',')) : '') + '</span>' +
+        '<span class="chip pv-' + esc(v.validity_grade || 'na') + '">PV ' + esc(v.validity_grade || '—') + (v.validity_grade_source === 'legacy' ? '*' : '') + '</span>' +
+        '<span class="chip uv-' + esc(v.uv_grade || 'na') + '">UV ' + esc(v.uv_grade || '—') + '</span>' +
+        (v.judge_escalation ? '<span class="chip">2차 ' + esc(v.judge_escalation.verdict || '') + '</span>' : '') +
+        (r.phrCaseId ? '<span class="chip">' + esc(r.phrCaseId) + '</span>' : '') +
+        '</div>' +
+        '<div class="q">' + esc(r.prompt || '') + '</div>' +
+        '<div class="a' + (open ? ' open' : '') + '">' + esc(r.response || '(답변 없음)') + '</div>' +
+        (open ? '' : '<span class="more" onclick="this.previousElementSibling.classList.toggle(\'open\');this.textContent=this.previousElementSibling.classList.contains(\'open\')?\'접기\':\'답변 전체 보기\'">답변 전체 보기</span>') +
+        (u.length ? '<div class="why">' + u.map(ruleLine).join('') + '</div>' : '') +
+        (r.expectedBehavior ? '<details><summary style="font-size:11.5px;color:var(--text-dim);cursor:pointer;margin-top:6px">기대 동작</summary><div class="exp">' + esc(r.expectedBehavior) + '</div></details>' : '') +
+        '</div>';
+    }).join('');
+  }
+  function render() {
+    var rows = filtered();
+    renderGrades(rows); renderSummary(rows); renderList(rows);
+  }
+  function fillSel(id, values, cur) {
+    var el = document.getElementById(id), first = el.options[0].outerHTML;
+    el.innerHTML = first + values.map(function (v) { return '<option' + (v === cur ? ' selected' : '') + '>' + esc(v) + '</option>'; }).join('');
+  }
+  function loadRun(rid) {
+    if (!rid) return;
+    document.getElementById('runInfo').textContent = '불러오는 중…';
+    fetch('/api/history/' + encodeURIComponent(rid)).then(function (r) { return r.json(); }).then(function (d) {
+      RUN = d; RESULTS = (d.results || []).filter(function (r) { return r && r.scenarioId; });
+      var qts = {}, its = {};
+      RESULTS.forEach(function (r) { var q = tag(r, 'qtype:') || r.subcategory || ''; if (q) qts[q] = 1; var i = (v3(r) || {}).uv_intent; if (i) its[i] = 1; });
+      fillSel('qtypeSel', Object.keys(qts).sort(function (a, b) { return (parseInt(a.slice(1)) || 99) - (parseInt(b.slice(1)) || 99) || a.localeCompare(b); }), state.qtype);
+      fillSel('intentSel', Object.keys(its).sort(), state.intent);
+      var ver = (v3(RESULTS[0]) || {});
+      document.getElementById('runInfo').textContent = rid + ' · ' + RESULTS.length + '건 · 판정기 ' + (ver.eval_version || '?') + ' / 온톨로지 ' + (ver.ontology_version || '?') +
+        (ver.validity_grade_source === 'legacy' ? ' · PV* = v3.0 방식 등급(grade_legacy)' : '');
+      history.replaceState(null, '', '?run=' + encodeURIComponent(rid));
+      render();
+    }).catch(function (e) { document.getElementById('list').innerHTML = '<div class="empty">불러오기 실패: ' + esc(e.message) + '</div>'; });
+  }
+  function init() {
+    var want = new URLSearchParams(location.search).get('run') || '';
+    fetch('/api/eval-v3/rules').then(function (r) { return r.ok ? r.json() : {}; }).then(function (d) { RULES = d.rules || d || {}; }).catch(function () {});
+    fetch('/api/eval-v3/runs?limit=120').then(function (r) { return r.json(); }).then(function (d) {
+      var runs = d.runs || [];
+      var sel = document.getElementById('runSel');
+      sel.innerHTML = runs.map(function (r) {
+        var s = r.v3 || {};
+        return '<option value="' + esc(r.runId) + '"' + (r.runId === want ? ' selected' : '') + '>' + esc(r.runId) + ' · ' + esc((r.startedAt || '').slice(0, 16)) + ' · ' + (s.n || s.total || '') + '건</option>';
+      }).join('');
+      if (!want && runs.length) want = runs[0].runId;
+      if (want) { sel.value = want; loadRun(want); }
+      sel.onchange = function () { state.grade = null; loadRun(sel.value); };
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('#axisSeg button'), function (b) {
+      b.onclick = function () {
+        Array.prototype.forEach.call(document.querySelectorAll('#axisSeg button'), function (x) { x.classList.remove('on'); });
+        b.classList.add('on'); state.axis = b.getAttribute('data-axis'); state.grade = null; render();
+      };
+    });
+    document.getElementById('qtypeSel').onchange = function (e) { state.qtype = e.target.value; render(); };
+    document.getElementById('intentSel').onchange = function (e) { state.intent = e.target.value; render(); };
+    document.getElementById('searchBox').oninput = function (e) { state.q = e.target.value; render(); };
+    document.getElementById('openAll').onchange = render;
+  }
+  init();
+})();
+</script>
+</body>
+</html>

@@ -2970,6 +2970,10 @@ class ProxyHandler(BaseHTTPRequestHandler):
             return self._v3_review_item(parse_qs(parsed.query))
         if path == '/api/eval-v3/labels':
             return self._v3_list_labels(parse_qs(parsed.query))
+        if path == '/api/eval-v3/rules':
+            # 등급별 질답 화면(/grades)이 미충족 항목 id 를 제목·설명으로 풀어 보여 주는 데 쓴다.
+            import gold_labels
+            return self._send_json(200, {'rules': gold_labels.rule_names()})
         if path == '/api/eval-v3/labels/export':
             if not self._require_admin():
                 return
@@ -3113,6 +3117,9 @@ class ProxyHandler(BaseHTTPRequestHandler):
             '/history.html': 'history.html',
             '/review': 'review.html',
             '/review.html': 'review.html',
+            # 등급별 질답 — 한 실행의 질문·답변을 등급(종합·PV·UV·법률)별로 묶어 보고 미충족 항목을 같이 본다
+            '/grades': 'grade_viewer.html',
+            '/grade_viewer.html': 'grade_viewer.html',
             # 공통 상단 메뉴 컴포넌트 (모든 화면이 불러 쓴다)
             '/app_nav.js': 'app_nav.js',
             '/criteria': 'criteria_manager.html',
@@ -3173,6 +3180,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
             '/history.html':           'view_history',
             '/review':                 'view_history',
             '/review.html':            'view_history',
+            '/grades':                 'view_history',
+            '/grade_viewer.html':      'view_history',
             '/criteria':               ['view_criteria', 'manage_criteria'],
             '/criteria_manager.html':  ['view_criteria', 'manage_criteria'],
             '/rlhf':                   'manage_rlhf',

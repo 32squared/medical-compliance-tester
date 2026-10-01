@@ -18,6 +18,7 @@
     { id: 'result', label: '결과', items: [
       { label: '테스트 이력', href: '/history', perm: 'view_history' },
       { label: '정답지 검토', href: '/review', perm: 'view_history' },
+      { label: '등급별 질답', href: '/grades', perm: 'view_history' },
       { label: '자문 판정', href: '/advisory', perm: 'admin' }
     ] },
     { id: 'eval', label: '평가', items: [
@@ -42,6 +43,7 @@
     '/eval_v3.html': '/history',
     '/eval-v3': '/history',
     '/review.html': '/review',
+    '/grade_viewer.html': '/grades',
     '/healthbench.html': '/healthbench',
     '/hb_about.html': '/healthbench',
     '/hb_scenario_detail.html': '/healthbench',

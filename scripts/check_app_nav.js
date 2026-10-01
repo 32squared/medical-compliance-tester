@@ -36,7 +36,7 @@ s = N._sectionFor('/arena', N._visibleMenus(admin));
 eq('admin /arena tabs', labels(s), ['단일 대화', 'A·B 비교']);
 eq('admin /arena segmented', s.segmented, true);
 s = N._sectionFor('/history', N._visibleMenus(admin));
-eq('admin /history tabs', labels(s), ['테스트 이력', '정답지 검토', '자문 판정']);
+eq('admin /history tabs', labels(s), ['테스트 이력', '정답지 검토', '등급별 질답', '자문 판정']);
 s = N._sectionFor('/external-eval', N._visibleMenus(admin));
 eq('admin /external-eval tabs', labels(s), ['문진 평가 기준', '외부 답변 평가']);
 s = N._sectionFor('/settings', N._visibleMenus(admin));
