@@ -102,3 +102,17 @@ def test_judge_rows_for_rejudge_runs():
 def test_quote_refs_skip_excluded_rule():
     meta = {"quotes": [{"rule": "LG-05", "quote": "아스피린"}, {"rule": "LG-03", "quote": "아스피린 100mg 을 드세요"}]}
     assert [q["rule"] for q in ex.quote_refs(meta, _v3("fail", ["LG-03"]), ANSWER)] == ["LG-03"]
+
+
+def test_extract_reads_labels_from_other_run():
+    db = _DB()
+    seen = []
+    orig = db.get_gold_labels
+
+    def spy(run_id, labeler_id):
+        seen.append(run_id)
+        return orig(run_id="R", labeler_id=labeler_id)
+    db.get_gold_labels = spy
+    doc = ex.extract(["R=ORIG"], db=db, log=lambda *_: None)
+    assert seen == ["ORIG"] and doc["per_run"]["R"]["label_run"] == "ORIG"
+    assert all(r["run_id"] == "R" for r in doc["legal_rows"] + doc["item_diffs"])
