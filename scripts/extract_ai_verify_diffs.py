@@ -14,6 +14,7 @@ AI 검수 라벨(gold_labels labeler ai:verifier)과 저장된 판정기 결과(
 subject·predicate·source 는 없고, 귀속 요지는 hits.evidence 의 attribution 행으로 대신한다.
 
     python scripts/extract_ai_verify_diffs.py --runs RUN1,RUN2 [--out gs://…/x.json | 파일] [--dry-run]
+    DIFF_RUNS 항목이 "재판정이력=원본이력" 이면 판정은 앞, AI 라벨은 뒤 이력에서 읽는다.
     python scripts/extract_ai_verify_diffs.py --judge-runs REJUDGE1,REJUDGE2 [--judge-ids A,B] [--out …]
     env: DIFF_RUNS EXTRACT_OUT JUDGE_RUNS JUDGE_IDS
 """
@@ -107,14 +108,16 @@ def extract(runs, *, db, log=print):
     item_rows, legal_rows = [], []
     item_n, item_dir = Counter(), {}
     per_run = {}
-    for rid in runs:
+    for spec in runs:
+        # "재판정이력=원본이력" 이면 판정은 재판정 이력에서, AI 라벨은 원본 이력에서 읽는다(REQ-0013 (1)).
+        rid, _, label_rid = spec.partition("=")
         run = db.get_test_run(rid)
         if not run:
             log(f"[extract] 이력 없음: {rid}")
             continue
         res = {r.get("scenarioId"): r for r in run.get("results") or [] if isinstance(r, dict)}
-        labels = db.get_gold_labels(run_id=rid, labeler_id=LABELER)
-        per_run[rid] = {"results": len(res), "ai_labels": len(labels)}
+        labels = db.get_gold_labels(run_id=label_rid or rid, labeler_id=LABELER)
+        per_run[rid] = {"results": len(res), "ai_labels": len(labels), "label_run": label_rid or rid}
         for lbl in labels:
             sid = lbl.get("scenarioId")
             r = res.get(sid) or {}
