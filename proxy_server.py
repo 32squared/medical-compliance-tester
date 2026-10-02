@@ -4133,6 +4133,7 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
         """GET /api/eval-v3/runs — 온톨로지(v3) 판정이 있는 실행 목록 + 실행별 집계.
 
         쿼리: ?limit=80(훑어볼 최근 실행 수, 최대 300) &since=YYYY-MM-DD(기본 2026-09-01, v3 배포 전 실행은 훑지 않는다)
+              &min_total=N(결과 N건 미만 실행은 건너뜀 — 단건 대화 실행에 배치 실행이 밀리지 않게, 메타만 보고 거른다)
         results_json 을 읽어 집계하므로 완료된 실행은 (id, status, total) 키로 메모리에 캐시한다.
         """
         from urllib.parse import urlparse, parse_qs
@@ -4143,6 +4144,10 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
             limit = 80
         limit = max(1, min(limit, 300))
         since = (qs.get('since') or ['2026-09-01'])[0]
+        try:
+            min_total = int((qs.get('min_total') or ['0'])[0])
+        except (TypeError, ValueError):
+            min_total = 0
         try:
             import eval_v3 as _ev
         except Exception as e:
@@ -4156,7 +4161,7 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
             if since and run_at and run_at[:10] < since:
                 continue
             rid = m.get('id')
-            if not rid:
+            if not rid or (min_total and (m.get('total') or 0) < min_total):
                 continue
             scanned += 1
             key = (rid, m.get('status'), m.get('total'), m.get('passed'), m.get('failed'))
