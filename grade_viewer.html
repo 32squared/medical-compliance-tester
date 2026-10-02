@@ -71,6 +71,7 @@
 <div class="wrap">
   <div class="bar">
     <select id="runSel"></select>
+    <input type="text" id="runBox" placeholder="실행 id 직접 입력 ↵" style="min-width:200px" title="목록에 없는 실행은 id 를 적고 Enter">
     <div class="seg" id="axisSeg">
       <button data-axis="final" class="on">종합</button>
       <button data-axis="pv">PV·SV 타당성</button>
@@ -196,7 +197,11 @@
   function loadRun(rid) {
     if (!rid) return;
     document.getElementById('runInfo').textContent = '불러오는 중…';
-    fetch('/api/history/' + encodeURIComponent(rid)).then(function (r) { return r.json(); }).then(function (d) {
+    document.getElementById('list').innerHTML = '';
+    fetch('/api/history/' + encodeURIComponent(rid)).then(function (r) {
+      if (!r.ok) throw new Error(r.status === 404 ? '이력이 없습니다: ' + rid : r.status === 403 ? '권한이 없습니다(view_history)' : 'HTTP ' + r.status);
+      return r.json();
+    }).then(function (d) {
       RUN = d; RESULTS = (d.results || []).filter(function (r) { return r && r.scenarioId; });
       var qts = {}, its = {};
       RESULTS.forEach(function (r) { var q = tag(r, 'qtype:') || r.subcategory || ''; if (q) qts[q] = 1; var i = (v3(r) || {}).uv_intent; if (i) its[i] = 1; });
@@ -207,22 +212,43 @@
         (ver.validity_grade_source === 'legacy' ? ' · PV* = v3.0 방식 등급(grade_legacy)' : '');
       history.replaceState(null, '', '?run=' + encodeURIComponent(rid));
       render();
-    }).catch(function (e) { document.getElementById('list').innerHTML = '<div class="empty">불러오기 실패: ' + esc(e.message) + '</div>'; });
+    }).catch(function (e) {
+      document.getElementById('runInfo').textContent = '';
+      document.getElementById('list').innerHTML = '<div class="empty">불러오기 실패: ' + esc(e.message) + '</div>';
+    });
   }
   function init() {
     var want = new URLSearchParams(location.search).get('run') || '';
     fetch('/api/eval-v3/rules').then(function (r) { return r.ok ? r.json() : {}; }).then(function (d) { RULES = d.rules || d || {}; }).catch(function () {});
-    fetch('/api/eval-v3/runs?limit=120').then(function (r) { return r.json(); }).then(function (d) {
-      var runs = d.runs || [];
-      var sel = document.getElementById('runSel');
-      sel.innerHTML = runs.map(function (r) {
-        var s = r.v3 || {};
-        return '<option value="' + esc(r.runId) + '"' + (r.runId === want ? ' selected' : '') + '>' + esc(r.runId) + ' · ' + esc((r.startedAt || '').slice(0, 16)) + ' · ' + (s.n || s.total || '') + '건</option>';
-      }).join('');
+    var sel = document.getElementById('runSel');
+    function option(r) {
+      var s = r.v3 || {}, n = s.n || s.total || '';
+      return '<option value="' + esc(r.runId) + '">' + esc(r.runId) + ' · ' + esc((r.startedAt || '').slice(0, 16)) + (n ? ' · ' + n + '건' : '') + '</option>';
+    }
+    // 단건 대화 실행이 많아 최근 N건만 훑으면 배치 실행이 목록에서 밀려난다 → 배치(10건 이상)는 min_total 로 따로 받아 앞에 둔다.
+    Promise.all([
+      fetch('/api/eval-v3/runs?limit=300&min_total=10').then(function (r) { return r.json(); }),
+      fetch('/api/eval-v3/runs?limit=60').then(function (r) { return r.json(); })
+    ]).then(function (ds) {
+      var big = ds[0].runs || [];
+      var small = (ds[1].runs || []).filter(function (r) { return !big.some(function (b) { return b.runId === r.runId; }); });
+      var runs = big.concat(small);
+      var html = (big.length ? '<optgroup label="배치 실행">' + big.map(option).join('') + '</optgroup>' : '') +
+        (small.length ? '<optgroup label="단건 실행">' + small.map(option).join('') + '</optgroup>' : '');
+      // ?run= 으로 온 실행이 목록 밖(오래된 실행)이어도 고를 수 있게 맨 앞에 넣는다.
+      if (want && !runs.some(function (r) { return r.runId === want; })) html = option({ runId: want }) + html;
+      sel.innerHTML = html;
+      if (!want && big.length) want = big[0].runId;
       if (!want && runs.length) want = runs[0].runId;
       if (want) { sel.value = want; loadRun(want); }
-      sel.onchange = function () { state.grade = null; loadRun(sel.value); };
-    });
+    }).catch(function () { if (want) { sel.innerHTML = option({ runId: want }); loadRun(want); } });
+    sel.onchange = function () { state.grade = null; loadRun(sel.value); };
+    document.getElementById('runBox').onkeydown = function (e) {
+      if (e.key !== 'Enter' || !e.target.value.trim()) return;
+      var rid = e.target.value.trim();
+      if (!Array.prototype.some.call(sel.options, function (o) { return o.value === rid; })) sel.insertAdjacentHTML('afterbegin', option({ runId: rid }));
+      sel.value = rid; state.grade = null; loadRun(rid);
+    };
     Array.prototype.forEach.call(document.querySelectorAll('#axisSeg button'), function (b) {
       b.onclick = function () {
         Array.prototype.forEach.call(document.querySelectorAll('#axisSeg button'), function (x) { x.classList.remove('on'); });
