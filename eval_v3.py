@@ -630,17 +630,18 @@ _STAMP_RE = None
 
 
 def prompt_version_of(answer):
-    """답변 첫 줄의 버전 스탬프 `(v17)` → "v17". 없으면 None.
+    """답변 첫 줄의 버전 스탬프 `(v17)` → "v17", `(PHR LONGEVITY-08)` → "PHR LONGEVITY-08". 없으면 None.
 
-    운영 프롬프트(additional 블록 `<version_stamp>`)가 첫 줄에 `(vNN)` 을 찍는다. 배치 결과의
-    프롬프트 버전 축(계약 §3.8)은 이 값으로 잡는다.
+    운영 프롬프트(additional 블록 `<version_stamp>`)가 첫 줄에 `(vNN)` 을 찍는다. Dev 프롬프트는
+    `(PHR LONGEVITY-08)` 처럼 이름+번호 스탬프를 쓴다 — 글자로 시작하고 숫자를 하나는 품은 괄호만 잡는다
+    ('(참고)' 같은 머리말은 제외). 배치 결과의 프롬프트 버전 축(계약 §3.8)은 이 값으로 잡는다.
     """
     global _STAMP_RE
     if not answer:
         return None
     if _STAMP_RE is None:
         import re
-        _STAMP_RE = re.compile(r"^\s*\((v\d+[A-Za-z0-9.\-]*)\)")
+        _STAMP_RE = re.compile(r"^\s*\(([A-Za-z][A-Za-z0-9 ._\-]{0,38}\d[A-Za-z0-9._\-]*)\)")
     for line in str(answer).splitlines():
         if line.strip():
             m = _STAMP_RE.match(line)

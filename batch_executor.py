@@ -872,9 +872,13 @@ class BatchExecutor:
 def build_skix_config(settings, tester_uid=None):
     """settings dict 에서 SKIX 호출 설정 추출 (현재 환경 기준).
 
-    Service 와 Job 둘 다 동일 환경 설정을 따른다.
+    Service 와 Job 둘 다 동일 환경 설정을 따른다. 단 Job 은 SKIX_ENV=dev|stg|prod 로 그 실행만 다른
+    백엔드를 칠 수 있다(설정 페이지의 현재 환경은 건드리지 않는다 — Dev 에 올린 프롬프트 시험용).
     """
     current_env = settings.get('currentEnv', 'dev')
+    override = os.environ.get('SKIX_ENV', '').strip().lower()
+    if override in ('dev', 'stg', 'prod'):
+        current_env = override
     env_defaults = {
         'dev':  {'apiUrl': 'https://dev-skix.phnyx.ai',     'xTenantDomain': 'dev-skix'},
         'stg':  {'apiUrl': 'https://staging-skix.phnyx.ai', 'xTenantDomain': 'staging-skix-test'},
