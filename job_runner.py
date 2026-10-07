@@ -299,7 +299,7 @@ def main():
 
     _job_log(
         f"[job] 시작 run_id={run_id} count={len(scenario_ids)} env={_state['env']} "
-        f"run_by={run_by} label={label!r}"
+        f"api_url={skix_cfg.get('api_url')} run_by={run_by} label={label!r}"
     )
 
     # 초기 running 상태 DB 저장 (사용자가 폴링 가능하도록)
