@@ -40,3 +40,10 @@ def test_skix_env_unknown_value_ignored(monkeypatch):
 ])
 def test_prompt_version_stamp(answer, want):
     assert eval_v3.prompt_version_of(answer) == want
+
+
+def test_job_passes_max_workers_from_env():
+    """MAX_WORKERS·INTER_SUBMIT_DELAY 가 run_batch 로 전달된다(소스 검사 — job_runner 는 DB 연결이 필요)."""
+    src = open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "job_runner.py"), encoding="utf-8").read()
+    assert "max_workers=int(os.environ.get('MAX_WORKERS', '0') or 0) or None" in src
+    assert "inter_submit_delay=float(os.environ.get('INTER_SUBMIT_DELAY', '0') or 0)" in src

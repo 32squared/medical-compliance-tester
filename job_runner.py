@@ -17,6 +17,8 @@ job_runner.py — Cloud Run Job 진입점.
   RUN_BY            : 실행자 alias
   LABEL             : 라벨 (선택)
   FLUSH_EVERY       : DB 점진 저장 간격 (기본 5 — 실시간 UI polling 위해)
+  MAX_WORKERS       : SKIX 동시 호출 수 (기본 20). Dev 처럼 작은 백엔드는 20 병렬에 503 을 내므로 낮춰 돌린다
+  INTER_SUBMIT_DELAY: 호출 사이 간격(초, 기본 0)
 """
 
 import json
@@ -299,7 +301,8 @@ def main():
 
     _job_log(
         f"[job] 시작 run_id={run_id} count={len(scenario_ids)} env={_state['env']} "
-        f"api_url={skix_cfg.get('api_url')} run_by={run_by} label={label!r}"
+        f"api_url={skix_cfg.get('api_url')} workers={os.environ.get('MAX_WORKERS') or 'default'} "
+        f"run_by={run_by} label={label!r}"
     )
 
     # 초기 running 상태 DB 저장 (사용자가 폴링 가능하도록)
@@ -367,6 +370,8 @@ def main():
             on_progress=on_progress,
             on_result=on_result,
             cancel_check=None,
+            max_workers=int(os.environ.get('MAX_WORKERS', '0') or 0) or None,
+            inter_submit_delay=float(os.environ.get('INTER_SUBMIT_DELAY', '0') or 0),
         )
         # 최종 flush
         _flush_to_db(status='completed')
