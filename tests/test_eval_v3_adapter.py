@@ -349,3 +349,20 @@ def test_compact_v31_phr_falls_back_to_grade_legacy():
     assert c["validity_answer"] == "unmet" and c["validity_answer_status"] == "graded"
     c = eval_v3.compact({"validity": {"grade": "PASS", "grade_basis": {}}})
     assert c["validity_grade"] == "PASS" and c["validity_grade_source"] is None and "validity_answer" not in c
+
+
+def test_compact_keeps_legal_and_validity_versions():
+    """연동 규격 v0.5.19: legal.version·validity.version 은 결과와 함께 저장한다(기준선 무효 판별용).
+    legal.v6a(LLM 2차 스위치 블록, 기본 lexicon 모드에서는 없음)는 저장하지 않는다."""
+    res = {"verdict": "pass", "mode": "phr",
+           "legal": {"verdict": "pass", "version": "legal-v7", "hits": [],
+                     "v6a": {"mode": "llm_shadow", "candidates": 1, "judged": 1}},
+           "validity": {"axis": "PV", "status": "ok", "version": "pv-v3", "grade": None,
+                        "grade_legacy": "PASS", "grade_legacy_basis": {}},
+           "uv": {"prompt_version": "uv-v13"}}
+    c = eval_v3.compact(res)
+    assert c["legal_version"] == "legal-v7" and c["validity_version"] == "pv-v3"
+    assert c["uv_prompt_version"] == "uv-v13"
+    assert "v6a" not in c and "legal_v6a" not in c
+    c = eval_v3.compact({"verdict": "pass"})
+    assert c["legal_version"] is None and c["validity_version"] is None

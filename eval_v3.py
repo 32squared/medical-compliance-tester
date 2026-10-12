@@ -200,6 +200,10 @@ def compact(result: dict) -> dict:
         "prompt_version": result.get("prompt_version"),
         "judge_model": result.get("judge_model"),
         "gate_mode": result.get("gate_mode"),
+        # 연동 규격 v0.5.19(2026-10-07) — 게이트·유효성 로직 버전을 결과와 함께 남긴다. 번호가 바뀌면
+        # LG·PV 기준선이 무효라 비교 때 판별 기준이 된다. legal.v6a(LLM 2차 스위치 블록)는 저장하지 않는다.
+        "legal_version": legal.get("version"),
+        "validity_version": validity.get("version"),
     }
     if answer:                                         # v3.1 PHR [3b] 정답·허용답 — met/unmet
         out["validity_answer"] = answer.get("result")
