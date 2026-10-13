@@ -99,6 +99,7 @@ jobs:
   #   test_rag_consultation_eval     — 호스트 rag_consultation_eval 프롬프트 빌더, 키/네트워크 불필요
   #   test_rag_legal_eval            — 호스트 rag_legal_eval 프롬프트 빌더, 키/네트워크 불필요
   #   test_rlhf_db                   — SQLite 임시파일 DB, DATABASE_URL='' 강제
+  #   test_orphan_running_cleanup    — init_db 고아 running 정리가 서비스 배치('batch-…')만 건드리는지, SQLite 임시파일
 #   test_eval_v3_adapter           — eval_v3 어댑터 + run_rag PHR 주입. 판정 모델 stub, 키 불필요
 #                                    (packages/medical_eval 미초기화 시 통째로 skip)
   #
@@ -143,6 +144,7 @@ jobs:
             tests/test_rag_consultation_eval.py \
             tests/test_rag_legal_eval.py \
             tests/test_rlhf_db.py \
+            tests/test_orphan_running_cleanup.py \
             tests/test_eval_v3_adapter.py \
             tests/test_share_eval_v3.py \
             -v --tb=short -q

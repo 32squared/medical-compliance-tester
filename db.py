@@ -931,6 +931,37 @@ SCHEMA = SCHEMA_SQLITE
 
 
 # ════════════════════════════════════════
+#  고아 running 배치 정리 (인스턴스 시작 시)
+# ════════════════════════════════════════
+#: 서비스 프로세스 안의 BatchExecutor 백그라운드 스레드가 만드는 배치 run_id 접두사
+#: (proxy_server._run_batch 의 `batch-YYYYmmdd-HHMMSS-xxxxxx`). 이 배치는 인스턴스가 죽으면
+#: 진짜 고아가 되므로 다음 인스턴스 시작 때 cancelled 로 정리한다.
+#: Cloud Run Job(job_runner.py) 배치는 UI 트리거면 'job-…', gcloud 로 직접 띄우면 임의 id 라
+#: 이 접두사가 없다. Job 은 서비스 인스턴스와 생명주기가 다르므로(오토스케일·새 리비전 배포 때
+#: 서비스만 재시작) 여기서 건드리면 안 된다 — 2026-10-13 run phr350-dev-l27-20261013T065350 이
+#: 돌고 있는데 '⏹ 중지됨' 으로 표시된 원인. test_runs 에 type 컬럼이 없어 id 접두사로 가른다.
+SERVICE_BATCH_ID_PREFIX = 'batch-'
+ORPHAN_RUNNING_CLEANUP_SQL = (
+    "UPDATE test_runs SET status = 'cancelled' "
+    f"WHERE status = 'running' AND id LIKE '{SERVICE_BATCH_ID_PREFIX}%'"
+)
+
+
+def _cancel_orphan_service_batches(cur):
+    """running 으로 남은 **서비스 스레드 배치**(id 가 SERVICE_BATCH_ID_PREFIX)만 cancelled 로.
+    PostgreSQL·SQLite 초기화 경로가 같은 SQL 을 쓴다. 바뀐 행 수를 돌려준다(모르면 -1)."""
+    cur.execute(ORPHAN_RUNNING_CLEANUP_SQL)
+    rc = getattr(cur, 'rowcount', -1)
+    return rc if rc is not None else -1
+
+
+def cancel_orphan_service_batches():
+    """init_db 밖에서(테스트·운영 점검) 같은 정리를 실행한다."""
+    with get_conn() as (conn, cur):
+        return _cancel_orphan_service_batches(cur)
+
+
+# ════════════════════════════════════════
 #  SQL 헬퍼 (_ph/_p/_upsert/_row_to_dict/_pg_json_loads(_or))
 #  → dbcommon 으로 이동(Phase 2). 상단에서 facade 재import 됨.
 # ════════════════════════════════════════
@@ -1167,9 +1198,9 @@ def init_db(db_path=None):
                     cur.execute(sql)
                 except Exception:
                     pass
-            # 고아 running 배치 정리
+            # 고아 running 배치 정리 — 서비스 스레드 배치('batch-…')만. Job 배치는 제외.
             try:
-                cur.execute("UPDATE test_runs SET status = 'cancelled' WHERE status = 'running'")
+                _cancel_orphan_service_batches(cur)
             except Exception:
                 pass
             # ── RAG Phase 1 마이그레이션 (001_rag_tables) ──
@@ -1520,9 +1551,9 @@ def init_db(db_path=None):
             )""")
         except sqlite3.OperationalError:
             pass
-        # 고아 running 배치 정리
+        # 고아 running 배치 정리 — 서비스 스레드 배치('batch-…')만. Job 배치는 제외.
         try:
-            conn.execute("UPDATE test_runs SET status = 'cancelled' WHERE status = 'running'")
+            _cancel_orphan_service_batches(conn)
         except sqlite3.OperationalError:
             pass
         # ── RAG Phase 1 마이그레이션 (SQLite 모킹) ──
