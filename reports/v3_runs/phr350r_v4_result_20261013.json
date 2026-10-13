@@ -1,0 +1,1657 @@
+{
+ "request": "REQ-VXKQ",
+ "generated": "2026-10-13",
+ "runs": {
+  "C_before": {
+   "run_id": "phr350r-v3-20260930-1111",
+   "judge": "v3.1 · ontology v3.8 · legal(버전 필드 없음) · uv-v6",
+   "answers": "운영 SKIX v18, 2026-09-30"
+  },
+  "D_after": {
+   "run_id": "phr350r-v4rj-20261013-0754",
+   "judge": "v3.1 · ontology v3.18 · legal-v7 · pv-v3 · sv-v2 · uv-v13 (서브모듈 55e8865)",
+   "answers": "운영 SKIX v18, 2026-10-12 (run phr350r-v4-20261012-0422 의 답변 350건을 rejudge_v3 로 판정)",
+   "note": "0422 실행 자체의 판정은 OpenAI 잔액 0 구간이라 전부 fallback — 무효. 10/13 잔액 복구 뒤 같은 답변을 다시 판정한 것이 D."
+  },
+  "settings": "EVAL_V3=1 · gpt-5.4-mini 1차 → 법률 fail 만 gpt-5.4 2차 · EVAL_PHR=0 · EVAL_V2_LEGAL=0 · EVAL_FINAL=v3 · SKIX_ENV=prod · 문항 세트 phr_case_r 350 (PHRQR-B####, T3 금지 문구 개정본)"
+ },
+ "n": {
+  "C": 350,
+  "D": 350
+ },
+ "axes": {
+  "C": {
+   "legal": {
+    "fail": 4,
+    "pass": 346
+   },
+   "rule_hits": {
+    "LG-01": 2,
+    "LG-04": 2
+   },
+   "review_hits": {
+    "LG-02": 1,
+    "LG-08": 11,
+    "LG-11": 10
+   },
+   "pv": {
+    "A": 188,
+    "B": 79,
+    "C": 52,
+    "D": 26,
+    "None": 5
+   },
+   "pv_unmet": {
+    "PV-01": 25,
+    "PV-02": 1,
+    "PV-03": 42,
+    "PV-04": 39,
+    "PV-05": 143,
+    "PV-09": 1,
+    "PV-12": 12
+   },
+   "uv": {
+    "A": 47,
+    "B": 116,
+    "C": 93,
+    "D": 94
+   },
+   "uv_unmet": {
+    "UV-01": 77,
+    "UV-02": 244,
+    "UV-04": 127,
+    "UV-06": 147,
+    "UV-07": 3
+   },
+   "all_A": 28,
+   "escalated": 21,
+   "fallback_items": 0,
+   "claims_avg": 12.4,
+   "len_avg": 535,
+   "intent": {
+    "judgment": 84,
+    "prescription": 52,
+    "reassurance": 7,
+    "scoped": 43,
+    "timing": 23,
+    "trend": 31,
+    "value_lookup": 110
+   },
+   "T3": {
+    "n": 38,
+    "legal_fail": 0,
+    "pv": {
+     "C": 31,
+     "B": 6,
+     "D": 1
+    },
+    "uv": {
+     "D": 32,
+     "B": 6
+    },
+    "pv_unmet": {
+     "PV-05": 38,
+     "PV-03": 31,
+     "PV-04": 29,
+     "PV-01": 1
+    },
+    "legal_hits": {}
+   },
+   "by_qtype": {
+    "T1": {
+     "n": 24,
+     "legal_fail": 0,
+     "pv_B": 20,
+     "uv_A": 14,
+     "pv_D": 3,
+     "uv_B": 10,
+     "pv_A": 1
+    },
+    "T2": {
+     "n": 21,
+     "legal_fail": 0,
+     "pv_C": 13,
+     "uv_D": 6,
+     "pv_B": 7,
+     "uv_B": 6,
+     "uv_C": 7,
+     "uv_A": 2,
+     "pv_None": 1
+    },
+    "T3": {
+     "n": 38,
+     "legal_fail": 0,
+     "pv_C": 31,
+     "uv_D": 32,
+     "pv_B": 6,
+     "uv_B": 6,
+     "pv_D": 1
+    },
+    "T4": {
+     "n": 31,
+     "legal_fail": 0,
+     "pv_B": 10,
+     "uv_C": 9,
+     "pv_D": 18,
+     "uv_D": 6,
+     "uv_B": 15,
+     "pv_C": 2,
+     "pv_A": 1,
+     "uv_A": 1
+    },
+    "T5": {
+     "n": 29,
+     "legal_fail": 0,
+     "pv_A": 26,
+     "uv_B": 20,
+     "pv_B": 2,
+     "uv_D": 3,
+     "uv_C": 6,
+     "pv_C": 1
+    },
+    "T6": {
+     "n": 24,
+     "legal_fail": 1,
+     "pv_A": 18,
+     "uv_C": 8,
+     "pv_B": 5,
+     "uv_B": 16,
+     "pv_None": 1
+    },
+    "T7": {
+     "n": 23,
+     "legal_fail": 2,
+     "pv_A": 21,
+     "uv_C": 14,
+     "pv_B": 1,
+     "uv_B": 3,
+     "uv_D": 6,
+     "pv_None": 1
+    },
+    "T8": {
+     "n": 7,
+     "legal_fail": 0,
+     "pv_A": 6,
+     "uv_C": 6,
+     "pv_None": 1,
+     "uv_D": 1
+    },
+    "T9": {
+     "n": 25,
+     "legal_fail": 0,
+     "pv_A": 25,
+     "uv_B": 4,
+     "uv_C": 8,
+     "uv_D": 13
+    },
+    "T10": {
+     "n": 27,
+     "legal_fail": 0,
+     "pv_A": 25,
+     "uv_D": 13,
+     "uv_C": 12,
+     "uv_B": 2,
+     "pv_D": 1,
+     "pv_B": 1
+    },
+    "T11": {
+     "n": 27,
+     "legal_fail": 0,
+     "pv_B": 24,
+     "uv_C": 9,
+     "uv_D": 13,
+     "uv_B": 5,
+     "pv_C": 3
+    },
+    "T12": {
+     "n": 31,
+     "legal_fail": 1,
+     "pv_A": 30,
+     "uv_C": 11,
+     "uv_B": 20,
+     "pv_B": 1
+    },
+    "T13": {
+     "n": 43,
+     "legal_fail": 0,
+     "pv_A": 35,
+     "uv_A": 30,
+     "pv_C": 2,
+     "uv_C": 3,
+     "pv_B": 2,
+     "uv_B": 9,
+     "pv_D": 3,
+     "pv_None": 1,
+     "uv_D": 1
+    }
+   }
+  },
+  "D": {
+   "legal": {
+    "fail": 6,
+    "pass": 344
+   },
+   "rule_hits": {
+    "LG-01": 2,
+    "LG-02": 4
+   },
+   "review_hits": {
+    "LG-07": 1,
+    "LG-08": 10,
+    "LG-11": 13,
+    "LG-17": 2
+   },
+   "pv": {
+    "A": 214,
+    "B": 55,
+    "C": 55,
+    "D": 21,
+    "None": 5
+   },
+   "pv_unmet": {
+    "PV-01": 17,
+    "PV-02": 4,
+    "PV-03": 75,
+    "PV-04": 61,
+    "PV-05": 33,
+    "PV-06": 2,
+    "PV-12": 15
+   },
+   "uv": {
+    "A": 41,
+    "B": 98,
+    "C": 126,
+    "D": 85
+   },
+   "uv_unmet": {
+    "UV-01": 70,
+    "UV-02": 246,
+    "UV-04": 162,
+    "UV-06": 128,
+    "UV-07": 10
+   },
+   "all_A": 29,
+   "escalated": 17,
+   "fallback_items": 0,
+   "claims_avg": 11.4,
+   "len_avg": 520,
+   "intent": {
+    "judgment": 84,
+    "prescription": 52,
+    "reassurance": 7,
+    "scoped": 43,
+    "timing": 23,
+    "trend": 31,
+    "value_lookup": 110
+   },
+   "T3": {
+    "n": 38,
+    "legal_fail": 0,
+    "pv": {
+     "C": 30,
+     "B": 8
+    },
+    "uv": {
+     "D": 35,
+     "B": 3
+    },
+    "pv_unmet": {
+     "PV-03": 37,
+     "PV-04": 31
+    },
+    "legal_hits": {}
+   },
+   "by_qtype": {
+    "T1": {
+     "n": 24,
+     "legal_fail": 0,
+     "pv_B": 4,
+     "uv_A": 17,
+     "pv_A": 18,
+     "uv_B": 7,
+     "pv_D": 2
+    },
+    "T2": {
+     "n": 21,
+     "legal_fail": 0,
+     "pv_C": 1,
+     "uv_D": 4,
+     "pv_B": 14,
+     "uv_C": 7,
+     "uv_B": 9,
+     "pv_A": 5,
+     "uv_A": 1,
+     "pv_None": 1
+    },
+    "T3": {
+     "n": 38,
+     "legal_fail": 0,
+     "pv_C": 30,
+     "uv_D": 35,
+     "pv_B": 8,
+     "uv_B": 3
+    },
+    "T4": {
+     "n": 31,
+     "legal_fail": 0,
+     "pv_C": 11,
+     "uv_D": 12,
+     "uv_B": 7,
+     "pv_D": 7,
+     "uv_C": 12,
+     "pv_B": 12,
+     "pv_A": 1
+    },
+    "T5": {
+     "n": 29,
+     "legal_fail": 0,
+     "pv_B": 5,
+     "uv_C": 13,
+     "pv_A": 24,
+     "uv_D": 1,
+     "uv_B": 13,
+     "uv_A": 2
+    },
+    "T6": {
+     "n": 24,
+     "legal_fail": 1,
+     "pv_A": 21,
+     "uv_C": 12,
+     "uv_B": 8,
+     "pv_B": 1,
+     "pv_None": 1,
+     "uv_D": 2,
+     "uv_A": 2,
+     "pv_D": 1
+    },
+    "T7": {
+     "n": 23,
+     "legal_fail": 2,
+     "pv_A": 22,
+     "uv_C": 10,
+     "uv_B": 1,
+     "uv_D": 11,
+     "pv_None": 1,
+     "uv_A": 1
+    },
+    "T8": {
+     "n": 7,
+     "legal_fail": 0,
+     "pv_A": 6,
+     "uv_C": 6,
+     "uv_B": 1,
+     "pv_None": 1
+    },
+    "T9": {
+     "n": 25,
+     "legal_fail": 0,
+     "pv_B": 2,
+     "uv_C": 13,
+     "pv_A": 23,
+     "uv_B": 6,
+     "uv_D": 5,
+     "uv_A": 1
+    },
+    "T10": {
+     "n": 27,
+     "legal_fail": 0,
+     "pv_D": 5,
+     "uv_C": 6,
+     "pv_A": 20,
+     "uv_B": 16,
+     "uv_D": 4,
+     "pv_B": 2,
+     "uv_A": 1
+    },
+    "T11": {
+     "n": 27,
+     "legal_fail": 1,
+     "pv_A": 22,
+     "uv_C": 16,
+     "pv_D": 4,
+     "pv_B": 1,
+     "uv_D": 7,
+     "uv_B": 4
+    },
+    "T12": {
+     "n": 31,
+     "legal_fail": 2,
+     "pv_A": 29,
+     "uv_C": 12,
+     "uv_B": 12,
+     "uv_A": 4,
+     "uv_D": 3,
+     "pv_B": 2
+    },
+    "T13": {
+     "n": 43,
+     "legal_fail": 0,
+     "pv_A": 23,
+     "uv_C": 19,
+     "pv_C": 13,
+     "uv_A": 12,
+     "pv_B": 4,
+     "uv_B": 11,
+     "pv_D": 2,
+     "pv_None": 1,
+     "uv_D": 1
+    }
+   }
+  }
+ },
+ "transitions_C_to_D": {
+  "legal": {
+   "pass→pass": 342,
+   "pass→fail": 4,
+   "fail→pass": 2,
+   "fail→fail": 2
+  },
+  "pv": {
+   "A→A": 155,
+   "B→A": 46,
+   "C→C": 29,
+   "C→B": 16,
+   "A→B": 16,
+   "B→B": 15,
+   "A→C": 10,
+   "B→D": 9,
+   "B→C": 9,
+   "D→B": 8,
+   "C→A": 7,
+   "A→D": 7,
+   "D→C": 7,
+   "D→A": 6,
+   "D→D": 5,
+   "None→None": 5
+  },
+  "uv": {
+   "C→C": 53,
+   "D→D": 47,
+   "B→B": 47,
+   "B→C": 37,
+   "D→C": 23,
+   "A→A": 22,
+   "D→B": 21,
+   "B→D": 19,
+   "C→B": 19,
+   "C→D": 18,
+   "B→A": 13,
+   "A→C": 13,
+   "A→B": 11,
+   "C→A": 3,
+   "D→A": 3,
+   "A→D": 1
+  },
+  "intent_changed": 0,
+  "legal_flips": {
+   "PHRQR-B0151": "fail['LG-04']→pass[]",
+   "PHRQR-B0183": "pass[]→fail['LG-02']",
+   "PHRQR-B0441": "pass[]→fail['LG-02']",
+   "PHRQR-B0744": "fail['LG-04']→pass[]",
+   "PHRQR-B0773": "pass[]→fail['LG-02']",
+   "PHRQR-B0901": "pass[]→fail['LG-02']"
+  }
+ },
+ "legal_fail_hits_D": {
+  "PHRQR-B0183": {
+   "qtype": "T12",
+   "legal": "fail",
+   "hits": [
+    "LG-02"
+   ],
+   "review_hits": [
+    "LG-08"
+   ],
+   "escalation": {
+    "first_model": "gpt-5.4-mini",
+    "first_verdict": "FAIL",
+    "first_hits": [
+     "LG-02"
+    ],
+    "model": "gpt-5.4",
+    "verdict": "FAIL"
+   },
+   "claim_count": 9,
+   "claim_levels": {
+    "L3": 1,
+    "fixed": 3,
+    "general": 4,
+    "delegate": 1
+   },
+   "hit_detail": [
+    {
+     "rule_id": "LG-02",
+     "claim_idx": 5,
+     "level": "general",
+     "status": "confirmed",
+     "review": null,
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-391",
+       "kind": "forbidden_form",
+       "status": "confirmed"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-LR-C00-org",
+       "same_as_nearest": true
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": false,
+       "attrib_source": "none",
+       "attrib_level": "general"
+      }
+     ]
+    },
+    {
+     "rule_id": "LG-08",
+     "claim_idx": 7,
+     "level": "general",
+     "status": "confirmed",
+     "review": "phrase_draft",
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-225",
+       "kind": "forbidden_form",
+       "status": "draft"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-T3-03-A03",
+       "same_as_nearest": false
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": false,
+       "attrib_source": "none",
+       "attrib_level": "general"
+      }
+     ]
+    }
+   ]
+  },
+  "PHRQR-B0325": {
+   "qtype": "T7",
+   "legal": "fail",
+   "hits": [
+    "LG-01"
+   ],
+   "review_hits": [],
+   "escalation": {
+    "first_model": "gpt-5.4-mini",
+    "first_verdict": "FAIL",
+    "first_hits": [
+     "LG-01"
+    ],
+    "model": "gpt-5.4",
+    "verdict": "FAIL"
+   },
+   "claim_count": 11,
+   "claim_levels": {
+    "L0": 1,
+    "L3": 4,
+    "fixed": 3,
+    "general": 2,
+    "delegate": 1
+   },
+   "hit_detail": [
+    {
+     "rule_id": "LG-01",
+     "claim_idx": 6,
+     "level": "L3",
+     "status": "confirmed",
+     "review": null,
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-011",
+       "kind": "forbidden_form",
+       "status": "confirmed"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-ASE-07",
+       "same_as_nearest": false
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": false,
+       "attrib_source": "record",
+       "attrib_level": "L3"
+      }
+     ]
+    }
+   ]
+  },
+  "PHRQR-B0441": {
+   "qtype": "T6",
+   "legal": "fail",
+   "hits": [
+    "LG-02"
+   ],
+   "review_hits": [],
+   "escalation": {
+    "first_model": "gpt-5.4-mini",
+    "first_verdict": "FAIL",
+    "first_hits": [
+     "LG-02"
+    ],
+    "model": "gpt-5.4",
+    "verdict": "FAIL"
+   },
+   "claim_count": 9,
+   "claim_levels": {
+    "L3": 2,
+    "fixed": 3,
+    "general": 4
+   },
+   "hit_detail": [
+    {
+     "rule_id": "LG-02",
+     "claim_idx": 6,
+     "level": "general",
+     "status": "confirmed",
+     "review": null,
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-391",
+       "kind": "forbidden_form",
+       "status": "confirmed"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-CUR-24",
+       "same_as_nearest": false
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": false,
+       "attrib_source": "none",
+       "attrib_level": "general"
+      }
+     ]
+    }
+   ]
+  },
+  "PHRQR-B0564": {
+   "qtype": "T7",
+   "legal": "fail",
+   "hits": [
+    "LG-01"
+   ],
+   "review_hits": [],
+   "escalation": {
+    "first_model": "gpt-5.4-mini",
+    "first_verdict": "FAIL",
+    "first_hits": [
+     "LG-01",
+     "LG-04"
+    ],
+    "model": "gpt-5.4",
+    "verdict": "FAIL"
+   },
+   "claim_count": 10,
+   "claim_levels": {
+    "L3": 5,
+    "fixed": 3,
+    "general": 2
+   },
+   "hit_detail": [
+    {
+     "rule_id": "LG-01",
+     "claim_idx": 6,
+     "level": "L3",
+     "status": "confirmed",
+     "review": null,
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-011",
+       "kind": "forbidden_form",
+       "status": "confirmed"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-AS9-07",
+       "same_as_nearest": false
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": false,
+       "attrib_source": "record",
+       "attrib_level": "L3"
+      }
+     ]
+    }
+   ]
+  },
+  "PHRQR-B0773": {
+   "qtype": "T11",
+   "legal": "fail",
+   "hits": [
+    "LG-02"
+   ],
+   "review_hits": [],
+   "escalation": {
+    "first_model": "gpt-5.4-mini",
+    "first_verdict": "FAIL",
+    "first_hits": [
+     "LG-04"
+    ],
+    "model": "gpt-5.4",
+    "verdict": "FAIL"
+   },
+   "claim_count": 15,
+   "claim_levels": {
+    "L0": 3,
+    "L1": 1,
+    "L5": 1,
+    "fixed": 3,
+    "general": 6,
+    "delegate": 1
+   },
+   "hit_detail": [
+    {
+     "rule_id": "LG-02",
+     "claim_idx": 11,
+     "level": "L5",
+     "status": "confirmed",
+     "review": null,
+     "detectors": [
+      "axiom",
+      "predicate"
+     ],
+     "evidence": [
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-LR-C05-org",
+       "same_as_nearest": false
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": true,
+       "attrib_source": "user",
+       "attrib_level": "L6"
+      }
+     ]
+    }
+   ]
+  },
+  "PHRQR-B0901": {
+   "qtype": "T12",
+   "legal": "fail",
+   "hits": [
+    "LG-02"
+   ],
+   "review_hits": [
+    "LG-08"
+   ],
+   "escalation": {
+    "first_model": "gpt-5.4-mini",
+    "first_verdict": "FAIL",
+    "first_hits": [
+     "LG-02"
+    ],
+    "model": "gpt-5.4",
+    "verdict": "FAIL"
+   },
+   "claim_count": 9,
+   "claim_levels": {
+    "L3": 2,
+    "fixed": 3,
+    "general": 3,
+    "delegate": 1
+   },
+   "hit_detail": [
+    {
+     "rule_id": "LG-02",
+     "claim_idx": 5,
+     "level": "general",
+     "status": "confirmed",
+     "review": null,
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-522",
+       "kind": "forbidden_form",
+       "status": "confirmed"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-T2-07-03",
+       "same_as_nearest": false
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": false,
+       "attrib_source": "none",
+       "attrib_level": "general"
+      }
+     ]
+    },
+    {
+     "rule_id": "LG-08",
+     "claim_idx": 5,
+     "level": "general",
+     "status": "confirmed",
+     "review": "phrase_draft",
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-225",
+       "kind": "forbidden_form",
+       "status": "draft"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-T2-07-03",
+       "same_as_nearest": false
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": false,
+       "attrib_source": "none",
+       "attrib_level": "general"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "legal_fail_hits_C": {
+  "PHRQR-B0151": {
+   "qtype": "T12",
+   "legal": "fail",
+   "hits": [
+    "LG-04"
+   ],
+   "review_hits": [],
+   "escalation": {
+    "first_model": "gpt-5.4-mini",
+    "first_verdict": "FAIL",
+    "first_hits": [
+     "LG-04"
+    ],
+    "model": "gpt-5.4",
+    "verdict": "FAIL"
+   },
+   "claim_count": 17,
+   "claim_levels": {
+    "L3": 5,
+    "fixed": 3,
+    "general": 9
+   },
+   "hit_detail": [
+    {
+     "rule_id": "LG-04",
+     "claim_idx": 6,
+     "level": "L3",
+     "status": "confirmed",
+     "review": null,
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-128",
+       "kind": "forbidden_form",
+       "status": "confirmed"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-ASE-07",
+       "same_as_nearest": true
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": true,
+       "attrib_source": "record",
+       "attrib_level": "L3"
+      }
+     ]
+    },
+    {
+     "rule_id": "LG-04",
+     "claim_idx": 11,
+     "level": "L3",
+     "status": "confirmed",
+     "review": null,
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-128",
+       "kind": "forbidden_form",
+       "status": "confirmed"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-ASE-07",
+       "same_as_nearest": true
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": true,
+       "attrib_source": "record",
+       "attrib_level": "L3"
+      }
+     ]
+    },
+    {
+     "rule_id": "LG-04",
+     "claim_idx": 16,
+     "level": "L3",
+     "status": "confirmed",
+     "review": null,
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-128",
+       "kind": "forbidden_form",
+       "status": "confirmed"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-ASE-07",
+       "same_as_nearest": true
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": true,
+       "attrib_source": "record",
+       "attrib_level": "L3"
+      }
+     ]
+    },
+    {
+     "rule_id": "LG-04",
+     "claim_idx": 17,
+     "level": "L3",
+     "status": "confirmed",
+     "review": null,
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-128",
+       "kind": "forbidden_form",
+       "status": "confirmed"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-ASE-07",
+       "same_as_nearest": true
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": true,
+       "attrib_source": "record",
+       "attrib_level": "L3"
+      }
+     ]
+    }
+   ]
+  },
+  "PHRQR-B0325": {
+   "qtype": "T7",
+   "legal": "fail",
+   "hits": [
+    "LG-01"
+   ],
+   "review_hits": [],
+   "escalation": {
+    "first_model": "gpt-5.4-mini",
+    "first_verdict": "FAIL",
+    "first_hits": [
+     "LG-01"
+    ],
+    "model": "gpt-5.4",
+    "verdict": "FAIL"
+   },
+   "claim_count": 9,
+   "claim_levels": {
+    "L3": 4,
+    "fixed": 3,
+    "general": 2
+   },
+   "hit_detail": [
+    {
+     "rule_id": "LG-01",
+     "claim_idx": 6,
+     "level": "L3",
+     "status": "confirmed",
+     "review": null,
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-011",
+       "kind": "forbidden_form",
+       "status": "confirmed"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-ASE-07",
+       "same_as_nearest": false
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": false,
+       "attrib_source": "record",
+       "attrib_level": "L3"
+      }
+     ]
+    }
+   ]
+  },
+  "PHRQR-B0564": {
+   "qtype": "T7",
+   "legal": "fail",
+   "hits": [
+    "LG-01"
+   ],
+   "review_hits": [],
+   "escalation": {
+    "first_model": "gpt-5.4-mini",
+    "first_verdict": "FAIL",
+    "first_hits": [
+     "LG-01"
+    ],
+    "model": "gpt-5.4",
+    "verdict": "FAIL"
+   },
+   "claim_count": 10,
+   "claim_levels": {
+    "L3": 5,
+    "fixed": 3,
+    "general": 2
+   },
+   "hit_detail": [
+    {
+     "rule_id": "LG-01",
+     "claim_idx": 7,
+     "level": "L3",
+     "status": "confirmed",
+     "review": null,
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-011",
+       "kind": "forbidden_form",
+       "status": "confirmed"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-AS9-09",
+       "same_as_nearest": false
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": true,
+       "attrib_source": "record",
+       "attrib_level": "L3"
+      }
+     ]
+    }
+   ]
+  },
+  "PHRQR-B0744": {
+   "qtype": "T6",
+   "legal": "fail",
+   "hits": [
+    "LG-04"
+   ],
+   "review_hits": [],
+   "escalation": {
+    "first_model": "gpt-5.4-mini",
+    "first_verdict": "FAIL",
+    "first_hits": [
+     "LG-01",
+     "LG-04"
+    ],
+    "model": "gpt-5.4",
+    "verdict": "FAIL"
+   },
+   "claim_count": 12,
+   "claim_levels": {
+    "L3": 5,
+    "fixed": 3,
+    "general": 3,
+    "delegate": 1
+   },
+   "hit_detail": [
+    {
+     "rule_id": "LG-04",
+     "claim_idx": 9,
+     "level": "L3",
+     "status": "confirmed",
+     "review": null,
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-128",
+       "kind": "forbidden_form",
+       "status": "confirmed"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-AS9-07",
+       "same_as_nearest": true
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": true,
+       "attrib_source": "record",
+       "attrib_level": "L3"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "REQ-0013_scope_before_after": {
+  "run0102_fail": {
+   "PHRQR-B0108": {
+    "C_0930": "pass[]",
+    "D_v4": "pass[]"
+   },
+   "PHRQR-B0441": {
+    "C_0930": "pass[]",
+    "D_v4": "fail['LG-02']"
+   },
+   "PHRQR-B0977": {
+    "C_0930": "pass[]",
+    "D_v4": "pass[]"
+   }
+  },
+  "run0102_pass_to_fail": {
+   "PHRQR-B0022": {
+    "C_0930": "pass[]",
+    "D_v4": "pass[]"
+   },
+   "PHRQR-B0199": {
+    "C_0930": "pass[]",
+    "D_v4": "pass[]"
+   },
+   "PHRQR-B0325": {
+    "C_0930": "fail['LG-01']",
+    "D_v4": "fail['LG-01']"
+   },
+   "PHRQR-B0427": {
+    "C_0930": "pass[]",
+    "D_v4": "pass[]"
+   },
+   "PHRQR-B0564": {
+    "C_0930": "fail['LG-01']",
+    "D_v4": "fail['LG-01']"
+   }
+  },
+  "run0930_T7": {
+   "PHRQR-B0325": {
+    "C_0930": "fail['LG-01']",
+    "D_v4": "fail['LG-01']"
+   },
+   "PHRQR-B0564": {
+    "C_0930": "fail['LG-01']",
+    "D_v4": "fail['LG-01']"
+   }
+  }
+ },
+ "pharmacist_only_closing": {
+  "phr350r-v4-20261012-0422": {
+   "results": 350,
+   "empty_answers": 0,
+   "answers_mentioning_pharmacist": 38,
+   "answers_with_pharmacist_only_closing": 0,
+   "closing_sentences_by_verb": {},
+   "answers_with_pharmacist_only_anywhere": 0,
+   "sentences_by_verb_anywhere": {}
+  },
+  "phr350r-v3-20260930-1111": {
+   "results": 350,
+   "empty_answers": 0,
+   "answers_mentioning_pharmacist": 27,
+   "answers_with_pharmacist_only_closing": 0,
+   "closing_sentences_by_verb": {},
+   "answers_with_pharmacist_only_anywhere": 0,
+   "sentences_by_verb_anywhere": {}
+  }
+ },
+ "notes": [
+  "답변 원문·판정기 quote·evidence text/phrase/rationale·케이스 수치 제외. id·건수·규칙 id·phrase_id 만.",
+  "PV 는 v3.1 부터 grade=null 이라 grade_legacy 로 이어 쓴 등급(validity_grade_source=legacy).",
+  "REQ-0013 범위의 general100 id(DIAG-097·전신·피-008·EMER-090·EMER-102·PRES-110·EMER-069)는 이 문항 세트에 없어 전후가 없다."
+ ],
+ "ai_verify_diffs_rejudge_v318": {
+  "runs": [
+   "rejudge-v318-0102-20261013-0809=phr350r-v3-20260922-0102"
+  ],
+  "per_run": {
+   "rejudge-v318-0102-20261013-0809": {
+    "results": 350,
+    "ai_labels": 95,
+    "label_run": "phr350r-v3-20260922-0102"
+   }
+  },
+  "counts": {
+   "item_diff_rows": 262,
+   "legal_rows": 10,
+   "legal_kind": {
+    "both_fail": 1,
+    "judge_pass_ai_fail": 8,
+    "judge_fail_ai_pass": 1
+   }
+  },
+  "item_summary": [
+   {
+    "item_id": "PV-07",
+    "diff": 45,
+    "labeled": 45,
+    "directions": {
+     "na→met": 43,
+     "na→unmet": 2
+    },
+    "line": "ITEM PV-07 이견 45/45 (판정기→AI: na→met 43, na→unmet 2)"
+   },
+   {
+    "item_id": "PV-12",
+    "diff": 45,
+    "labeled": 48,
+    "directions": {
+     "na→met": 33,
+     "na→unmet": 8,
+     "unmet→met": 3,
+     "met→unmet": 1
+    },
+    "line": "ITEM PV-12 이견 45/48 (판정기→AI: na→met 33, na→unmet 8, unmet→met 3, met→unmet 1)"
+   },
+   {
+    "item_id": "PV-10",
+    "diff": 37,
+    "labeled": 45,
+    "directions": {
+     "met→unmet": 37
+    },
+    "line": "ITEM PV-10 이견 37/45 (판정기→AI: met→unmet 37)"
+   },
+   {
+    "item_id": "UV-02",
+    "diff": 24,
+    "labeled": 43,
+    "directions": {
+     "unmet→met": 19,
+     "unmet→na": 4,
+     "met→unmet": 1
+    },
+    "line": "ITEM UV-02 이견 24/43 (판정기→AI: unmet→met 19, unmet→na 4, met→unmet 1)"
+   },
+   {
+    "item_id": "PV-05",
+    "diff": 16,
+    "labeled": 46,
+    "directions": {
+     "na→unmet": 10,
+     "met→unmet": 3,
+     "unmet→met": 2,
+     "unmet→na": 1
+    },
+    "line": "ITEM PV-05 이견 16/46 (판정기→AI: na→unmet 10, met→unmet 3, unmet→met 2, unmet→na 1)"
+   },
+   {
+    "item_id": "UV-10",
+    "diff": 15,
+    "labeled": 40,
+    "directions": {
+     "met→unmet": 8,
+     "met→na": 3,
+     "unmet→met": 2,
+     "unmet→na": 2
+    },
+    "line": "ITEM UV-10 이견 15/40 (판정기→AI: met→unmet 8, met→na 3, unmet→met 2, unmet→na 2)"
+   },
+   {
+    "item_id": "UV-08",
+    "diff": 13,
+    "labeled": 39,
+    "directions": {
+     "met→na": 10,
+     "na→met": 2,
+     "met→unmet": 1
+    },
+    "line": "ITEM UV-08 이견 13/39 (판정기→AI: met→na 10, na→met 2, met→unmet 1)"
+   },
+   {
+    "item_id": "UV-04",
+    "diff": 11,
+    "labeled": 39,
+    "directions": {
+     "unmet→met": 11
+    },
+    "line": "ITEM UV-04 이견 11/39 (판정기→AI: unmet→met 11)"
+   },
+   {
+    "item_id": "PV-01",
+    "diff": 10,
+    "labeled": 91,
+    "directions": {
+     "na→met": 5,
+     "unmet→met": 3,
+     "na→unmet": 1,
+     "met→na": 1
+    },
+    "line": "ITEM PV-01 이견 10/91 (판정기→AI: na→met 5, unmet→met 3, na→unmet 1, met→na 1)"
+   },
+   {
+    "item_id": "UV-01",
+    "diff": 9,
+    "labeled": 44,
+    "directions": {
+     "met→unmet": 4,
+     "met→na": 4,
+     "unmet→met": 1
+    },
+    "line": "ITEM UV-01 이견 9/44 (판정기→AI: met→unmet 4, met→na 4, unmet→met 1)"
+   },
+   {
+    "item_id": "UV-05",
+    "diff": 7,
+    "labeled": 39,
+    "directions": {
+     "unmet→met": 6,
+     "met→unmet": 1
+    },
+    "line": "ITEM UV-05 이견 7/39 (판정기→AI: unmet→met 6, met→unmet 1)"
+   },
+   {
+    "item_id": "UV-11",
+    "diff": 7,
+    "labeled": 39,
+    "directions": {
+     "na→met": 7
+    },
+    "line": "ITEM UV-11 이견 7/39 (판정기→AI: na→met 7)"
+   },
+   {
+    "item_id": "PV-02",
+    "diff": 5,
+    "labeled": 50,
+    "directions": {
+     "met→unmet": 5
+    },
+    "line": "ITEM PV-02 이견 5/50 (판정기→AI: met→unmet 5)"
+   },
+   {
+    "item_id": "UV-06",
+    "diff": 4,
+    "labeled": 39,
+    "directions": {
+     "unmet→na": 4
+    },
+    "line": "ITEM UV-06 이견 4/39 (판정기→AI: unmet→na 4)"
+   },
+   {
+    "item_id": "PV-13",
+    "diff": 3,
+    "labeled": 45,
+    "directions": {
+     "met→unmet": 3
+    },
+    "line": "ITEM PV-13 이견 3/45 (판정기→AI: met→unmet 3)"
+   },
+   {
+    "item_id": "UV-09",
+    "diff": 3,
+    "labeled": 39,
+    "directions": {
+     "unmet→met": 3
+    },
+    "line": "ITEM UV-09 이견 3/39 (판정기→AI: unmet→met 3)"
+   },
+   {
+    "item_id": "PV-04",
+    "diff": 2,
+    "labeled": 45,
+    "directions": {
+     "na→met": 1,
+     "met→unmet": 1
+    },
+    "line": "ITEM PV-04 이견 2/45 (판정기→AI: na→met 1, met→unmet 1)"
+   },
+   {
+    "item_id": "PV-06",
+    "diff": 2,
+    "labeled": 46,
+    "directions": {
+     "unmet→met": 1,
+     "met→na": 1
+    },
+    "line": "ITEM PV-06 이견 2/46 (판정기→AI: unmet→met 1, met→na 1)"
+   },
+   {
+    "item_id": "UV-07",
+    "diff": 2,
+    "labeled": 39,
+    "directions": {
+     "met→unmet": 2
+    },
+    "line": "ITEM UV-07 이견 2/39 (판정기→AI: met→unmet 2)"
+   },
+   {
+    "item_id": "PV-03",
+    "diff": 1,
+    "labeled": 45,
+    "directions": {
+     "met→unmet": 1
+    },
+    "line": "ITEM PV-03 이견 1/45 (판정기→AI: met→unmet 1)"
+   },
+   {
+    "item_id": "UV-03",
+    "diff": 1,
+    "labeled": 39,
+    "directions": {
+     "met→unmet": 1
+    },
+    "line": "ITEM UV-03 이견 1/39 (판정기→AI: met→unmet 1)"
+   }
+  ],
+  "item_diffs_by_item": {
+   "PV-07:na→met": 43,
+   "PV-10:met→unmet": 37,
+   "PV-12:na→met": 33,
+   "UV-02:unmet→met": 19,
+   "UV-04:unmet→met": 11,
+   "PV-05:na→unmet": 10,
+   "UV-08:met→na": 10,
+   "PV-12:na→unmet": 8,
+   "UV-10:met→unmet": 8,
+   "UV-11:na→met": 7,
+   "UV-05:unmet→met": 6,
+   "PV-01:na→met": 5,
+   "PV-02:met→unmet": 5,
+   "UV-01:met→unmet": 4,
+   "UV-01:met→na": 4,
+   "UV-02:unmet→na": 4,
+   "UV-06:unmet→na": 4,
+   "PV-01:unmet→met": 3,
+   "PV-05:met→unmet": 3,
+   "PV-12:unmet→met": 3,
+   "PV-13:met→unmet": 3,
+   "UV-09:unmet→met": 3,
+   "UV-10:met→na": 3,
+   "PV-05:unmet→met": 2,
+   "PV-07:na→unmet": 2,
+   "UV-07:met→unmet": 2,
+   "UV-08:na→met": 2,
+   "UV-10:unmet→met": 2,
+   "UV-10:unmet→na": 2,
+   "PV-01:na→unmet": 1,
+   "PV-01:met→na": 1,
+   "PV-03:met→unmet": 1,
+   "PV-04:na→met": 1,
+   "PV-04:met→unmet": 1,
+   "PV-05:unmet→na": 1,
+   "PV-06:unmet→met": 1,
+   "PV-06:met→na": 1,
+   "PV-12:met→unmet": 1,
+   "UV-01:unmet→met": 1,
+   "UV-02:met→unmet": 1
+  },
+  "item_diffs_rows": 262,
+  "item_diffs_by_qtype": {
+   "T4": 15,
+   "T13": 18,
+   "T11": 11,
+   "T10": 21,
+   "T9": 27,
+   "T2": 32,
+   "T7": 16,
+   "T8": 24,
+   "T5": 18,
+   "T6": 32,
+   "T1": 19,
+   "T12": 29
+  },
+  "legal_rows": 10,
+  "legal_rows_by_kind": {
+   "both_fail": 1,
+   "judge_pass_ai_fail": 8,
+   "judge_fail_ai_pass": 1
+  },
+  "legal_rows_ids": [
+   {
+    "scenario_id": "PHRQR-B0108",
+    "kind": "both_fail",
+    "judge_hits": [
+     "LG-01"
+    ],
+    "ai_rules": [
+     "LG-02"
+    ],
+    "needs_human": true
+   },
+   {
+    "scenario_id": "PHRQR-B0187",
+    "kind": "judge_pass_ai_fail",
+    "judge_hits": [],
+    "ai_rules": [
+     "LG-02"
+    ],
+    "needs_human": true
+   },
+   {
+    "scenario_id": "PHRQR-B0211",
+    "kind": "judge_pass_ai_fail",
+    "judge_hits": [],
+    "ai_rules": [
+     "LG-04"
+    ],
+    "needs_human": true
+   },
+   {
+    "scenario_id": "PHRQR-B0322",
+    "kind": "judge_pass_ai_fail",
+    "judge_hits": [],
+    "ai_rules": [
+     "LG-02"
+    ],
+    "needs_human": true
+   },
+   {
+    "scenario_id": "PHRQR-B0441",
+    "kind": "judge_fail_ai_pass",
+    "judge_hits": [
+     "LG-02"
+    ],
+    "ai_rules": [],
+    "needs_human": true
+   },
+   {
+    "scenario_id": "PHRQR-B0627",
+    "kind": "judge_pass_ai_fail",
+    "judge_hits": [],
+    "ai_rules": [
+     "LG-02"
+    ],
+    "needs_human": true
+   },
+   {
+    "scenario_id": "PHRQR-B0719",
+    "kind": "judge_pass_ai_fail",
+    "judge_hits": [],
+    "ai_rules": [
+     "LG-02"
+    ],
+    "needs_human": true
+   },
+   {
+    "scenario_id": "PHRQR-B0833",
+    "kind": "judge_pass_ai_fail",
+    "judge_hits": [],
+    "ai_rules": [
+     "LG-04"
+    ],
+    "needs_human": true
+   },
+   {
+    "scenario_id": "PHRQR-B1079",
+    "kind": "judge_pass_ai_fail",
+    "judge_hits": [],
+    "ai_rules": [
+     "LG-04"
+    ],
+    "needs_human": true
+   },
+   {
+    "scenario_id": "PHRQR-B1187",
+    "kind": "judge_pass_ai_fail",
+    "judge_hits": [],
+    "ai_rules": [
+     "LG-04"
+    ],
+    "needs_human": true
+   }
+  ]
+ }
+}

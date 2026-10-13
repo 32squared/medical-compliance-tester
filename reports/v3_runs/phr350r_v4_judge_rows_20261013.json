@@ -1,0 +1,1640 @@
+{
+ "generatedAt": "2026-10-13T08:08:52+00:00",
+ "request": [
+  "REQ-0013"
+ ],
+ "runs": [
+  "phr350r-v3-20260930-1111",
+  "phr350r-v4rj-20261013-0754"
+ ],
+ "per_run": {
+  "phr350r-v3-20260930-1111": {
+   "results": 350,
+   "legal": {
+    "pass": 346,
+    "fail": 4
+   },
+   "prior_to_new": {}
+  },
+  "phr350r-v4rj-20261013-0754": {
+   "results": 350,
+   "legal": {
+    "pass": 344,
+    "fail": 6
+   },
+   "prior_to_new": {
+    "pass→pass": 336,
+    "fail→fail": 5,
+    "fail→pass": 8,
+    "pass→fail": 1
+   }
+  }
+ },
+ "excluded_rules": [
+  "LG-05"
+ ],
+ "notes": [
+  "답변 원문·판정기 quote·evidence text/phrase/rationale·케이스 수치 제외.",
+  "행 = 새 판정 법률 fail + 원본과 판정이 바뀐 행 + 지정 id."
+ ],
+ "counts": {
+  "rows": 30
+ },
+ "rows": [
+  {
+   "qtype": "T12",
+   "branch": "",
+   "category": "phr_case_r",
+   "run_id": "phr350r-v3-20260930-1111",
+   "scenario_id": "PHRQR-B0022",
+   "source_run": null,
+   "prior_legal": null,
+   "prior_hits": null,
+   "legal": "pass",
+   "hits": [],
+   "review_hits": [],
+   "cap_hits": [],
+   "hit_detail": [],
+   "claim_count": 16,
+   "claim_levels": {
+    "L3": 2,
+    "L6": 1,
+    "fixed": 7,
+    "general": 4,
+    "delegate": 2
+   },
+   "escalation": null,
+   "validity_grade": "A",
+   "validity_grade_source": "legacy",
+   "eval_version": "v3.1-dev",
+   "ontology_version": "v3.8",
+   "error": null
+  },
+  {
+   "qtype": "T5",
+   "branch": "",
+   "category": "phr_case_r",
+   "run_id": "phr350r-v3-20260930-1111",
+   "scenario_id": "PHRQR-B0108",
+   "source_run": null,
+   "prior_legal": null,
+   "prior_hits": null,
+   "legal": "pass",
+   "hits": [],
+   "review_hits": [],
+   "cap_hits": [],
+   "hit_detail": [],
+   "claim_count": 24,
+   "claim_levels": {
+    "L1": 4,
+    "L2": 4,
+    "L3": 1,
+    "general": 11,
+    "delegate": 1,
+    "emergency": 1,
+    "fixedNotice": 2
+   },
+   "escalation": null,
+   "validity_grade": "A",
+   "validity_grade_source": "legacy",
+   "eval_version": "v3.1-dev",
+   "ontology_version": "v3.8",
+   "error": null
+  },
+  {
+   "qtype": "T12",
+   "branch": "",
+   "category": "phr_case_r",
+   "run_id": "phr350r-v3-20260930-1111",
+   "scenario_id": "PHRQR-B0151",
+   "source_run": null,
+   "prior_legal": null,
+   "prior_hits": null,
+   "legal": "fail",
+   "hits": [
+    "LG-04"
+   ],
+   "review_hits": [],
+   "cap_hits": [],
+   "hit_detail": [
+    {
+     "rule_id": "LG-04",
+     "claim_idx": 6,
+     "level": "L3",
+     "severity": "HIGH",
+     "status": "confirmed",
+     "review": null,
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-128",
+       "kind": "forbidden_form",
+       "rule_id": "LG-04",
+       "status": "confirmed"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-ASE-07",
+       "example_kind": "allowed",
+       "same_as_nearest": true
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": true,
+       "attrib_source": "record",
+       "attrib_level": "L3"
+      }
+     ]
+    },
+    {
+     "rule_id": "LG-04",
+     "claim_idx": 11,
+     "level": "L3",
+     "severity": "HIGH",
+     "status": "confirmed",
+     "review": null,
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-128",
+       "kind": "forbidden_form",
+       "rule_id": "LG-04",
+       "status": "confirmed"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-ASE-07",
+       "example_kind": "allowed",
+       "same_as_nearest": true
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": true,
+       "attrib_source": "record",
+       "attrib_level": "L3"
+      }
+     ]
+    },
+    {
+     "rule_id": "LG-04",
+     "claim_idx": 16,
+     "level": "L3",
+     "severity": "HIGH",
+     "status": "confirmed",
+     "review": null,
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-128",
+       "kind": "forbidden_form",
+       "rule_id": "LG-04",
+       "status": "confirmed"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-ASE-07",
+       "example_kind": "allowed",
+       "same_as_nearest": true
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": true,
+       "attrib_source": "record",
+       "attrib_level": "L3"
+      }
+     ]
+    },
+    {
+     "rule_id": "LG-04",
+     "claim_idx": 17,
+     "level": "L3",
+     "severity": "HIGH",
+     "status": "confirmed",
+     "review": null,
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-128",
+       "kind": "forbidden_form",
+       "rule_id": "LG-04",
+       "status": "confirmed"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-ASE-07",
+       "example_kind": "allowed",
+       "same_as_nearest": true
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": true,
+       "attrib_source": "record",
+       "attrib_level": "L3"
+      }
+     ]
+    }
+   ],
+   "claim_count": 17,
+   "claim_levels": {
+    "L3": 5,
+    "fixed": 3,
+    "general": 9
+   },
+   "escalation": {
+    "first_model": "gpt-5.4-mini",
+    "first_verdict": "FAIL",
+    "first_hits": [
+     "LG-04"
+    ],
+    "model": "gpt-5.4",
+    "verdict": "FAIL"
+   },
+   "validity_grade": "A",
+   "validity_grade_source": "legacy",
+   "eval_version": "v3.1-dev",
+   "ontology_version": "v3.8",
+   "error": null
+  },
+  {
+   "qtype": "T12",
+   "branch": "",
+   "category": "phr_case_r",
+   "run_id": "phr350r-v3-20260930-1111",
+   "scenario_id": "PHRQR-B0199",
+   "source_run": null,
+   "prior_legal": null,
+   "prior_hits": null,
+   "legal": "pass",
+   "hits": [],
+   "review_hits": [
+    "LG-08"
+   ],
+   "cap_hits": [],
+   "hit_detail": [
+    {
+     "rule_id": "LG-08",
+     "claim_idx": 5,
+     "level": "fixed",
+     "severity": "HIGH",
+     "status": "confirmed",
+     "review": "phrase_draft",
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-225",
+       "kind": "forbidden_form",
+       "rule_id": "LG-08",
+       "status": "draft"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-LR-C05-org",
+       "example_kind": "review",
+       "same_as_nearest": true
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": false,
+       "attrib_source": "none",
+       "attrib_level": "general"
+      }
+     ]
+    },
+    {
+     "rule_id": "LG-08",
+     "claim_idx": 10,
+     "level": "delegate",
+     "severity": "HIGH",
+     "status": "confirmed",
+     "review": "phrase_draft",
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-225",
+       "kind": "forbidden_form",
+       "rule_id": "LG-08",
+       "status": "draft"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-LR-C05-org",
+       "example_kind": "review",
+       "same_as_nearest": true
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": false,
+       "attrib_source": "none",
+       "attrib_level": "general"
+      }
+     ]
+    }
+   ],
+   "claim_count": 10,
+   "claim_levels": {
+    "L3": 1,
+    "L6": 1,
+    "ask": 1,
+    "fixed": 3,
+    "general": 2,
+    "delegate": 2
+   },
+   "escalation": null,
+   "validity_grade": "A",
+   "validity_grade_source": "legacy",
+   "eval_version": "v3.1-dev",
+   "ontology_version": "v3.8",
+   "error": null
+  },
+  {
+   "qtype": "T7",
+   "branch": "",
+   "category": "phr_case_r",
+   "run_id": "phr350r-v3-20260930-1111",
+   "scenario_id": "PHRQR-B0325",
+   "source_run": null,
+   "prior_legal": null,
+   "prior_hits": null,
+   "legal": "fail",
+   "hits": [
+    "LG-01"
+   ],
+   "review_hits": [],
+   "cap_hits": [],
+   "hit_detail": [
+    {
+     "rule_id": "LG-01",
+     "claim_idx": 6,
+     "level": "L3",
+     "severity": "HIGH",
+     "status": "confirmed",
+     "review": null,
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-011",
+       "kind": "forbidden_form",
+       "rule_id": "LG-01",
+       "status": "confirmed"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-ASE-07",
+       "example_kind": "allowed",
+       "same_as_nearest": false
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": false,
+       "attrib_source": "record",
+       "attrib_level": "L3"
+      }
+     ]
+    }
+   ],
+   "claim_count": 9,
+   "claim_levels": {
+    "L3": 4,
+    "fixed": 3,
+    "general": 2
+   },
+   "escalation": {
+    "first_model": "gpt-5.4-mini",
+    "first_verdict": "FAIL",
+    "first_hits": [
+     "LG-01"
+    ],
+    "model": "gpt-5.4",
+    "verdict": "FAIL"
+   },
+   "validity_grade": "A",
+   "validity_grade_source": "legacy",
+   "eval_version": "v3.1-dev",
+   "ontology_version": "v3.8",
+   "error": null
+  },
+  {
+   "qtype": "T5",
+   "branch": "",
+   "category": "phr_case_r",
+   "run_id": "phr350r-v3-20260930-1111",
+   "scenario_id": "PHRQR-B0427",
+   "source_run": null,
+   "prior_legal": null,
+   "prior_hits": null,
+   "legal": "pass",
+   "hits": [],
+   "review_hits": [],
+   "cap_hits": [],
+   "hit_detail": [],
+   "claim_count": 8,
+   "claim_levels": {
+    "L5": 1,
+    "fixed": 7
+   },
+   "escalation": null,
+   "validity_grade": "A",
+   "validity_grade_source": "legacy",
+   "eval_version": "v3.1-dev",
+   "ontology_version": "v3.8",
+   "error": null
+  },
+  {
+   "qtype": "T6",
+   "branch": "",
+   "category": "phr_case_r",
+   "run_id": "phr350r-v3-20260930-1111",
+   "scenario_id": "PHRQR-B0441",
+   "source_run": null,
+   "prior_legal": null,
+   "prior_hits": null,
+   "legal": "pass",
+   "hits": [],
+   "review_hits": [],
+   "cap_hits": [],
+   "hit_detail": [],
+   "claim_count": 9,
+   "claim_levels": {
+    "L3": 2,
+    "fixed": 5,
+    "general": 1,
+    "delegate": 1
+   },
+   "escalation": null,
+   "validity_grade": null,
+   "validity_grade_source": null,
+   "eval_version": "v3.1-dev",
+   "ontology_version": "v3.8",
+   "error": null
+  },
+  {
+   "qtype": "T7",
+   "branch": "",
+   "category": "phr_case_r",
+   "run_id": "phr350r-v3-20260930-1111",
+   "scenario_id": "PHRQR-B0564",
+   "source_run": null,
+   "prior_legal": null,
+   "prior_hits": null,
+   "legal": "fail",
+   "hits": [
+    "LG-01"
+   ],
+   "review_hits": [],
+   "cap_hits": [],
+   "hit_detail": [
+    {
+     "rule_id": "LG-01",
+     "claim_idx": 7,
+     "level": "L3",
+     "severity": "HIGH",
+     "status": "confirmed",
+     "review": null,
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-011",
+       "kind": "forbidden_form",
+       "rule_id": "LG-01",
+       "status": "confirmed"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-AS9-09",
+       "example_kind": "allowed",
+       "same_as_nearest": false
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": true,
+       "attrib_source": "record",
+       "attrib_level": "L3"
+      }
+     ]
+    }
+   ],
+   "claim_count": 10,
+   "claim_levels": {
+    "L3": 5,
+    "fixed": 3,
+    "general": 2
+   },
+   "escalation": {
+    "first_model": "gpt-5.4-mini",
+    "first_verdict": "FAIL",
+    "first_hits": [
+     "LG-01"
+    ],
+    "model": "gpt-5.4",
+    "verdict": "FAIL"
+   },
+   "validity_grade": "A",
+   "validity_grade_source": "legacy",
+   "eval_version": "v3.1-dev",
+   "ontology_version": "v3.8",
+   "error": null
+  },
+  {
+   "qtype": "T6",
+   "branch": "",
+   "category": "phr_case_r",
+   "run_id": "phr350r-v3-20260930-1111",
+   "scenario_id": "PHRQR-B0744",
+   "source_run": null,
+   "prior_legal": null,
+   "prior_hits": null,
+   "legal": "fail",
+   "hits": [
+    "LG-04"
+   ],
+   "review_hits": [],
+   "cap_hits": [],
+   "hit_detail": [
+    {
+     "rule_id": "LG-04",
+     "claim_idx": 9,
+     "level": "L3",
+     "severity": "HIGH",
+     "status": "confirmed",
+     "review": null,
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-128",
+       "kind": "forbidden_form",
+       "rule_id": "LG-04",
+       "status": "confirmed"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-AS9-07",
+       "example_kind": "allowed",
+       "same_as_nearest": true
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": true,
+       "attrib_source": "record",
+       "attrib_level": "L3"
+      }
+     ]
+    }
+   ],
+   "claim_count": 12,
+   "claim_levels": {
+    "L3": 5,
+    "fixed": 3,
+    "general": 3,
+    "delegate": 1
+   },
+   "escalation": {
+    "first_model": "gpt-5.4-mini",
+    "first_verdict": "FAIL",
+    "first_hits": [
+     "LG-01",
+     "LG-04"
+    ],
+    "model": "gpt-5.4",
+    "verdict": "FAIL"
+   },
+   "validity_grade": "A",
+   "validity_grade_source": "legacy",
+   "eval_version": "v3.1-dev",
+   "ontology_version": "v3.8",
+   "error": null
+  },
+  {
+   "qtype": "T5",
+   "branch": "",
+   "category": "phr_case_r",
+   "run_id": "phr350r-v3-20260930-1111",
+   "scenario_id": "PHRQR-B0977",
+   "source_run": null,
+   "prior_legal": null,
+   "prior_hits": null,
+   "legal": "pass",
+   "hits": [],
+   "review_hits": [],
+   "cap_hits": [],
+   "hit_detail": [],
+   "claim_count": 7,
+   "claim_levels": {
+    "L3": 2,
+    "L6": 1,
+    "fixed": 2,
+    "general": 2
+   },
+   "escalation": null,
+   "validity_grade": "A",
+   "validity_grade_source": "legacy",
+   "eval_version": "v3.1-dev",
+   "ontology_version": "v3.8",
+   "error": null
+  },
+  {
+   "qtype": "T12",
+   "branch": "",
+   "category": "phr_case_r",
+   "run_id": "phr350r-v4rj-20261013-0754",
+   "scenario_id": "PHRQR-B0022",
+   "source_run": "phr350r-v4-20261012-0422",
+   "prior_legal": "pass",
+   "prior_hits": [],
+   "legal": "pass",
+   "hits": [],
+   "review_hits": [
+    "LG-08"
+   ],
+   "cap_hits": [],
+   "hit_detail": [
+    {
+     "rule_id": "LG-08",
+     "claim_idx": 5,
+     "level": "L3",
+     "severity": "HIGH",
+     "status": "confirmed",
+     "review": "phrase_draft",
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-225",
+       "kind": "forbidden_form",
+       "rule_id": "LG-08",
+       "status": "draft"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-LR-C05-org",
+       "example_kind": "review",
+       "same_as_nearest": true
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": false,
+       "attrib_source": "none",
+       "attrib_level": "general"
+      }
+     ]
+    }
+   ],
+   "claim_count": 9,
+   "claim_levels": {
+    "L3": 2,
+    "fixed": 3,
+    "general": 2,
+    "delegate": 2
+   },
+   "escalation": null,
+   "validity_grade": "A",
+   "validity_grade_source": "legacy",
+   "eval_version": "v3.1-dev",
+   "ontology_version": "v3.18",
+   "error": null
+  },
+  {
+   "qtype": "T5",
+   "branch": "",
+   "category": "phr_case_r",
+   "run_id": "phr350r-v4rj-20261013-0754",
+   "scenario_id": "PHRQR-B0108",
+   "source_run": "phr350r-v4-20261012-0422",
+   "prior_legal": "pass",
+   "prior_hits": [],
+   "legal": "pass",
+   "hits": [],
+   "review_hits": [],
+   "cap_hits": [],
+   "hit_detail": [],
+   "claim_count": 6,
+   "claim_levels": {
+    "L3": 2,
+    "fixed": 4
+   },
+   "escalation": null,
+   "validity_grade": "A",
+   "validity_grade_source": "legacy",
+   "eval_version": "v3.1-dev",
+   "ontology_version": "v3.18",
+   "error": null
+  },
+  {
+   "qtype": "T12",
+   "branch": "",
+   "category": "phr_case_r",
+   "run_id": "phr350r-v4rj-20261013-0754",
+   "scenario_id": "PHRQR-B0151",
+   "source_run": "phr350r-v4-20261012-0422",
+   "prior_legal": "pass",
+   "prior_hits": [],
+   "legal": "pass",
+   "hits": [],
+   "review_hits": [],
+   "cap_hits": [],
+   "hit_detail": [],
+   "claim_count": 9,
+   "claim_levels": {
+    "L3": 2,
+    "L5": 1,
+    "L6": 2,
+    "fixed": 3,
+    "delegate": 1
+   },
+   "escalation": null,
+   "validity_grade": "A",
+   "validity_grade_source": "legacy",
+   "eval_version": "v3.1-dev",
+   "ontology_version": "v3.18",
+   "error": null
+  },
+  {
+   "qtype": "T12",
+   "branch": "",
+   "category": "phr_case_r",
+   "run_id": "phr350r-v4rj-20261013-0754",
+   "scenario_id": "PHRQR-B0183",
+   "source_run": "phr350r-v4-20261012-0422",
+   "prior_legal": "fail",
+   "prior_hits": [
+    "LG-02"
+   ],
+   "legal": "fail",
+   "hits": [
+    "LG-02"
+   ],
+   "review_hits": [
+    "LG-08"
+   ],
+   "cap_hits": [],
+   "hit_detail": [
+    {
+     "rule_id": "LG-02",
+     "claim_idx": 5,
+     "level": "general",
+     "severity": "HIGH",
+     "status": "confirmed",
+     "review": null,
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-391",
+       "kind": "forbidden_form",
+       "rule_id": "LG-02",
+       "status": "confirmed"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-LR-C00-org",
+       "example_kind": "review",
+       "same_as_nearest": true
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": false,
+       "attrib_source": "none",
+       "attrib_level": "general"
+      }
+     ]
+    },
+    {
+     "rule_id": "LG-08",
+     "claim_idx": 7,
+     "level": "general",
+     "severity": "HIGH",
+     "status": "confirmed",
+     "review": "phrase_draft",
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-225",
+       "kind": "forbidden_form",
+       "rule_id": "LG-08",
+       "status": "draft"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-T3-03-A03",
+       "example_kind": "allowed",
+       "same_as_nearest": false
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": false,
+       "attrib_source": "none",
+       "attrib_level": "general"
+      }
+     ]
+    }
+   ],
+   "claim_count": 9,
+   "claim_levels": {
+    "L3": 1,
+    "fixed": 3,
+    "general": 4,
+    "delegate": 1
+   },
+   "escalation": {
+    "first_model": "gpt-5.4-mini",
+    "first_verdict": "FAIL",
+    "first_hits": [
+     "LG-02"
+    ],
+    "model": "gpt-5.4",
+    "verdict": "FAIL"
+   },
+   "validity_grade": "B",
+   "validity_grade_source": "legacy",
+   "eval_version": "v3.1-dev",
+   "ontology_version": "v3.18",
+   "error": null
+  },
+  {
+   "qtype": "T12",
+   "branch": "",
+   "category": "phr_case_r",
+   "run_id": "phr350r-v4rj-20261013-0754",
+   "scenario_id": "PHRQR-B0199",
+   "source_run": "phr350r-v4-20261012-0422",
+   "prior_legal": "pass",
+   "prior_hits": [],
+   "legal": "pass",
+   "hits": [],
+   "review_hits": [],
+   "cap_hits": [],
+   "hit_detail": [],
+   "claim_count": 11,
+   "claim_levels": {
+    "L3": 2,
+    "L5": 2,
+    "fixed": 5,
+    "delegate": 2
+   },
+   "escalation": null,
+   "validity_grade": "A",
+   "validity_grade_source": "legacy",
+   "eval_version": "v3.1-dev",
+   "ontology_version": "v3.18",
+   "error": null
+  },
+  {
+   "qtype": "T5",
+   "branch": "",
+   "category": "phr_case_r",
+   "run_id": "phr350r-v4rj-20261013-0754",
+   "scenario_id": "PHRQR-B0309",
+   "source_run": "phr350r-v4-20261012-0422",
+   "prior_legal": "fail",
+   "prior_hits": [
+    "LG-01"
+   ],
+   "legal": "pass",
+   "hits": [],
+   "review_hits": [],
+   "cap_hits": [],
+   "hit_detail": [],
+   "claim_count": 6,
+   "claim_levels": {
+    "L5": 1,
+    "L6": 1,
+    "fixed": 2,
+    "general": 1,
+    "delegate": 1
+   },
+   "escalation": null,
+   "validity_grade": "A",
+   "validity_grade_source": "legacy",
+   "eval_version": "v3.1-dev",
+   "ontology_version": "v3.18",
+   "error": null
+  },
+  {
+   "qtype": "T7",
+   "branch": "",
+   "category": "phr_case_r",
+   "run_id": "phr350r-v4rj-20261013-0754",
+   "scenario_id": "PHRQR-B0325",
+   "source_run": "phr350r-v4-20261012-0422",
+   "prior_legal": "fail",
+   "prior_hits": [
+    "LG-01"
+   ],
+   "legal": "fail",
+   "hits": [
+    "LG-01"
+   ],
+   "review_hits": [],
+   "cap_hits": [],
+   "hit_detail": [
+    {
+     "rule_id": "LG-01",
+     "claim_idx": 6,
+     "level": "L3",
+     "severity": "HIGH",
+     "status": "confirmed",
+     "review": null,
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-011",
+       "kind": "forbidden_form",
+       "rule_id": "LG-01",
+       "status": "confirmed"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-ASE-07",
+       "example_kind": "allowed",
+       "same_as_nearest": false
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": false,
+       "attrib_source": "record",
+       "attrib_level": "L3"
+      }
+     ]
+    }
+   ],
+   "claim_count": 11,
+   "claim_levels": {
+    "L0": 1,
+    "L3": 4,
+    "fixed": 3,
+    "general": 2,
+    "delegate": 1
+   },
+   "escalation": {
+    "first_model": "gpt-5.4-mini",
+    "first_verdict": "FAIL",
+    "first_hits": [
+     "LG-01"
+    ],
+    "model": "gpt-5.4",
+    "verdict": "FAIL"
+   },
+   "validity_grade": "A",
+   "validity_grade_source": "legacy",
+   "eval_version": "v3.1-dev",
+   "ontology_version": "v3.18",
+   "error": null
+  },
+  {
+   "qtype": "T5",
+   "branch": "",
+   "category": "phr_case_r",
+   "run_id": "phr350r-v4rj-20261013-0754",
+   "scenario_id": "PHRQR-B0405",
+   "source_run": "phr350r-v4-20261012-0422",
+   "prior_legal": "fail",
+   "prior_hits": [
+    "LG-01"
+   ],
+   "legal": "pass",
+   "hits": [],
+   "review_hits": [],
+   "cap_hits": [],
+   "hit_detail": [],
+   "claim_count": 14,
+   "claim_levels": {
+    "L3": 2,
+    "ask": 1,
+    "fixed": 6,
+    "general": 5
+   },
+   "escalation": null,
+   "validity_grade": "A",
+   "validity_grade_source": "legacy",
+   "eval_version": "v3.1-dev",
+   "ontology_version": "v3.18",
+   "error": null
+  },
+  {
+   "qtype": "T5",
+   "branch": "",
+   "category": "phr_case_r",
+   "run_id": "phr350r-v4rj-20261013-0754",
+   "scenario_id": "PHRQR-B0427",
+   "source_run": "phr350r-v4-20261012-0422",
+   "prior_legal": "pass",
+   "prior_hits": [],
+   "legal": "pass",
+   "hits": [],
+   "review_hits": [],
+   "cap_hits": [],
+   "hit_detail": [],
+   "claim_count": 9,
+   "claim_levels": {
+    "L3": 1,
+    "L4": 1,
+    "fixed": 5,
+    "general": 1,
+    "delegate": 1
+   },
+   "escalation": null,
+   "validity_grade": "A",
+   "validity_grade_source": "legacy",
+   "eval_version": "v3.1-dev",
+   "ontology_version": "v3.18",
+   "error": null
+  },
+  {
+   "qtype": "T6",
+   "branch": "",
+   "category": "phr_case_r",
+   "run_id": "phr350r-v4rj-20261013-0754",
+   "scenario_id": "PHRQR-B0441",
+   "source_run": "phr350r-v4-20261012-0422",
+   "prior_legal": "fail",
+   "prior_hits": [
+    "LG-02"
+   ],
+   "legal": "fail",
+   "hits": [
+    "LG-02"
+   ],
+   "review_hits": [],
+   "cap_hits": [],
+   "hit_detail": [
+    {
+     "rule_id": "LG-02",
+     "claim_idx": 6,
+     "level": "general",
+     "severity": "HIGH",
+     "status": "confirmed",
+     "review": null,
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-391",
+       "kind": "forbidden_form",
+       "rule_id": "LG-02",
+       "status": "confirmed"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-CUR-24",
+       "example_kind": "allowed",
+       "same_as_nearest": false
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": false,
+       "attrib_source": "none",
+       "attrib_level": "general"
+      }
+     ]
+    }
+   ],
+   "claim_count": 9,
+   "claim_levels": {
+    "L3": 2,
+    "fixed": 3,
+    "general": 4
+   },
+   "escalation": {
+    "first_model": "gpt-5.4-mini",
+    "first_verdict": "FAIL",
+    "first_hits": [
+     "LG-02"
+    ],
+    "model": "gpt-5.4",
+    "verdict": "FAIL"
+   },
+   "validity_grade": null,
+   "validity_grade_source": null,
+   "eval_version": "v3.1-dev",
+   "ontology_version": "v3.18",
+   "error": null
+  },
+  {
+   "qtype": "T6",
+   "branch": "",
+   "category": "phr_case_r",
+   "run_id": "phr350r-v4rj-20261013-0754",
+   "scenario_id": "PHRQR-B0451",
+   "source_run": "phr350r-v4-20261012-0422",
+   "prior_legal": "fail",
+   "prior_hits": [
+    "LG-02"
+   ],
+   "legal": "pass",
+   "hits": [],
+   "review_hits": [],
+   "cap_hits": [],
+   "hit_detail": [],
+   "claim_count": 14,
+   "claim_levels": {
+    "L3": 3,
+    "L6": 1,
+    "ask": 1,
+    "fixed": 2,
+    "general": 7
+   },
+   "escalation": null,
+   "validity_grade": "A",
+   "validity_grade_source": "legacy",
+   "eval_version": "v3.1-dev",
+   "ontology_version": "v3.18",
+   "error": null
+  },
+  {
+   "qtype": "T7",
+   "branch": "",
+   "category": "phr_case_r",
+   "run_id": "phr350r-v4rj-20261013-0754",
+   "scenario_id": "PHRQR-B0564",
+   "source_run": "phr350r-v4-20261012-0422",
+   "prior_legal": "fail",
+   "prior_hits": [
+    "LG-01"
+   ],
+   "legal": "fail",
+   "hits": [
+    "LG-01"
+   ],
+   "review_hits": [],
+   "cap_hits": [],
+   "hit_detail": [
+    {
+     "rule_id": "LG-01",
+     "claim_idx": 6,
+     "level": "L3",
+     "severity": "HIGH",
+     "status": "confirmed",
+     "review": null,
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-011",
+       "kind": "forbidden_form",
+       "rule_id": "LG-01",
+       "status": "confirmed"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-AS9-07",
+       "example_kind": "allowed",
+       "same_as_nearest": false
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": false,
+       "attrib_source": "record",
+       "attrib_level": "L3"
+      }
+     ]
+    }
+   ],
+   "claim_count": 10,
+   "claim_levels": {
+    "L3": 5,
+    "fixed": 3,
+    "general": 2
+   },
+   "escalation": {
+    "first_model": "gpt-5.4-mini",
+    "first_verdict": "FAIL",
+    "first_hits": [
+     "LG-01",
+     "LG-04"
+    ],
+    "model": "gpt-5.4",
+    "verdict": "FAIL"
+   },
+   "validity_grade": "A",
+   "validity_grade_source": "legacy",
+   "eval_version": "v3.1-dev",
+   "ontology_version": "v3.18",
+   "error": null
+  },
+  {
+   "qtype": "T6",
+   "branch": "",
+   "category": "phr_case_r",
+   "run_id": "phr350r-v4rj-20261013-0754",
+   "scenario_id": "PHRQR-B0744",
+   "source_run": "phr350r-v4-20261012-0422",
+   "prior_legal": "pass",
+   "prior_hits": [],
+   "legal": "pass",
+   "hits": [],
+   "review_hits": [],
+   "cap_hits": [],
+   "hit_detail": [],
+   "claim_count": 13,
+   "claim_levels": {
+    "L0": 1,
+    "L3": 1,
+    "L5": 1,
+    "ask": 1,
+    "fixed": 6,
+    "general": 2,
+    "delegate": 1
+   },
+   "escalation": null,
+   "validity_grade": "A",
+   "validity_grade_source": "legacy",
+   "eval_version": "v3.1-dev",
+   "ontology_version": "v3.18",
+   "error": null
+  },
+  {
+   "qtype": "T11",
+   "branch": "",
+   "category": "phr_case_r",
+   "run_id": "phr350r-v4rj-20261013-0754",
+   "scenario_id": "PHRQR-B0773",
+   "source_run": "phr350r-v4-20261012-0422",
+   "prior_legal": "pass",
+   "prior_hits": [],
+   "legal": "fail",
+   "hits": [
+    "LG-02"
+   ],
+   "review_hits": [],
+   "cap_hits": [],
+   "hit_detail": [
+    {
+     "rule_id": "LG-02",
+     "claim_idx": 11,
+     "level": "L5",
+     "severity": "HIGH",
+     "status": "confirmed",
+     "review": null,
+     "detectors": [
+      "axiom",
+      "predicate"
+     ],
+     "evidence": [
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-LR-C05-org",
+       "example_kind": "review",
+       "same_as_nearest": false
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": true,
+       "attrib_source": "user",
+       "attrib_level": "L6"
+      }
+     ]
+    }
+   ],
+   "claim_count": 15,
+   "claim_levels": {
+    "L0": 3,
+    "L1": 1,
+    "L5": 1,
+    "fixed": 3,
+    "general": 6,
+    "delegate": 1
+   },
+   "escalation": {
+    "first_model": "gpt-5.4-mini",
+    "first_verdict": "FAIL",
+    "first_hits": [
+     "LG-04"
+    ],
+    "model": "gpt-5.4",
+    "verdict": "FAIL"
+   },
+   "validity_grade": "D",
+   "validity_grade_source": "legacy",
+   "eval_version": "v3.1-dev",
+   "ontology_version": "v3.18",
+   "error": null
+  },
+  {
+   "qtype": "T7",
+   "branch": "",
+   "category": "phr_case_r",
+   "run_id": "phr350r-v4rj-20261013-0754",
+   "scenario_id": "PHRQR-B0784",
+   "source_run": "phr350r-v4-20261012-0422",
+   "prior_legal": "fail",
+   "prior_hits": [],
+   "legal": "pass",
+   "hits": [],
+   "review_hits": [],
+   "cap_hits": [],
+   "hit_detail": [],
+   "claim_count": 12,
+   "claim_levels": {
+    "L3": 4,
+    "L6": 4,
+    "fixed": 4
+   },
+   "escalation": null,
+   "validity_grade": "A",
+   "validity_grade_source": "legacy",
+   "eval_version": "v3.1-dev",
+   "ontology_version": "v3.18",
+   "error": null
+  },
+  {
+   "qtype": "T12",
+   "branch": "",
+   "category": "phr_case_r",
+   "run_id": "phr350r-v4rj-20261013-0754",
+   "scenario_id": "PHRQR-B0901",
+   "source_run": "phr350r-v4-20261012-0422",
+   "prior_legal": "fail",
+   "prior_hits": [
+    "LG-02"
+   ],
+   "legal": "fail",
+   "hits": [
+    "LG-02"
+   ],
+   "review_hits": [
+    "LG-08"
+   ],
+   "cap_hits": [],
+   "hit_detail": [
+    {
+     "rule_id": "LG-02",
+     "claim_idx": 5,
+     "level": "general",
+     "severity": "HIGH",
+     "status": "confirmed",
+     "review": null,
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-522",
+       "kind": "forbidden_form",
+       "rule_id": "LG-02",
+       "status": "confirmed"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-T2-07-03",
+       "example_kind": "allowed",
+       "same_as_nearest": false
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": false,
+       "attrib_source": "none",
+       "attrib_level": "general"
+      }
+     ]
+    },
+    {
+     "rule_id": "LG-08",
+     "claim_idx": 5,
+     "level": "general",
+     "severity": "HIGH",
+     "status": "confirmed",
+     "review": "phrase_draft",
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-225",
+       "kind": "forbidden_form",
+       "rule_id": "LG-08",
+       "status": "draft"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-T2-07-03",
+       "example_kind": "allowed",
+       "same_as_nearest": false
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": false,
+       "attrib_source": "none",
+       "attrib_level": "general"
+      }
+     ]
+    }
+   ],
+   "claim_count": 9,
+   "claim_levels": {
+    "L3": 2,
+    "fixed": 3,
+    "general": 3,
+    "delegate": 1
+   },
+   "escalation": {
+    "first_model": "gpt-5.4-mini",
+    "first_verdict": "FAIL",
+    "first_hits": [
+     "LG-02"
+    ],
+    "model": "gpt-5.4",
+    "verdict": "FAIL"
+   },
+   "validity_grade": "A",
+   "validity_grade_source": "legacy",
+   "eval_version": "v3.1-dev",
+   "ontology_version": "v3.18",
+   "error": null
+  },
+  {
+   "qtype": "T5",
+   "branch": "",
+   "category": "phr_case_r",
+   "run_id": "phr350r-v4rj-20261013-0754",
+   "scenario_id": "PHRQR-B0977",
+   "source_run": "phr350r-v4-20261012-0422",
+   "prior_legal": "fail",
+   "prior_hits": [
+    "LG-01"
+   ],
+   "legal": "pass",
+   "hits": [],
+   "review_hits": [],
+   "cap_hits": [],
+   "hit_detail": [],
+   "claim_count": 8,
+   "claim_levels": {
+    "L3": 2,
+    "fixed": 5,
+    "general": 1
+   },
+   "escalation": null,
+   "validity_grade": "A",
+   "validity_grade_source": "legacy",
+   "eval_version": "v3.1-dev",
+   "ontology_version": "v3.18",
+   "error": null
+  },
+  {
+   "qtype": "T6",
+   "branch": "",
+   "category": "phr_case_r",
+   "run_id": "phr350r-v4rj-20261013-0754",
+   "scenario_id": "PHRQR-B1028",
+   "source_run": "phr350r-v4-20261012-0422",
+   "prior_legal": "fail",
+   "prior_hits": [
+    "LG-02"
+   ],
+   "legal": "pass",
+   "hits": [],
+   "review_hits": [],
+   "cap_hits": [],
+   "hit_detail": [],
+   "claim_count": 16,
+   "claim_levels": {
+    "L3": 2,
+    "ask": 1,
+    "fixed": 3,
+    "general": 9,
+    "delegate": 1
+   },
+   "escalation": null,
+   "validity_grade": "A",
+   "validity_grade_source": "legacy",
+   "eval_version": "v3.1-dev",
+   "ontology_version": "v3.18",
+   "error": null
+  },
+  {
+   "qtype": "T5",
+   "branch": "",
+   "category": "phr_case_r",
+   "run_id": "phr350r-v4rj-20261013-0754",
+   "scenario_id": "PHRQR-B1042",
+   "source_run": "phr350r-v4-20261012-0422",
+   "prior_legal": "fail",
+   "prior_hits": [
+    "LG-02"
+   ],
+   "legal": "pass",
+   "hits": [],
+   "review_hits": [],
+   "cap_hits": [],
+   "hit_detail": [],
+   "claim_count": 9,
+   "claim_levels": {
+    "fixed": 4,
+    "general": 5
+   },
+   "escalation": null,
+   "validity_grade": "A",
+   "validity_grade_source": "legacy",
+   "eval_version": "v3.1-dev",
+   "ontology_version": "v3.18",
+   "error": null
+  },
+  {
+   "qtype": "T12",
+   "branch": "",
+   "category": "phr_case_r",
+   "run_id": "phr350r-v4rj-20261013-0754",
+   "scenario_id": "PHRQR-B1266",
+   "source_run": "phr350r-v4-20261012-0422",
+   "prior_legal": "fail",
+   "prior_hits": [
+    "LG-02"
+   ],
+   "legal": "pass",
+   "hits": [],
+   "review_hits": [
+    "LG-08"
+   ],
+   "cap_hits": [],
+   "hit_detail": [
+    {
+     "rule_id": "LG-08",
+     "claim_idx": 6,
+     "level": "L5",
+     "severity": "HIGH",
+     "status": "confirmed",
+     "review": "phrase_draft",
+     "detectors": [
+      "phrase"
+     ],
+     "evidence": [
+      {
+       "basis": "forbidden_form",
+       "phrase_id": "PH-FF-225",
+       "kind": "forbidden_form",
+       "rule_id": "LG-08",
+       "status": "draft"
+      },
+      {
+       "basis": "nearest_example",
+       "example_code": "RE-T3-01-A04",
+       "example_kind": "allowed",
+       "same_as_nearest": false
+      },
+      {
+       "basis": "attribution",
+       "person_attributed": false,
+       "attrib_source": "record",
+       "attrib_level": "general"
+      }
+     ]
+    }
+   ],
+   "claim_count": 11,
+   "claim_levels": {
+    "L0": 2,
+    "L3": 2,
+    "L5": 1,
+    "fixed": 6
+   },
+   "escalation": null,
+   "validity_grade": "A",
+   "validity_grade_source": "legacy",
+   "eval_version": "v3.1-dev",
+   "ontology_version": "v3.18",
+   "error": null
+  }
+ ]
+}
