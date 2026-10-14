@@ -53,6 +53,7 @@ def test_judge_client_omits_temperature_for_gpt5_gpt6(model):
     """판정기(medical_eval 95edec8+, REQ-2VJY)도 같은 규칙을 따른다 — 서브모듈이 없으면 건너뛴다."""
     if not eval_v3.available()[0]:
         pytest.skip("packages/medical_eval 서브모듈 미초기화")
-    me = eval_v3._import_medical_eval()
-    assert me.judge_client.uses_temperature(model) is False
-    assert me.judge_client.uses_temperature("gpt-4o-mini") is True
+    eval_v3._import_medical_eval()
+    from medical_eval import judge_client
+    assert judge_client.uses_temperature(model) is False
+    assert judge_client.uses_temperature("gpt-4o-mini") is True
