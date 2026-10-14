@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 """모델별 temperature 전송 규칙 — gpt-5·gpt-6·o 계열은 temperature 를 거부한다(400 Unsupported value).
 
-2026-10-14 gpt-6-luna·gpt-6.1-sol 실측으로 확인. 호스트(proxy_server)와 판정기 어댑터(eval_v3)의
-두 경로가 같은 규칙을 따르는지 본다. OpenAI 키·네트워크 불필요.
+2026-10-14 gpt-6-luna·gpt-6.1-sol 실측으로 확인. 호스트(proxy_server) 경로를 본다. OpenAI 키·네트워크 불필요.
 """
 import os
 import sys
@@ -10,9 +9,6 @@ import sys
 import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-import eval_v3  # noqa: E402
-
 
 def _import_proxy():
     """proxy_server 는 import 시점에 sys.stdout/err 을 UTF-8 래퍼로 바꾼다 — pytest 캡처 객체를 되돌린다."""
@@ -48,12 +44,5 @@ def test_gpt5_gpt6_o_family_omits_temperature(model):
 
 
 
-@pytest.mark.parametrize("model", ["gpt-6-luna", "gpt-6.1-sol", "gpt-6-sol", "gpt-5.4-mini", "o4-mini"])
-def test_judge_client_omits_temperature_for_gpt5_gpt6(model):
-    """판정기(medical_eval 95edec8+, REQ-2VJY)도 같은 규칙을 따른다 — 서브모듈이 없으면 건너뛴다."""
-    if not eval_v3.available()[0]:
-        pytest.skip("packages/medical_eval 서브모듈 미초기화")
-    eval_v3._import_medical_eval()
-    from medical_eval import judge_client
-    assert judge_client.uses_temperature(model) is False
-    assert judge_client.uses_temperature("gpt-4o-mini") is True
+# 판정기(medical_eval.judge_client.uses_temperature) 쪽 규칙은 판정기 저장소의 tests/test_judge_client.py 가 검증한다
+# (main 95edec8, REQ-2VJY). 호스트 테스트는 판정기를 직접 import 하지 않는다(scripts/check_no_cross_import.py --forbid eval).
