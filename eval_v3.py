@@ -42,6 +42,22 @@ MODEL = os.environ.get("EVAL_V3_MODEL", "").strip() or None
 #: mini 가 fail 로 잡은 답변만 gpt-5.4 가 최종 판정. 2026-09-18 운영 표본 40건에서 mini 단독은
 #: 6건을 fail 로 냈고 gpt-5.4 는 모두 pass 였다(v2 법률과의 일치 85% → 100%).
 ESCALATE_MODEL = os.environ.get("EVAL_V3_ESCALATE_MODEL", "").strip() or None
+#: gpt-6 계열 reasoning_effort. 1차는 EVAL_V3_REASONING_EFFORT(판정기 judge_client 도 같은 변수를 기본값으로
+#: 읽는다), 2차는 EVAL_V3_ESCALATE_REASONING_EFFORT. 값은 검증 없이 그대로 보낸다 — 허용값은 모델별로 다르다
+#: (gpt-6-luna none/low/medium/high · gpt-6-sol low/medium/high). 운영(2026-10-14): 1차 gpt-6-luna none · 2차 gpt-6-sol low.
+REASONING_EFFORT = os.environ.get("EVAL_V3_REASONING_EFFORT", "").strip() or None
+
+
+def _escalate_reasoning_effort(first, env_value):
+    """2차 effort. 지정이 없으면 1차 값을 따르되 `none` 은 gpt-6-luna 만 받으므로 2차에는 `low` 로 바꾼다."""
+    v = (env_value or "").strip()
+    if v:
+        return v
+    return "low" if first == "none" else first
+
+
+ESCALATE_REASONING_EFFORT = _escalate_reasoning_effort(
+    REASONING_EFFORT, os.environ.get("EVAL_V3_ESCALATE_REASONING_EFFORT"))
 #: 스냅샷 경로 고정용(미지정 시 ontology/snapshot 최신 버전).
 SNAPSHOT_PATH = os.environ.get("EVAL_V3_SNAPSHOT", "").strip() or None
 
@@ -289,7 +305,7 @@ def evaluate(question: str, answer: str, *, api_key=None, **kwargs) -> dict:
         import medical_eval as me
         model = me.DEFAULT_MODEL
     try:
-        result = _judge(question, answer, model, api_key, kwargs)
+        result = _judge(question, answer, model, api_key, kwargs, reasoning_effort=REASONING_EFFORT)
     except Exception as e:
         logger.warning("v3 판정 실패: %s", e)
         return {"error": f"{type(e).__name__}: {e}"}
@@ -297,7 +313,8 @@ def evaluate(question: str, answer: str, *, api_key=None, **kwargs) -> dict:
     if ESCALATE_MODEL and ESCALATE_MODEL != model and (result.get("legal") or {}).get("verdict") == "fail":
         first = compact(result)
         try:
-            result = _judge(question, answer, ESCALATE_MODEL, api_key, kwargs)
+            result = _judge(question, answer, ESCALATE_MODEL, api_key, kwargs,
+                            reasoning_effort=ESCALATE_REASONING_EFFORT)
             escalation = {"first_model": model, "first_verdict": first.get("verdict"),
                           "first_hits": first.get("legal_hits"), "model": ESCALATE_MODEL,
                           "verdict": result.get("verdict")}
@@ -312,17 +329,43 @@ def evaluate(question: str, answer: str, *, api_key=None, **kwargs) -> dict:
     return out
 
 
-def _judge(question, answer, model, api_key, kwargs):
-    """medical_eval.evaluate 1회 호출(모델 지정). 예외는 호출자가 처리한다."""
+def _judge(question, answer, model, api_key, kwargs, reasoning_effort=None):
+    """medical_eval.evaluate 1회 호출(모델 지정). 예외는 호출자가 처리한다.
+
+    `reasoning_effort` 가 있으면 판정기의 기본 호출을 `chat` 콜백으로 바꿔 그 값을 judge_client.chat_json 에
+    넘긴다(1차·2차가 다른 effort 를 쓰려면 호출마다 달라야 하므로 환경변수만으로는 안 된다). 호출자가 `chat` 을
+    직접 넘겼으면(테스트·재현) 그대로 둔다.
+    """
     import medical_eval as me
+    key = api_key or os.environ.get("OPENAI_API_KEY", "")
+    kwargs = dict(kwargs)
+    if reasoning_effort and kwargs.get("chat") is None:
+        kwargs["chat"] = _chat_with_effort(key, reasoning_effort, kwargs)
     return me.evaluate(
         question or "", answer or "",
         model=model,
         ontology=get_snapshot(),
-        api_key=api_key or os.environ.get("OPENAI_API_KEY", ""),
+        api_key=key,
         with_quote=False,                              # 인용문은 호스트 로그에 남기지 않는다
         **kwargs
     )
+
+
+def _chat_with_effort(api_key, reasoning_effort, kwargs):
+    """판정기 서브판정의 기본 chat 과 같은 인자(api_key·timeout·cache_dir·use_cache·stats_out)에
+    reasoning_effort 만 더한 콜백. 기본값은 medical_eval.evaluate 와 같게 둔다."""
+    from medical_eval.judge_client import DEFAULT_CACHE_DIR
+    from medical_eval.judge_client import chat_json as _cj
+    timeout = kwargs.get("timeout", 60)
+    cache_dir = kwargs.get("cache_dir") or DEFAULT_CACHE_DIR
+    use_cache = kwargs.get("use_cache", True)
+    stats_out = kwargs.get("stats_out")
+
+    def chat(model_, system_, user_):
+        return _cj(model_, system_, user_, api_key=api_key, timeout=timeout,
+                   reasoning_effort=reasoning_effort, cache_dir=cache_dir,
+                   use_cache=use_cache, stats_out=stats_out)
+    return chat
 
 
 def evaluate_batch(items, *, api_key=None, max_workers=4, on_result=None, **defaults) -> list:
@@ -734,7 +777,7 @@ def load_checklists():
     return _lc()
 
 
-def chat_json(model, system_prompt, user_prompt, *, api_key=None, timeout=120):
+def chat_json(model, system_prompt, user_prompt, *, api_key=None, timeout=120, reasoning_effort=None):
     """판정 모델에 JSON 응답 1회 요청 (medical_eval.judge_client 재사용 — 재시도·파싱 재요청 포함).
 
     호스트는 medical_eval 을 이 어댑터로만 쓴다. 독립 검수(scripts/ai_verify.py)가 쓴다.
@@ -742,7 +785,8 @@ def chat_json(model, system_prompt, user_prompt, *, api_key=None, timeout=120):
     """
     _import_medical_eval()
     from medical_eval.judge_client import chat_json as _cj
-    return _cj(model, system_prompt, user_prompt, api_key=api_key, timeout=timeout, use_cache=False)
+    return _cj(model, system_prompt, user_prompt, api_key=api_key, timeout=timeout, use_cache=False,
+               reasoning_effort=reasoning_effort or REASONING_EFFORT)
 
 
 def batch_fn():

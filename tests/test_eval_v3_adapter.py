@@ -311,10 +311,11 @@ def test_checklists_env_wins_when_set(monkeypatch, tmp_path):
 
 def test_escalation_rejudges_only_legal_fail(monkeypatch):
     """1차(mini) fail → 2차(ESCALATE_MODEL) 재판정. 1차 pass 는 2차를 부르지 않는다."""
-    calls = []
+    calls, efforts = [], []
 
-    def fake_judge(question, answer, model, api_key, kwargs):
+    def fake_judge(question, answer, model, api_key, kwargs, reasoning_effort=None):
         calls.append(model)
+        efforts.append(reasoning_effort)
         fail = (model == "mini") and answer == "bad"
         return {"verdict": "FAIL" if fail else "A",
                 "legal": {"verdict": "fail" if fail else "pass",
@@ -325,9 +326,12 @@ def test_escalation_rejudges_only_legal_fail(monkeypatch):
     monkeypatch.setattr(eval_v3, "_judge", fake_judge)
     monkeypatch.setattr(eval_v3, "MODEL", "mini")
     monkeypatch.setattr(eval_v3, "ESCALATE_MODEL", "big")
+    monkeypatch.setattr(eval_v3, "REASONING_EFFORT", "none")
+    monkeypatch.setattr(eval_v3, "ESCALATE_REASONING_EFFORT", "low")
 
     out = eval_v3.evaluate("q", "bad")
     assert calls == ["mini", "big"]
+    assert efforts == ["none", "low"]                 # 1차·2차가 각자의 effort 를 받는다
     assert out["judge_model"] == "big" and out["legal_verdict"] == "pass"
     assert out["judge_escalation"]["first_verdict"] == "FAIL"
     assert out["judge_escalation"]["first_hits"] == ["LG-02"]
@@ -366,3 +370,55 @@ def test_compact_keeps_legal_and_validity_versions():
     assert "v6a" not in c and "legal_v6a" not in c
     c = eval_v3.compact({"verdict": "pass"})
     assert c["legal_version"] is None and c["validity_version"] is None
+
+
+def test_escalate_reasoning_effort_defaults():
+    """2차 effort: 지정값 우선, 없으면 1차 값. 단 `none` 은 luna 전용이라 2차는 low."""
+    f = eval_v3._escalate_reasoning_effort
+    assert f("none", None) == "low"
+    assert f("none", "medium") == "medium"
+    assert f("low", None) == "low"
+    assert f(None, None) is None
+    assert f(None, " high ") == "high"
+
+
+def test_judge_passes_reasoning_effort_via_chat(monkeypatch):
+    """_judge 는 effort 가 있으면 chat 콜백으로 judge_client.chat_json 에 reasoning_effort 를 넘긴다.
+    호출자가 chat 을 직접 넘기면 건드리지 않는다. (medical_eval 은 가짜 모듈로 대체 — CI 에 서브모듈이 없어도 된다)"""
+    import types
+    seen = {}
+
+    def fake_evaluate(q, a, **kw):
+        chat = kw.get("chat")
+        seen["kw"] = kw
+        return {"chat_payload": chat("m", "s", "u") if chat else None}
+
+    def fake_cj(model, system, user, **kw):
+        seen["cj"] = kw
+        return {"ok": model}
+
+    me = types.ModuleType("medical_eval")
+    me.evaluate = fake_evaluate
+    jc = types.ModuleType("medical_eval.judge_client")
+    jc.chat_json = fake_cj
+    jc.DEFAULT_CACHE_DIR = "cache-dir"
+    me.judge_client = jc
+    monkeypatch.setitem(sys.modules, "medical_eval", me)
+    monkeypatch.setitem(sys.modules, "medical_eval.judge_client", jc)
+    monkeypatch.setattr(eval_v3, "get_snapshot", lambda: {})
+    monkeypatch.setenv("OPENAI_API_KEY", "k")
+
+    out = eval_v3._judge("q", "a", "gpt-6-luna", None, {"timeout": 90}, reasoning_effort="none")
+    assert out == {"chat_payload": {"ok": "m"}}
+    assert seen["cj"]["reasoning_effort"] == "none"
+    assert seen["cj"]["timeout"] == 90 and seen["cj"]["api_key"] == "k"
+    assert seen["cj"]["cache_dir"] == "cache-dir" and seen["cj"]["use_cache"] is True
+    assert seen["kw"]["model"] == "gpt-6-luna" and seen["kw"]["with_quote"] is False
+
+    out = eval_v3._judge("q", "a", "gpt-6-sol", None, {}, reasoning_effort=None)
+    assert out == {"chat_payload": None}               # effort 없음 → chat 을 넣지 않는다(판정기 기본 호출)
+
+    def mine(m, s, u):
+        return {"mine": 1}
+    out = eval_v3._judge("q", "a", "gpt-6-sol", None, {"chat": mine}, reasoning_effort="low")
+    assert out == {"chat_payload": {"mine": 1}}        # 호출자의 chat 우선

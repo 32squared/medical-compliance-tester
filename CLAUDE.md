@@ -141,6 +141,8 @@ python -c "import py_compile; py_compile.compile('proxy_server.py', doraise=True
   `EVAL_V3_ESCALATE_MODEL=gpt-5.4`(1차 모델이 legal fail 이면 같은 답변을 이 모델로 재판정 — mini 1차 + gpt-5.4 2차 2단 판정;
   결과 `judge_escalation` 에 1차 모델·verdict·hit 이 남고 `[v3] ESCALATION` 로그 줄에 건수).
   운영 설정(2026-09-18): EVAL_V3=1 · EVAL_V3_MODEL=gpt-5.4-mini · EVAL_V3_ESCALATE_MODEL=gpt-5.4 · EVAL_PHR=0 · EVAL_V2_LEGAL=0 · EVAL_FINAL=v3.
+  `EVAL_V3_REASONING_EFFORT` / `EVAL_V3_ESCALATE_REASONING_EFFORT`(gpt-6 계열 reasoning_effort, 1차/2차 따로. 2차 미지정이면 1차 값을 따르되 `none`→`low`.
+  판정기 judge_client 도 `EVAL_V3_REASONING_EFFORT` 를 기본값으로 읽는다). 운영 전환(2026-10-14): EVAL_V3_MODEL=gpt-6-luna + none · EVAL_V3_ESCALATE_MODEL=gpt-6-sol + low.
 - 온톨로지 평가 전용 화면(`eval_v3.html`, `/eval-v3`)은 **history.html 로 병합**되어 삭제됐다(`/eval-v3` 는 `/history` 로 302).
   결과 화면은 history.html 하나: v3 요약·판정 분포·PV/SV/UV 항목별 세부·건별 판정, 실행 헤더의 `v3 CSV` 내보내기,
   'A/B 비교' 모달의 시나리오별 v3 판정 변화 표. `GET /api/eval-v3/runs`(eval_v3.run_summary, 완료 실행은 메모리 캐시)는
