@@ -145,4 +145,5 @@ jobs:
             tests/test_rlhf_db.py \
             tests/test_eval_v3_adapter.py \
             tests/test_share_eval_v3.py \
+            tests/test_model_temperature.py \
             -v --tb=short -q
