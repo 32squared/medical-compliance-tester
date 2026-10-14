@@ -621,6 +621,28 @@ def _model_accepts_temperature(model) -> bool:
     return m.startswith(("gpt-4", "gpt-3.5"))
 
 
+#: gpt-6 계열에 보내는 reasoning_effort. 환경변수 OPENAI_REASONING_EFFORT (기본 low).
+#: 빈 값·off 면 보내지 않는다(모델 기본 추론). 허용값은 모델마다 다르다 —
+#: gpt-6-luna: none·low·medium·high, gpt-6-sol·gpt-6.1-sol: low·medium·high (none 은 400).
+#: 2026-10-14 실측(입력 6.5K 토큰 JSON): gpt-6-luna 기본 9~12초 → none 4.8초, gpt-6-sol low 8.8초.
+def _reasoning_effort_for(model):
+    m = (model or "").lower()
+    if not m.startswith("gpt-6"):
+        return None
+    v = os.environ.get("OPENAI_REASONING_EFFORT", "low").strip().lower()
+    return v if v and v != "off" else None
+
+
+def _apply_model_params(body, model, temperature):
+    """모델 계열에 맞는 샘플링 파라미터만 요청 본문에 넣는다 (temperature / reasoning_effort)."""
+    if _model_accepts_temperature(model):
+        body["temperature"] = temperature
+    effort = _reasoning_effort_for(model)
+    if effort:
+        body["reasoning_effort"] = effort
+    return body
+
+
 def _openai_chat_json(model, system_prompt, user_prompt, openai_key, temperature=0.1):
     """OpenAI chat completion(JSON 응답) → content 문자열 반환.
 
@@ -638,8 +660,7 @@ def _openai_chat_json(model, system_prompt, user_prompt, openai_key, temperature
         ],
         "response_format": {"type": "json_object"},
     }
-    if _model_accepts_temperature(model):
-        params["temperature"] = temperature
+    _apply_model_params(params, model, temperature)
     resp = client.chat.completions.create(**params)
     return resp.choices[0].message.content
 
@@ -1644,8 +1665,7 @@ Include ALL {len(rubric_items)} items in order."""
             ],
             "response_format": {"type": "json_object"}
         }
-        if _model_accepts_temperature(gpt_model):
-            _body["temperature"] = 0.0
+        _apply_model_params(_body, gpt_model, 0.0)
         api_body = json.dumps(_body).encode('utf-8')
         req = Request(
             url=f"{OPENAI_API_BASE}/v1/chat/completions",
@@ -3815,8 +3835,7 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
                 ],
                 "response_format": {"type": "json_object"}
             }
-            if _model_accepts_temperature(gpt_model):
-                _body["temperature"] = 0.8
+            _apply_model_params(_body, gpt_model, 0.8)
             api_body = json.dumps(_body).encode('utf-8')
 
             req = Request(
@@ -7643,8 +7662,7 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
                         ],
                         "response_format": {"type": "json_object"}
                     }
-                    if _model_accepts_temperature(gpt_model):
-                        _body["temperature"] = 0.1
+                    _apply_model_params(_body, gpt_model, 0.1)
                     classify_body = json.dumps(_body).encode('utf-8')
                     req = Request(
                         f"{OPENAI_API_BASE}/v1/chat/completions",

@@ -46,3 +46,31 @@ def test_gpt5_gpt6_o_family_omits_temperature(model):
 
 # 판정기(medical_eval.judge_client.uses_temperature) 쪽 규칙은 판정기 저장소의 tests/test_judge_client.py 가 검증한다
 # (main 95edec8, REQ-2VJY). 호스트 테스트는 판정기를 직접 import 하지 않는다(scripts/check_no_cross_import.py --forbid eval).
+
+
+@pytest.mark.parametrize("model,env,expected", [
+    ("gpt-6-luna", None, "low"),          # 기본값 low
+    ("gpt-6-sol", "low", "low"),
+    ("gpt-6-luna", "none", "none"),
+    ("gpt-6.1-sol", "medium", "medium"),
+    ("gpt-6-luna", "", None),             # 빈 값 → 보내지 않음(모델 기본 추론)
+    ("gpt-6-luna", "off", None),
+    ("gpt-5.4-mini", "low", None),        # gpt-6 계열이 아니면 보내지 않음
+    ("gpt-4o-mini", "low", None),
+])
+def test_reasoning_effort_only_for_gpt6(monkeypatch, model, env, expected):
+    if env is None:
+        monkeypatch.delenv("OPENAI_REASONING_EFFORT", raising=False)
+    else:
+        monkeypatch.setenv("OPENAI_REASONING_EFFORT", env)
+    assert proxy_server._reasoning_effort_for(model) == expected
+
+
+def test_apply_model_params_combines_rules(monkeypatch):
+    monkeypatch.setenv("OPENAI_REASONING_EFFORT", "low")
+    assert proxy_server._apply_model_params({}, "gpt-4o-mini", 0.1) == {"temperature": 0.1}
+    assert proxy_server._apply_model_params({}, "gpt-5.4", 0.1) == {}
+    assert proxy_server._apply_model_params({}, "gpt-6-sol", 0.1) == {"reasoning_effort": "low"}
+    body = {"model": "gpt-6-luna", "messages": []}
+    proxy_server._apply_model_params(body, "gpt-6-luna", 0.0)
+    assert body == {"model": "gpt-6-luna", "messages": [], "reasoning_effort": "low"}
