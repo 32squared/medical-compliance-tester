@@ -81,7 +81,35 @@ def _import_medical_eval():
     if _SRC not in sys.path:
         sys.path.insert(0, _SRC)
     import medical_eval  # noqa: F401  (packages/medical_eval/src/medical_eval)
+    _patch_uses_temperature(medical_eval)
     return medical_eval
+
+
+def _patch_uses_temperature(medical_eval) -> None:
+    """임시: gpt-6 계열에 temperature 를 보내지 않도록 판정기 클라이언트를 덮어쓴다.
+
+    medical_eval.judge_client.uses_temperature 는 gpt-5·o 계열만 제외하는데, gpt-6-luna·gpt-6.1-sol 도
+    temperature 를 거부한다(2026-10-14 실측, 400 Unsupported value). 판정기 저장소에 수정을
+    요청했고(doc-archive REQ-2VJY), 반영된 서브모듈로 올리면 이 함수와 호출을 지운다.
+    판정기가 이미 gpt-6 을 제외하면(요청 반영 후) 아무것도 하지 않는다.
+    """
+    try:
+        jc = medical_eval.judge_client
+    except AttributeError:
+        return
+    orig = getattr(jc, "uses_temperature", None)
+    if orig is None or getattr(orig, "_gpt6_patched", False) or not orig("gpt-6-luna"):
+        return
+
+    def uses_temperature(model: str) -> bool:
+        m = (model or "").lower()
+        if m.startswith("gpt-6"):
+            return False
+        return orig(model)
+
+    uses_temperature._gpt6_patched = True
+    uses_temperature.__doc__ = orig.__doc__
+    jc.uses_temperature = uses_temperature
 
 
 def available() -> tuple:
