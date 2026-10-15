@@ -195,6 +195,17 @@ def composite_reward(legal_score, consult_score, regex_violations_critical,
 PHR_SECTION_HEADER = '## 개인 건강기록(PHR) 참고'
 
 
+def _strip_viz_blocks(text):
+    """mhc-viz 시각 블록 → "[표: caption]" 한 줄 (규약 v1.0 평가 전처리). 모듈이 없으면 원문 그대로."""
+    if not text or '```mhc-viz' not in text:
+        return text
+    try:
+        import mhc_viz
+        return mhc_viz.strip_blocks(text)
+    except Exception:
+        return text
+
+
 def _strip_phr_section(text):
     """응답 텍스트에서 PHR 섹션 헤더 이하 끝까지 제거."""
     if not text:
@@ -863,6 +874,7 @@ def _evaluate_gpt(prompt_text, response_text, openai_key, model=None, exclude_ph
         if not response_text:
             # PHR만 있고 본문이 없는 경우 — 평가 불가
             return None
+    response_text = _strip_viz_blocks(response_text)
     # 가이드라인 기반 동적 프롬프트 생성
     try:
         import guideline_loader
@@ -1486,6 +1498,10 @@ def _evaluate_consultation(prompt_text, response_text, openai_key, model=None, c
                 {**t, 'answer': _strip_phr_section(t.get('answer', '') or '')}
                 for t in conversation_turns
             ]
+    response_text = _strip_viz_blocks(response_text)
+    if conversation_turns:
+        conversation_turns = [{**t, 'answer': _strip_viz_blocks(t.get('answer', '') or '')}
+                              for t in conversation_turns]
 
     criteria = criteria_override if criteria_override else _get_consultation_criteria()
     system_prompt = _build_consultation_prompt(criteria)

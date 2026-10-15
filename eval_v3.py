@@ -712,6 +712,12 @@ def evaluate_scenario(scenario, question, answer, *, api_key=None, rag_meta=None
     `case:` · `branch:` · `symptom:` 으로 들어 있어 거기서 회수한다.
     """
     sc = scenario or {}
+    # mhc-viz 시각 블록은 판정 대상이 아니다 — "[표: caption]" 한 줄로 바꿔 넣는다(규약 v1.0 텍스트 등가 원칙).
+    try:
+        import mhc_viz
+        answer = mhc_viz.strip_blocks(answer)
+    except Exception:
+        pass
 
     def pick(*keys):
         for k in keys:
