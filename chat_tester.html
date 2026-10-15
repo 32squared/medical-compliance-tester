@@ -600,6 +600,7 @@ async function switchEnv(env) {
       showToast('환경 전환 실패', 'error');
       return;
     }
+    try { const r = await res.json(); window._envScope = r.scope || ''; } catch(e) {}
   } catch(e) {
     showToast('환경 전환 실패: ' + e.message, 'error');
     return;
@@ -608,7 +609,8 @@ async function switchEnv(env) {
   await loadSettings();
   conversationStrid = null;
   loadConversations();
-  showToast(`${env.toUpperCase()} 환경으로 전환`, 'info');
+  // Admin 은 전역 기본 환경, 테스터는 자기 세션에만 적용
+  showToast(`${env.toUpperCase()} 환경으로 전환` + (window._envScope === 'user' ? ' (내 세션에만 적용)' : ''), 'info');
 }
 
 // 최초 1회 연결 테스트 (백그라운드)

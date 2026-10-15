@@ -3001,6 +3001,20 @@ def get_session(token):
         return d
 
 
+def update_session_data(token, updates):
+    """세션 data_json 에 키 병합 (만료·유형은 유지). 세션이 없으면 False."""
+    session = get_session(token)
+    if not session:
+        return False
+    data = dict(session.get('data') or {})
+    data.update(updates or {})
+    ph = _p()
+    with get_conn() as (conn, cur):
+        cur.execute(f"UPDATE sessions SET data_json = {ph} WHERE token = {ph}",
+                    (json.dumps(data, ensure_ascii=False), token))
+    return True
+
+
 def delete_session(token):
     """세션 삭제"""
     ph = _p()
