@@ -2398,6 +2398,9 @@ class ProxyHandler(BaseHTTPRequestHandler):
         # (advisor에게 use_arena 부여돼도 차단 — 채팅 테스터만 사용)
         if self._is_advisor() and (path.startswith('/api/arena/') or path == '/api/arena'):
             return True
+        # 환경 전환(/api/settings/env)은 로그인 사용자 모두 가능 — /api/settings 접두어 차단에서 제외
+        if path == '/api/settings/env':
+            return False
         # 권한별 차단 조건 (path prefix matching)
         # methods=None 이면 모든 HTTP 메서드 차단, 아니면 해당 메서드만 차단
         perm_blocks = [
@@ -2482,6 +2485,25 @@ class ProxyHandler(BaseHTTPRequestHandler):
             'uid': session.get('user_uid', ''),
             'role': user.get('role', 'tester') if user else 'tester',  # ← 신규 필드
         }
+
+    def _get_tester_env(self):
+        """테스터 세션에 저장된 개인 환경 선택값 ('dev'|'stg'|'prod') 또는 None.
+        Admin 은 전역 settings.currentEnv 를 쓰므로 항상 None."""
+        if self._is_admin():
+            return None
+        token = self._parse_cookies().get('tester_token', '')
+        if not token:
+            return None
+        session = db.get_session(token)
+        if not session or session.get('session_type') != 'tester':
+            return None
+        env = (session.get('data') or {}).get('env')
+        return env if env in ('dev', 'stg', 'prod') else None
+
+    def _effective_env(self, settings) -> str:
+        """이 요청이 실제로 사용할 SKIX 환경.
+        테스터는 세션별 선택값 우선, 없으면(또는 Admin 이면) 전역 settings.currentEnv."""
+        return self._get_tester_env() or settings.get('currentEnv', 'dev')
 
     def _get_alias(self) -> str:
         """현재 사용자 ID 반환 (Admin이면 '관리자', 테스터면 ID, 없으면 '익명')"""
@@ -3625,7 +3647,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
         # DB에서 API 설정 로드 (환경별 구조 대응)
         settings = db.get_settings()
 
-        current_env = settings.get('currentEnv', 'dev')
+        current_env = self._effective_env(settings)
         env_defaults = {
             'dev':  {'apiUrl': 'https://dev-skix.phnyx.ai',    'xTenantDomain': 'dev-skix'},
             'stg':  {'apiUrl': 'https://staging-skix.phnyx.ai', 'xTenantDomain': 'staging-skix-test'},
@@ -4967,6 +4989,8 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
         settings = db.get_settings()
         tester = self._get_tester_info()
         tester_uid = tester['uid'] if tester else None
+        # 테스터가 개인 환경을 골랐으면 그 환경으로 배치 실행 (전역 설정은 건드리지 않음)
+        settings = dict(settings, currentEnv=self._effective_env(settings))
         skix_cfg = build_skix_config(settings, tester_uid=tester_uid)
         current_env = skix_cfg.get('current_env', 'dev')
 
@@ -5293,7 +5317,13 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
     # ════════════════════════════════════════════
 
     def _switch_env(self, body):
-        """POST /api/settings/env — 환경 전환 (로그인 사용자 모두 가능)"""
+        """POST /api/settings/env — 환경 전환 (로그인 사용자 모두 가능)
+
+        - Admin: 전역 기본 환경(settings.currentEnv) 변경 — 배치/Job 등 서버 작업 기준
+        - Tester/Advisor: 자기 세션에만 저장(sessions.data_json.env) — 다른 사용자에게 영향 없음
+        """
+        if not self._require_auth():
+            return
         try:
             payload = json.loads(body)
         except json.JSONDecodeError:
@@ -5301,11 +5331,18 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
         new_env = payload.get('currentEnv', '')
         if new_env not in ('dev', 'stg', 'prod'):
             return self._send_error(400, f'유효하지 않은 환경: {new_env}')
-        existing = db.get_settings()
-        existing['currentEnv'] = new_env
-        existing['updatedAt'] = datetime.now(timezone.utc).isoformat()
-        db.save_settings(existing)
-        self._send_json(200, {"success": True, "currentEnv": new_env})
+        if self._is_admin():
+            existing = db.get_settings()
+            existing['currentEnv'] = new_env
+            existing['updatedAt'] = datetime.now(timezone.utc).isoformat()
+            db.save_settings(existing)
+            ProxyHandler._add_log(f"[설정] 전역 환경 전환 → {new_env.upper()} (관리자)")
+            return self._send_json(200, {"success": True, "currentEnv": new_env, "scope": "global"})
+        token = self._parse_cookies().get('tester_token', '')
+        if not db.update_session_data(token, {'env': new_env}):
+            return self._send_error(401, '세션이 만료되었습니다. 다시 로그인하세요.')
+        ProxyHandler._add_log(f"[설정] 개인 환경 전환 → {new_env.upper()} ({self._get_alias()})")
+        self._send_json(200, {"success": True, "currentEnv": new_env, "scope": "user"})
 
     def _save_settings(self, body):
         """POST /api/settings — 설정 저장 (Admin only — do_POST에서 가드)"""
@@ -5358,6 +5395,11 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
         safe = dict(data)
         safe.pop('adminPasswordHash', None)
         safe.pop('adminPasswordSalt', None)
+        # 테스터는 세션별 환경 선택값을 currentEnv 로 받는다 (전역값은 Admin 기준)
+        tester_env = self._get_tester_env()
+        if tester_env:
+            safe['currentEnv'] = tester_env
+            safe['envScope'] = 'user'
         # 비Admin인 경우 API 키 마스킹
         if not self._is_admin():
             envs = safe.get('environments', {})
@@ -7911,7 +7953,8 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
         try:
             settings = db.get_settings()
 
-            current_env = settings.get('currentEnv', 'dev')
+            # 사용자별 유효 환경 (테스터 세션 선택값 > 전역값)
+            current_env = self._effective_env(settings)
             env_defaults = {
                 'dev': 'https://dev-skix.phnyx.ai',
                 'stg': 'https://staging-skix.phnyx.ai',
@@ -8016,7 +8059,8 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
 
             # X-Target-URL의 도메인을 보고 실제 호출되는 환경을 우선 결정
             # (클라이언트의 currentEnv 캐시와 DB의 currentEnv가 다를 때 미스매치 방지)
-            current_env = settings.get('currentEnv', 'dev')
+            # 도메인으로 못 정하면 사용자별 유효 환경(테스터 세션 선택값 > 전역값)
+            current_env = self._effective_env(settings)
             try:
                 _t_host = urlparse(target_url).hostname or ''
                 if _t_host.startswith('dev-skix') or _t_host == 'dev-skix.phnyx.ai':
@@ -8455,9 +8499,9 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
         if not prompt:
             return self._send_error(400, 'prompt가 필요합니다')
 
-        # DB에서 API 설정 로드
+        # DB에서 API 설정 로드 (사용자별 유효 환경 — 테스터 세션 선택값 > 전역값)
         settings = db.get_settings()
-        current_env = settings.get('currentEnv', 'dev')
+        current_env = self._effective_env(settings)
         env_defaults = {
             'dev':  {'apiUrl': 'https://dev-skix.phnyx.ai',    'xTenantDomain': 'dev-skix'},
             'stg':  {'apiUrl': 'https://staging-skix.phnyx.ai', 'xTenantDomain': 'staging-skix-test'},
