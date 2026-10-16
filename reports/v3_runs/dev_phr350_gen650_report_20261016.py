@@ -60,6 +60,9 @@ def stamp_of(R):
     return c
 
 
+is_resp_fail = lambda r: r.get("httpStatus") != 200 or not (r.get("response") or "").strip() or bool(r.get("partialResponse"))
+
+
 def meta(R):
     return dict(
         onto=Counter(g(r, "ontology_version") for r in R.values()).most_common(1)[0][0] if R else "",
@@ -68,7 +71,7 @@ def meta(R):
         stamp=stamp_of(R),
         fallback=[i for i, r in R.items() if (g(r, "claim_fallback") or 0) > 0],
         http_err=[i for i, r in R.items() if r.get("httpStatus") != 200 or r.get("status") not in ("pass", "fail")],
-        resp_fail=[i for i, r in R.items() if r.get("httpStatus") != 200 or not (r.get("response") or "").strip() or r.get("partialResponse")],
+        resp_fail=[i for i, r in R.items() if is_resp_fail(r)],
         retried=[i for i, r in R.items() if (r.get("attempts") or 1) > 1],
         lens=[len(r.get("response") or "") for r in R.values()],
         ttft=[r.get("firstTokenMs") for r in R.values() if r.get("firstTokenMs")],
@@ -116,6 +119,7 @@ pv = Counter(str(g(P[i], "validity_grade")) for i in Pids)
 uv = Counter(str(g(P[i], "uv_grade")) for i in Pids)
 scoredP = [i for i in Pids if g(P[i], "validity_status") == "ok"]
 skippedP = [i for i in Pids if g(P[i], "validity_status") != "ok"]
+uv_scoredP = [i for i in Pids if g(P[i], "uv_status") == "ok"]
 all_a = [i for i in Pids if g(P[i], "validity_grade") == "A" and g(P[i], "uv_grade") == "A" and g(P[i], "legal_verdict") == "pass"]
 pass_bar = [i for i in Pids if g(P[i], "validity_grade") in ("A", "B") and g(P[i], "uv_grade") in ("A", "B") and g(P[i], "legal_verdict") == "pass"]
 pv_unmet = Counter(x for i in Pids for x in (g(P[i], "validity_unmet") or []))
@@ -220,7 +224,7 @@ def by_group_gen(keyf):
         c["legal_fail"] += g(G[i], "legal_verdict") == "fail"
         for gr in "ABCD":
             c["sv" + gr] += g(G[i], "validity_grade") == gr
-        c["err"] += G[i].get("status") != "pass"
+        c["err"] += is_resp_fail(G[i])
         for x in (g(G[i], "validity_unmet") or []):
             c["u:" + x] += 1
         for h in (g(G[i], "legal_hits") or []):
@@ -387,9 +391,9 @@ PHR run <code>{E(runP.get('id'))}</code> ({E(run_time(runP))}) · 프롬프트 �
 <h3>2-1. 항목별 미충족</h3>
 <div class=cols>
 <div><h3>PV — 기록 활용 유효성</h3>{unmet_table(pv_unmet, max(1, len(scoredP)))}</div>
-<div><h3>UV — 답변 유용성</h3>{unmet_table(uv_unmet, max(1, len(scoredP)))}</div>
+<div><h3>UV — 답변 유용성</h3>{unmet_table(uv_unmet, max(1, len(uv_scoredP)))}</div>
 </div>
-<p class=small>비율 분모는 PV 채점 {len(scoredP)}건. PV-08·PV-11 은 판정기 미구현(항상 na). PV-03 은 인용 값과 같은 문장 안에 참고범위 표지가 있어야 충족된다.</p>
+<p class=small>비율 분모는 PV 는 PV 채점 {len(scoredP)}건, UV 는 UV 채점 {len(uv_scoredP)}건. PV-08·PV-11 은 판정기 미구현(항상 na). PV-03 은 인용 값과 같은 문장 안에 참고범위 표지가 있어야 충족된다.</p>
 <h3>2-2. 법률 게이트 FAIL {len(legal_failP)}건 — 확정 위반 {len(confP)}건 · 회신 대기 규칙만 {len(revP)}건</h3>
 <p class=small>"회신 대기 규칙만"은 확정 규칙 적중 없이 법무 회신 대기 규칙(LG-05 진료과 안내, LG-11 개인 위험도 평가 등)만 적중해 게이트가 fail 로 표시된 건이다. 법무 회신 전까지는 확정 위반과 구분해 본다.</p>
 {legal_table(P, legal_failP, ('유형 / 의도', lambda i: f"{qtype(i)} / {g(P[i], 'uv_intent')}"))}
