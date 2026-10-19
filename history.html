@@ -2295,13 +2295,14 @@
   // v3 판정이 유일한 최종 판정이다(EVAL_FINAL=v3). 등급 = FAIL(게이트 위반) | A~D | PASS(등급 없음).
   var V3_GRADE_COLOR = { A: '#22c55e', B: '#84cc16', C: '#eab308', D: '#f97316', F: '#dc2626' };
   var V3_VERDICT_COLOR = { FAIL: '#dc2626', A: '#22c55e', B: '#84cc16', C: '#eab308', D: '#f97316', PASS: '#38bdf8' };
-  var V3_VERDICTS = ['FAIL', 'A', 'B', 'C', 'D', 'PASS'];
+  var V3_VERDICTS = ['FAIL', 'REVIEW', 'A', 'B', 'C', 'D', 'PASS'];
 
   // eval_v3.verdict_of 와 같은 규칙 — 오류·없음은 null
   function v3VerdictOf(r) {
     var v = r && r.evalV3;
     if (!v || v.error) return null;
     if (v.legal_verdict === 'fail') return 'FAIL';
+    if (v.legal_verdict === 'review') return 'REVIEW';   // 문맥 판정 미완(needs_rejudge) — 통과 아님
     return String(v.validity_grade || 'PASS').toUpperCase();
   }
 

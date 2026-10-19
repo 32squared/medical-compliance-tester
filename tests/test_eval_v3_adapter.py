@@ -433,6 +433,27 @@ def test_needs_rejudge_reruns_same_model_without_cache(monkeypatch):
     assert "judge_escalation" not in out
 
 
+def test_needs_rejudge_unresolved_pass_becomes_review(monkeypatch):
+    """횟수를 다 써도 문맥 판정이 안 끝난 pass 는 통과로 저장하지 않는다 — legal_verdict=review 로 바꾸고 판정기 값은
+    legal_verdict_judge 에 남긴다(PR #52 Codex: 시간 초과·형식 오류가 '게이트 통과'로 공개되던 경로). 확정 fail 은 그대로."""
+    monkeypatch.setattr(eval_v3, "available", lambda: (True, ""))
+    monkeypatch.setattr(eval_v3, "_judge", lambda *a, **k: _rejudge_result("needs_rejudge", "pass"))
+    monkeypatch.setattr(eval_v3, "MODEL", "luna")
+    monkeypatch.setattr(eval_v3, "REJUDGE_MAX", 1)
+
+    out = eval_v3.evaluate("q", "a")
+    assert out["legal_status"] == "needs_rejudge"
+    assert out["legal_verdict"] == "review" and out["legal_verdict_judge"] == "pass"
+    assert out["legal_review_hits"] == ["LG-08"] and out["legal_hits"] == []
+    assert eval_v3.verdict_of(out) == "REVIEW"
+    # 끝난 pass 는 그대로 pass
+    ok = eval_v3.compact(_rejudge_result("ok", "pass", review=()))
+    assert ok["legal_verdict"] == "pass" and "legal_verdict_judge" not in ok
+    # 확정 위반이 있으면 미완이어도 fail
+    bad = eval_v3.compact(_rejudge_result("needs_rejudge", "fail", hits=("LG-02",)))
+    assert bad["legal_verdict"] == "fail" and "legal_verdict_judge" not in bad
+
+
 def test_needs_rejudge_unresolved_stays_review(monkeypatch):
     """횟수를 다 써도 못 끝내면 마지막 결과(review·needs_rejudge)를 그대로 두고 FAIL 로 덮지 않는다.
     재판정 호출의 예외는 직전 결과를 유지하고 errors 에 남긴다. 1차 fail 이었어도 구형 2단 판정을 타지 않는다."""

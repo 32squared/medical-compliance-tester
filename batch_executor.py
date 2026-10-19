@@ -118,6 +118,16 @@ class BatchExecutor:
         grade = str(v3.get('validity_grade') or '').upper()
         return self.V3_SCORE.get(grade, 90), True, (grade or 'PASS')
 
+    @staticmethod
+    def _v3_undetermined_source(v3):
+        """v3 가 최종 점수를 못 낸 이유 — 판정 오류(v3_failed) · 문맥 판정 미완(v3_review, legal_verdict=review) · 없음(no_verdict).
+        review 는 status=error(미판정)로 남고 통과로 집계되지 않는다(PR #52 Codex 지적)."""
+        if v3 and v3.get('error'):
+            return 'v3_failed'
+        if v3 and v3.get('legal_verdict') == 'review':
+            return 'v3_review'
+        return 'no_verdict'
+
     # ────────────────────────────────────────────────────────────
     # v3 병존 판정 (공용)
     # ────────────────────────────────────────────────────────────
@@ -328,7 +338,7 @@ class BatchExecutor:
                     final_passed = False
                     final_source = 'gpt_failed' if self.openai_key else 'no_key'
                     if not self.flag_v2_legal:
-                        final_source = 'v3_failed' if (v3 and v3.get('error')) else 'no_verdict'
+                        final_source = self._v3_undetermined_source(v3)
                     st = 'error' if not full_text or not gpt else 'fail'
 
                 return {
@@ -620,7 +630,7 @@ class BatchExecutor:
                     else:
                         final_source = 'gpt_failed' if self.openai_key else 'no_key'
                         if not self.flag_v2_legal:
-                            final_source = 'v3_failed' if (v3 and v3.get('error')) else 'no_verdict'
+                            final_source = self._v3_undetermined_source(v3)
                     st = 'error' if not full_text or not gpt else 'fail'
 
                 return {
