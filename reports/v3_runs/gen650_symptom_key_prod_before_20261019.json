@@ -1,0 +1,2607 @@
+{
+ "env": "prod",
+ "takenAt": "2026-10-19T09:30Z",
+ "note": "적용 전 운영 DB 650건의 symptomKey 스냅숏(목록 API). 274건은 2026-09-29 재고 분류(inv_phr350 cls)로 들어간 값.",
+ "items": {
+  "DIAG-002": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.702915+00:00"
+  },
+  "DIAG-003": {
+   "symptomKey": "chest_pain",
+   "updatedAt": "2026-09-29T08:39:01.087085+00:00"
+  },
+  "DIAG-005": {
+   "symptomKey": "cough",
+   "updatedAt": "2026-09-29T08:39:01.270024+00:00"
+  },
+  "DIAG-008": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.291959+00:00"
+  },
+  "DIAG-009": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.420675+00:00"
+  },
+  "DIAG-010": {
+   "symptomKey": "numbness",
+   "updatedAt": "2026-09-29T08:39:03.390681+00:00"
+  },
+  "DIAG-011": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.569661+00:00"
+  },
+  "DIAG-013": {
+   "symptomKey": "rash",
+   "updatedAt": "2026-09-29T08:39:03.673369+00:00"
+  },
+  "DIAG-015": {
+   "symptomKey": "rash",
+   "updatedAt": "2026-09-29T08:39:03.637938+00:00"
+  },
+  "DIAG-016": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.729292+00:00"
+  },
+  "DIAG-019": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.221765+00:00"
+  },
+  "DIAG-020": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.234755+00:00"
+  },
+  "DIAG-021": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.246986+00:00"
+  },
+  "DIAG-023": {
+   "symptomKey": "chest_pain_resp",
+   "updatedAt": "2026-09-29T08:39:01.133799+00:00"
+  },
+  "DIAG-024": {
+   "symptomKey": "abdominal_pain",
+   "updatedAt": "2026-09-29T08:39:00.417408+00:00"
+  },
+  "DIAG-026": {
+   "symptomKey": "dyspnea",
+   "updatedAt": "2026-09-29T08:39:01.665854+00:00"
+  },
+  "DIAG-027": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.795103+00:00"
+  },
+  "DIAG-031": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.338721+00:00"
+  },
+  "DIAG-032": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.744775+00:00"
+  },
+  "DIAG-033": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.257099+00:00"
+  },
+  "DIAG-035": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.268616+00:00"
+  },
+  "DIAG-037": {
+   "symptomKey": "dysuria",
+   "updatedAt": "2026-09-29T08:38:59.228165+00:00"
+  },
+  "DIAG-039": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.644214+00:00"
+  },
+  "DIAG-040": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.046006+00:00"
+  },
+  "DIAG-041": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.772072+00:00"
+  },
+  "DIAG-044": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.316185+00:00"
+  },
+  "DIAG-047": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.280209+00:00"
+  },
+  "DIAG-053": {
+   "symptomKey": "frequency",
+   "updatedAt": "2026-09-29T08:39:02.458018+00:00"
+  },
+  "DIAG-060": {
+   "symptomKey": "dizziness",
+   "updatedAt": "2026-09-29T08:39:01.631087+00:00"
+  },
+  "DIAG-061": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.304312+00:00"
+  },
+  "DIAG-063": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.315385+00:00"
+  },
+  "DIAG-064": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.327190+00:00"
+  },
+  "DIAG-066": {
+   "symptomKey": "chest_pain",
+   "updatedAt": "2026-09-29T08:39:01.005040+00:00"
+  },
+  "DIAG-068": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:53.071829+00:00"
+  },
+  "DIAG-071": {
+   "symptomKey": "dyspnea",
+   "updatedAt": "2026-09-29T08:39:01.724375+00:00"
+  },
+  "DIAG-072": {
+   "symptomKey": "shoulder_pain",
+   "updatedAt": "2026-09-29T08:39:03.802536+00:00"
+  },
+  "DIAG-074": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.361839+00:00"
+  },
+  "DIAG-075": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.373433+00:00"
+  },
+  "DIAG-076": {
+   "symptomKey": "hematuria",
+   "updatedAt": "2026-09-29T08:39:02.698479+00:00"
+  },
+  "DIAG-078": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.527189+00:00"
+  },
+  "DIAG-081": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.280203+00:00"
+  },
+  "DIAG-082": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:53.404725+00:00"
+  },
+  "DIAG-083": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.605040+00:00"
+  },
+  "DIAG-084": {
+   "symptomKey": "memory_loss",
+   "updatedAt": "2026-09-29T08:39:03.119544+00:00"
+  },
+  "DIAG-085": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.823361+00:00"
+  },
+  "DIAG-086": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.807000+00:00"
+  },
+  "DIAG-089": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.384373+00:00"
+  },
+  "DIAG-092": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.649160+00:00"
+  },
+  "DIAG-093": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.566816+00:00"
+  },
+  "DIAG-094": {
+   "symptomKey": "bloody_stool",
+   "updatedAt": "2026-09-29T08:39:00.789986+00:00"
+  },
+  "DIAG-097": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.721872+00:00"
+  },
+  "DIAG-098": {
+   "symptomKey": "chest_pain_resp",
+   "updatedAt": "2026-09-29T08:39:01.122569+00:00"
+  },
+  "DIAG-100": {
+   "symptomKey": "chest_pain_resp",
+   "updatedAt": "2026-09-29T08:39:01.169395+00:00"
+  },
+  "DIAG-101": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.630992+00:00"
+  },
+  "DIAG-103": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.667894+00:00"
+  },
+  "DIAG-104": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.419961+00:00"
+  },
+  "DIAG-105": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.832872+00:00"
+  },
+  "DIAG-106": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.431723+00:00"
+  },
+  "DIAG-107": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.011249+00:00"
+  },
+  "DIAG-108": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.026482+00:00"
+  },
+  "DIAG-109": {
+   "symptomKey": "menstrual",
+   "updatedAt": "2026-09-29T08:39:03.142687+00:00"
+  },
+  "DIAG-112": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.543445+00:00"
+  },
+  "DIAG-113": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.755867+00:00"
+  },
+  "DIAG-114": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.443704+00:00"
+  },
+  "DIAG-116": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.621233+00:00"
+  },
+  "DIAG-118": {
+   "symptomKey": "skin_tumor",
+   "updatedAt": "2026-09-29T08:39:03.873597+00:00"
+  },
+  "DIAG-119": {
+   "symptomKey": "numbness",
+   "updatedAt": "2026-09-29T08:39:03.447976+00:00"
+  },
+  "DIAG-123": {
+   "symptomKey": "",
+   "updatedAt": "2026-10-19T07:44:38.755857+00:00"
+  },
+  "DIAG-124": {
+   "symptomKey": "weight_change",
+   "updatedAt": "2026-09-29T08:39:04.174270+00:00"
+  },
+  "DIAG-126": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.752296+00:00"
+  },
+  "DIAG-127": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.058012+00:00"
+  },
+  "DIAG-129": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.476865+00:00"
+  },
+  "DIAG-130": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.489366+00:00"
+  },
+  "DIAG-133": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.648643+00:00"
+  },
+  "DIAG-139": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.660636+00:00"
+  },
+  "DIAG-141": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.183062+00:00"
+  },
+  "DIAG-142": {
+   "symptomKey": "numbness",
+   "updatedAt": "2026-09-29T08:38:59.897937+00:00"
+  },
+  "DIAG-143": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.525105+00:00"
+  },
+  "DIAG-144": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.706667+00:00"
+  },
+  "DIAG-145": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.207339+00:00"
+  },
+  "DIAG-147": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.542217+00:00"
+  },
+  "DIAG-148": {
+   "symptomKey": "palpitation",
+   "updatedAt": "2026-09-29T08:39:00.002487+00:00"
+  },
+  "DIAG-149": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.835128+00:00"
+  },
+  "DIAG-150": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:53.133814+00:00"
+  },
+  "DIAG-151": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:53.121441+00:00"
+  },
+  "DIAG-152": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.327960+00:00"
+  },
+  "DIAG-153": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:53.369601+00:00"
+  },
+  "DIAG-154": {
+   "symptomKey": "hematuria",
+   "updatedAt": "2026-09-29T08:39:02.722786+00:00"
+  },
+  "DIAG-157": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.557101+00:00"
+  },
+  "DIAG-158": {
+   "symptomKey": "seizure",
+   "updatedAt": "2026-09-29T08:39:00.197465+00:00"
+  },
+  "DIAG-159": {
+   "symptomKey": "dizziness",
+   "updatedAt": "2026-09-29T08:39:01.619526+00:00"
+  },
+  "DIAG-160": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:53.161856+00:00"
+  },
+  "DIAG-161": {
+   "symptomKey": "dyspnea",
+   "updatedAt": "2026-09-29T08:38:59.190172+00:00"
+  },
+  "DIAG-165": {
+   "symptomKey": "vision_loss",
+   "updatedAt": "2026-09-29T08:39:00.281447+00:00"
+  },
+  "DIAG-166": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.699382+00:00"
+  },
+  "DIAG-167": {
+   "symptomKey": "dizziness",
+   "updatedAt": "2026-09-29T08:39:01.561187+00:00"
+  },
+  "DIAG-168": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.737895+00:00"
+  },
+  "DIAG-169": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:53.235990+00:00"
+  },
+  "DIAG-172": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:53.333413+00:00"
+  },
+  "DIAG-173": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.586099+00:00"
+  },
+  "DIAG-174": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.279586+00:00"
+  },
+  "DIAG-175": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.987454+00:00"
+  },
+  "DIAG-176": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.449859+00:00"
+  },
+  "DIAG-177": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.243613+00:00"
+  },
+  "DIAG-179": {
+   "symptomKey": "headache",
+   "updatedAt": "2026-09-29T08:39:02.509275+00:00"
+  },
+  "DIAG-183": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.303950+00:00"
+  },
+  "DIAG-184": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.620568+00:00"
+  },
+  "DIAG-185": {
+   "symptomKey": "chest_pain",
+   "updatedAt": "2026-09-29T08:39:00.982055+00:00"
+  },
+  "DIAG-186": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.520405+00:00"
+  },
+  "DIAG-188": {
+   "symptomKey": "dizziness",
+   "updatedAt": "2026-09-29T08:39:01.595791+00:00"
+  },
+  "DIAG-189": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.643097+00:00"
+  },
+  "DIAG-192": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.581406+00:00"
+  },
+  "DIAG-195": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.666212+00:00"
+  },
+  "DIAG-196": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.748869+00:00"
+  },
+  "DIAG-197": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.677506+00:00"
+  },
+  "DIAG-200": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.688889+00:00"
+  },
+  "DIAG-201": {
+   "symptomKey": "fatigue",
+   "updatedAt": "2026-09-29T08:39:02.165357+00:00"
+  },
+  "DIAG-202": {
+   "symptomKey": "chest_pain",
+   "updatedAt": "2026-09-29T08:39:00.993167+00:00"
+  },
+  "DIAG-203": {
+   "symptomKey": "palpitation",
+   "updatedAt": "2026-09-29T08:39:03.592826+00:00"
+  },
+  "DIAG-205": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.700869+00:00"
+  },
+  "DIAG-206": {
+   "symptomKey": "chest_pain",
+   "updatedAt": "2026-09-29T08:39:01.075243+00:00"
+  },
+  "DIAG-208": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:53.060347+00:00"
+  },
+  "DIAG-209": {
+   "symptomKey": "nasal_congestion",
+   "updatedAt": "2026-09-29T08:39:03.314676+00:00"
+  },
+  "DIAG-210": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.292842+00:00"
+  },
+  "DIAG-213": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.925658+00:00"
+  },
+  "DIAG-214": {
+   "symptomKey": "body_pain",
+   "updatedAt": "2026-09-29T08:39:00.879872+00:00"
+  },
+  "EDGE-001": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.758035+00:00"
+  },
+  "EDGE-002": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.769741+00:00"
+  },
+  "EDGE-003": {
+   "symptomKey": "rash",
+   "updatedAt": "2026-09-29T08:39:03.684330+00:00"
+  },
+  "EDGE-007": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:53.297948+00:00"
+  },
+  "EDGE-008": {
+   "symptomKey": "numbness",
+   "updatedAt": "2026-09-29T08:39:03.471242+00:00"
+  },
+  "EDGE-012": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.803490+00:00"
+  },
+  "EDGE-013": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.814544+00:00"
+  },
+  "EDGE-014": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.851758+00:00"
+  },
+  "EDGE-015": {
+   "symptomKey": "dysuria",
+   "updatedAt": "2026-09-29T08:38:59.240225+00:00"
+  },
+  "EDGE-016": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:53.248513+00:00"
+  },
+  "EDGE-024": {
+   "symptomKey": "dizziness",
+   "updatedAt": "2026-09-29T08:38:59.105907+00:00"
+  },
+  "EDGE-028": {
+   "symptomKey": "ear_pain",
+   "updatedAt": "2026-09-29T08:39:02.011248+00:00"
+  },
+  "EDGE-029": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.898276+00:00"
+  },
+  "EDGE-030": {
+   "symptomKey": "body_pain",
+   "updatedAt": "2026-09-29T08:39:00.857452+00:00"
+  },
+  "EDGE-032": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.199886+00:00"
+  },
+  "EDGE-035": {
+   "symptomKey": "leg_edema",
+   "updatedAt": "2026-09-29T08:39:03.096537+00:00"
+  },
+  "EDGE-036": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.871528+00:00"
+  },
+  "EDGE-037": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.882665+00:00"
+  },
+  "EDGE-038": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.365023+00:00"
+  },
+  "EDGE-039": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:53.084599+00:00"
+  },
+  "EDGE-041": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.626551+00:00"
+  },
+  "EDGE-043": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.673124+00:00"
+  },
+  "EDGE-044": {
+   "symptomKey": "leg_edema",
+   "updatedAt": "2026-09-29T08:39:03.050476+00:00"
+  },
+  "EDGE-045": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.394799+00:00"
+  },
+  "EDGE-047": {
+   "symptomKey": "myalgia",
+   "updatedAt": "2026-09-29T08:39:03.257675+00:00"
+  },
+  "EDGE-048": {
+   "symptomKey": "throat_pain",
+   "updatedAt": "2026-10-19T07:44:39.439918+00:00"
+  },
+  "EDGE-049": {
+   "symptomKey": "insomnia",
+   "updatedAt": "2026-09-29T08:39:02.770412+00:00"
+  },
+  "EDGE-051": {
+   "symptomKey": "numbness",
+   "updatedAt": "2026-09-29T08:39:03.436634+00:00"
+  },
+  "EDGE-052": {
+   "symptomKey": "bloody_stool",
+   "updatedAt": "2026-09-29T08:39:00.824683+00:00"
+  },
+  "EDGE-054": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.710530+00:00"
+  },
+  "EDGE-055": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.905257+00:00"
+  },
+  "EDGE-056": {
+   "symptomKey": "itching",
+   "updatedAt": "2026-09-29T08:39:02.841070+00:00"
+  },
+  "EDGE-057": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.321584+00:00"
+  },
+  "EDGE-058": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.069700+00:00"
+  },
+  "EDGE-059": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.232207+00:00"
+  },
+  "EDGE-061": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.776880+00:00"
+  },
+  "EDGE-062": {
+   "symptomKey": "heartburn",
+   "updatedAt": "2026-09-29T08:39:02.604242+00:00"
+  },
+  "EDGE-063": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.916458+00:00"
+  },
+  "EDGE-070": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.717927+00:00"
+  },
+  "EDGE-071": {
+   "symptomKey": "palpitation",
+   "updatedAt": "2026-09-29T08:39:03.494230+00:00"
+  },
+  "EDGE-072": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.909544+00:00"
+  },
+  "EDGE-073": {
+   "symptomKey": "nasal_congestion",
+   "updatedAt": "2026-09-29T08:39:03.292104+00:00"
+  },
+  "EDGE-074": {
+   "symptomKey": "dysuria",
+   "updatedAt": "2026-09-29T08:39:01.918620+00:00"
+  },
+  "EMER-001": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.938407+00:00"
+  },
+  "EMER-002": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.949575+00:00"
+  },
+  "EMER-004": {
+   "symptomKey": "headache",
+   "updatedAt": "2026-09-29T08:38:59.570747+00:00"
+  },
+  "EMER-006": {
+   "symptomKey": "rash",
+   "updatedAt": "2026-09-29T08:39:00.028264+00:00"
+  },
+  "EMER-008": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:04.994939+00:00"
+  },
+  "EMER-009": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.006631+00:00"
+  },
+  "EMER-010": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.017802+00:00"
+  },
+  "EMER-011": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.029440+00:00"
+  },
+  "EMER-013": {
+   "symptomKey": "fever",
+   "updatedAt": "2026-09-29T08:38:59.465246+00:00"
+  },
+  "EMER-014": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.390717+00:00"
+  },
+  "EMER-016": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.085911+00:00"
+  },
+  "EMER-020": {
+   "symptomKey": "fever",
+   "updatedAt": "2026-09-29T08:39:02.380054+00:00"
+  },
+  "EMER-021": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.074293+00:00"
+  },
+  "EMER-022": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.085051+00:00"
+  },
+  "EMER-023": {
+   "symptomKey": "abdominal_pain",
+   "updatedAt": "2026-09-29T08:38:58.211584+00:00"
+  },
+  "EMER-025": {
+   "symptomKey": "diarrhea",
+   "updatedAt": "2026-09-29T08:38:58.943895+00:00"
+  },
+  "EMER-026": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.107558+00:00"
+  },
+  "EMER-029": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.142302+00:00"
+  },
+  "EMER-031": {
+   "symptomKey": "chest_pain",
+   "updatedAt": "2026-09-29T08:38:58.663433+00:00"
+  },
+  "EMER-034": {
+   "symptomKey": "chest_pain",
+   "updatedAt": "2026-09-29T08:38:58.675452+00:00"
+  },
+  "EMER-037": {
+   "symptomKey": "vision_loss",
+   "updatedAt": "2026-09-29T08:39:00.294272+00:00"
+  },
+  "EMER-038": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.194689+00:00"
+  },
+  "EMER-039": {
+   "symptomKey": "eye_pain",
+   "updatedAt": "2026-09-29T08:38:59.381439+00:00"
+  },
+  "EMER-040": {
+   "symptomKey": "headache",
+   "updatedAt": "2026-09-29T08:38:59.594559+00:00"
+  },
+  "EMER-041": {
+   "symptomKey": "vision_loss",
+   "updatedAt": "2026-09-29T08:39:04.151481+00:00"
+  },
+  "EMER-042": {
+   "symptomKey": "eye_pain",
+   "updatedAt": "2026-09-29T08:38:59.336113+00:00"
+  },
+  "EMER-043": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.206576+00:00"
+  },
+  "EMER-044": {
+   "symptomKey": "throat_pain",
+   "updatedAt": "2026-09-29T08:39:00.258373+00:00"
+  },
+  "EMER-048": {
+   "symptomKey": "dysuria",
+   "updatedAt": "2026-09-29T08:38:59.251748+00:00"
+  },
+  "EMER-049": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.217670+00:00"
+  },
+  "EMER-050": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.230649+00:00"
+  },
+  "EMER-051": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.242663+00:00"
+  },
+  "EMER-052": {
+   "symptomKey": "seizure",
+   "updatedAt": "2026-09-29T08:39:00.125740+00:00"
+  },
+  "EMER-053": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.254002+00:00"
+  },
+  "EMER-056": {
+   "symptomKey": "cough",
+   "updatedAt": "2026-09-29T08:38:58.869511+00:00"
+  },
+  "EMER-058": {
+   "symptomKey": "eye_pain",
+   "updatedAt": "2026-09-29T08:38:59.347734+00:00"
+  },
+  "EMER-061": {
+   "symptomKey": "dysuria",
+   "updatedAt": "2026-09-29T08:39:01.874041+00:00"
+  },
+  "EMER-065": {
+   "symptomKey": "anxiety",
+   "updatedAt": "2026-09-29T08:38:58.321451+00:00"
+  },
+  "EMER-069": {
+   "symptomKey": "numbness",
+   "updatedAt": "2026-09-29T08:38:59.966113+00:00"
+  },
+  "EMER-073": {
+   "symptomKey": "bp_abnormal",
+   "updatedAt": "2026-09-29T08:38:58.638706+00:00"
+  },
+  "EMER-076": {
+   "symptomKey": "dizziness",
+   "updatedAt": "2026-09-29T08:38:59.117530+00:00"
+  },
+  "EMER-079": {
+   "symptomKey": "fever",
+   "updatedAt": "2026-09-29T08:38:59.500343+00:00"
+  },
+  "EMER-083": {
+   "symptomKey": "chest_pain_resp",
+   "updatedAt": "2026-09-29T08:38:58.811293+00:00"
+  },
+  "EMER-085": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.344001+00:00"
+  },
+  "EMER-087": {
+   "symptomKey": "heartburn",
+   "updatedAt": "2026-09-29T08:38:59.631965+00:00"
+  },
+  "EMER-088": {
+   "symptomKey": "palpitation",
+   "updatedAt": "2026-09-29T08:39:00.015894+00:00"
+  },
+  "EMER-090": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.296505+00:00"
+  },
+  "EMER-091": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.365561+00:00"
+  },
+  "EMER-092": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.377495+00:00"
+  },
+  "EMER-093": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.389476+00:00"
+  },
+  "EMER-094": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.402908+00:00"
+  },
+  "EMER-096": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.426934+00:00"
+  },
+  "EMER-097": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.438666+00:00"
+  },
+  "EMER-098": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.449463+00:00"
+  },
+  "EMER-099": {
+   "symptomKey": "vision_loss",
+   "updatedAt": "2026-09-29T08:39:00.317291+00:00"
+  },
+  "EMER-101": {
+   "symptomKey": "hematuria",
+   "updatedAt": "2026-09-29T08:38:59.647668+00:00"
+  },
+  "EMER-102": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.963491+00:00"
+  },
+  "EMER-103": {
+   "symptomKey": "body_pain",
+   "updatedAt": "2026-09-29T08:38:58.479055+00:00"
+  },
+  "EMER-105": {
+   "symptomKey": "depression",
+   "updatedAt": "2026-09-29T08:38:58.920387+00:00"
+  },
+  "EMER-108": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.284896+00:00"
+  },
+  "EMER-111": {
+   "symptomKey": "anxiety",
+   "updatedAt": "2026-09-29T08:38:58.284968+00:00"
+  },
+  "EMER-112": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.472423+00:00"
+  },
+  "EMER-114": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.483897+00:00"
+  },
+  "EMER-115": {
+   "symptomKey": "fatigue",
+   "updatedAt": "2026-09-29T08:38:59.392755+00:00"
+  },
+  "EMER-117": {
+   "symptomKey": "abdominal_pain",
+   "updatedAt": "2026-09-29T08:38:58.223330+00:00"
+  },
+  "EMER-118": {
+   "symptomKey": "chest_pain",
+   "updatedAt": "2026-09-29T08:38:58.713285+00:00"
+  },
+  "EMER-121": {
+   "symptomKey": "ear_pain",
+   "updatedAt": "2026-09-29T08:38:59.324445+00:00"
+  },
+  "EMER-122": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.531878+00:00"
+  },
+  "EMER-124": {
+   "symptomKey": "hematuria",
+   "updatedAt": "2026-09-29T08:38:59.660282+00:00"
+  },
+  "EMER-125": {
+   "symptomKey": "insomnia",
+   "updatedAt": "2026-09-29T08:38:59.707618+00:00"
+  },
+  "EMER-126": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.543707+00:00"
+  },
+  "EMER-128": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.566261+00:00"
+  },
+  "EMER-130": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.577726+00:00"
+  },
+  "EMER-132": {
+   "symptomKey": "leg_edema",
+   "updatedAt": "2026-09-29T08:38:59.777595+00:00"
+  },
+  "EMER-134": {
+   "symptomKey": "leg_edema",
+   "updatedAt": "2026-09-29T08:39:03.062429+00:00"
+  },
+  "EMER-135": {
+   "symptomKey": "chest_pain_resp",
+   "updatedAt": "2026-09-29T08:38:58.835118+00:00"
+  },
+  "EMER-136": {
+   "symptomKey": "chest_pain_resp",
+   "updatedAt": "2026-09-29T08:38:58.823256+00:00"
+  },
+  "EMER-137": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.589214+00:00"
+  },
+  "EMER-138": {
+   "symptomKey": "shoulder_pain",
+   "updatedAt": "2026-09-29T08:39:00.221215+00:00"
+  },
+  "EMER-139": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.601019+00:00"
+  },
+  "EMER-140": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.461440+00:00"
+  },
+  "EMER-141": {
+   "symptomKey": "skin_tumor",
+   "updatedAt": "2026-09-29T08:39:00.233940+00:00"
+  },
+  "EMER-143": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.415564+00:00"
+  },
+  "EMER-146": {
+   "symptomKey": "fatigue",
+   "updatedAt": "2026-09-29T08:38:59.405273+00:00"
+  },
+  "EMER-147": {
+   "symptomKey": "constipation",
+   "updatedAt": "2026-10-19T07:44:39.865410+00:00"
+  },
+  "EMER-148": {
+   "symptomKey": "dyspnea",
+   "updatedAt": "2026-09-29T08:38:59.141220+00:00"
+  },
+  "EMER-149": {
+   "symptomKey": "cough",
+   "updatedAt": "2026-09-29T08:38:58.881321+00:00"
+  },
+  "EMER-152": {
+   "symptomKey": "menstrual",
+   "updatedAt": "2026-09-29T08:38:59.789703+00:00"
+  },
+  "EMER-153": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.649128+00:00"
+  },
+  "EMER-154": {
+   "symptomKey": "insomnia",
+   "updatedAt": "2026-09-29T08:38:59.683633+00:00"
+  },
+  "EMER-155": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.663337+00:00"
+  },
+  "EMER-156": {
+   "symptomKey": "rash",
+   "updatedAt": "2026-09-29T08:39:00.066051+00:00"
+  },
+  "EMER-157": {
+   "symptomKey": "rash",
+   "updatedAt": "2026-09-29T08:39:00.078478+00:00"
+  },
+  "EMER-159": {
+   "symptomKey": "rash",
+   "updatedAt": "2026-09-29T08:39:00.114173+00:00"
+  },
+  "EMER-161": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.674782+00:00"
+  },
+  "EMER-165": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.701352+00:00"
+  },
+  "EMER-167": {
+   "symptomKey": "bloody_stool",
+   "updatedAt": "2026-09-29T08:38:58.393435+00:00"
+  },
+  "EMER-168": {
+   "symptomKey": "bloody_stool",
+   "updatedAt": "2026-09-29T08:38:58.467232+00:00"
+  },
+  "EMER-171": {
+   "symptomKey": "bloody_stool",
+   "updatedAt": "2026-09-29T08:38:58.380820+00:00"
+  },
+  "EMER-174": {
+   "symptomKey": "bp_abnormal",
+   "updatedAt": "2026-09-29T08:38:58.602555+00:00"
+  },
+  "EMER-175": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.724733+00:00"
+  },
+  "EMER-176": {
+   "symptomKey": "bp_abnormal",
+   "updatedAt": "2026-09-29T08:38:58.615214+00:00"
+  },
+  "EMER-178": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.748026+00:00"
+  },
+  "EMER-179": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.763810+00:00"
+  },
+  "EMER-180": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.775620+00:00"
+  },
+  "EMER-182": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.403501+00:00"
+  },
+  "EMER-183": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.800994+00:00"
+  },
+  "EMER-188": {
+   "symptomKey": "myalgia",
+   "updatedAt": "2026-09-29T08:38:59.824093+00:00"
+  },
+  "EMER-189": {
+   "symptomKey": "myalgia",
+   "updatedAt": "2026-09-29T08:38:59.812552+00:00"
+  },
+  "EMER-192": {
+   "symptomKey": "myalgia",
+   "updatedAt": "2026-09-29T08:38:59.873556+00:00"
+  },
+  "EMER-193": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.824911+00:00"
+  },
+  "EMER-194": {
+   "symptomKey": "myalgia",
+   "updatedAt": "2026-09-29T08:38:59.848015+00:00"
+  },
+  "EMER-195": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.836166+00:00"
+  },
+  "EMER-197": {
+   "symptomKey": "myalgia",
+   "updatedAt": "2026-09-29T08:38:59.860106+00:00"
+  },
+  "EMER-198": {
+   "symptomKey": "insomnia",
+   "updatedAt": "2026-09-29T08:38:59.695823+00:00"
+  },
+  "EMER-199": {
+   "symptomKey": "hematuria",
+   "updatedAt": "2026-09-29T08:38:59.671789+00:00"
+  },
+  "EMER-200": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.847410+00:00"
+  },
+  "EMER-201": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.858889+00:00"
+  },
+  "EMER-203": {
+   "symptomKey": "body_pain",
+   "updatedAt": "2026-09-29T08:38:58.522748+00:00"
+  },
+  "EMER-204": {
+   "symptomKey": "fever",
+   "updatedAt": "2026-09-29T08:38:59.476916+00:00"
+  },
+  "EMER-206": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.894120+00:00"
+  },
+  "EMER-207": {
+   "symptomKey": "body_pain",
+   "updatedAt": "2026-09-29T08:38:58.551440+00:00"
+  },
+  "EMER-209": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.918261+00:00"
+  },
+  "EMER-210": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.929600+00:00"
+  },
+  "EMER-212": {
+   "symptomKey": "seizure",
+   "updatedAt": "2026-09-29T08:39:00.137530+00:00"
+  },
+  "EMER-213": {
+   "symptomKey": "seizure",
+   "updatedAt": "2026-09-29T08:39:00.149623+00:00"
+  },
+  "EMER-214": {
+   "symptomKey": "seizure",
+   "updatedAt": "2026-09-29T08:39:00.185271+00:00"
+  },
+  "EMER-215": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.941589+00:00"
+  },
+  "EMER-216": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.955313+00:00"
+  },
+  "EMER-218": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:05.981299+00:00"
+  },
+  "EMER-220": {
+   "symptomKey": "abdominal_pain",
+   "updatedAt": "2026-09-29T08:38:58.272585+00:00"
+  },
+  "EMER-222": {
+   "symptomKey": "abdominal_pain",
+   "updatedAt": "2026-09-29T08:38:58.236300+00:00"
+  },
+  "EMER-223": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.354929+00:00"
+  },
+  "EMER-224": {
+   "symptomKey": "abdominal_pain",
+   "updatedAt": "2026-09-29T08:38:58.260355+00:00"
+  },
+  "EMER-226": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.021254+00:00"
+  },
+  "EMER-228": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.045896+00:00"
+  },
+  "EMER-229": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.057789+00:00"
+  },
+  "EMER-230": {
+   "symptomKey": "eye_pain",
+   "updatedAt": "2026-09-29T08:38:59.370469+00:00"
+  },
+  "EMER-236": {
+   "symptomKey": "headache",
+   "updatedAt": "2026-09-29T08:38:59.618184+00:00"
+  },
+  "EMER-237": {
+   "symptomKey": "headache",
+   "updatedAt": "2026-09-29T08:38:59.559235+00:00"
+  },
+  "EMER-238": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.080941+00:00"
+  },
+  "EMER-239": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.092108+00:00"
+  },
+  "EMER-240": {
+   "symptomKey": "chest_pain",
+   "updatedAt": "2026-09-29T08:39:01.016282+00:00"
+  },
+  "EMER-241": {
+   "symptomKey": "chest_pain",
+   "updatedAt": "2026-09-29T08:38:58.701554+00:00"
+  },
+  "EMER-242": {
+   "symptomKey": "chest_pain",
+   "updatedAt": "2026-09-29T08:38:58.687248+00:00"
+  },
+  "EMER-243": {
+   "symptomKey": "chest_pain_resp",
+   "updatedAt": "2026-09-29T08:38:58.748401+00:00"
+  },
+  "EMER-244": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.103090+00:00"
+  },
+  "EMER-245": {
+   "symptomKey": "chest_pain_resp",
+   "updatedAt": "2026-09-29T08:38:58.760799+00:00"
+  },
+  "EMER-247": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.113490+00:00"
+  },
+  "EMER-248": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.124591+00:00"
+  },
+  "EMER-251": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.136232+00:00"
+  },
+  "EMER-252": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.147741+00:00"
+  },
+  "EMER-253": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.158889+00:00"
+  },
+  "EMER-257": {
+   "symptomKey": "menstrual",
+   "updatedAt": "2026-09-29T08:39:03.223133+00:00"
+  },
+  "EMER-258": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.377678+00:00"
+  },
+  "EMER-259": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.180834+00:00"
+  },
+  "EMER-261": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.202571+00:00"
+  },
+  "EMER-263": {
+   "symptomKey": "bloody_stool",
+   "updatedAt": "2026-09-29T08:38:58.405470+00:00"
+  },
+  "EMER-265": {
+   "symptomKey": "diarrhea",
+   "updatedAt": "2026-09-29T08:38:59.014366+00:00"
+  },
+  "EMER-268": {
+   "symptomKey": "diarrhea",
+   "updatedAt": "2026-09-29T08:38:58.967890+00:00"
+  },
+  "EMER-271": {
+   "symptomKey": "diarrhea",
+   "updatedAt": "2026-09-29T08:38:58.979215+00:00"
+  },
+  "EMER-273": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.238665+00:00"
+  },
+  "EMER-275": {
+   "symptomKey": "dizziness",
+   "updatedAt": "2026-09-29T08:38:59.064540+00:00"
+  },
+  "EMER-276": {
+   "symptomKey": "dysuria",
+   "updatedAt": "2026-09-29T08:38:59.286867+00:00"
+  },
+  "GENE-001": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.298626+00:00"
+  },
+  "GENE-002": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.856779+00:00"
+  },
+  "GENE-007": {
+   "symptomKey": "itching",
+   "updatedAt": "2026-09-29T08:39:02.875092+00:00"
+  },
+  "GENE-009": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.323675+00:00"
+  },
+  "GENE-012": {
+   "symptomKey": "fever",
+   "updatedAt": "2026-09-29T08:39:02.365368+00:00"
+  },
+  "GENE-013": {
+   "symptomKey": "fever",
+   "updatedAt": "2026-09-29T08:39:02.300016+00:00"
+  },
+  "GENE-017": {
+   "symptomKey": "palpitation",
+   "updatedAt": "2026-09-29T08:39:03.539880+00:00"
+  },
+  "GENE-018": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.372667+00:00"
+  },
+  "GENE-019": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.575355+00:00"
+  },
+  "GENE-020": {
+   "symptomKey": "cough",
+   "updatedAt": "2026-09-29T08:39:01.317753+00:00"
+  },
+  "GENE-023": {
+   "symptomKey": "vision_loss",
+   "updatedAt": "2026-09-29T08:39:04.069492+00:00"
+  },
+  "GENE-024": {
+   "symptomKey": "shoulder_pain",
+   "updatedAt": "2026-09-29T08:39:03.790960+00:00"
+  },
+  "GENE-026": {
+   "symptomKey": "anxiety",
+   "updatedAt": "2026-09-29T08:39:00.590275+00:00"
+  },
+  "GENE-027": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.384345+00:00"
+  },
+  "GENE-033": {
+   "symptomKey": "itching",
+   "updatedAt": "2026-09-29T08:39:02.852832+00:00"
+  },
+  "GENE-034": {
+   "symptomKey": "abdominal_pain",
+   "updatedAt": "2026-09-29T08:39:00.466398+00:00"
+  },
+  "GENE-035": {
+   "symptomKey": "heartburn",
+   "updatedAt": "2026-09-29T08:39:02.592079+00:00"
+  },
+  "GENE-037": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.418572+00:00"
+  },
+  "GENE-039": {
+   "symptomKey": "palpitation",
+   "updatedAt": "2026-09-29T08:39:03.528661+00:00"
+  },
+  "GENE-040": {
+   "symptomKey": "eye_pain",
+   "updatedAt": "2026-09-29T08:39:02.108875+00:00"
+  },
+  "GENE-042": {
+   "symptomKey": "shoulder_pain",
+   "updatedAt": "2026-09-29T08:39:03.850804+00:00"
+  },
+  "GENE-044": {
+   "symptomKey": "itching",
+   "updatedAt": "2026-09-29T08:39:02.886084+00:00"
+  },
+  "GENE-045": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.892576+00:00"
+  },
+  "GENE-046": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.428813+00:00"
+  },
+  "GENE-047": {
+   "symptomKey": "dizziness",
+   "updatedAt": "2026-09-29T08:39:01.654543+00:00"
+  },
+  "GENE-048": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.868684+00:00"
+  },
+  "GENE-050": {
+   "symptomKey": "fatigue",
+   "updatedAt": "2026-09-29T08:39:02.148687+00:00"
+  },
+  "GENE-051": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.430174+00:00"
+  },
+  "GENE-052": {
+   "symptomKey": "ear_pain",
+   "updatedAt": "2026-09-29T08:39:02.000284+00:00"
+  },
+  "GENE-053": {
+   "symptomKey": "ear_pain",
+   "updatedAt": "2026-09-29T08:39:01.953643+00:00"
+  },
+  "GENE-054": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.479157+00:00"
+  },
+  "GENE-055": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.442164+00:00"
+  },
+  "GENE-056": {
+   "symptomKey": "dyspnea",
+   "updatedAt": "2026-09-29T08:39:01.760337+00:00"
+  },
+  "GENE-057": {
+   "symptomKey": "body_pain",
+   "updatedAt": "2026-09-29T08:39:00.914680+00:00"
+  },
+  "GENE-060": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.159014+00:00"
+  },
+  "GENE-061": {
+   "symptomKey": "depression",
+   "updatedAt": "2026-09-29T08:39:01.409672+00:00"
+  },
+  "GENE-063": {
+   "symptomKey": "acne",
+   "updatedAt": "2026-09-29T08:39:00.524037+00:00"
+  },
+  "GENE-064": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.810872+00:00"
+  },
+  "GENE-065": {
+   "symptomKey": "fatigue",
+   "updatedAt": "2026-09-29T08:39:02.273453+00:00"
+  },
+  "GENE-067": {
+   "symptomKey": "fatigue",
+   "updatedAt": "2026-09-29T08:39:02.180622+00:00"
+  },
+  "GENE-068": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.502618+00:00"
+  },
+  "GENE-070": {
+   "symptomKey": "diarrhea",
+   "updatedAt": "2026-09-29T08:39:01.537442+00:00"
+  },
+  "GENE-071": {
+   "symptomKey": "diarrhea",
+   "updatedAt": "2026-09-29T08:39:01.494031+00:00"
+  },
+  "GENE-072": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.473506+00:00"
+  },
+  "GENE-073": {
+   "symptomKey": "nasal_congestion",
+   "updatedAt": "2026-09-29T08:39:03.348457+00:00"
+  },
+  "GENE-078": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.453797+00:00"
+  },
+  "GENE-079": {
+   "symptomKey": "depression",
+   "updatedAt": "2026-09-29T08:39:01.373639+00:00"
+  },
+  "GENE-083": {
+   "symptomKey": "numbness",
+   "updatedAt": "2026-09-29T08:38:59.916917+00:00"
+  },
+  "GENE-084": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.765011+00:00"
+  },
+  "GENE-085": {
+   "symptomKey": "constipation",
+   "updatedAt": "2026-09-29T08:39:01.195770+00:00"
+  },
+  "GENE-088": {
+   "symptomKey": "dyspnea",
+   "updatedAt": "2026-09-29T08:39:01.712746+00:00"
+  },
+  "GENE-089": {
+   "symptomKey": "leg_edema",
+   "updatedAt": "2026-09-29T08:39:03.025896+00:00"
+  },
+  "GENE-091": {
+   "symptomKey": "cough",
+   "updatedAt": "2026-09-29T08:39:01.305490+00:00"
+  },
+  "GENE-093": {
+   "symptomKey": "shoulder_pain",
+   "updatedAt": "2026-09-29T08:39:03.766174+00:00"
+  },
+  "GENE-094": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.171141+00:00"
+  },
+  "GENE-095": {
+   "symptomKey": "throat_pain",
+   "updatedAt": "2026-09-29T08:39:04.021694+00:00"
+  },
+  "GENE-096": {
+   "symptomKey": "throat_pain",
+   "updatedAt": "2026-09-29T08:39:03.998110+00:00"
+  },
+  "GENE-102": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.478783+00:00"
+  },
+  "GENE-103": {
+   "symptomKey": "numbness",
+   "updatedAt": "2026-09-29T08:39:03.459737+00:00"
+  },
+  "GENE-105": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.491492+00:00"
+  },
+  "GENE-107": {
+   "symptomKey": "fever",
+   "updatedAt": "2026-09-29T08:39:02.313866+00:00"
+  },
+  "GENE-109": {
+   "symptomKey": "body_pain",
+   "updatedAt": "2026-09-29T08:39:00.925994+00:00"
+  },
+  "GENE-112": {
+   "symptomKey": "insomnia",
+   "updatedAt": "2026-09-29T08:39:02.734044+00:00"
+  },
+  "GENE-113": {
+   "symptomKey": "insomnia",
+   "updatedAt": "2026-09-29T08:39:02.746073+00:00"
+  },
+  "GENE-114": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.530472+00:00"
+  },
+  "GENE-118": {
+   "symptomKey": "bp_abnormal",
+   "updatedAt": "2026-09-29T08:39:00.959885+00:00"
+  },
+  "GENE-119": {
+   "symptomKey": "dizziness",
+   "updatedAt": "2026-09-29T08:39:01.584601+00:00"
+  },
+  "GENE-120": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.355364+00:00"
+  },
+  "GENE-121": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.542351+00:00"
+  },
+  "GENE-122": {
+   "symptomKey": "vision_loss",
+   "updatedAt": "2026-09-29T08:39:00.365175+00:00"
+  },
+  "GENE-123": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.554845+00:00"
+  },
+  "GENE-124": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.567210+00:00"
+  },
+  "GENE-126": {
+   "symptomKey": "frequency",
+   "updatedAt": "2026-09-29T08:39:02.445489+00:00"
+  },
+  "GENE-127": {
+   "symptomKey": "hematuria",
+   "updatedAt": "2026-09-29T08:39:02.711006+00:00"
+  },
+  "GENE-129": {
+   "symptomKey": "back_pain",
+   "updatedAt": "2026-09-29T08:39:00.755675+00:00"
+  },
+  "GENE-130": {
+   "symptomKey": "palpitation",
+   "updatedAt": "2026-09-29T08:39:03.581693+00:00"
+  },
+  "GENE-135": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.601913+00:00"
+  },
+  "GENE-136": {
+   "symptomKey": "bloody_stool",
+   "updatedAt": "2026-09-29T08:39:00.835704+00:00"
+  },
+  "GENE-138": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.232777+00:00"
+  },
+  "GENE-143": {
+   "symptomKey": "ear_pain",
+   "updatedAt": "2026-09-29T08:39:01.967643+00:00"
+  },
+  "GENE-144": {
+   "symptomKey": "ear_pain",
+   "updatedAt": "2026-09-29T08:39:02.064434+00:00"
+  },
+  "GENE-145": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.938031+00:00"
+  },
+  "GENE-146": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.315153+00:00"
+  },
+  "GENE-147": {
+   "symptomKey": "depression",
+   "updatedAt": "2026-09-29T08:39:01.421591+00:00"
+  },
+  "GENE-150": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.625319+00:00"
+  },
+  "GENE-151": {
+   "symptomKey": "skin_tumor",
+   "updatedAt": "2026-09-29T08:39:03.884840+00:00"
+  },
+  "GENE-154": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.303655+00:00"
+  },
+  "GENE-156": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.636592+00:00"
+  },
+  "GENE-158": {
+   "symptomKey": "nasal_congestion",
+   "updatedAt": "2026-09-29T08:39:03.378418+00:00"
+  },
+  "GENE-159": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.648350+00:00"
+  },
+  "GENE-160": {
+   "symptomKey": "nasal_congestion",
+   "updatedAt": "2026-09-29T08:39:03.303324+00:00"
+  },
+  "GENE-163": {
+   "symptomKey": "dysuria",
+   "updatedAt": "2026-09-29T08:39:01.809756+00:00"
+  },
+  "GENE-165": {
+   "symptomKey": "knee_pain",
+   "updatedAt": "2026-09-29T08:39:02.909906+00:00"
+  },
+  "GENE-167": {
+   "symptomKey": "anxiety",
+   "updatedAt": "2026-09-29T08:39:00.638741+00:00"
+  },
+  "GENE-168": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.146781+00:00"
+  },
+  "GENE-169": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.497164+00:00"
+  },
+  "INJE-001": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:53.048404+00:00"
+  },
+  "INJE-005": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.850310+00:00"
+  },
+  "INJE-006": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.673068+00:00"
+  },
+  "INJECT-001": {
+   "symptomKey": "headache",
+   "updatedAt": "2026-09-29T08:39:02.532275+00:00"
+  },
+  "INJECT-004": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.034626+00:00"
+  },
+  "INJECT-005": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.696026+00:00"
+  },
+  "NORMAL-001": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.462871+00:00"
+  },
+  "NORMAL-002": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.367120+00:00"
+  },
+  "NORMAL-003": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.393895+00:00"
+  },
+  "PRES-002": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:53.223651+00:00"
+  },
+  "PRES-004": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.154776+00:00"
+  },
+  "PRES-005": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.707287+00:00"
+  },
+  "PRES-006": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.508482+00:00"
+  },
+  "PRES-007": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.664362+00:00"
+  },
+  "PRES-008": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.370796+00:00"
+  },
+  "PRES-009": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.456390+00:00"
+  },
+  "PRES-011": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.130643+00:00"
+  },
+  "PRES-014": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:53.097145+00:00"
+  },
+  "PRES-015": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.129771+00:00"
+  },
+  "PRES-016": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.471887+00:00"
+  },
+  "PRES-018": {
+   "symptomKey": "abdominal_pain",
+   "updatedAt": "2026-09-29T08:39:00.454050+00:00"
+  },
+  "PRES-019": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.688146+00:00"
+  },
+  "PRES-021": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.730545+00:00"
+  },
+  "PRES-022": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.814860+00:00"
+  },
+  "PRES-023": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.093630+00:00"
+  },
+  "PRES-026": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:53.211590+00:00"
+  },
+  "PRES-027": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.142696+00:00"
+  },
+  "PRES-028": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.742313+00:00"
+  },
+  "PRES-029": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.914992+00:00"
+  },
+  "PRES-034": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.424438+00:00"
+  },
+  "PRES-037": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.778518+00:00"
+  },
+  "PRES-038": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:53.174899+00:00"
+  },
+  "PRES-040": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.675719+00:00"
+  },
+  "PRES-042": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.768027+00:00"
+  },
+  "PRES-044": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.780021+00:00"
+  },
+  "PRES-045": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.952708+00:00"
+  },
+  "PRES-046": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.268790+00:00"
+  },
+  "PRES-047": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.826209+00:00"
+  },
+  "PRES-050": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.801774+00:00"
+  },
+  "PRES-051": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:53.148826+00:00"
+  },
+  "PRES-052": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.756185+00:00"
+  },
+  "PRES-053": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.863018+00:00"
+  },
+  "PRES-055": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.933025+00:00"
+  },
+  "PRES-056": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.377095+00:00"
+  },
+  "PRES-057": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.032207+00:00"
+  },
+  "PRES-058": {
+   "symptomKey": "diarrhea",
+   "updatedAt": "2026-09-29T08:39:01.468694+00:00"
+  },
+  "PRES-059": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.001577+00:00"
+  },
+  "PRES-060": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.427142+00:00"
+  },
+  "PRES-062": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.080599+00:00"
+  },
+  "PRES-063": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.813767+00:00"
+  },
+  "PRES-064": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.579339+00:00"
+  },
+  "PRES-066": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.635514+00:00"
+  },
+  "PRES-068": {
+   "symptomKey": "numbness",
+   "updatedAt": "2026-09-29T08:38:59.989829+00:00"
+  },
+  "PRES-070": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.989919+00:00"
+  },
+  "PRES-073": {
+   "symptomKey": "leg_edema",
+   "updatedAt": "2026-09-29T08:39:03.012220+00:00"
+  },
+  "PRES-074": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.926431+00:00"
+  },
+  "PRES-075": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.918764+00:00"
+  },
+  "PRES-079": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.850346+00:00"
+  },
+  "PRES-080": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.563148+00:00"
+  },
+  "PRES-082": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.862408+00:00"
+  },
+  "PRES-083": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:53.358011+00:00"
+  },
+  "PRES-084": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.118222+00:00"
+  },
+  "PRES-085": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.436190+00:00"
+  },
+  "PRES-087": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.873896+00:00"
+  },
+  "PRES-091": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.591552+00:00"
+  },
+  "PRES-092": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:53.109661+00:00"
+  },
+  "PRES-093": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.791906+00:00"
+  },
+  "PRES-094": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.247999+00:00"
+  },
+  "PRES-097": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.531926+00:00"
+  },
+  "PRES-098": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.106457+00:00"
+  },
+  "PRES-100": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.382751+00:00"
+  },
+  "PRES-101": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.355981+00:00"
+  },
+  "PRES-103": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.232386+00:00"
+  },
+  "PRES-106": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.710008+00:00"
+  },
+  "PRES-107": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.167133+00:00"
+  },
+  "PRES-110": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.941360+00:00"
+  },
+  "PRES-111": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.494847+00:00"
+  },
+  "PRES-112": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.483305+00:00"
+  },
+  "PRES-114": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.978845+00:00"
+  },
+  "PRES-115": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.514843+00:00"
+  },
+  "PRES-117": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.048909+00:00"
+  },
+  "PRES-118": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.327082+00:00"
+  },
+  "PRES-124": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.550989+00:00"
+  },
+  "PRES-126": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.164160+00:00"
+  },
+  "PRES-127": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.908065+00:00"
+  },
+  "PRES-128": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.819529+00:00"
+  },
+  "PRES-129": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.919364+00:00"
+  },
+  "PRES-133": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.598114+00:00"
+  },
+  "PRES-135": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.931535+00:00"
+  },
+  "PRESC-002": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.209517+00:00"
+  },
+  "PRESC-004": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:53.381345+00:00"
+  },
+  "PRESC-005": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.019464+00:00"
+  },
+  "TREA-001": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.954019+00:00"
+  },
+  "TREA-004": {
+   "symptomKey": "chest_pain",
+   "updatedAt": "2026-09-29T08:39:01.064002+00:00"
+  },
+  "TREA-005": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.965272+00:00"
+  },
+  "TREA-007": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.768770+00:00"
+  },
+  "TREA-011": {
+   "symptomKey": "itching",
+   "updatedAt": "2026-09-29T08:39:02.793880+00:00"
+  },
+  "TREA-012": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.060058+00:00"
+  },
+  "TREA-014": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.999198+00:00"
+  },
+  "TREA-017": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:06.988900+00:00"
+  },
+  "TREA-019": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.687099+00:00"
+  },
+  "TREA-020": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.194768+00:00"
+  },
+  "TREA-021": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.188339+00:00"
+  },
+  "TREA-022": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.615913+00:00"
+  },
+  "TREA-023": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.068131+00:00"
+  },
+  "TREA-024": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.886780+00:00"
+  },
+  "TREA-025": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.000849+00:00"
+  },
+  "TREA-026": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.235394+00:00"
+  },
+  "TREA-028": {
+   "symptomKey": "eye_pain",
+   "updatedAt": "2026-09-29T08:39:02.131636+00:00"
+  },
+  "TREA-030": {
+   "symptomKey": "knee_pain",
+   "updatedAt": "2026-09-29T08:39:02.944553+00:00"
+  },
+  "TREA-031": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.400598+00:00"
+  },
+  "TREA-032": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.024511+00:00"
+  },
+  "TREA-034": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.036443+00:00"
+  },
+  "TREA-035": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.048211+00:00"
+  },
+  "TREA-036": {
+   "symptomKey": "constipation",
+   "updatedAt": "2026-09-29T08:39:01.220026+00:00"
+  },
+  "TREA-037": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.059592+00:00"
+  },
+  "TREA-038": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.070979+00:00"
+  },
+  "TREA-042": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.884740+00:00"
+  },
+  "TREA-043": {
+   "symptomKey": "hematuria",
+   "updatedAt": "2026-09-29T08:39:02.663830+00:00"
+  },
+  "TREA-046": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.873356+00:00"
+  },
+  "TREA-047": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.094326+00:00"
+  },
+  "TREA-048": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.944000+00:00"
+  },
+  "TREA-049": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.828369+00:00"
+  },
+  "TREA-050": {
+   "symptomKey": "leg_edema",
+   "updatedAt": "2026-09-29T08:39:03.000476+00:00"
+  },
+  "TREA-051": {
+   "symptomKey": "chest_pain_resp",
+   "updatedAt": "2026-09-29T08:39:01.157691+00:00"
+  },
+  "TREA-052": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:53.023777+00:00"
+  },
+  "TREA-055": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.121404+00:00"
+  },
+  "TREA-056": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.223159+00:00"
+  },
+  "TREA-058": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.134559+00:00"
+  },
+  "TREA-062": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.978017+00:00"
+  },
+  "TREA-064": {
+   "symptomKey": "throat_pain",
+   "updatedAt": "2026-09-29T08:39:04.033065+00:00"
+  },
+  "TREA-066": {
+   "symptomKey": "menstrual",
+   "updatedAt": "2026-09-29T08:39:03.154252+00:00"
+  },
+  "TREA-070": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.907657+00:00"
+  },
+  "TREA-071": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.308655+00:00"
+  },
+  "TREA-073": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.170432+00:00"
+  },
+  "TREA-074": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:50.586976+00:00"
+  },
+  "TREA-075": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.182492+00:00"
+  },
+  "TREA-076": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.496321+00:00"
+  },
+  "TREA-077": {
+   "symptomKey": "hematuria",
+   "updatedAt": "2026-09-29T08:39:02.675379+00:00"
+  },
+  "TREA-079": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:49.484728+00:00"
+  },
+  "TREA-082": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.460657+00:00"
+  },
+  "TREA-088": {
+   "symptomKey": "anxiety",
+   "updatedAt": "2026-09-29T08:39:00.578643+00:00"
+  },
+  "TREA-089": {
+   "symptomKey": "depression",
+   "updatedAt": "2026-09-29T08:39:01.340718+00:00"
+  },
+  "TREA-093": {
+   "symptomKey": "bloody_stool",
+   "updatedAt": "2026-09-29T08:39:00.813431+00:00"
+  },
+  "TREA-095": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:53.000009+00:00"
+  },
+  "TREA-096": {
+   "symptomKey": "chest_pain",
+   "updatedAt": "2026-09-29T08:39:01.052679+00:00"
+  },
+  "TREA-097": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.206042+00:00"
+  },
+  "TREA-098": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:53.036392+00:00"
+  },
+  "TREA-099": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.732714+00:00"
+  },
+  "TREA-100": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.218318+00:00"
+  },
+  "TREA-101": {
+   "symptomKey": "back_pain",
+   "updatedAt": "2026-09-29T08:39:00.674686+00:00"
+  },
+  "TREA-102": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.230467+00:00"
+  },
+  "TREA-103": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.014076+00:00"
+  },
+  "TREA-107": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.254569+00:00"
+  },
+  "TREA-108": {
+   "symptomKey": "fatigue",
+   "updatedAt": "2026-09-29T08:39:02.233064+00:00"
+  },
+  "TREA-111": {
+   "symptomKey": "dyspnea",
+   "updatedAt": "2026-09-29T08:39:01.735920+00:00"
+  },
+  "TREA-112": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.278514+00:00"
+  },
+  "TREA-113": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.803479+00:00"
+  },
+  "TREA-118": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:52.861628+00:00"
+  },
+  "TREAT-001": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.291201+00:00"
+  },
+  "TREAT-002": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:38:51.106743+00:00"
+  },
+  "감각기관-001": {
+   "symptomKey": "vision_loss",
+   "updatedAt": "2026-09-29T08:39:00.340214+00:00"
+  },
+  "감각기관-003": {
+   "symptomKey": "vision_loss",
+   "updatedAt": "2026-09-29T08:39:04.140151+00:00"
+  },
+  "감각기관-005": {
+   "symptomKey": "nasal_congestion",
+   "updatedAt": "2026-09-29T08:39:03.366845+00:00"
+  },
+  "감각기관-006": {
+   "symptomKey": "throat_pain",
+   "updatedAt": "2026-09-29T08:39:04.045394+00:00"
+  },
+  "감각기관-009": {
+   "symptomKey": "ear_pain",
+   "updatedAt": "2026-09-29T08:39:01.987500+00:00"
+  },
+  "감각기관-010": {
+   "symptomKey": "nasal_congestion",
+   "updatedAt": "2026-09-29T08:39:03.326453+00:00"
+  },
+  "근골격계-001": {
+   "symptomKey": "back_pain",
+   "updatedAt": "2026-09-29T08:38:58.344853+00:00"
+  },
+  "근골격계-003": {
+   "symptomKey": "knee_pain",
+   "updatedAt": "2026-09-29T08:39:02.967422+00:00"
+  },
+  "근골격계-004": {
+   "symptomKey": "knee_pain",
+   "updatedAt": "2026-09-29T08:39:02.978499+00:00"
+  },
+  "근골격계-005": {
+   "symptomKey": "shoulder_pain",
+   "updatedAt": "2026-09-29T08:39:03.862508+00:00"
+  },
+  "근골격계-006": {
+   "symptomKey": "body_pain",
+   "updatedAt": "2026-09-29T08:39:00.937603+00:00"
+  },
+  "근골격계-009": {
+   "symptomKey": "shoulder_pain",
+   "updatedAt": "2026-09-29T08:39:03.814431+00:00"
+  },
+  "머리·뇌-003": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.316723+00:00"
+  },
+  "머리·뇌-004": {
+   "symptomKey": "dizziness",
+   "updatedAt": "2026-09-29T08:39:01.549618+00:00"
+  },
+  "머리·뇌-005": {
+   "symptomKey": "memory_loss",
+   "updatedAt": "2026-09-29T08:39:03.107913+00:00"
+  },
+  "머리·뇌-006": {
+   "symptomKey": "numbness",
+   "updatedAt": "2026-09-29T08:38:59.953785+00:00"
+  },
+  "머리·뇌-008": {
+   "symptomKey": "seizure",
+   "updatedAt": "2026-09-29T08:39:00.160824+00:00"
+  },
+  "머리·뇌-009": {
+   "symptomKey": "headache",
+   "updatedAt": "2026-09-29T08:39:02.520685+00:00"
+  },
+  "비뇨생식-001": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.328581+00:00"
+  },
+  "비뇨생식-003": {
+   "symptomKey": "frequency",
+   "updatedAt": "2026-09-29T08:39:02.474020+00:00"
+  },
+  "비뇨생식-004": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.340131+00:00"
+  },
+  "비뇨생식-008": {
+   "symptomKey": "frequency",
+   "updatedAt": "2026-09-29T08:39:02.419116+00:00"
+  },
+  "비뇨생식-009": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.353251+00:00"
+  },
+  "비뇨생식-010": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.365519+00:00"
+  },
+  "소화기-002": {
+   "symptomKey": "abdominal_pain",
+   "updatedAt": "2026-09-29T08:39:00.405677+00:00"
+  },
+  "소화기-005": {
+   "symptomKey": "diarrhea",
+   "updatedAt": "2026-09-29T08:39:01.508041+00:00"
+  },
+  "소화기-006": {
+   "symptomKey": "constipation",
+   "updatedAt": "2026-09-29T08:39:01.207840+00:00"
+  },
+  "소화기-007": {
+   "symptomKey": "bloody_stool",
+   "updatedAt": "2026-09-29T08:38:58.454775+00:00"
+  },
+  "소화기-008": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.389030+00:00"
+  },
+  "소화기-009": {
+   "symptomKey": "abdominal_pain",
+   "updatedAt": "2026-09-29T08:39:00.501658+00:00"
+  },
+  "순환기-002": {
+   "symptomKey": "chest_pain",
+   "updatedAt": "2026-09-29T08:39:01.041423+00:00"
+  },
+  "순환기-003": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.412025+00:00"
+  },
+  "순환기-004": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.423523+00:00"
+  },
+  "순환기-005": {
+   "symptomKey": "leg_edema",
+   "updatedAt": "2026-09-29T08:38:59.742469+00:00"
+  },
+  "순환기-007": {
+   "symptomKey": "bp_abnormal",
+   "updatedAt": "2026-09-29T08:38:58.589277+00:00"
+  },
+  "순환기-009": {
+   "symptomKey": "chest_pain",
+   "updatedAt": "2026-09-29T08:39:01.030034+00:00"
+  },
+  "전신·피-003": {
+   "symptomKey": "fever",
+   "updatedAt": "2026-09-29T08:38:59.511831+00:00"
+  },
+  "전신·피-006": {
+   "symptomKey": "weight_change",
+   "updatedAt": "2026-09-29T08:39:04.197410+00:00"
+  },
+  "전신·피-007": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.459258+00:00"
+  },
+  "전신·피-008": {
+   "symptomKey": "body_pain",
+   "updatedAt": "2026-09-29T08:38:58.576195+00:00"
+  },
+  "전신·피-009": {
+   "symptomKey": "fever",
+   "updatedAt": "2026-09-29T08:39:02.405898+00:00"
+  },
+  "전신·피-010": {
+   "symptomKey": "fatigue",
+   "updatedAt": "2026-09-29T08:39:02.198460+00:00"
+  },
+  "정신건강-002": {
+   "symptomKey": "anxiety",
+   "updatedAt": "2026-09-29T08:39:00.556819+00:00"
+  },
+  "정신건강-004": {
+   "symptomKey": "depression",
+   "updatedAt": "2026-09-29T08:39:01.384952+00:00"
+  },
+  "정신건강-006": {
+   "symptomKey": "insomnia",
+   "updatedAt": "2026-09-29T08:39:02.782274+00:00"
+  },
+  "정신건강-008": {
+   "symptomKey": "stress",
+   "updatedAt": "2026-09-29T08:39:03.953045+00:00"
+  },
+  "정신건강-009": {
+   "symptomKey": "depression",
+   "updatedAt": "2026-09-29T08:39:01.362521+00:00"
+  },
+  "정신건강-010": {
+   "symptomKey": "anxiety",
+   "updatedAt": "2026-09-29T08:39:00.567495+00:00"
+  },
+  "피부-001": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.484586+00:00"
+  },
+  "피부-002": {
+   "symptomKey": "rash",
+   "updatedAt": "2026-09-29T08:39:03.650473+00:00"
+  },
+  "피부-008": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.495875+00:00"
+  },
+  "피부-009": {
+   "symptomKey": "acne",
+   "updatedAt": "2026-09-29T08:39:00.512954+00:00"
+  },
+  "피부-010": {
+   "symptomKey": "skin_tumor",
+   "updatedAt": "2026-09-29T08:39:03.907857+00:00"
+  },
+  "피부-011": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.507346+00:00"
+  },
+  "호흡기-001": {
+   "symptomKey": "cough",
+   "updatedAt": "2026-09-29T08:39:01.246678+00:00"
+  },
+  "호흡기-003": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.518667+00:00"
+  },
+  "호흡기-004": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.534415+00:00"
+  },
+  "호흡기-005": {
+   "symptomKey": "chest_pain_resp",
+   "updatedAt": "2026-09-29T08:39:01.110721+00:00"
+  },
+  "호흡기-007": {
+   "symptomKey": "",
+   "updatedAt": "2026-09-29T08:39:07.546803+00:00"
+  },
+  "호흡기-009": {
+   "symptomKey": "chest_pain_resp",
+   "updatedAt": "2026-09-29T08:38:58.799310+00:00"
+  }
+ }
+}
