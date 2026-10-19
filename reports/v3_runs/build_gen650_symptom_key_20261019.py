@@ -183,6 +183,10 @@ def main(argv=None):
         L.append('## 운영 DB 기존 값과 다른 건\n')
         L.append('9/29 재고 분류로 들어간 값과 이번 읽기가 다른 문항. 사람이 `Claude 선택` 을 확정하면 '
                  '`python scripts/apply_symptom_key_gen650_20261019.py --env prod --force` 로 덮어쓴다(되돌릴 값은 `gen650_symptom_key_prod_before_20261019.json`).\n')
+        L.append('사용자 결정(2026-10-19): 처음 36건 중 두 군 사이 판단이던 14건(DIAG-023·094·161·202, EMER-040·083·146·275, GENE-007·044·130, '
+                 'PRES-018, TREA-011, 감각기관-003)은 운영 기존 값으로 되돌렸고, 임신 출혈·외음부 5건(EMER-200·251·252, TREA-102, 비뇨생식-009)은 '
+                 '복통군 체크리스트에 임신·출혈 항목이 없어 none 으로 정했다. **EMER-037**(돌발성 청력 저하·이명)은 운영 기존 값 vision_loss 가 '
+                 '명백히 틀려 되돌리지 않고 ear_pain 을 유지한다. 남은 건은 none 또는 다른 군이 분명한 것이다.\n')
         L.append('| # | scenario_id | 질문 요약 | DB 기존 값 | Claude 선택 | 신뢰도 | 근거 |\n|---|---|---|---|---|---|---|')
         for n, it in enumerate(db_conflict, 1):
             L.append(f"| {n} | {it['id']} | {it['prompt_summary'].replace('|', '｜')} | {it['db_before']} | **{it['symptom_key']}** | "

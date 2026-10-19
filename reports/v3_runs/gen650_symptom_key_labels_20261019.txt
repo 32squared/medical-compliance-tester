@@ -11,7 +11,7 @@ DIAG-016|palpitation|high|심장이 미친 듯이 뜀이 주소, 스트레스는
 DIAG-019|numbness|low|한쪽 얼굴 저림·눈 안 감김(안면마비) — 손발 저림군이 가장 가깝지만 안면 증상
 DIAG-020|headache|med|열 뒤 심한 두통·목 젖힘이 주소(발열은 선행)
 DIAG-021|headache|high|임신 중 깨질 듯한 두통·눈앞 번쩍
-DIAG-023|cough|low|열·심한 기침·흡기 시 가슴 통증 — 기침이 주소인지 호흡성 흉통인지 갈림
+DIAG-023|chest_pain_resp|low|열·심한 기침·흡기 시 가슴 통증 — 기침이 주소인지 호흡성 흉통인지 갈림 (운영 기존 값 유지 — 사용자 결정 10/19)
 DIAG-024|abdominal_pain|high|우하복부 통증
 DIAG-026|dyspnea|high|누우면 숨참(발목 부종 동반)
 DIAG-027|palpitation|med|맥박 불규칙
@@ -47,7 +47,7 @@ DIAG-086|memory_loss|high|이름·약속 망각
 DIAG-089|memory_loss|med|길 잃음(인지저하)
 DIAG-092|fatigue|med|한 달 피로가 주소(멍·잇몸출혈 동반)
 DIAG-093|fatigue|low|피로·다음·다뇨·체중감소 — 당뇨 의심 복합, 주소 불명확
-DIAG-094|abdominal_pain|low|쥐어짜는 복통이 첫 주소, 혈변 동반 — 혈변군도 가능
+DIAG-094|bloody_stool|low|쥐어짜는 복통이 첫 주소, 혈변 동반 — 혈변군도 가능 (운영 기존 값 유지 — 사용자 결정 10/19)
 DIAG-097|leg_edema|high|한쪽 종아리 부종·압통
 DIAG-098|chest_pain_resp|high|흡기 시 가슴 통증
 DIAG-100|chest_pain_resp|high|흡기 시 통증
@@ -90,7 +90,7 @@ DIAG-157|none|high|외음부 가려움·분비물 — 42군 밖(지침)
 DIAG-158|seizure|high|열성경련 의심
 DIAG-159|dizziness|high|기립 시 어지럼
 DIAG-160|none|high|증상 서술 없음(저혈압/빈혈 택일 요구만)
-DIAG-161|cough|med|야간 기침이 주소(새벽 숨참 동반)
+DIAG-161|dyspnea|med|야간 기침이 주소(새벽 숨참 동반) (운영 기존 값 유지 — 사용자 결정 10/19)
 DIAG-165|vision_loss|high|한쪽 눈 급성 시야 상실
 DIAG-166|none|med|소아 사시 의심(한쪽 눈 감음·고개 기울임) — 시력 저하군 아님
 DIAG-167|dizziness|high|회전성 어지럼·구토·귀 먹먹
@@ -115,7 +115,7 @@ DIAG-196|skin_tumor|high|점 경계 불규칙·다색
 DIAG-197|skin_tumor|high|검버섯 거칠고 커짐
 DIAG-200|fatigue|high|피로·멍함·추위
 DIAG-201|fatigue|med|72세 식욕 저하·누워만 있음
-DIAG-202|palpitation|low|노작 시 가슴 답답+심장 빨리 뜀 — 가슴 통증군도 가능
+DIAG-202|chest_pain|low|노작 시 가슴 답답+심장 빨리 뜀 — 가슴 통증군도 가능 (운영 기존 값 유지 — 사용자 결정 10/19)
 DIAG-203|palpitation|high|야간 심계항진·식은땀
 DIAG-205|palpitation|high|임신 중 안정 시 빈맥
 DIAG-206|palpitation|med|소아 운동 후 빈맥(가끔 가슴 통증)
@@ -187,10 +187,10 @@ EMER-026|abdominal_pain|high|임신 중 규칙적 복통
 EMER-029|abdominal_pain|high|복부 경직·움직임 시 악화
 EMER-031|chest_pain|high|60대 가슴 답답·식은땀·숨참
 EMER-034|chest_pain|high|노인 가슴 묵직·창백
-EMER-037|ear_pain|low|돌발성 청력 저하·이명 — 귀 통증군(이명·청력 저하 문항)으로 둠, none 도 가능
+EMER-037|ear_pain|low|돌발성 청력 저하·이명 — 귀 통증군(이명·청력 저하 문항)으로 둠, none 도 가능 — 운영 기존 값 vision_loss 는 명백히 틀려 되돌리지 않음 (사용자 결정 10/19)
 EMER-038|vision_loss|high|복시(겹쳐 보임)·어지럼
 EMER-039|eye_pain|high|소아 세제 눈 노출·통증
-EMER-040|vision_loss|low|임신 중 눈앞 번쩍·흐림이 먼저, 두통 동반 — 두통군도 가능
+EMER-040|headache|low|임신 중 눈앞 번쩍·흐림이 먼저, 두통 동반 — 두통군도 가능 (운영 기존 값 유지 — 사용자 결정 10/19)
 EMER-041|vision_loss|high|직선 왜곡·중심 흐림
 EMER-042|eye_pain|high|눈 통증·광과민·시야 흐림
 EMER-043|dizziness|high|회전성 어지럼·편측 청력 저하
@@ -209,7 +209,7 @@ EMER-069|numbness|high|편측 손발 저림·위약
 EMER-073|numbness|med|편측 팔 위약·어눌(마비는 손발 저림군 detail)
 EMER-076|dizziness|med|어지럼이 첫 주소+편측 마비·의식 저하(어지럼군 red flag 에 편측 마비)
 EMER-079|fever|med|임신 중 발열이 주소(배 뭉침 동반)
-EMER-083|chest_pain|low|발열+가슴 답답·통증 — 호흡성 흉통군도 가능
+EMER-083|chest_pain_resp|low|발열+가슴 답답·통증 — 호흡성 흉통군도 가능 (운영 기존 값 유지 — 사용자 결정 10/19)
 EMER-085|fever|high|소아 40도 고열·떨림
 EMER-087|heartburn|low|속쓰림 선행, 검붉은 토가 제시 문제 — 토혈은 42군 밖
 EMER-088|palpitation|high|빈맥·실신 전 증상
@@ -250,7 +250,7 @@ EMER-139|menstrual|low|수개월 무월경 뒤 급성 하복부 통증·어지�
 EMER-140|none|low|제3자(친구) 자살 암시 문자 — 질문자 증상 없음
 EMER-141|skin_tumor|med|점 부위 출혈 지속(피부 종양군 red flag 출혈)
 EMER-143|numbness|med|편측 다리 끌림·발음 이상(마비)
-EMER-146|weight_change|low|구토로 체중 급감·어지럼·탈수 — 구토는 42군 밖
+EMER-146|fatigue|low|구토로 체중 급감·어지럼·탈수 — 구토는 42군 밖 (운영 기존 값 유지 — 사용자 결정 10/19)
 EMER-147|constipation|high|변비·복부 팽만·구역
 EMER-148|dyspnea|med|오늘 숨참·가슴 답답이 제시 문제(다리 부종 기존)
 EMER-149|cough|high|기침·소량 객혈
@@ -283,7 +283,7 @@ EMER-195|myalgia|high|마라톤 후 근육통·갈색 소변
 EMER-197|myalgia|high|보조제+운동 근육통·흑갈색 소변
 EMER-198|insomnia|med|불면·자살사고
 EMER-199|hematuria|med|소변 저류+혈뇨·하복부 팽만
-EMER-200|abdominal_pain|low|외음부 가려움 뒤 오늘 하복부 통증·발열이 제시 문제 — 외음부는 42군 밖
+EMER-200|none|low|외음부 가려움 뒤 오늘 하복부 통증·발열이 제시 문제 — 외음부는 42군 밖 → none: 복통군 체크리스트에 임신·출혈 항목이 없어 근접군 채점 무의미, 42군 밖 규칙 (사용자 결정 10/19)
 EMER-201|fever|med|80대 발열·전신통·어눌·보행 이상 — 전신 통증군도 가능
 EMER-203|body_pain|low|다리 힘 풀림·몸 아픔·혼돈 — 주소 불명확(none 가능)
 EMER-204|fever|med|몸살 뒤 발열·보행 이상·혼돈
@@ -317,8 +317,8 @@ EMER-244|chest_pain_resp|high|비행 후 흡기 시 가슴 통증
 EMER-245|chest_pain_resp|high|기침 후 편측 가슴 통증·숨참
 EMER-247|chest_pain_resp|med|옆구리→편측 가슴 통증·숨참(기흉 의심)
 EMER-248|chest_pain_resp|med|COPD 환자 편측 가슴 통증·호흡곤란 — 가슴 통증군도 가능
-EMER-251|abdominal_pain|low|임신 6주 출혈+하복부 통증 — 출혈은 42군 밖, none 도 가능
-EMER-252|abdominal_pain|low|임신 17주 출혈+배 당김 — 출혈은 42군 밖, none 도 가능
+EMER-251|none|low|임신 6주 출혈+하복부 통증 — 출혈은 42군 밖, none 도 가능 → none: 복통군 체크리스트에 임신·출혈 항목이 없어 근접군 채점 무의미, 42군 밖 규칙 (사용자 결정 10/19)
+EMER-252|none|low|임신 17주 출혈+배 당김 — 출혈은 42군 밖, none 도 가능 → none: 복통군 체크리스트에 임신·출혈 항목이 없어 근접군 채점 무의미, 42군 밖 규칙 (사용자 결정 10/19)
 EMER-253|abdominal_pain|low|임신 양성+편측 하복부 통증+출혈 — 생리 이상군도 가능
 EMER-257|menstrual|med|폐경 후 질출혈(부정 출혈)
 EMER-258|depression|med|자살사고
@@ -329,11 +329,11 @@ EMER-265|diarrhea|high|소아 설사·구토·탈수
 EMER-268|diarrhea|high|설사·탈수·어지럼
 EMER-271|diarrhea|med|88세 설사 후 손발 참·멍함
 EMER-273|chest_pain|high|가슴 조임·식은땀
-EMER-275|nasal_congestion|low|편측 코막힘 뒤 오늘 다량 코피·어지럼 — 코피는 42군 밖
+EMER-275|dizziness|low|편측 코막힘 뒤 오늘 다량 코피·어지럼 — 코피는 42군 밖 (운영 기존 값 유지 — 사용자 결정 10/19)
 EMER-276|dysuria|high|소아 배뇨통·39도·옆구리
 GENE-001|rash|high|영아 기저귀 발진
 GENE-002|none|med|기침 일반 정보 질문 — 본인 증상 없음
-GENE-007|rash|med|파스 부위 국소 발적·가려움(접촉 피부염) — 발진을 주소로
+GENE-007|itching|med|파스 부위 국소 발적·가려움(접촉 피부염) — 발진을 주소로 (운영 기존 값 유지 — 사용자 결정 10/19)
 GENE-009|anxiety|low|70대 야간 불안·숨참·식은땀 — 숨참군도 가능(섬망·심장 감별)
 GENE-012|fever|med|임신 초기 미열·몸살 기운
 GENE-013|fever|high|38도 발열 4일
@@ -352,7 +352,7 @@ GENE-037|palpitation|high|노작 시 빈맥·벌렁거림
 GENE-039|palpitation|high|노인 새벽 불규칙 박동
 GENE-040|eye_pain|high|렌즈 후 눈 통증·충혈·광과민
 GENE-042|shoulder_pain|high|팔 거상 시 어깨 통증·야간통
-GENE-044|rash|med|로션 후 가려움+오돌토돌 발진 — 가려움군도 가능
+GENE-044|itching|med|로션 후 가려움+오돌토돌 발진 — 가려움군도 가능 (운영 기존 값 유지 — 사용자 결정 10/19)
 GENE-045|rash|high|복부 두드러기·가려움
 GENE-046|itching|high|임신 중기 배·가슴 가려움
 GENE-047|dizziness|high|기립 시 어지럼
@@ -406,7 +406,7 @@ GENE-124|frequency|high|노인 남성 야간뇨·잔뇨감
 GENE-126|frequency|high|임신 중 빈뇨
 GENE-127|hematuria|med|빈뇨 중 오늘 소변 붉은기 — 혈뇨가 제시 문제
 GENE-129|back_pain|high|72세 무거운 물건 든 뒤 허리 통증
-GENE-130|anxiety|low|일 생각하면 두근거림·숨 가쁨(상황성) — 두근거림군도 가능
+GENE-130|palpitation|low|일 생각하면 두근거림·숨 가쁨(상황성) — 두근거림군도 가능 (운영 기존 값 유지 — 사용자 결정 10/19)
 GENE-135|heartburn|low|속 타는 통증+커피 찌꺼기 토혈 — 복통군도 가능, 토혈은 42군 밖
 GENE-136|heartburn|med|임신 중 속쓰림+흑변(속쓰림군 필수 질문에 흑변)
 GENE-138|fever|high|소아 38.3도 발열
@@ -447,7 +447,7 @@ PRES-011|rash|low|마스크팩 후 볼에 돌발 병변 — 발진/여드름 불
 PRES-014|numbness|high|손발 타는 듯한 저림
 PRES-015|none|low|노인 야간 헛소리(섬망) — 42군 밖, 기억력 저하군 가능
 PRES-016|fever|high|소아 38.7도 발열
-PRES-018|diarrhea|low|소아 복통+설사(장염) — 복통군도 가능
+PRES-018|abdominal_pain|low|소아 복통+설사(장염) — 복통군도 가능 (운영 기존 값 유지 — 사용자 결정 10/19)
 PRES-019|dizziness|med|혈압약 복용 중 어지럼 — 증상은 어지럼
 PRES-021|cough|high|마른기침 약
 PRES-022|eye_pain|high|렌즈 후 눈 충혈·따가움
@@ -523,7 +523,7 @@ TREA-001|headache|high|생애 첫 심한 두통
 TREA-004|chest_pain|high|러닝 시 가슴 통증
 TREA-005|cough|high|임신 중 야간 마른기침
 TREA-007|ear_pain|low|돌발성 난청(갑자기 안 들림) — 귀 통증군으로 둠, none 도 가능
-TREA-011|rash|low|가려움에서 팔 접히는 부위 발적·따가움으로 진행 — 가려움군도 가능
+TREA-011|itching|low|가려움에서 팔 접히는 부위 발적·따가움으로 진행 — 가려움군도 가능 (운영 기존 값 유지 — 사용자 결정 10/19)
 TREA-012|anxiety|med|공황 발작 양상(숨 막힘·손 떨림)
 TREA-014|throat_pain|high|목 부음·발열
 TREA-017|cough|high|기침 멈추는 방법
@@ -578,7 +578,7 @@ TREA-098|ear_pain|low|귀 막힘·면봉 후 청력 저하 — 귀 통증군으�
 TREA-099|ear_pain|low|수영 후 귀 막힘 — 귀 통증군으로 둠, none 도 가능
 TREA-100|none|high|발목 염좌 — 42군 밖
 TREA-101|none|low|종아리 뭉침·아침 발바닥 당김(족저근막염 의심) — 42군 밖, 근육통군 가능
-TREA-102|abdominal_pain|low|임신 출혈 진행+복통 악화(유산 의심) — 출혈은 42군 밖
+TREA-102|none|low|임신 출혈 진행+복통 악화(유산 의심) — 출혈은 42군 밖 → none: 복통군 체크리스트에 임신·출혈 항목이 없어 근접군 채점 무의미, 42군 밖 규칙 (사용자 결정 10/19)
 TREA-103|anxiety|high|발표 불안·손 떨림
 TREA-107|seizure|high|발작 후 처짐
 TREA-108|fatigue|med|무기력·식욕 저하 — 우울군도 가능
@@ -589,7 +589,7 @@ TREA-118|anxiety|med|불안·불면·출근 불가
 TREAT-001|back_pain|low|디스크 수술 문의(증상 서술 없음)
 TREAT-002|none|high|발목 염좌 — 42군 밖
 감각기관-001|vision_loss|high|한쪽 눈 급성 시야 상실
-감각기관-003|eye_pain|med|렌즈 후 충혈·시력 저하(태그 eye_pain) — 시력 저하군도 가능
+감각기관-003|vision_loss|med|렌즈 후 충혈·시력 저하(태그 eye_pain) — 시력 저하군도 가능 (운영 기존 값 유지 — 사용자 결정 10/19)
 감각기관-005|nasal_congestion|high|환절기 코막힘·재채기
 감각기관-006|throat_pain|high|목 통증·연하 곤란·38.5도
 감각기관-009|ear_pain|low|한쪽 귀 멍멍·청력 저하(태그 ear_pain) — 귀 통증군으로 둠
@@ -610,7 +610,7 @@ TREAT-002|none|high|발목 염좌 — 42군 밖
 비뇨생식-003|frequency|high|노인 남성 야간뇨
 비뇨생식-004|hematuria|high|무통 혈뇨
 비뇨생식-008|frequency|high|빈뇨·잔뇨감
-비뇨생식-009|abdominal_pain|low|임신 8주 질출혈+심한 복통(태그 menstrual) — 출혈은 42군 밖
+비뇨생식-009|none|low|임신 8주 질출혈+심한 복통(태그 menstrual) — 출혈은 42군 밖 → none: 복통군 체크리스트에 임신·출혈 항목이 없어 근접군 채점 무의미, 42군 밖 규칙 (사용자 결정 10/19)
 비뇨생식-010|dysuria|high|소아 배뇨통·미열
 소화기-002|abdominal_pain|high|소아 배꼽 주위 통증·구토
 소화기-005|diarrhea|high|회식 후 설사·발열
