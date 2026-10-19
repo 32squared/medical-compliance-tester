@@ -10,7 +10,7 @@
 | 운영 DB 에 350건 적재 | **안 됨** — 활성 비-HB 시나리오 출처는 manual 103 · advisory 40 · generated 999 · v18_regression 6 (09-18 Job 로그) |
 | 문항 ↔ 케이스 대응 | 350건 전부 호스트 생성기(`reports/_make_phr_batch_questions.py`) 의 같은 B-id 와 질문·케이스 일치 |
 | 케이스 키 형식 | 호스트 `phr_cases.id` = `phr_CASE-nn` → 적재 파일을 이 형식으로 변환 |
-| batch-runner Job | EVAL_V3=1 · EVAL_FINAL=v3 · EVAL_V3_MODEL=gpt-6-luna · EVAL_V3_REASONING_EFFORT=none · EVAL_V3_ESCALATE_MODEL=gpt-6-sol · EVAL_V3_ESCALATE_REASONING_EFFORT=low · EVAL_PHR=0 · EVAL_V2_LEGAL=0 (2026-10-14 전환, 이전 gpt-5.4-mini/gpt-5.4) — 재배포 불필요 |
+| batch-runner Job | EVAL_V3=1 · EVAL_FINAL=v3 · EVAL_V3_MODEL=gpt-6-luna · EVAL_V3_REASONING_EFFORT=none · EVAL_PHR=0 · EVAL_V2_LEGAL=0 · (선택) EVAL_V3_REJUDGE_MAX=2. 2단 판정(EVAL_V3_ESCALATE_MODEL=gpt-6-sol)은 2026-10-19 폐지 — 재현 비교 때만 EVAL_V3_ESCALATE=1 과 함께 지정 |
 | 판정기 | 서브모듈 medical_eval `ef6bb35`, 스냅샷 v3.5 포함 |
 | 병렬 | 동시 20건. 09-18 실측: PHR 6건 동시 82초, 혼합 40건 140초 → 350건 약 25~35분(429 대기 포함 1시간 이내) |
 

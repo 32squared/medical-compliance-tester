@@ -347,10 +347,7 @@ def test_checklists_env_wins_when_set(monkeypatch, tmp_path):
     assert eval_v3._ensure_checklists_env() == ""    # 지정했는데 없으면 조용히 대체하지 않는다
 
 
-def test_escalation_rejudges_only_legal_fail(monkeypatch):
-    """1차(mini) fail → 2차(ESCALATE_MODEL) 재판정. 1차 pass 는 2차를 부르지 않는다."""
-    calls, efforts = [], []
-
+def _fake_escalation_judge(calls, efforts):
     def fake_judge(question, answer, model, api_key, kwargs, reasoning_effort=None):
         calls.append(model)
         efforts.append(reasoning_effort)
@@ -359,11 +356,17 @@ def test_escalation_rejudges_only_legal_fail(monkeypatch):
                 "legal": {"verdict": "fail" if fail else "pass",
                           "hits": [{"rule_id": "LG-02"}] if fail else []},
                 "validity": {}, "uv": {}, "judge_model": model}
+    return fake_judge
 
+
+def test_escalation_rejudges_only_legal_fail_when_enabled(monkeypatch):
+    """[구형 2단 판정, EVAL_V3_ESCALATE=1 일 때만] 1차(mini) fail → 2차(ESCALATE_MODEL) 재판정. 1차 pass 는 2차를 부르지 않는다."""
+    calls, efforts = [], []
     monkeypatch.setattr(eval_v3, "available", lambda: (True, ""))
-    monkeypatch.setattr(eval_v3, "_judge", fake_judge)
+    monkeypatch.setattr(eval_v3, "_judge", _fake_escalation_judge(calls, efforts))
     monkeypatch.setattr(eval_v3, "MODEL", "mini")
     monkeypatch.setattr(eval_v3, "ESCALATE_MODEL", "big")
+    monkeypatch.setattr(eval_v3, "ESCALATE_ENABLED", True)
     monkeypatch.setattr(eval_v3, "REASONING_EFFORT", "none")
     monkeypatch.setattr(eval_v3, "ESCALATE_REASONING_EFFORT", "low")
 
@@ -377,6 +380,100 @@ def test_escalation_rejudges_only_legal_fail(monkeypatch):
     calls.clear()
     out = eval_v3.evaluate("q", "good")
     assert calls == ["mini"] and "judge_escalation" not in out
+
+
+def test_escalation_is_off_by_default(monkeypatch):
+    """2026-10-19 폐지: 모델만 지정하고 EVAL_V3_ESCALATE 스위치가 없으면 1차 fail 이라도 다른 모델로 덮지 않는다."""
+    calls, efforts = [], []
+    monkeypatch.setattr(eval_v3, "available", lambda: (True, ""))
+    monkeypatch.setattr(eval_v3, "_judge", _fake_escalation_judge(calls, efforts))
+    monkeypatch.setattr(eval_v3, "MODEL", "mini")
+    monkeypatch.setattr(eval_v3, "ESCALATE_MODEL", "big")
+    monkeypatch.setattr(eval_v3, "ESCALATE_ENABLED", False)
+    out = eval_v3.evaluate("q", "bad")
+    assert calls == ["mini"]
+    assert out["judge_model"] == "mini" and out["legal_verdict"] == "fail" and out["legal_hits"] == ["LG-02"]
+    assert "judge_escalation" not in out and "judge_rejudge" not in out
+    assert eval_v3.os.environ.get("EVAL_V3_ESCALATE", "0") != "1" or eval_v3.ESCALATE_ENABLED
+
+
+def _rejudge_result(status, verdict="review", hits=(), review=("LG-08",), model="luna"):
+    return {"verdict": verdict, "judge_model": model,
+            "legal": {"verdict": verdict, "status": status,
+                      "hits": [{"rule_id": r} for r in hits],
+                      "review_hits": [{"rule_id": r} for r in review],
+                      "context": {"prompt_version": "context-v1", "candidates": 2,
+                                  "judged": 2 if status == "ok" else 0}},
+            "validity": {}, "uv": {}}
+
+
+def test_needs_rejudge_reruns_same_model_without_cache(monkeypatch):
+    """판정기가 legal.status=needs_rejudge 를 주면 같은 모델·같은 입력·use_cache=False 로 다시 판정한다.
+    끝난 결과가 오면 그것을 쓰고 judge_rejudge 에 횟수를 남긴다. 2단 판정 모델이 지정돼 있어도 부르지 않는다."""
+    calls = []
+    answers = iter([_rejudge_result("needs_rejudge"), _rejudge_result("ok", "pass", review=())])
+
+    def fake_judge(question, answer, model, api_key, kwargs, reasoning_effort=None):
+        calls.append((model, kwargs.get("use_cache", True), reasoning_effort))
+        return next(answers)
+
+    monkeypatch.setattr(eval_v3, "available", lambda: (True, ""))
+    monkeypatch.setattr(eval_v3, "_judge", fake_judge)
+    monkeypatch.setattr(eval_v3, "MODEL", "luna")
+    monkeypatch.setattr(eval_v3, "ESCALATE_MODEL", "sol")
+    monkeypatch.setattr(eval_v3, "ESCALATE_ENABLED", True)
+    monkeypatch.setattr(eval_v3, "REASONING_EFFORT", "none")
+    monkeypatch.setattr(eval_v3, "REJUDGE_MAX", 2)
+
+    out = eval_v3.evaluate("q", "a", expected_behavior="x")
+    assert calls == [("luna", True, "none"), ("luna", False, "none")]
+    assert out["legal_status"] == "ok" and out["legal_verdict"] == "pass"
+    assert out["legal_context"] == {"prompt_version": "context-v1", "candidates": 2, "judged": 2}
+    assert out["judge_rejudge"] == {"attempts": 1, "resolved": True}
+    assert "judge_escalation" not in out
+
+
+def test_needs_rejudge_unresolved_stays_review(monkeypatch):
+    """횟수를 다 써도 못 끝내면 마지막 결과(review·needs_rejudge)를 그대로 두고 FAIL 로 덮지 않는다.
+    재판정 호출의 예외는 직전 결과를 유지하고 errors 에 남긴다. 1차 fail 이었어도 구형 2단 판정을 타지 않는다."""
+    calls = []
+
+    def fake_judge(question, answer, model, api_key, kwargs, reasoning_effort=None):
+        calls.append(kwargs.get("use_cache", True))
+        if len(calls) == 2:
+            raise TimeoutError("judge timeout")
+        return _rejudge_result("needs_rejudge", "fail", hits=("LG-02",))
+
+    monkeypatch.setattr(eval_v3, "available", lambda: (True, ""))
+    monkeypatch.setattr(eval_v3, "_judge", fake_judge)
+    monkeypatch.setattr(eval_v3, "MODEL", "luna")
+    monkeypatch.setattr(eval_v3, "ESCALATE_MODEL", "sol")
+    monkeypatch.setattr(eval_v3, "ESCALATE_ENABLED", True)
+    monkeypatch.setattr(eval_v3, "REJUDGE_MAX", 2)
+
+    out = eval_v3.evaluate("q", "a")
+    assert calls == [True, False, False]                  # 1차 + 재판정 2회(둘째는 예외)
+    assert out["legal_status"] == "needs_rejudge" and out["legal_verdict"] == "fail"
+    assert out["judge_rejudge"]["attempts"] == 2 and out["judge_rejudge"]["resolved"] is False
+    assert out["judge_rejudge"]["errors"] == ["TimeoutError: judge timeout"]
+    assert "judge_escalation" not in out                  # 문맥 판정이 안 끝난 결과는 다른 모델로 덮지 않는다
+
+    calls.clear()
+    monkeypatch.setattr(eval_v3, "REJUDGE_MAX", 0)
+    out = eval_v3.evaluate("q", "a")
+    assert calls == [True] and out["legal_status"] == "needs_rejudge"
+    assert out["judge_rejudge"] == {"attempts": 0, "resolved": False}
+
+
+def test_compact_omits_status_and_context_for_old_judge():
+    """v3.18 이전 판정기는 legal.status·context 를 주지 않는다 — 키 자체를 넣지 않아 저장 형태가 바뀌지 않는다."""
+    c = eval_v3.compact({"verdict": "pass", "legal": {"verdict": "pass", "hits": []}})
+    assert "legal_status" not in c and "legal_context" not in c
+    c = eval_v3.compact({"verdict": "pass", "legal": {"verdict": "pass", "status": "ok",
+                                                      "context": {"prompt_version": "context-v1", "candidates": 0,
+                                                                  "judged": 0, "items": [{"id": 1}]}}})
+    assert c["legal_status"] == "ok"
+    assert c["legal_context"] == {"prompt_version": "context-v1", "candidates": 0, "judged": 0}   # items 는 남기지 않는다
 
 
 def test_compact_v31_phr_falls_back_to_grade_legacy():

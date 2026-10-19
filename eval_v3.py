@@ -38,11 +38,19 @@ _SNAPSHOT_DIR = os.path.join(_PKG, "ontology", "snapshot")
 ENABLED = os.environ.get("EVAL_V3", "0") == "1"
 #: 판정 모델. 미지정 시 medical_eval.DEFAULT_MODEL.
 MODEL = os.environ.get("EVAL_V3_MODEL", "").strip() or None
-#: 1차 판정 모델이 legal fail 을 내면 이 모델로 같은 답변을 한 번 더 판정한다(비용 절감형 2단 판정).
-#: 예: EVAL_V3_MODEL=gpt-5.4-mini + EVAL_V3_ESCALATE_MODEL=gpt-5.4 → 통과 답변은 mini 비용만,
-#: mini 가 fail 로 잡은 답변만 gpt-5.4 가 최종 판정. 2026-09-18 운영 표본 40건에서 mini 단독은
-#: 6건을 fail 로 냈고 gpt-5.4 는 모두 pass 였다(v2 법률과의 일치 85% → 100%).
+#: [구형, 기본 꺼짐] 1차 판정 모델이 legal fail 을 내면 이 모델로 같은 답변을 **통째로** 한 번 더 판정하고 2차 결과로
+#: 1차를 대체하던 2단 판정(2026-09-18 mini→gpt-5.4, 10-14 luna→sol). 1차 근거가 2차에 전달되지 않아 두 모델이 서로
+#: 다른 규칙으로 FAIL 시키는 비일관을 남겼고(Dev 10/16 25건 중 6건, DOC-HSCEY), 판정기 context-v1(1차 후보 → 2차 문맥
+#: 판정 뒤 확정)이 같은 역할을 라이브러리 안에서 하므로 2026-10-19 폐지(medical-eval 설계 context_v1.md §4.1).
+#: 재현·비교용으로만 `EVAL_V3_ESCALATE=1` 과 함께 켠다. 모델만 지정하고 스위치가 없으면 돌지 않는다.
 ESCALATE_MODEL = os.environ.get("EVAL_V3_ESCALATE_MODEL", "").strip() or None
+ESCALATE_ENABLED = os.environ.get("EVAL_V3_ESCALATE", "0") == "1"
+#: 판정기가 `legal.status == "needs_rejudge"` 를 돌려주면(2차 문맥 판정이 키 없음·타임아웃·형식 오류로 실패해
+#: 후보가 review 로 남은 상태 — 2026-10-19 사용자 결정 ①) 같은 모델·같은 입력으로 캐시 없이 다시 판정한다.
+#: 최대 횟수. 0 이면 재판정하지 않고 needs_rejudge 를 그대로 저장한다.
+REJUDGE_MAX = int(os.environ.get("EVAL_V3_REJUDGE_MAX", "2") or 0)
+#: 판정기가 쓰는 상태값. 라이브러리 연동 규격 v0.5.20(예정)과 같아야 한다.
+NEEDS_REJUDGE = "needs_rejudge"
 #: gpt-6 계열 reasoning_effort. 1차는 EVAL_V3_REASONING_EFFORT(판정기 judge_client 도 같은 변수를 기본값으로
 #: 읽는다), 2차는 EVAL_V3_ESCALATE_REASONING_EFFORT. 값은 검증 없이 그대로 보낸다 — 허용값은 모델별로 다르다
 #: (gpt-6-luna none/low/medium/high · gpt-6-sol low/medium/high). 운영(2026-10-14): 1차 gpt-6-luna none · 2차 gpt-6-sol low.
@@ -261,6 +269,14 @@ def compact(result: dict) -> dict:
         "legal_version": legal.get("version"),
         "validity_version": validity.get("version"),
     }
+    # 연동 규격 v0.5.20(예정, context-v1): legal.status 는 2차 문맥 판정이 끝났는지(ok / needs_rejudge),
+    # legal.context 는 후보·판정 수와 프롬프트 판. 재판정 경로와 집계가 읽는다. 없으면(구판 판정기) 넣지 않는다.
+    if legal.get("status") is not None:
+        out["legal_status"] = legal.get("status")
+    ctx = legal.get("context")
+    if isinstance(ctx, dict):
+        out["legal_context"] = {k: ctx.get(k) for k in ("prompt_version", "candidates", "judged")
+                                if ctx.get(k) is not None}
     if answer:                                         # v3.1 PHR [3b] 정답·허용답 — met/unmet
         out["validity_answer"] = answer.get("result")
         out["validity_answer_status"] = answer.get("status")
@@ -372,8 +388,11 @@ def evaluate(question: str, answer: str, *, api_key=None, **kwargs) -> dict:
     except Exception as e:
         logger.warning("v3 판정 실패: %s", e)
         return {"error": f"{type(e).__name__}: {e}"}
+    result, rejudge = _rejudge_if_needed(question, answer, model, api_key, kwargs, result)
     escalation = None
-    if ESCALATE_MODEL and ESCALATE_MODEL != model and (result.get("legal") or {}).get("verdict") == "fail":
+    if (ESCALATE_ENABLED and ESCALATE_MODEL and ESCALATE_MODEL != model
+            and (result.get("legal") or {}).get("verdict") == "fail"
+            and not _needs_rejudge(result)):           # 문맥 판정이 안 끝난 결과는 다른 모델로 덮지 않는다
         first = compact(result)
         try:
             result = _judge(question, answer, ESCALATE_MODEL, api_key, kwargs,
@@ -387,9 +406,46 @@ def evaluate(question: str, answer: str, *, api_key=None, **kwargs) -> dict:
                           "first_hits": first.get("legal_hits"), "model": ESCALATE_MODEL,
                           "error": f"{type(e).__name__}: {str(e)[:120]}"}
     out = compact(result)
+    if rejudge:
+        out["judge_rejudge"] = rejudge
     if escalation:
         out["judge_escalation"] = escalation
     return out
+
+
+def _needs_rejudge(result: dict) -> bool:
+    """판정기가 2차 문맥 판정을 끝내지 못했다고 표시했는가(`legal.status == needs_rejudge`)."""
+    return ((result or {}).get("legal") or {}).get("status") == NEEDS_REJUDGE
+
+
+def _rejudge_if_needed(question, answer, model, api_key, kwargs, result):
+    """`needs_rejudge` 면 같은 모델·같은 입력으로 캐시 없이 최대 REJUDGE_MAX 회 다시 판정한다.
+
+    끝난 결과(status 가 needs_rejudge 가 아님)가 나오면 그것을 쓰고, 횟수를 다 써도 못 끝내면 마지막 결과를
+    그대로 둔다 — 판정기가 후보를 review 로 남긴 상태라 verdict 는 보수적으로 바뀌지 않는다(결정 ①: 거짓 FAIL 로
+    덮지 않는다). 재판정 호출이 예외를 내면 직전 결과를 유지하고 오류를 기록한다.
+    돌려주는 값: (최종 result, judge_rejudge 메타 또는 None). 메타 = {"attempts", "resolved", "errors"}.
+    """
+    if not _needs_rejudge(result):
+        return result, None
+    attempts, errors = 0, []
+    while _needs_rejudge(result) and attempts < max(REJUDGE_MAX, 0):
+        attempts += 1
+        retry_kwargs = dict(kwargs, use_cache=False)   # 같은 입력이라 캐시를 타면 같은 실패가 돌아온다
+        try:
+            nxt = _judge(question, answer, model, api_key, retry_kwargs, reasoning_effort=REASONING_EFFORT)
+        except Exception as e:
+            logger.warning("v3 재판정(needs_rejudge) %d회차 실패: %s", attempts, e)
+            errors.append(f"{type(e).__name__}: {str(e)[:120]}")
+            continue
+        result = nxt
+    resolved = not _needs_rejudge(result)
+    if not resolved:
+        logger.warning("v3 재판정 %d회 뒤에도 needs_rejudge — review 로 남김", attempts)
+    meta = {"attempts": attempts, "resolved": resolved}
+    if errors:
+        meta["errors"] = errors
+    return result, meta
 
 
 def _judge(question, answer, model, api_key, kwargs, reasoning_effort=None):
@@ -562,6 +618,7 @@ def run_summary(results):
         "rule_hits": {}, "review_hits": {}, "unmet": {}, "uv_unmet": {}, "intent": {},
         "prompt_versions": {}, "categories": {},
         "escalated": 0, "escalated_fail": 0, "final_v3": 0,
+        "rejudged": 0, "rejudge_unresolved": 0,
         "judge_model": None, "escalate_model": None,
         "ontology_version": None, "eval_version": None,
     }
@@ -597,6 +654,11 @@ def run_summary(results):
         _inc(out["intent"], v.get("uv_intent"))
         pv = ((v.get("rag_meta") or {}).get("prompt_version")) or v.get("prompt_version")
         _inc(out["prompt_versions"], pv)
+        rj = v.get("judge_rejudge")
+        if rj:
+            out["rejudged"] += 1
+        if v.get("legal_status") == NEEDS_REJUDGE:      # 재판정 뒤에도 못 끝낸 건(또는 REJUDGE_MAX=0)
+            out["rejudge_unresolved"] += 1
         esc = v.get("judge_escalation")
         if esc:
             out["escalated"] += 1

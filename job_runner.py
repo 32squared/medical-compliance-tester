@@ -257,12 +257,20 @@ def _v3_log_summary(results):
             f"len={timing.get(sid, {}).get('responseLength')}"
             + (f" escalated={esc.get('first_model')}:{esc.get('first_verdict')}→{esc.get('model')}:{esc.get('verdict') or esc.get('error')}"
                if (esc := v.get('judge_escalation')) else "")
+            + (f" rejudge={rj.get('attempts')}:{'ok' if rj.get('resolved') else 'unresolved'}"
+               if (rj := v.get('judge_rejudge')) else "")
+            + (f" legal_status={v.get('legal_status')}" if v.get('legal_status') and v.get('legal_status') != 'ok' else "")
         )
     meta = next((v for _, v in rows if not v.get('error')), {})
     _job_log(
         f"[v3] SUMMARY n={len(rows)} err={errs} gate={gate} PV/SV={pv} UV={uv} rule_hits={hits} "
         f"eval={meta.get('eval_version')} ontology={meta.get('ontology_version')} judge={meta.get('judge_model')}"
     )
+    n_rj = sum(1 for _, v in rows if v.get('judge_rejudge'))
+    n_unres = sum(1 for _, v in rows if v.get('legal_status') == 'needs_rejudge')
+    if n_rj or n_unres:
+        _job_log(f"[v3] REJUDGE {n_rj}/{len(rows)}건 needs_rejudge → 같은 모델 재판정 "
+                 f"(미해결 {n_unres}건 — review 로 남음, 호스트 재실행 대상)")
     n_esc = sum(1 for _, v in rows if v.get('judge_escalation'))
     if n_esc:
         _job_log(f"[v3] ESCALATION {n_esc}/{len(rows)}건 1차 fail → 2차 판정 "
