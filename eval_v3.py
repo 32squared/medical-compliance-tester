@@ -15,8 +15,9 @@ eval_v3.py — medical-eval(온톨로지 기반 v3 판정기) 호스트 어댑�
   both_A 등 기존 판정에는 영향을 주지 않는다(3단계 교차표 → 4단계 라이브 순서).
 
 저장 형태:
-  `compact()` 가 등급·규칙 id·버전만 남긴다. claims 원문·인용문은 남기지 않는다
-  (케이스 출처 미확인 — 판정 로그에 원문을 남기지 않는다는 medical-eval 데이터 규칙).
+  `compact()` 가 등급·규칙 id·버전과 **걸린 문장**(규칙·항목별 문장 번호 + 인용문 QUOTE_MAX 자)을 남긴다.
+  claims 전체(삼중항·레벨·출처)와 PHR 기록 값은 남기지 않는다 — medical-eval 데이터 규칙(케이스 출처
+  미확인)이 막는 것은 기록 원문이고, 답변 문장은 결과 옆에 통째로 저장되는 답변의 일부다(2026-10-19).
 """
 import os
 import sys
@@ -182,13 +183,52 @@ def evidence_rows(evidence, limit=6):
     return out
 
 
+def _claim_maps(claims):
+    """claims → ({주장 번호: 원문 문장 번호}, {번호: 문장 글자}).
+
+    쪼갠 주장(claims-v4 part 1·2)은 text 가 문장 전체이고 source_idx 가 원래 문장 번호다. 쪼개지 않은
+    주장은 idx == source_idx. 그래서 번호 n 의 글자는 idx == n 인 주장의 text 로 늘 찾을 수 있다
+    (UV 항목은 문장 번호, PV·SV·게이트는 주장 번호를 쓰는데 두 경우 모두 맞는다)."""
+    sentence_of, text_of = {}, {}
+    for pos, c in enumerate(claims or [], 1):
+        if not isinstance(c, dict):
+            continue
+        try:
+            idx = int(c.get("idx") or pos)
+        except (TypeError, ValueError):
+            idx = pos
+        try:
+            sent = int(c.get("source_idx") or idx)
+        except (TypeError, ValueError):
+            sent = idx
+        sentence_of[idx] = sent
+        text = c.get("text")
+        if isinstance(text, str) and text.strip():
+            text_of.setdefault(idx, text.strip())
+            text_of.setdefault(sent, text.strip())
+    return sentence_of, text_of
+
+
+def _to_sentence(n, sentence_of):
+    try:
+        return sentence_of.get(int(n), int(n))
+    except (TypeError, ValueError):
+        return n
+
+
 def compact(result: dict) -> dict:
-    """전체 결과 → 호스트가 저장·집계하는 최소 형태(원문·인용문 제외)."""
+    """전체 결과 → 호스트가 저장·집계하는 최소 형태.
+
+    claims 전체(삼중항·레벨·출처)는 남기지 않는다. 다만 판정이 **걸린 문장**은 규칙·항목마다 번호와 글자
+    (quote, QUOTE_MAX 자)로 남긴다 — 어떤 구문이 어떤 기준으로 판정됐는지 답변 원문을 따로 열지 않고
+    읽을 수 있게 하기 위해서다(2026-10-19 결정). 문장은 이미 함께 저장되는 답변의 일부라 새 데이터가 아니다.
+    """
     if not result:
         return {}
     legal = result.get("legal") or {}
     validity = result.get("validity") or {}
     uv = result.get("uv") or {}
+    sentence_of, text_of = _claim_maps(result.get("claims"))
     # v3.1(판정기 f3c9723+)부터 PHR 은 grade=null 이고 v3.0 등급은 grade_legacy 로 1 릴리스 병기된다.
     # 등급 없음이 PASS 로 읽히지 않게(verdict_of 기본값) grade_legacy 로 이어 쓴다.
     grade = validity.get("grade") or validity.get("grade_legacy")
@@ -228,19 +268,23 @@ def compact(result: dict) -> dict:
     if checklist:                                      # 증상 모드(SV) — red flag 커버리지·LG-16
         out["checklist"] = checklist
 
-    # ── 상세(호스트 DB 저장용, 계약 §3.8 B5 집계 재료). 답변 원문·인용문은 넣지 않는다 ──
+    # ── 상세(호스트 DB 저장용, 계약 §3.8 B5 집계 재료) ──
     def _hit_rows(hits):
         rows = []
         for h in (hits or []):
             if not isinstance(h, dict):
                 continue
+            ci = h.get("claim_idx")
             row = {"rule_id": h.get("rule_id"), "severity": h.get("severity"),
-                   "level": h.get("level"), "claim_idx": h.get("claim_idx"),
+                   "level": h.get("level"), "claim_idx": ci,
                    "status": h.get("status")}
+            if ci is not None:
+                row["sentence_idx"] = _to_sentence(ci, sentence_of)
             # 판정 근거(2026-09-22 계획 0단계): 걸린 문장·검출기·사전·귀속 이유를 남겨 사람이
             # 답변 원문을 따로 열지 않고 검토할 수 있게 한다. 문장은 답변의 일부라 새 데이터가 아니다.
-            if h.get("quote"):
-                row["quote"] = str(h["quote"])[:QUOTE_MAX]
+            quote = h.get("quote") or (text_of.get(ci) if ci is not None else None)
+            if quote:
+                row["quote"] = str(quote)[:QUOTE_MAX]
             for k in ("detectors", "decision", "review"):
                 if h.get(k):
                     row[k] = h[k]
@@ -250,14 +294,33 @@ def compact(result: dict) -> dict:
             rows.append(row)
         return rows
 
-    def _item_rows(items):
-        return [{"id": it.get("id"), "result": it.get("result"), "detail": it.get("detail")}
-                for it in (items or []) if isinstance(it, dict) and it.get("id")]
+    def _item_rows(items, *, already_sentence=False):
+        """PV·SV 항목의 claim_idx 는 주장 번호, UV 항목은 이미 문장 번호다(aggregate._unmet_lines 와 같은 규칙).
+        문장 번호와 그 문장 글자(최대 3개)를 함께 남겨 미충족 사유가 가리키는 구문을 바로 읽게 한다."""
+        rows = []
+        for it in (items or []):
+            if not isinstance(it, dict) or not it.get("id"):
+                continue
+            row = {"id": it.get("id"), "result": it.get("result"), "detail": it.get("detail")}
+            where = it.get("claim_idx")
+            if isinstance(where, (list, tuple)) and where:
+                row["claim_idx"] = list(where)
+                sents = []
+                for n in where:
+                    s = n if already_sentence else _to_sentence(n, sentence_of)
+                    if s not in sents:
+                        sents.append(s)
+                row["sentence_idx"] = sents
+                quotes = [str(text_of[n])[:QUOTE_MAX] for n in sents[:3] if n in text_of]
+                if quotes:
+                    row["quotes"] = quotes
+            rows.append(row)
+        return rows
 
     out["legal_hit_detail"] = _hit_rows(legal.get("hits")) + _hit_rows(legal.get("review_hits"))
     out["legal_max_level"] = legal.get("max_level")
     out["validity_items"] = _item_rows(validity.get("items"))
-    out["uv_items"] = _item_rows(uv.get("items"))
+    out["uv_items"] = _item_rows(uv.get("items"), already_sentence=True)
     out["uv_intent"] = uv.get("intent")
     out["uv_prompt_version"] = uv.get("prompt_version")
     slots = uv.get("slots") or {}
@@ -346,7 +409,7 @@ def _judge(question, answer, model, api_key, kwargs, reasoning_effort=None):
         model=model,
         ontology=get_snapshot(),
         api_key=key,
-        with_quote=False,                              # 인용문은 호스트 로그에 남기지 않는다
+        with_quote=True,                               # 걸린 문장 글자를 hits[].quote 로 받는다(compact 가 QUOTE_MAX 로 자름)
         **kwargs
     )
 
@@ -386,7 +449,7 @@ def evaluate_batch(items, *, api_key=None, max_workers=4, on_result=None, **defa
         api_key=api_key or os.environ.get("OPENAI_API_KEY", ""),
         max_workers=max_workers,
         on_result=_wrap if on_result is not None else None,
-        with_quote=False,
+        with_quote=True,
         **defaults
     )
     out = []

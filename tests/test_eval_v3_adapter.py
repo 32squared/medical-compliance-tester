@@ -46,10 +46,48 @@ def test_evaluate_returns_compact_shape():
     assert out["legal_verdict"] in ("pass", "fail", "review")
     assert out["verdict"] and out["ontology_version"] and out["judge_model"]
     assert isinstance(out["validity_unmet"], list)
-    # 원문·인용문은 호스트 결과에 남기지 않는다(케이스 출처 미확인 규칙).
+    # claims 전체(삼중항·레벨·출처)는 남기지 않는다. 걸린 문장만 규칙·항목 옆에 quote 로 남는다.
     assert "claims" not in out
-    blob = json.dumps(out, ensure_ascii=False)
-    assert ANSWER[:20] not in blob
+    for row in out["legal_hit_detail"]:
+        assert "sentence_idx" in row and row.get("quote")
+    for row in out["validity_items"] + out["uv_items"]:
+        if row.get("claim_idx"):
+            assert row["sentence_idx"] and all(isinstance(q, str) for q in row.get("quotes", []))
+
+
+def test_compact_keeps_hit_sentence_and_quote():
+    """걸린 규칙·미충족 항목마다 문장 번호와 인용문이 남는다. 쪼갠 주장(idx 5, source_idx 2)은 문장 2 로
+    옮기고, UV 항목의 번호는 이미 문장 번호라 옮기지 않는다. 인용문은 QUOTE_MAX 자로 자른다."""
+    claims = [{"idx": 1, "text": "첫 문장입니다.", "source_idx": 1},
+              {"idx": 2, "text": "둘째 문장은 당뇨병이 의심됩니다.", "source_idx": 2},
+              {"idx": 3, "text": "셋째 문장.", "source_idx": 3},
+              {"idx": 5, "text": "둘째 문장은 당뇨병이 의심됩니다.", "source_idx": 2}]
+    res = {"verdict": "FAIL", "mode": "symptom", "claims": claims,
+           "legal": {"verdict": "fail",
+                     "hits": [{"rule_id": "LG-02", "severity": "HIGH", "level": "L5", "claim_idx": 5,
+                               "quote": "둘째 문장은 당뇨병이 의심됩니다.", "detectors": ["axiom"],
+                               "evidence": [{"basis": "axiom", "rationale": "사람 주어 + L5"}]},
+                              {"rule_id": "LG-05", "severity": "MEDIUM", "claim_idx": 3}]},     # quote 없음 → claims 글자
+           "validity": {"axis": "SV", "grade": "B", "grade_basis": {"unmet_ids": ["SV-05"]},
+                        "items": [{"id": "SV-05", "result": "unmet", "detail": "행동 기준 없음", "claim_idx": [5, 1]},
+                                  {"id": "SV-08", "result": "met", "detail": None, "claim_idx": []}]},
+           "uv": {"grade": "B", "grade_basis": {"unmet_ids": ["UV-01"]},
+                  "items": [{"id": "UV-01", "result": "unmet", "detail": "결론 늦음", "claim_idx": [3]}]}}
+    c = eval_v3.compact(res)
+    h0, h1 = c["legal_hit_detail"]
+    assert h0["sentence_idx"] == 2 and h0["quote"] == "둘째 문장은 당뇨병이 의심됩니다."
+    assert h0["evidence"] == [{"basis": "axiom", "rationale": "사람 주어 + L5"}]
+    assert h1["sentence_idx"] == 3 and h1["quote"] == "셋째 문장."
+    sv = c["validity_items"][0]
+    assert sv["claim_idx"] == [5, 1] and sv["sentence_idx"] == [2, 1]
+    assert sv["quotes"] == ["둘째 문장은 당뇨병이 의심됩니다.", "첫 문장입니다."]
+    assert "claim_idx" not in c["validity_items"][1]                 # 빈 목록은 넣지 않는다
+    uv = c["uv_items"][0]
+    assert uv["sentence_idx"] == [3] and uv["quotes"] == ["셋째 문장."]
+    assert "claims" not in c and c["claim_count"] == 4
+    long = {"verdict": "pass", "claims": [{"idx": 1, "text": "가" * 500}],
+            "legal": {"hits": [{"rule_id": "LG-01", "claim_idx": 1}]}}
+    assert len(eval_v3.compact(long)["legal_hit_detail"][0]["quote"]) == eval_v3.QUOTE_MAX
 
 
 @needs_judge
@@ -413,7 +451,7 @@ def test_judge_passes_reasoning_effort_via_chat(monkeypatch):
     assert seen["cj"]["reasoning_effort"] == "none"
     assert seen["cj"]["timeout"] == 90 and seen["cj"]["api_key"] == "k"
     assert seen["cj"]["cache_dir"] == "cache-dir" and seen["cj"]["use_cache"] is True
-    assert seen["kw"]["model"] == "gpt-6-luna" and seen["kw"]["with_quote"] is False
+    assert seen["kw"]["model"] == "gpt-6-luna" and seen["kw"]["with_quote"] is True
 
     out = eval_v3._judge("q", "a", "gpt-6-sol", None, {}, reasoning_effort=None)
     assert out == {"chat_payload": None}               # effort 없음 → chat 을 넣지 않는다(판정기 기본 호출)

@@ -300,12 +300,32 @@ function renderV3Card(d, legacy) {
   const hits = detail.length ? detail
     : [].concat(d.legal_hits || [], d.legal_review_hits || [], d.legal_cap_hits || []).map(id => ({ rule_id: id }));
   const sevColors = { CRITICAL: '#ef4444', HIGH: '#f97316', MEDIUM: '#eab308', LOW: '#38bdf8' };
+  // 판정 근거 목록(evidence[]) → 한 줄 글
+  const evidenceText = (list) => (Array.isArray(list) ? list : []).map(e => {
+    if (!e || typeof e !== 'object') return '';
+    const head = e.kind || e.basis || '';
+    const body = e.phrase || e.text || e.example_code || '';
+    let why = e.rationale || '';
+    if (e.person_attributed != null) why = (why ? why + ' · ' : '') + '사람 귀속 ' + (e.person_attributed ? '예' : '아니오');
+    if (e.attrib_source) why = (why ? why + ' · ' : '') + '출처 ' + e.attrib_source;
+    return [head, body ? '「' + body + '」' : '', why].filter(Boolean).join(' ');
+  }).filter(Boolean).join(' / ');
+  // 걸린 구문: 문장 번호 + 인용문 (eval_v3.compact 가 남긴 sentence_idx/quote·quotes)
+  const spotHtml = (sentences, quotes) => {
+    const s = (sentences || []).filter(x => x != null);
+    const q = (quotes || []).filter(Boolean);
+    if (!s.length && !q.length) return '';
+    return `<div class="match">${s.length ? `<span style="color:var(--text-dim)">문장 ${escapeHtml(s.join(', '))}</span> ` : ''}${q.map(x => '「' + escapeHtml(x) + '」').join(' ')}</div>`;
+  };
   const hitHtml = hits.length ? hits.map(h => {
     const sev = String(h.severity || '').toUpperCase();
     const c = sevColors[sev] || '#94a3b8';
+    const why = [(h.detectors || []).length ? '검출 ' + h.detectors.join(', ') : '', evidenceText(h.evidence)].filter(Boolean).join(' — ');
     return `<div class="vio">
       ${sev ? `<span class="sev" style="background:${c}22;color:${c}">${escapeHtml(sev)}</span>` : ''}
       <b>${escapeHtml(h.rule_id)}</b>${h.level != null ? ' · 수준 ' + escapeHtml(h.level) : ''}${h.status ? ' · ' + escapeHtml(h.status) : ''}
+      ${spotHtml(h.sentence_idx != null ? [h.sentence_idx] : (h.claim_idx != null ? [h.claim_idx] : []), h.quote ? [h.quote] : [])}
+      ${why ? `<div class="desc">${escapeHtml(why)}</div>` : ''}
     </div>`;
   }).join('') : '<div class="text-box good"><div class="lbl">결과</div>✓ 걸린 법률·안전 규칙 없음</div>';
   const items = Array.isArray(d.validity_items) ? d.validity_items : [];
@@ -313,10 +333,11 @@ function renderV3Card(d, legacy) {
   const vt = (d.validity_axis || d.validity_grade)
     ? (d.validity_axis || '') + ' 등급 ' + (d.validity_grade || '—') + (d.validity_status ? ' (' + d.validity_status + ')' : '')
     : '';
-  const unmetHtml = vt ? (unmet.length ? unmet.map(id => {
-    const it = items.find(x => x && x.id === id);
-    return `<div class="vio"><span class="sev" style="background:#eab30822;color:#a16207">미충족</span><b>${escapeHtml(id)}</b>${it && it.detail ? `<div class="desc">${escapeHtml(it.detail)}</div>` : ''}</div>`;
-  }).join('') : '<div class="text-box good"><div class="lbl">결과</div>✓ 미충족 필수 항목 없음</div>') : '';
+  const unmetRow = (id, it) => `<div class="vio"><span class="sev" style="background:#eab30822;color:#a16207">미충족</span><b>${escapeHtml(id)}</b>${it && it.detail ? `<div class="desc">${escapeHtml(it.detail)}</div>` : ''}${it ? spotHtml(it.sentence_idx || it.claim_idx, it.quotes) : ''}</div>`;
+  const unmetHtml = vt ? (unmet.length ? unmet.map(id => unmetRow(id, items.find(x => x && x.id === id))).join('')
+    : '<div class="text-box good"><div class="lbl">결과</div>✓ 미충족 필수 항목 없음</div>') : '';
+  const uvItems = Array.isArray(d.uv_items) ? d.uv_items : [];
+  const uvUnmetHtml = (d.uv_unmet || []).map(id => unmetRow(id, uvItems.find(x => x && x.id === id))).join('');
   const meta = [d.eval_version, d.ontology_version, d.judge_model].filter(Boolean).join(' · ');
   return `
     <div class="eval-card">
@@ -329,7 +350,7 @@ function renderV3Card(d, legacy) {
       <h3>법률 게이트: ${escapeHtml(v3LegalText(d.legal_verdict))}</h3>
       ${hitHtml}
       ${vt ? `<h3>유효성 축: ${escapeHtml(vt)}</h3>${unmetHtml}` : ''}
-      ${d.uv_grade ? `<div class="ec-meta" style="margin-top:8px">사용자 가치(UV) 등급 ${escapeHtml(d.uv_grade)}${(d.uv_unmet || []).length ? ' · 미충족 ' + escapeHtml(d.uv_unmet.join(', ')) : ''}</div>` : ''}
+      ${d.uv_grade ? `<div class="ec-meta" style="margin-top:8px">사용자 가치(UV) 등급 ${escapeHtml(d.uv_grade)}${(d.uv_unmet || []).length ? ' · 미충족 ' + escapeHtml(d.uv_unmet.join(', ')) : ''}</div>${uvUnmetHtml}` : ''}
     </div>`;
 }
 
