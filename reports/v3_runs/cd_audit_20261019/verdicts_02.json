@@ -1,0 +1,302 @@
+[
+ {
+  "run": "PHR 350",
+  "id": "PHRQR-B0386",
+  "items": [
+   {"id": "PV-03", "verdict": "타당", "reason": "문장 3·4·5 모두 수치·날짜만 있고 참고범위 병기 없음. 답변 전체(1~6)에 범위 서술 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-02", "verdict": "타당", "reason": "scoped 의도의 결론 구성요소(값+참고범위 대비) 중 참고범위가 문장 3~6 어디에도 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-04", "verdict": "타당", "reason": "문장 3~5 값 나열, 문장 6 상담 안내. 범위 대비·정의 서술 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-05", "verdict": "타당", "reason": "범위 내 변동·값-기준·지침 인용·위임 표현 어느 것도 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-10", "verdict": "경계", "reason": "반복 3쌍은 문장 3·4·5(AST/ALT/감마지티피)가 같은 틀 '**항목:** 날짜 값 (직전 ...)'을 항목별로 쓴 것. 서로 다른 항목의 값이라 내용 되풀이가 아님.", "sentences": [3, 4, 5], "pattern": "틀_반복_오인"}
+  ],
+  "note": "scoped 의도 분류는 타당. 범위 미병기는 실제 결함."
+ },
+ {
+  "run": "PHR 350",
+  "id": "PHRQR-B0397",
+  "items": [
+   {"id": "UV-01", "verdict": "경계", "reason": "선두 2문장(3·4)은 '정상이라 생략된 게 아니라 미시행/미연동 가능, 기록 없음으로 정상 판단 불가'로 질문의 직접 결론. value_lookup 슬롯(값)으로 보면 미충족이나 질문 성격은 결측 확인.", "sentences": [3, 4], "pattern": "의도_오분류"},
+   {"id": "UV-02", "verdict": "타당", "reason": "기대 포함 '과거 유효값 66mg/dL 제시'인데 답변 어디에도 콜레스테롤 수치·참고범위 없음(문장 6은 날짜만).", "sentences": [], "pattern": ""},
+   {"id": "UV-06", "verdict": "거짓", "reason": "문장 11 '지질검사 포함 여부·누락 여부는 검진기관이나 의료진을 통해 확인해야 합니다'가 의료진 확인 조건 문장. 문장 12도 확인 방식 안내. B0408 문장 12와 같은 유형인데 미인식.", "sentences": [11, 12], "pattern": "표지어_미인식"}
+  ],
+  "note": "결측 확인 질문을 value_lookup 으로 채점하여 UV-01 가혹. 다만 과거 유효값 미제시는 실제 결함."
+ },
+ {
+  "run": "PHR 350",
+  "id": "PHRQR-B0398",
+  "items": [
+   {"id": "PV-03", "verdict": "타당", "reason": "문장 3·4 수치만 있고 참고범위 없음. 답변 전체에 범위 서술 없음.", "sentences": [], "pattern": ""},
+   {"id": "PV-04", "verdict": "타당", "reason": "문장 3·4는 2024-06-29 단일 시점 값만 제시, 추세 어휘 없음. 질문도 특정 시점을 한정하지 않음.", "sentences": [], "pattern": ""},
+   {"id": "UV-02", "verdict": "타당", "reason": "문장 3~6에 참고범위 대비 서술 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-04", "verdict": "타당", "reason": "값 나열(3·4)과 결측 안내(5)만 있고 의미 서술 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-05", "verdict": "타당", "reason": "허용 표현틀 표지 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-10", "verdict": "경계", "reason": "반복 1쌍은 문장 3(AST)·4(ALT)가 '항목: 날짜에 N IU/L로 기록되어 있습니다' 같은 틀을 쓴 것. 다른 항목이라 내용 되풀이 아님.", "sentences": [3, 4], "pattern": "틀_반복_오인"}
+  ],
+  "note": ""
+ },
+ {
+  "run": "PHR 350",
+  "id": "PHRQR-B0408",
+  "items": [
+   {"id": "PV-03", "verdict": "타당", "reason": "문장 6·8·9(및 7) 모두 날짜·값 나열만 있고 참고범위 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-01", "verdict": "경계", "reason": "선두 2문장(3·4)이 '2016-11-28까지 기록, 2022-07-20 회차 기록 없음, 정상이라 생략 단정 불가'로 질문의 결론. 값은 문장 8(HDL 38)에만 있어 value_lookup 슬롯 기준으로는 미충족.", "sentences": [3, 4], "pattern": "의도_오분류"},
+   {"id": "UV-02", "verdict": "타당", "reason": "문장 6~9 어디에도 참고범위 대비 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-04", "verdict": "타당", "reason": "문장 6~9 값 나열, 문장 4·11은 결측 사유 설명. 값의 의미(범위 대비) 서술 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-10", "verdict": "경계", "reason": "반복 4쌍은 문장 6·7·8·9(총콜/LDL/HDL/중성지방)가 '항목은 날짜 값, 날짜 값…로 기록되어 있습니다' 틀을 항목별로 쓴 것. 내용 되풀이 아님.", "sentences": [6, 7, 8, 9], "pattern": "틀_반복_오인"}
+  ],
+  "note": "결측 확인 질문을 value_lookup 으로 채점. 기대 포함 값(38mg/dL)은 문장 8에 있음."
+ },
+ {
+  "run": "PHR 350",
+  "id": "PHRQR-B0414",
+  "items": [
+   {"id": "PV-03", "verdict": "타당", "reason": "문장 2 '공복혈당 148 mg/dL' 참고범위 없음. 답변이 두 문장뿐.", "sentences": [], "pattern": ""},
+   {"id": "PV-04", "verdict": "경계", "reason": "추세 서술은 없으나 질문이 '최근 수치'로 한 시점만 묻는 경우. 기준 참조상 경계.", "sentences": [], "pattern": "기대동작_충돌"},
+   {"id": "UV-02", "verdict": "타당", "reason": "문장 2에 값·시점은 있으나 참고범위 대비 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-04", "verdict": "타당", "reason": "값만 제시, 의미 서술 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-05", "verdict": "타당", "reason": "허용 표현틀 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-06", "verdict": "타당", "reason": "다음 행동 문장 자체가 없음(말미 상담 문구조차 없음).", "sentences": [], "pattern": ""}
+  ],
+  "note": "말미 '의료진과 상담' 문구가 없는 2문장 답변."
+ },
+ {
+  "run": "PHR 350",
+  "id": "PHRQR-B0420",
+  "items": [
+   {"id": "PV-03", "verdict": "타당", "reason": "문장 4·5·6 모두 과거값 나열만 있고 참고범위 없음.", "sentences": [], "pattern": ""},
+   {"id": "PV-04", "verdict": "타당", "reason": "문장 4~6에 5개 시점 값을 괄호로 나열했지만 상승·하락·유지 등 추세 서술 어휘 없음. 값 나열은 추세 서술이 아님.", "sentences": [], "pattern": ""},
+   {"id": "UV-10", "verdict": "경계", "reason": "반복 3쌍은 문장 4·5·6(AST/ALT/감마지티피)가 '**항목**: 날짜에 값 (과거 …)' 틀을 항목별로 쓴 것. 내용 되풀이 아님.", "sentences": [4, 5, 6], "pattern": "틀_반복_오인"}
+  ],
+  "note": ""
+ },
+ {
+  "run": "PHR 350",
+  "id": "PHRQR-B0442",
+  "items": [
+   {"id": "UV-02", "verdict": "거짓", "reason": "adherence(이행 기록 유무)는 결론 문장 4 바로 뒤 문장 6 '2013-09-26 이후 후속 내시경검사 기록이 포함되어 있지 않습니다'에 있음. 소제목(5)을 세어도 3문장 구간 안.", "sentences": [6], "pattern": "표지어_미인식"},
+   {"id": "UV-04", "verdict": "타당", "reason": "'위암의심' 라벨(3)과 권고(4)를 전달했을 뿐 라벨 정의·의미 서술 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-05", "verdict": "경계", "reason": "문장 8 '…검사 결과의 의미는 의료진이 판단합니다'는 위임 표현틀에 해당하는데 미인식. 렉시콘 범위 불명이라 경계.", "sentences": [8], "pattern": "표지어_미인식"},
+   {"id": "UV-08", "verdict": "타당", "reason": "위암의심·내시경검사 등 용어 풀이 없음.", "sentences": [], "pattern": ""}
+  ],
+  "note": "기대 포함 '도래 시점 2015년 09월 산출·경과 명시'는 답변에 없음(UV 항목 범위 밖)."
+ },
+ {
+  "run": "PHR 350",
+  "id": "PHRQR-B0443",
+  "items": [
+   {"id": "UV-02", "verdict": "경계", "reason": "remaining_items: 결론(4) 다음 문장 5가 '2년 후 내시경검사 권고 기록'을, 문장 7이 '후속 검사 기록 없음', 문장 11이 '내시경 시행 여부 확인'을 말해 남은 확인 항목이 사실상 제시됨. 명시 표지 없어 경계.", "sentences": [5, 7, 11], "pattern": "표지어_미인식"},
+   {"id": "UV-04", "verdict": "경계", "reason": "'위암의심' 정의는 없으나 문장 9 '검진에서 의심으로 분류되면 내시경으로 확인(필요 시 조직검사)'이 판정의 의미를 부분 설명. 문장 4는 확정 아님만 말함.", "sentences": [9], "pattern": "기타"}
+  ],
+  "note": "기대 동작(확정 아님+추가 확인 필요, 안심 금지)은 충족한 답변."
+ },
+ {
+  "run": "PHR 350",
+  "id": "PHRQR-B0446",
+  "items": [
+   {"id": "UV-01", "verdict": "거짓", "reason": "본문 첫 문장 2 '간 수치 측정 기록이 없어 수치를 알려드릴 수 없습니다'가 곧 결론. 기록 결측 분기에서 값 슬롯을 요구해 결론 부재로 본 것.", "sentences": [2], "pattern": "기타"},
+   {"id": "UV-02", "verdict": "경계", "reason": "value·range_ref는 답변이 '기록 없음'이라 밝힌 상황에서 제시 불가. 결측 분기면 na 가 맞으나 기록 원본으로 결측 사실을 확인할 수 없어 경계.", "sentences": [2], "pattern": "기타"},
+   {"id": "UV-04", "verdict": "경계", "reason": "값이 없으니 의미 서술도 불가. 결측 분기 na 처리 누락으로 보임.", "sentences": [2], "pattern": "기타"},
+   {"id": "UV-05", "verdict": "타당", "reason": "표현틀 표지 없음(결측 안내 1문장).", "sentences": [], "pattern": ""}
+  ],
+  "note": "기록 결측 분기(값 없음)를 UV 슬롯 규칙이 처리하지 못해 D 등급. 말미 상담 문구도 없음."
+ },
+ {
+  "run": "PHR 350",
+  "id": "PHRQR-B0451",
+  "items": [
+   {"id": "UV-02", "verdict": "경계", "reason": "결론 3 뒤 2문장(4·5/6)에 정의·확정아님 없음은 맞음. 다만 문장 11 '위염·위용종 같은 양성(비암성) 병변'이 정의에 가깝고 문장 17 '의료진이 판단'이 유보. 구간 밖 부분 충족.", "sentences": [11, 17], "pattern": "구간_밖_충족"},
+   {"id": "UV-04", "verdict": "경계", "reason": "문장 11이 양성(비암성) 병변 관찰 맥락으로 판정 의미를 간접 설명. '양성질환 판정은 ~를 뜻한다' 식 직접 정의는 아님.", "sentences": [11], "pattern": "표지어_미인식"},
+   {"id": "UV-10", "verdict": "경계", "reason": "지목 쌍 불명. 문장 8·9(2016/2018 권고사항)는 같은 틀의 다른 회차이고, 문장 8↔16은 2016 '1년 이내 위내시경' 권고를 부분 반복. 틀 반복이면 오인, 8↔16이면 타당.", "sentences": [8, 9, 16], "pattern": "틀_반복_오인"}
+  ],
+  "note": ""
+ },
+ {
+  "run": "PHR 350",
+  "id": "PHRQR-B0452",
+  "items": [
+   {"id": "UV-02", "verdict": "타당", "reason": "adherence(2024-04-26 권고 이후 이행 기록 유무) 서술이 문장 4~9 어디에도 없음. 문장 6은 2022 회차 권고 문구.", "sentences": [], "pattern": ""},
+   {"id": "UV-04", "verdict": "타당", "reason": "'양성질환' 라벨·권고 전달(3·4)과 간격 표현 차이(8)만 있고 판정 정의·의미 없음.", "sentences": [], "pattern": ""}
+  ],
+  "note": "기대 포함 '도래 시점 2026년 04월 산출'도 없음."
+ },
+ {
+  "run": "PHR 350",
+  "id": "PHRQR-B0481",
+  "items": [
+   {"id": "UV-01", "verdict": "경계", "reason": "선두 2문장(3·4)이 '판정 정상'과 '권고사항 내용(표재성위염, 증상 시 진료)'을 전달해 질문 1부의 결론. 시점 결론(5 '간격 문구 없음')은 세 번째 문장.", "sentences": [3, 4, 5], "pattern": "구간_밖_충족"},
+   {"id": "UV-02", "verdict": "타당", "reason": "결론 5 뒤 문장 7·8·9에 2013 권고 '2년 후 정기검사'는 있으나 이행 여부(2015-12 검진 수검 사실) 서술 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-04", "verdict": "타당", "reason": "'정상'·'양성질환' 라벨 나열만 있고 정의·의미 없음.", "sentences": [], "pattern": ""}
+  ],
+  "note": ""
+ },
+ {
+  "run": "PHR 350",
+  "id": "PHRQR-B0501",
+  "items": [
+   {"id": "UV-02", "verdict": "경계", "reason": "라벨(3)·정의(4)·확정아님(5)은 갖췄고 권고 소견만 없음. 기대 동작은 '라벨 의미+알 수 없는 범위'로 권고를 요구하지 않아 judgment 슬롯 규칙과 충돌.", "sentences": [3, 4, 5], "pattern": "기대동작_충돌"},
+   {"id": "UV-06", "verdict": "타당", "reason": "문장 8 '의학적 판단과 치료는 의료진과 상담하세요'는 말미 면책 문구이며 권고 재전달·의료진 확인 조건 아님.", "sentences": [], "pattern": ""}
+  ],
+  "note": "기대 동작은 충족한 답변인데 UV C."
+ },
+ {
+  "run": "PHR 350",
+  "id": "PHRQR-B0502",
+  "items": [
+   {"id": "PV-05", "verdict": "확인불가", "reason": "문장 5 '역류성 식도염 소견'은 재전달했으나 별도 권고문이 기록에 있는지는 원본 없이 판단 불가. 문장 12가 '결과지의 소견·권고'를 언급해 권고문 존재 가능.", "sentences": [5], "pattern": ""},
+   {"id": "UV-02", "verdict": "경계", "reason": "정의는 문장 10 '기타 = 위암과 관련 없는 다른 질환이 발견된 경우'에 있으나 결론 3의 3문장 구간 밖.", "sentences": [10], "pattern": "구간_밖_충족"},
+   {"id": "UV-04", "verdict": "거짓", "reason": "문장 10이 국가암검진 안내를 인용해 '기타' 판정의 정의를 서술함. 값 나열만이 아님.", "sentences": [10], "pattern": "표지어_미인식"}
+  ],
+  "note": ""
+ },
+ {
+  "run": "PHR 350",
+  "id": "PHRQR-B0527",
+  "items": [
+   {"id": "UV-01", "verdict": "거짓", "reason": "선두 2문장: 3 판정 라벨, 4 '2022-04-25에 특별한 증상이 없으면 정기검진 권고 기록'. timing 결론 슬롯(권고문 시점 표현 그대로)을 문장 4가 전달.", "sentences": [3, 4], "pattern": "표지어_미인식"},
+   {"id": "UV-02", "verdict": "경계", "reason": "timing_record는 문장 4(권고문 그대로)에 있고, adherence는 문장 10·11 '2022-04-25 이후 검진 기록 확인되지 않음'에 있으나 결론 구간 밖.", "sentences": [4, 10, 11], "pattern": "구간_밖_충족"}
+  ],
+  "note": "기대 포함 '권고문의 시점 표현 전달'은 문장 4로 충족."
+ },
+ {
+  "run": "PHR 350",
+  "id": "PHRQR-B0588",
+  "items": [
+   {"id": "UV-02", "verdict": "경계", "reason": "definition은 문장 6 '음성/잠혈반응 없음 = 대변 내 혈액 미검출'에 있어 소제목 제외 시 구간(3·4·6) 안. recommendation은 문장 9·10에 있으나 구간 밖.", "sentences": [6, 9, 10], "pattern": "구간_밖_충족"},
+   {"id": "UV-04", "verdict": "거짓", "reason": "문장 6·7이 '음성/잠혈반응 없음'·'잠혈반응 있음'의 정의(혈액 검출 여부)를 서술. 값 나열이 아님.", "sentences": [6, 7], "pattern": "표지어_미인식"}
+  ],
+  "note": "기대 동작(권고문 소견·후속 지시 전달, 안심 종결 금지)은 문장 9·10으로 충족."
+ },
+ {
+  "run": "PHR 350",
+  "id": "PHRQR-B0598",
+  "items": [
+   {"id": "UV-02", "verdict": "타당", "reason": "문장 3에 4개 값·시점은 있으나 참고범위 대비 없음. 답변 전체에 범위 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-04", "verdict": "타당", "reason": "값 나열(3·6)과 결측 사유(4·10)·검사 주기(8)만 있고 값의 의미 서술 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-06", "verdict": "거짓", "reason": "문장 10 '그 회차 결과지의 검사 항목 포함 여부는 검진 기관이나 의료진에게 확인하실 수 있습니다'가 의료진 확인 조건. B0408 문장 12와 같은 문형(볼드 마크다운 차이).", "sentences": [10], "pattern": "표지어_미인식"}
+  ],
+  "note": "기대 포함 값 73mg/dL(2020-09)은 문장 3에 있음."
+ },
+ {
+  "run": "PHR 350",
+  "id": "PHRQR-B0628",
+  "items": [
+   {"id": "PV-03", "verdict": "타당", "reason": "문장 7 중성지방 두 시점 값만 있고 참고범위 없음(문장 5는 3항목 요약줄로 제외).", "sentences": [], "pattern": ""},
+   {"id": "UV-02", "verdict": "타당", "reason": "문장 5에 값·시점은 있으나 참고범위 대비 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-04", "verdict": "타당", "reason": "값 나열과 결측 사유 설명(9)만 있고 값의 의미 서술 없음.", "sentences": [], "pattern": ""}
+  ],
+  "note": "기대 포함 값 33mg/dL(2021-09)은 문장 5에 있음."
+ },
+ {
+  "run": "PHR 350",
+  "id": "PHRQR-B0634",
+  "items": [
+   {"id": "PV-03", "verdict": "타당", "reason": "문장 3·5 공복혈당 값에 참고범위 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-02", "verdict": "타당", "reason": "값·시점(3·5)은 있으나 참고범위 대비 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-04", "verdict": "타당", "reason": "문장 5 '비슷하게 유지'는 추세이지 범위 대비·정의 서술이 아님.", "sentences": [], "pattern": ""},
+   {"id": "UV-05", "verdict": "경계", "reason": "문장 5 '비슷하게 유지되어 있습니다'는 '범위 내 변동' 표현틀에 가깝지만 범위 언급이 없어 표지로 인정되지 않은 듯.", "sentences": [5], "pattern": "표지어_미인식"},
+   {"id": "UV-06", "verdict": "타당", "reason": "문장 6은 말미 상담 문구만. 권고 재전달·의료진 확인 조건 없음.", "sentences": [], "pattern": ""}
+  ],
+  "note": ""
+ },
+ {
+  "run": "PHR 350",
+  "id": "PHRQR-B0646",
+  "items": [
+   {"id": "PV-03", "verdict": "타당", "reason": "문장 3 '공복혈당 95 mg/dL' 참고범위 없음.", "sentences": [], "pattern": ""},
+   {"id": "PV-04", "verdict": "경계", "reason": "추세 서술 없음은 맞으나 질문이 '최근 수치' 한 시점을 묻는 경우.", "sentences": [], "pattern": "기대동작_충돌"},
+   {"id": "UV-02", "verdict": "타당", "reason": "값·시점만 있고 참고범위 대비 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-04", "verdict": "타당", "reason": "값만 제시, 의미 서술 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-05", "verdict": "타당", "reason": "표현틀 표지 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-06", "verdict": "타당", "reason": "문장 4는 말미 상담 문구만. 다음 행동 없음.", "sentences": [], "pattern": ""}
+  ],
+  "note": ""
+ },
+ {
+  "run": "PHR 350",
+  "id": "PHRQR-B0662",
+  "items": [
+   {"id": "PV-03", "verdict": "타당", "reason": "문장 3 AST·ALT 값에 참고범위 없음.", "sentences": [], "pattern": ""},
+   {"id": "PV-04", "verdict": "타당", "reason": "단일 시점 값만 있고 추세 서술 없음. 질문은 시점을 한정하지 않음.", "sentences": [], "pattern": ""},
+   {"id": "UV-02", "verdict": "타당", "reason": "참고범위 대비 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-04", "verdict": "타당", "reason": "값 나열(3)·결측(4)·위임(5)만 있고 값의 의미 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-05", "verdict": "경계", "reason": "문장 5 '추가 확인 필요성은 의료진이 판단합니다'는 위임 표현틀에 해당. 판정기는 이를 next_action 으로는 인식했으나 표현틀로는 미인식.", "sentences": [5], "pattern": "표지어_미인식"}
+  ],
+  "note": ""
+ },
+ {
+  "run": "PHR 350",
+  "id": "PHRQR-B0668",
+  "items": [
+   {"id": "PV-03", "verdict": "타당", "reason": "문장 3·5 공복혈당 값에 참고범위 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-02", "verdict": "타당", "reason": "결론 3과 이어지는 문장에 참고범위 대비 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-04", "verdict": "경계", "reason": "문장 6 '이 수치가 기록된 검진의 종합판정은 질환의심'이 값의 의미를 간접 전달. 범위 대비·정의 서술은 아니어서 부분 충족.", "sentences": [6], "pattern": "기타"},
+   {"id": "UV-05", "verdict": "경계", "reason": "문장 7 '개인별 해석은 의료진이 판단합니다'는 위임 표현틀. 미인식.", "sentences": [7], "pattern": "표지어_미인식"}
+  ],
+  "note": ""
+ },
+ {
+  "run": "PHR 350",
+  "id": "PHRQR-B0675",
+  "items": [
+   {"id": "PV-03", "verdict": "타당", "reason": "문장 3 AST·ALT 값에 참고범위 없음.", "sentences": [], "pattern": ""},
+   {"id": "PV-04", "verdict": "타당", "reason": "단일 시점 값만, 추세 서술 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-02", "verdict": "타당", "reason": "참고범위 대비 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-04", "verdict": "타당", "reason": "값 나열·결측 안내만. 의미 서술 없음.", "sentences": [], "pattern": ""}
+  ],
+  "note": "말미가 '의료진과 상담하세요' 한 마디뿐."
+ },
+ {
+  "run": "PHR 350",
+  "id": "PHRQR-B0695",
+  "items": [
+   {"id": "PV-03", "verdict": "타당", "reason": "문장 3 AST·ALT 값에 참고범위 없음.", "sentences": [], "pattern": ""},
+   {"id": "PV-04", "verdict": "타당", "reason": "단일 시점 값만, 추세 서술 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-02", "verdict": "타당", "reason": "참고범위 대비 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-04", "verdict": "타당", "reason": "값 나열·결측 안내만.", "sentences": [], "pattern": ""},
+   {"id": "UV-05", "verdict": "타당", "reason": "표현틀 표지 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-09", "verdict": "타당", "reason": "질문자 표현 '간 수치'가 답변(3~5)에 한 번도 쓰이지 않음(AST/ALT/감마지티피만).", "sentences": [], "pattern": ""}
+  ],
+  "note": ""
+ },
+ {
+  "run": "PHR 350",
+  "id": "PHRQR-B0699",
+  "items": [
+   {"id": "PV-03", "verdict": "타당", "reason": "문장 9 ALT·AST 값에 참고범위 없음(문장 8 공복혈당은 '126 이상' 기준 병기).", "sentences": [], "pattern": ""},
+   {"id": "UV-02", "verdict": "경계", "reason": "라벨(3)·정의(4)·확정아님(5) 갖춤, 권고 소견만 없음. 기대 동작은 '라벨 의미+알 수 없는 범위'로 권고를 요구하지 않음.", "sentences": [3, 4, 5], "pattern": "기대동작_충돌"},
+   {"id": "UV-06", "verdict": "타당", "reason": "문장 10 '의료진과 상담하세요'만. 권고 재전달·의료진 확인 조건 없음.", "sentences": [], "pattern": ""}
+  ],
+  "note": "문장 8·9가 요청하지 않은 공복혈당·간수치를 나열(UV 범위 밖 지적)."
+ },
+ {
+  "run": "PHR 350",
+  "id": "PHRQR-B0715",
+  "items": [
+   {"id": "PV-03", "verdict": "거짓", "reason": "문장 3 바로 뒤 문장 4 '(AST·ALT 참고범위 40 이하)'가 두 항목을 지칭하며 참고범위를 병기함. 항목을 말한 문장 중 하나에 범위가 있으므로 충족(범위 값의 정확성은 근거 대조 별건).", "sentences": [3, 4], "pattern": "구간_밖_충족"},
+   {"id": "PV-04", "verdict": "타당", "reason": "단일 시점 값만, 추세 서술 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-09", "verdict": "타당", "reason": "질문자 표현 '간 수치'를 답변이 쓰지 않음(AST·ALT만).", "sentences": [], "pattern": ""}
+  ],
+  "note": "근거 대조 fail(문장 4 참고범위 값)은 별도 축. PV-03 병기 여부 자체는 충족."
+ },
+ {
+  "run": "PHR 350",
+  "id": "PHRQR-B0744",
+  "items": [
+   {"id": "UV-02", "verdict": "경계", "reason": "definition은 지목된 결론 문장 4 자체가 '양성질환 = 암 소견은 아니지만 위염 같은 양성(비암성) 질환 소견이 기록된 상태'로 명시(거짓 요소). not_confirmed는 문장 9에 있으나 구간 밖.", "sentences": [4, 9], "pattern": "표지어_미인식"},
+   {"id": "UV-04", "verdict": "거짓", "reason": "문장 4와 9가 '양성질환' 판정의 정의·의미를 서술. 값 나열이 아님.", "sentences": [4, 9], "pattern": "표지어_미인식"},
+   {"id": "UV-05", "verdict": "경계", "reason": "문장 10 '구체적인 적용은 의료진이 판단합니다'는 위임 표현틀. 미인식.", "sentences": [10], "pattern": "표지어_미인식"}
+  ],
+  "note": "기대 동작(판정 의미 설명+권고사항 전달)을 충족한 답변인데 UV C."
+ },
+ {
+  "run": "PHR 350",
+  "id": "PHRQR-B0773",
+  "items": [
+   {"id": "PV-03", "verdict": "타당", "reason": "문장 5·7·8 단일 항목 값에 참고범위 없음. 문장 3은 4항목 요약줄이라 제외 대상인데 sentence_idx 에 포함된 점은 규칙과 어긋나지만 결론은 변하지 않음.", "sentences": [], "pattern": ""},
+   {"id": "UV-02", "verdict": "타당", "reason": "문장 3에 값·시점은 있으나 참고범위 대비 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-04", "verdict": "타당", "reason": "문장 5~8 '~에서 ~로 기록' 값 나열만, 의미 서술 없음.", "sentences": [], "pattern": ""},
+   {"id": "UV-10", "verdict": "경계", "reason": "반복 4쌍은 문장 5·6·7·8(총콜/LDL/HDL/중성지방)이 '항목은 날짜 값에서 날짜 값으로 기록되어 있습니다' 틀을 항목별로 쓴 것. 내용 되풀이 아님.", "sentences": [5, 6, 7, 8], "pattern": "틀_반복_오인"}
+  ],
+  "note": "기대 포함 값 58mg/dL(2023-10)은 문장 3·7에 있음."
+ }
+]
