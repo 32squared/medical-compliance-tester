@@ -181,14 +181,20 @@ def cmd_report(a):
             verdict = jv.get("verdict") or "미검토"
             if verdict not in VERDICTS:
                 verdict = "미검토" if verdict == "미검토" else "확인불가"
+            if verdict == "미검토" and v:                       # 검토 파일은 있는데 이 항목만 빠짐 — 항목 단위로 기록
+                missing_review.append(f"{c['id']}/{it['id']}")
             by_rule[it["id"]][verdict] += 1
+            # 바로잡은 결과: 검토자가 corrected 를 적었으면 그대로, 아니면 '응급 분기라 na 여야 함' 유형은 na, 그 밖의 거짓·경계는 met
+            corrected = jv.get("corrected") if jv.get("corrected") in ("met", "na") else (
+                "na" if (jv.get("pattern") or "") == "응급분기_na누락" else "met")
             items.append(dict(it, verdict=verdict, reason=jv.get("reason") or "", ref_sentences=jv.get("sentences") or [],
-                              pattern=jv.get("pattern") or ""))
-        # 재계산: 거짓을 met 으로(strict), 거짓+경계를 met 으로(lenient) 바꾼 뒤 판정기 등급 함수를 다시 적용
+                              pattern=jv.get("pattern") or "", corrected=corrected))
+        # 재계산: 거짓(strict) 또는 거짓+경계(lenient)인 항목을 바로잡은 결과(met 또는 na)로 바꾼 뒤 판정기 등급 함수를 다시 적용.
+        # na 는 required 분모에서 빠지므로 met 과 다르게 등급에 영향한다(2/4 미충족은 D, 2/5 는 C).
         def _re(all_items, axis, mode):
             drop = {"거짓"} if mode == "strict" else {"거짓", "경계"}
-            vmap_axis = {i["id"]: i["verdict"] for i in items if (i["axis"] == "UV") == (axis == "UV")}
-            adj = [{"id": i["id"], "result": "met" if (i["result"] == "unmet" and vmap_axis.get(i["id"]) in drop) else i["result"]}
+            fix = {i["id"]: i["corrected"] for i in items if (i["axis"] == "UV") == (axis == "UV") and i["verdict"] in drop}
+            adj = [{"id": i["id"], "result": fix[i["id"]] if (i["result"] == "unmet" and i["id"] in fix) else i["result"]}
                    for i in all_items]
             return grader.regrade(axis, adj, c.get("branch"), c["cap_hits"])
         re_v = {m: _re(c.get("all_items_v") or [], c["axis"] or "PV", m) for m in ("strict", "lenient")} if c["vgrade"] else {}
@@ -252,6 +258,8 @@ def cmd_report(a):
         if not ev:
             ev.append("<span class=dim>사유만 있음</span>")
         ref = f" <span class=dim>(문장 {E(', '.join(map(str, i['ref_sentences'])))})</span>" if i["ref_sentences"] else ""
+        if i["verdict"] in ("거짓", "경계") and i.get("corrected") == "na":
+            ref += " <span class=dim>→ na</span>"
         return (f"<tr class='v-{E(i['verdict'])}'><td class=mono>{E(i['id'])}<div class=dim>{E(i['title'])}</div></td>"
                 f"<td>{E(i['detail'] or '')}</td><td>{''.join(ev)}</td>"
                 f"<td><span class='vb v-{E(i['verdict'])}'>{E(i['verdict'])}</span>{ref}<div class=reason>{E(i['reason'])}</div>"
@@ -325,7 +333,7 @@ tr.v-거짓 td{{background:rgba(185,28,28,.06)}} tr.v-경계 td{{background:rgba
 <div class=dim>{runs_line} · 온톨로지 {E(meta.get('snapshot') or '?')} · 생성 {gen_at}</div>
 <p>{E(a.note)}</p>
 <div class=kpi><div><b>{meta['total_results']}</b>전체 결과</div><div><b>{meta['selected']}</b>C 이하(유효성 또는 UV)</div><div><b>{total_items}</b>미충족 항목</div>
-<div><b>{tot.get('타당', 0)}</b>타당</div><div><b>{tot.get('거짓', 0)}</b>거짓 ({pct(tot.get('거짓', 0), total_items)})</div><div><b>{tot.get('경계', 0)}</b>경계</div><div><b>{tot.get('확인불가', 0)}</b>확인불가</div>
+<div><b>{tot.get('타당', 0)}</b>타당</div><div><b>{tot.get('거짓', 0)}</b>거짓 ({pct(tot.get('거짓', 0), total_items)})</div><div><b>{tot.get('경계', 0)}</b>경계</div><div><b>{tot.get('확인불가', 0)}</b>확인불가</div>{('<div><b>' + str(tot.get('미검토', 0)) + '</b>미검토</div>') if tot.get('미검토') else ''}
 <div><b>{false_cases}</b>거짓 항목이 있는 결과</div><div><b>{to_ab}/{moves_total}</b>거짓 제외 시 A·B 로 오르는 등급</div></div>
 {conclusions}
 
@@ -337,7 +345,7 @@ tr.v-거짓 td{{background:rgba(185,28,28,.06)}} tr.v-경계 td{{background:rgba
 <table><thead><tr><th>기준</th><th>제목</th><th>필수</th><th class=num>미충족</th>{''.join(f'<th class=num>{k}</th>' for k in VERDICTS)}<th class=num>거짓 비율</th></tr></thead><tbody>{''.join(rule_rows)}</tbody></table>
 
 <h2>3. 거짓 항목을 뺐을 때 등급 이동</h2>
-<div class=dim>거짓으로 검토된 항목을 충족으로 바꾼 뒤 판정기의 등급 함수(필수 미충족 0/1/2/3+ → A/B/C/D, PV·SV 는 절반 이상 D, PV-01·02 는 D, SV-02 미충족이면 LG-16 상한 C)를 그대로 다시 적용. 유지 {stays}/{moves_total}.</div>
+<div class=dim>거짓으로 검토된 항목을 바로잡은 결과(충족, 또는 응급 분기라 판정 대상이 아닌 항목은 na)로 바꾼 뒤 판정기의 등급 함수(필수 미충족 0/1/2/3+ → A/B/C/D, PV·SV 는 절반 이상 D, PV-01·02 는 D, SV-02 미충족이면 LG-16 상한 C)를 그대로 다시 적용. 유지 {stays}/{moves_total}.</div>
 <table><thead><tr><th>실행</th><th>축</th><th class=num>원래</th><th class=num>재계산</th><th class=num>건수</th><th>변화</th></tr></thead><tbody>{''.join(move_rows)}</tbody></table>
 
 <h2>4. 거짓·경계의 원인 유형</h2>
@@ -377,6 +385,14 @@ $('#bOpen').addEventListener('click',()=>cards.forEach(c=>{{if(!c.classList.cont
     print(f"[report] 등급 이동(strict): {json.dumps(summary['grade_moves'], ensure_ascii=False)}")
     if missing_review:
         print(f"[report] 검토 누락 {len(missing_review)}건")
+
+
+def _rule_ids(hits):
+    """legal_cap_hits 는 compact 덤프에서는 규칙 id 문자열, 판정기 원형에서는 {rule_id,...} dict — 둘 다 받는다."""
+    out = []
+    for h in hits or []:
+        out.append(str(h if isinstance(h, str) else (h.get("rule_id") if isinstance(h, dict) else h)))
+    return out
 
 
 # ── estimate: SV-02·03·04 키워드 규칙 하나를 바꿨을 때 ─────────────────────────
@@ -439,7 +455,7 @@ def cmd_estimate(a):
             if cov:
                 i["result"] = "met"
                 flip[i["id"]] += 1
-        after[grader.regrade("SV", new, cl.get("branch"), [str(h.get("rule_id")) for h in (v.get("legal_cap_hits") or [])])] += 1
+        after[grader.regrade("SV", new, cl.get("branch"), _rule_ids(v.get("legal_cap_hits")))] += 1
     unmet_before = Counter(i["id"] for r in rows for i in (r["evalV3"].get("validity_items") or [])
                            if i["result"] == "unmet" and i["id"] in ("SV-02", "SV-03", "SV-04"))
     out = {"rule": "라벨 또는 강한 키워드 1개(현행: 키워드 전부)", "results": len(rows), "unmet_before": dict(unmet_before),
