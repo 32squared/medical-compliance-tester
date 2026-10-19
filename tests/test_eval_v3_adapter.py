@@ -465,6 +465,37 @@ def test_needs_rejudge_unresolved_stays_review(monkeypatch):
     assert out["judge_rejudge"] == {"attempts": 0, "resolved": False}
 
 
+def test_escalation_result_gets_same_rejudge_policy(monkeypatch):
+    """[구형 2단 켬] 2차 모델 결과가 needs_rejudge 면 2차 모델·2차 effort 로 같은 재판정 정책을 적용하고
+    judge_rejudge 에 stage=escalation 을 남긴다."""
+    calls = []
+    seq = iter([
+        {"verdict": "FAIL", "judge_model": "luna", "legal": {"verdict": "fail", "status": "ok",
+                                                            "hits": [{"rule_id": "LG-02"}]}, "validity": {}, "uv": {}},
+        _rejudge_result("needs_rejudge", "review", model="sol"),
+        _rejudge_result("ok", "pass", review=(), model="sol"),
+    ])
+
+    def fake_judge(question, answer, model, api_key, kwargs, reasoning_effort=None):
+        calls.append((model, kwargs.get("use_cache", True), reasoning_effort))
+        return next(seq)
+
+    monkeypatch.setattr(eval_v3, "available", lambda: (True, ""))
+    monkeypatch.setattr(eval_v3, "_judge", fake_judge)
+    monkeypatch.setattr(eval_v3, "MODEL", "luna")
+    monkeypatch.setattr(eval_v3, "ESCALATE_MODEL", "sol")
+    monkeypatch.setattr(eval_v3, "ESCALATE_ENABLED", True)
+    monkeypatch.setattr(eval_v3, "REASONING_EFFORT", "none")
+    monkeypatch.setattr(eval_v3, "ESCALATE_REASONING_EFFORT", "low")
+    monkeypatch.setattr(eval_v3, "REJUDGE_MAX", 2)
+
+    out = eval_v3.evaluate("q", "a")
+    assert calls == [("luna", True, "none"), ("sol", True, "low"), ("sol", False, "low")]
+    assert out["judge_model"] == "sol" and out["legal_verdict"] == "pass" and out["legal_status"] == "ok"
+    assert out["judge_rejudge"] == {"attempts": 1, "resolved": True, "stage": "escalation"}
+    assert out["judge_escalation"]["first_hits"] == ["LG-02"] and out["judge_escalation"]["verdict"] == "pass"
+
+
 def test_compact_omits_status_and_context_for_old_judge():
     """v3.18 이전 판정기는 legal.status·context 를 주지 않는다 — 키 자체를 넣지 않아 저장 형태가 바뀌지 않는다."""
     c = eval_v3.compact({"verdict": "pass", "legal": {"verdict": "pass", "hits": []}})

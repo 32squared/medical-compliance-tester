@@ -388,7 +388,8 @@ def evaluate(question: str, answer: str, *, api_key=None, **kwargs) -> dict:
     except Exception as e:
         logger.warning("v3 판정 실패: %s", e)
         return {"error": f"{type(e).__name__}: {e}"}
-    result, rejudge = _rejudge_if_needed(question, answer, model, api_key, kwargs, result)
+    result, rejudge = _rejudge_if_needed(question, answer, model, api_key, kwargs, result,
+                                         reasoning_effort=REASONING_EFFORT)
     escalation = None
     if (ESCALATE_ENABLED and ESCALATE_MODEL and ESCALATE_MODEL != model
             and (result.get("legal") or {}).get("verdict") == "fail"
@@ -397,6 +398,11 @@ def evaluate(question: str, answer: str, *, api_key=None, **kwargs) -> dict:
         try:
             result = _judge(question, answer, ESCALATE_MODEL, api_key, kwargs,
                             reasoning_effort=ESCALATE_REASONING_EFFORT)
+            # 2차 모델의 결과도 문맥 판정이 안 끝났으면 같은 재판정 정책을 적용한다(1차와 같은 규칙).
+            result, esc_rejudge = _rejudge_if_needed(question, answer, ESCALATE_MODEL, api_key, kwargs, result,
+                                                     reasoning_effort=ESCALATE_REASONING_EFFORT)
+            if esc_rejudge:
+                rejudge = dict(esc_rejudge, stage="escalation")
             escalation = {"first_model": model, "first_verdict": first.get("verdict"),
                           "first_hits": first.get("legal_hits"), "model": ESCALATE_MODEL,
                           "verdict": result.get("verdict")}
@@ -418,13 +424,14 @@ def _needs_rejudge(result: dict) -> bool:
     return ((result or {}).get("legal") or {}).get("status") == NEEDS_REJUDGE
 
 
-def _rejudge_if_needed(question, answer, model, api_key, kwargs, result):
+def _rejudge_if_needed(question, answer, model, api_key, kwargs, result, reasoning_effort=None):
     """`needs_rejudge` 면 같은 모델·같은 입력으로 캐시 없이 최대 REJUDGE_MAX 회 다시 판정한다.
 
     끝난 결과(status 가 needs_rejudge 가 아님)가 나오면 그것을 쓰고, 횟수를 다 써도 못 끝내면 마지막 결과를
     그대로 둔다 — 판정기가 후보를 review 로 남긴 상태라 verdict 는 보수적으로 바뀌지 않는다(결정 ①: 거짓 FAIL 로
     덮지 않는다). 재판정 호출이 예외를 내면 직전 결과를 유지하고 오류를 기록한다.
     돌려주는 값: (최종 result, judge_rejudge 메타 또는 None). 메타 = {"attempts", "resolved", "errors"}.
+    REJUDGE_MAX=0 이면 attempts=0·resolved=False 로 "재판정 정책상 건너뜀" 을 남긴다 — 집계는 attempts>0 만 센다.
     """
     if not _needs_rejudge(result):
         return result, None
@@ -433,7 +440,7 @@ def _rejudge_if_needed(question, answer, model, api_key, kwargs, result):
         attempts += 1
         retry_kwargs = dict(kwargs, use_cache=False)   # 같은 입력이라 캐시를 타면 같은 실패가 돌아온다
         try:
-            nxt = _judge(question, answer, model, api_key, retry_kwargs, reasoning_effort=REASONING_EFFORT)
+            nxt = _judge(question, answer, model, api_key, retry_kwargs, reasoning_effort=reasoning_effort)
         except Exception as e:
             logger.warning("v3 재판정(needs_rejudge) %d회차 실패: %s", attempts, e)
             errors.append(f"{type(e).__name__}: {str(e)[:120]}")
@@ -655,7 +662,7 @@ def run_summary(results):
         pv = ((v.get("rag_meta") or {}).get("prompt_version")) or v.get("prompt_version")
         _inc(out["prompt_versions"], pv)
         rj = v.get("judge_rejudge")
-        if rj:
+        if rj and (rj.get("attempts") or 0) > 0:        # attempts=0(REJUDGE_MAX=0)은 재판정한 것이 아니다
             out["rejudged"] += 1
         if v.get("legal_status") == NEEDS_REJUDGE:      # 재판정 뒤에도 못 끝낸 건(또는 REJUDGE_MAX=0)
             out["rejudge_unresolved"] += 1

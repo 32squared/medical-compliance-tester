@@ -266,7 +266,7 @@ def _v3_log_summary(results):
         f"[v3] SUMMARY n={len(rows)} err={errs} gate={gate} PV/SV={pv} UV={uv} rule_hits={hits} "
         f"eval={meta.get('eval_version')} ontology={meta.get('ontology_version')} judge={meta.get('judge_model')}"
     )
-    n_rj = sum(1 for _, v in rows if v.get('judge_rejudge'))
+    n_rj = sum(1 for _, v in rows if ((v.get('judge_rejudge') or {}).get('attempts') or 0) > 0)
     n_unres = sum(1 for _, v in rows if v.get('legal_status') == 'needs_rejudge')
     if n_rj or n_unres:
         _job_log(f"[v3] REJUDGE {n_rj}/{len(rows)}건 needs_rejudge → 같은 모델 재판정 "
