@@ -12,6 +12,10 @@
   claim_idx(주장 번호 = 문장 번호, 쪼갠 뒤 주장은 문장 수보다 큰 번호)로 문장을 찾는다. 새 형태(quote·
   sentence_idx 있음)는 그 값을 그대로 쓴다. 항목(PV·SV·UV)의 문장은 새 형태에만 있다.
 
+기록 대조 불일치 내역(PV-01·02·06)
+  2026-10-19 부터 fact_check.mismatches 가 저장된다. 없는 덤프는 phrCaseId 로 비식별 케이스를 찾아 판정기의
+  run_fact_check 를 run 당일 기준으로 다시 돌려 "총콜레스테롤: 답변 4 ↔ 기록 177 (값)" 꼴로 보인다.
+
 사용
   python reports/v3_runs/build_eval_evidence_viewer.py --run PHR=<dump.json> --run 일반=<dump.json> \
       --out reports/v3_runs/eval_evidence_viewer_20261016.html [--title "..."] [--snapshot <ontology json>]
@@ -40,6 +44,11 @@ ap.add_argument("--note", default="", help="머리말에 붙일 한 줄")
 a = ap.parse_args()
 
 KST = timezone(timedelta(hours=9))
+for _stream in (sys.stdout, sys.stderr):                  # Windows 콘솔(cp949)에서 한글·'—' 출력이 깨지지 않게
+    try:
+        _stream.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
 try:
     import mhc_viz
@@ -54,7 +63,7 @@ except Exception as e:
 
 
 def rule_titles(snapshot_path):
-    """온톨로지 rule 표 → ({id: title}, {id: required}, 버전). 스냅샷을 못 읽으면 빈 dict."""
+    """온톨로지 rule 표 → ({id: title}, {id: required}, 버전, 스냅샷 객체). 스냅샷을 못 읽으면 빈 dict."""
     try:
         from medical_eval.ontology import latest_snapshot_path, load_snapshot
         p = snapshot_path or latest_snapshot_path(os.path.join(ROOT, "packages", "medical_eval", "ontology", "snapshot"))
@@ -62,13 +71,112 @@ def rule_titles(snapshot_path):
         rules = [r for r in s.table("rule") if r.get("id")]
         titles = {str(r["id"]): str(r.get("title") or "") for r in rules}
         required = {str(r["id"]): bool(r.get("required")) for r in rules}
-        return titles, required, s.version
+        return titles, required, s.version, s
     except Exception as e:
         print(f"[warn] 규칙 제목을 읽지 못함: {e}", file=sys.stderr)
-        return {}, {}, None
+        return {}, {}, None, None
 
 
-TITLES, REQUIRED, SNAP_VER = rule_titles(a.snapshot)
+TITLES, REQUIRED, SNAP_VER, SNAPSHOT = rule_titles(a.snapshot)
+
+# ── 대조형 기준(PV-01·02·06)의 '무엇이 기록의 무엇과 달랐나' — 판정기 fact_check 를 같은 입력으로 다시 돈다 ──
+# 2026-10-19 부터 eval_v3.compact 가 fact_check.mismatches[] {sentence_idx,item,answer_value,phr_value,kind} 를 저장한다.
+# 그 전 결과(10.16 덤프)는 건수만 있어, PHR 케이스를 phrCaseId 로 찾아 medical_eval.phr_fact_check.run_fact_check
+# (LLM 없이 코드만)를 run 당일(today=run_at) 기준으로 다시 계산한다. 케이스는 공개 비식별 데이터
+# (packages/medical_eval/data/cases/deid/*.json, 'phr_' 접두어 뗀 case_id) → 없으면 호스트 DB phr_cases.
+MISMATCH_KINDS = {"PV-01": ("value", "date", "unit"), "PV-02": ("fabricated", "missing_cited"), "PV-06": ("stale_med",)}
+MISMATCH_LABEL = {"value": "값", "date": "날짜", "unit": "단위", "fabricated": "기록에 없음", "missing_cited": "결측 항목에 값 제시",
+                  "stale_med": "종료된 처방", "undated_old_record": "시점 미표기"}
+try:
+    from medical_eval.phr_fact_check import run_fact_check as _run_fact_check
+except Exception as e:
+    print(f"[warn] medical_eval.phr_fact_check 를 불러오지 못해 불일치 재계산을 건너뜁니다: {e}", file=sys.stderr)
+    _run_fact_check = None
+
+_PHR_CASES = {}
+_PHR_DB_WARNED = [False]
+
+
+def _load_phr_cases():
+    deid = os.path.join(ROOT, "packages", "medical_eval", "data", "cases", "deid")
+    names = ["phr_cases_70.deid.json"] + sorted(n for n in (os.listdir(deid) if os.path.isdir(deid) else [])
+                                               if n.endswith(".json") and n != "phr_cases_70.deid.json")
+    for n in names:
+        try:
+            rows = json.load(open(os.path.join(deid, n), encoding="utf-8"))
+        except Exception:
+            continue
+        rows = rows.values() if isinstance(rows, dict) else rows
+        for c in rows:
+            if isinstance(c, dict) and c.get("case_id"):
+                _PHR_CASES.setdefault(str(c["case_id"]), c)
+
+
+_load_phr_cases()
+
+
+def phr_case_for(case_id):
+    """phrCaseId('phr_CASE-59' 또는 'CASE-59') → 판정용 phr_cases 객체. 없으면 None."""
+    if not case_id:
+        return None
+    cid = str(case_id)
+    for k in (cid, cid[4:] if cid.startswith("phr_") else "phr_" + cid):
+        if k in _PHR_CASES:
+            return _PHR_CASES[k]
+    try:
+        import db as _db
+        row = _db.get_phr_case(cid)
+    except Exception as e:
+        if not _PHR_DB_WARNED[0]:
+            print(f"[warn] 호스트 DB phr_cases 조회 불가({e}) — 비식별 파일에 없는 케이스는 재계산을 건너뜁니다", file=sys.stderr)
+            _PHR_DB_WARNED[0] = True
+        row = None
+    case = row.get("case") if isinstance(row, dict) and isinstance(row.get("case"), dict) else None
+    if case is not None:
+        case = dict(case)
+        case.setdefault("case_id", row.get("case_no") or cid)
+        _PHR_CASES[cid] = case
+    return case
+
+
+def _fmt_val(x):
+    if x is None or x == "":
+        return "없음"
+    if isinstance(x, float):
+        return str(int(x)) if x.is_integer() else str(round(x, 2))
+    return str(x)
+
+
+def mismatch_lines(v, r, judged, run_day):
+    """{PV-01: [{sentence, text}], ...} 와 출처('stored'|'recomputed'|''). 저장된 mismatches 가 있으면 그대로,
+    없고 PV-01·02·06 이 미충족이면 같은 케이스·같은 답변으로 run_fact_check 를 다시 돌린다."""
+    fc = v.get("fact_check") or {}
+    unmet = {it.get("id") for it in (v.get("validity_items") or []) if isinstance(it, dict) and it.get("result") == "unmet"}
+    if not (unmet & set(MISMATCH_KINDS)):
+        return {}, ""
+    rows, src = fc.get("mismatches"), "stored"
+    if not rows:
+        src = "recomputed"
+        case = phr_case_for(r.get("phrCaseId")) if _run_fact_check else None
+        if case is None:
+            return {}, ""
+        try:
+            fresh = _run_fact_check(judged, case, snapshot=SNAPSHOT, today=run_day)
+        except Exception as e:
+            print(f"[warn] {r.get('scenarioId')} fact_check 재계산 실패: {e}", file=sys.stderr)
+            return {}, ""
+        rows = [dict(m, sentence_idx=m.get("claim_idx")) for m in (fresh.get("mismatches") or [])]   # fact-v5+: claim_idx = 문장 번호
+    out = {}
+    for m in rows:
+        if not isinstance(m, dict):
+            continue
+        for item_id, kinds in MISMATCH_KINDS.items():
+            if item_id in unmet and m.get("kind") in kinds:
+                out.setdefault(item_id, []).append({
+                    "sentence": m.get("sentence_idx"),
+                    "text": f"{m.get('item') or '항목'}: 답변 {_fmt_val(m.get('answer_value'))} ↔ 기록 {_fmt_val(m.get('phr_value'))}"
+                            f" ({MISMATCH_LABEL.get(m.get('kind'), m.get('kind'))})"})
+    return out, (src if out else "")
 
 # ── 누락형 기준(SV-02·03·04)의 '무엇이 빠졌나' — 판정기와 같은 체크리스트·같은 판정 함수로 다시 센다 ──
 # 저장 결과에는 건수("red flag 3건 중 확인 0건")만 있어 어떤 질문이 빠졌는지 보이지 않는다. 판정기의
@@ -159,20 +267,25 @@ def summary_spots(v):
     return out
 
 
-def item_rows(items, sents, spots):
+def item_rows(items, sents, spots, mism=None):
     out = []
     for it in (items or []):
         if not isinstance(it, dict) or not it.get("id"):
             continue
-        si = it.get("sentence_idx") or []
+        si = list(it.get("sentence_idx") or [])
         src = "stored" if si else ""
         if not si and it.get("result") == "unmet" and it["id"] in spots:
-            si, src = spots[it["id"]], "summary"
-        quotes = it.get("quotes") or []
+            si, src = list(spots[it["id"]]), "summary"
+        quotes = list(it.get("quotes") or [])
         if not quotes and si:
             quotes = [sents[n - 1] for n in si if isinstance(n, int) and 1 <= n <= len(sents)][:3]
+        lines = (mism or {}).get(it["id"]) or []
+        for m in lines:                                   # 불일치 문장도 지목 문장으로 센다(원문 강조·필터)
+            n = m.get("sentence")
+            if isinstance(n, int) and n not in si:
+                si.append(n)
         out.append({"id": it["id"], "result": it.get("result"), "detail": it.get("detail"),
-                    "sentence_idx": si, "quotes": quotes, "src": src})
+                    "sentence_idx": si, "quotes": quotes, "mismatch": [m["text"] for m in lines], "src": src})
     return out
 
 
@@ -182,16 +295,17 @@ def grade_basis(v, vitems, uvitems, hits, missing):
     - legal: 확정 히트(review 아님)가 하나라도 있으면 FAIL. 회신 대기 규칙만 있으면 FAIL(회신대기).
     - SV: 필수(required) 항목 중 na 를 뺀 것이 분모. A=전부 met · B=1 unmet · C=2+ unmet 또는 LG-16 상한 · D=절반 이상 unmet.
     - UV: 필수 항목 기준 같은 규칙. PV(v3.1)는 등급이 없고 블록별 보고 — 미충족 목록만.
-    각 미충족 항목에 kind 를 붙인다: sentence(지목 문장 있음) · missing(빠진 질문 목록 있음) · reason(사유만).
+    각 미충족 항목에 kind 를 붙인다: fact(기록 대조 불일치 내역 있음) · sentence(지목 문장 있음) · missing(빠진 질문 목록 있음) · reason(사유만).
     """
     def _unmet_rows(items, axis):
         rows = []
         for it in items:
             if it["result"] != "unmet":
                 continue
-            kind = "sentence" if it["quotes"] or it["sentence_idx"] else ("missing" if missing.get(it["id"]) else "reason")
+            kind = ("fact" if it.get("mismatch") else "sentence" if it["quotes"] or it["sentence_idx"]
+                    else "missing" if missing.get(it["id"]) else "reason")
             rows.append({"id": it["id"], "detail": it["detail"], "kind": kind, "sentence_idx": it["sentence_idx"],
-                         "quotes": it["quotes"], "missing": missing.get(it["id"]) or [],
+                         "quotes": it["quotes"], "mismatch": it.get("mismatch") or [], "missing": missing.get(it["id"]) or [],
                          "required": REQUIRED.get(it["id"], False), "axis": axis})
         return rows
 
@@ -214,18 +328,19 @@ def grade_basis(v, vitems, uvitems, hits, missing):
     }
 
 
-def compact_result(label, r):
+def compact_result(label, r, run_day=None):
     v = r.get("evalV3") or {}
     answer = r.get("response") or ""
     judged = strip_blocks(answer) if answer else ""
     sents = split_sentences(judged) if judged else []
     spots = summary_spots(v)
+    mism, mism_src = mismatch_lines(v, r, judged, run_day)
     legal = v.get("legal_verdict")
     confirmed = bool(v.get("legal_hits"))
     final = ("FAIL" if legal == "fail" and confirmed else "FAIL(회신대기)" if legal == "fail"
              else (v.get("validity_grade") or "PASS"))
     hits = hit_rows(v, sents)
-    vitems = item_rows(v.get("validity_items"), sents, spots)
+    vitems = item_rows(v.get("validity_items"), sents, spots, mism)
     uvitems = item_rows(v.get("uv_items"), sents, spots)
     missing = missing_lists(v, r.get("prompt") or "", judged)
     return {
@@ -241,7 +356,7 @@ def compact_result(label, r):
         "hit_rows": hits,
         "axis": v.get("validity_axis"), "vgrade": v.get("validity_grade"), "vstatus": v.get("validity_status"),
         "vunmet": v.get("validity_unmet") or [], "vitems": vitems,
-        "vanswer": v.get("validity_answer"), "grade_cap": v.get("grade_cap") or [],
+        "vanswer": v.get("validity_answer"), "grade_cap": v.get("grade_cap") or [], "mism_src": mism_src,
         "uvgrade": v.get("uv_grade"), "uvunmet": v.get("uv_unmet") or [], "uvitems": uvitems,
         "intent": v.get("uv_intent"), "checklist": v.get("checklist"),
         "summary_line": v.get("summary_line") or "", "summary": v.get("summary") or "",
@@ -256,7 +371,8 @@ for spec in a.run:
     label, _, path = spec.partition("=")
     meta, rs = load_run(label, path)
     runs.append(meta)
-    rows.extend(compact_result(label, r) for r in rs)
+    run_day = (meta.get("run_at") or "")[:10] or None
+    rows.extend(compact_result(label, r, run_day) for r in rs)
 
 quote_rows = sum(1 for x in rows for h in x["hit_rows"] if h["quote"])
 hit_total = sum(len(x["hit_rows"]) for x in rows)
@@ -268,8 +384,14 @@ run_lines = " · ".join(
     f"<b>{E(m['label'])}</b> {E(m['id'])} ({E(m['n'])}건{', ' + E(m['run_at'][:16].replace('T', ' ')) + 'Z' if m.get('run_at') else ''})"
     for m in runs)
 unmet_total = sum(1 for x in rows for it in x["vitems"] + x["uvitems"] if it["result"] == "unmet")
+mism_stored = sum(1 for x in rows if x["mism_src"] == "stored")
+mism_recomputed = sum(1 for x in rows if x["mism_src"] == "recomputed")
+mism_missing = sum(1 for x in rows if not x["mism_src"]
+                   and any(it["result"] == "unmet" and it["id"] in MISMATCH_KINDS for it in x["vitems"]))
 cover = (f"법률 히트 {hit_total}건 중 문장 복원 {quote_rows}건 · 미충족 항목 {unmet_total}건 중 문장 복원 {item_quote_rows}건"
-         " (나머지는 판정기가 문장을 지목하지 않은 항목 — red flag·필수 질문 누락처럼 '없음'을 보는 기준이 대부분)")
+         " (나머지는 판정기가 문장을 지목하지 않은 항목 — red flag·필수 질문 누락처럼 '없음'을 보는 기준이 대부분)"
+         f" · 기록 대조 불일치 내역(PV-01·02·06) 저장 {mism_stored}건 · 재계산 {mism_recomputed}건"
+         + (f" · 케이스를 못 찾아 미복원 {mism_missing}건" if mism_missing else ""))
 
 DATA = json.dumps({"rows": rows, "titles": TITLES, "runs": runs}, ensure_ascii=False).replace("</", "<\\/")
 
@@ -316,7 +438,8 @@ table.ev td{padding:6px;border-bottom:1px solid var(--border);vertical-align:top
 .why{border:1px solid #fcd34d;background:#fffbeb;border-radius:8px;padding:10px 12px;margin:4px 0 10px}
 .why h4{margin:0 0 6px;font-size:13px;color:#92400e}.why ul{margin:4px 0 0 18px;padding:0}.why li{margin:3px 0}
 .why .k{display:inline-block;font-size:11px;padding:1px 6px;border-radius:4px;margin-right:5px;font-weight:700}
-.why .k.sentence{background:#fee2e2;color:var(--red)}.why .k.missing{background:#e0f2fe;color:#0369a1}.why .k.reason{background:var(--surface2);color:var(--dim)}
+.why .k.sentence{background:#fee2e2;color:var(--red)}.why .k.missing{background:#e0f2fe;color:#0369a1}.why .k.reason{background:var(--surface2);color:var(--dim)}.why .k.fact{background:#fef3c7;color:#92400e}
+.mm{display:inline-block;background:#fef3c7;border:1px solid #fcd34d;border-radius:4px;padding:0 6px;margin:2px 3px 0 0;font-size:12px;color:#78350f}
 .why .miss{display:inline-block;background:#fff;border:1px solid var(--border);border-radius:4px;padding:0 6px;margin:2px 3px 0 0;font-size:12px}
 .why .q{white-space:normal;color:var(--text);margin-top:2px}
 </style></head><body>
@@ -412,7 +535,7 @@ function match(r) {
   if (state.q) {
     const hay = [r.id, r.prompt, r.answer, r.summary_line, r.summary, r.cat, r.sub,
       r.hit_rows.map(h => h.rule_id + ' ' + (h.quote || '')).join(' '),
-      r.vitems.concat(r.uvitems).map(i => i.id + ' ' + (i.detail || '')).join(' ')].join('\n').toLowerCase();
+      r.vitems.concat(r.uvitems).map(i => i.id + ' ' + (i.detail || '') + ' ' + (i.mismatch || []).join(' ')).join(' ')].join('\n').toLowerCase();
     if (hay.indexOf(state.q) < 0) return false;
   }
   return true;
@@ -451,16 +574,17 @@ function evidenceTable(r) {
   r.vitems.concat(r.uvitems).forEach(it => { if (it.result !== 'unmet') return;
     const bu = basisUnmet.find(u => u.id === it.id);
     const missing = bu && bu.missing && bu.missing.length ? bu.missing : [];
+    const mismatch = it.mismatch || [];
     rows.push({
-      cls: /^UV/.test(it.id) ? 'uv' : 'item', id: it.id, verdict: '미충족' + (missing.length ? ' (누락형)' : ''), sent: (it.sentence_idx || []).map(n => '문장 ' + n),
-      quotes: it.quotes || [], missing: missing, why: it.detail || ''
+      cls: /^UV/.test(it.id) ? 'uv' : 'item', id: it.id, verdict: '미충족' + (mismatch.length ? ' (대조형)' : missing.length ? ' (누락형)' : ''), sent: (it.sentence_idx || []).map(n => '문장 ' + n),
+      quotes: it.quotes || [], missing: missing, mismatch: mismatch, why: it.detail || ''
     }); });
   if (r.grade_cap && r.grade_cap.length) rows.push({ cls: 'item', id: r.grade_cap.join(', '), verdict: '등급 상한 C', sent: [], quotes: [], why: '이 규칙 때문에 등급이 더 올라가지 않음' });
   if (!rows.length) return '<div class="note">걸린 규칙·미충족 항목 없음</div>';
   return `<table class="ev"><thead><tr><th>기준</th><th>판정</th><th>문장</th><th>걸린 구문</th><th>사유 · 근거</th></tr></thead><tbody>` +
     rows.map(x => `<tr><td style="white-space:nowrap"><span class="tag ${x.cls}" title="${esc(TITLES[x.id] || '')}">${esc(x.id)}</span><div class="note" style="margin:2px 0 0;max-width:220px;white-space:normal">${esc(TITLES[x.id] || '')}</div></td>` +
       `<td style="white-space:nowrap">${esc(x.verdict)}</td><td class="no">${x.sent.length ? esc(x.sent.join(', ')) : '—'}</td>` +
-      `<td>${x.quotes.length ? x.quotes.map(q => '<div>「' + esc(q) + '」</div>').join('') : (x.missing && x.missing.length) ? '<div style="color:var(--dim);font-size:11.5px">답변이 확인하지 않은 항목</div>' + x.missing.map(m => '<span class="miss" style="display:inline-block;border:1px solid var(--border);border-radius:4px;padding:0 6px;margin:2px 3px 0 0;font-size:12px">' + esc(m) + '</span>').join('') : '<span style="color:var(--dim)">—</span>'}</td><td class="why">${esc(x.why) || '—'}</td></tr>`).join('') +
+      `<td>${(x.mismatch && x.mismatch.length) ? x.mismatch.map(m => '<div><span class="mm">' + esc(m) + '</span></div>').join('') : ''}${x.quotes.length ? x.quotes.map(q => '<div>「' + esc(q) + '」</div>').join('') : (x.mismatch && x.mismatch.length) ? '' : (x.missing && x.missing.length) ? '<div style="color:var(--dim);font-size:11.5px">답변이 확인하지 않은 항목</div>' + x.missing.map(m => '<span class="miss" style="display:inline-block;border:1px solid var(--border);border-radius:4px;padding:0 6px;margin:2px 3px 0 0;font-size:12px">' + esc(m) + '</span>').join('') : '<span style="color:var(--dim)">—</span>'}</td><td class="why">${esc(x.why) || '—'}</td></tr>`).join('') +
     `</tbody></table>`;
 }
 
@@ -490,8 +614,9 @@ function whyBlock(r) {
     }
   }
   const unmetList = (rows) => '<ul>' + rows.map(u => {
-    const kindLabel = u.kind === 'sentence' ? '문장형' : u.kind === 'missing' ? '누락형' : '사유만';
+    const kindLabel = u.kind === 'fact' ? '대조형' : u.kind === 'sentence' ? '문장형' : u.kind === 'missing' ? '누락형' : '사유만';
     let body = `<span class="k ${u.kind}">${kindLabel}</span><b>${esc(u.id)}</b> ${esc(TITLES[u.id] || '')}${u.required ? '' : ' <span style="color:var(--dim)">(선택 항목 — 등급에 영향 없음)</span>'} — ${esc(u.detail || '')}`;
+    if (u.kind === 'fact') body += (u.sentence_idx.length ? ` · 문장 ${esc(u.sentence_idx.join(', '))}` : '') + `<div class="q">답변 값 ↔ 기록 값: ${u.mismatch.map(m => `<span class="mm">${esc(m)}</span>`).join('')}</div>` + u.quotes.map(q => `<div class="q">「${esc(q)}」</div>`).join('');
     if (u.kind === 'sentence') body += (u.sentence_idx.length ? ` · 문장 ${esc(u.sentence_idx.join(', '))}` : '') + u.quotes.map(q => `<div class="q">「${esc(q)}」</div>`).join('');
     if (u.kind === 'missing') body += `<div class="q">답변이 확인하지 않은 항목: ${u.missing.map(m => `<span class="miss">${esc(m)}</span>`).join('')}</div>`;
     if (u.kind === 'reason') body += `<div class="q" style="color:var(--dim)">판정기가 특정 문장을 지목하지 않은 기준 — 답변 전체에 해당 요소가 없거나(누락) 집계형 판정</div>`;

@@ -588,3 +588,30 @@ def test_judge_passes_reasoning_effort_via_chat(monkeypatch):
         return {"mine": 1}
     out = eval_v3._judge("q", "a", "gpt-6-sol", None, {"chat": mine}, reasoning_effort="low")
     assert out == {"chat_payload": {"mine": 1}}        # 호출자의 chat 우선
+
+
+def test_compact_keeps_fact_check_mismatches():
+    """PV-01·02 의 '기록과 다른 인용 n건' 이 어떤 값을 기록의 무엇과 비교했는지 남는다(sentence_idx·item·
+    answer_value·phr_value·kind). 판정기 claim_idx 는 문장 번호(fact-v5+)라 그대로, 쪼갠 주장 번호는 원문
+    문장으로 옮긴다. 상한 FACT_MISMATCH_MAX 건, 없으면 키 자체가 없다(옛 결과와 같은 모양)."""
+    claims = [{"idx": 1, "text": "첫 문장.", "source_idx": 1},
+              {"idx": 2, "text": "총콜레스테롤 177, HDL 62 였습니다.", "source_idx": 2},
+              {"idx": 3, "text": "콜레스테롤 4종이 있습니다.", "source_idx": 3},
+              {"idx": 5, "text": "HDL 62 였습니다.", "source_idx": 2}]
+    fc = {"status": "ok", "cited": 5, "matched": 4, "fabricated": 0, "stale_meds": 0, "oldest_record_months": 123,
+          "mismatches": [{"claim_idx": 3, "item": "총콜레스테롤", "answer_value": 4.0, "phr_value": 177.0, "kind": "value"},
+                         {"claim_idx": 5, "item": "HDL콜레스테롤", "answer_value": 62.0, "phr_value": None, "kind": "fabricated"}]
+                        + [{"claim_idx": 1, "item": f"항목{i}", "answer_value": i, "phr_value": i + 1, "kind": "value"}
+                           for i in range(20)]}
+    res = {"verdict": "pass", "mode": "phr", "claims": claims, "legal": {"verdict": "pass", "hits": []},
+           "validity": {"axis": "PV", "grade": "D", "fact_check": fc,
+                        "items": [{"id": "PV-01", "result": "unmet", "detail": "기록과 다른 인용 1건(값·날짜·단위)", "claim_idx": [3]}]}}
+    c = eval_v3.compact(res)
+    rows = c["fact_check"]["mismatches"]
+    assert len(rows) == eval_v3.FACT_MISMATCH_MAX
+    assert rows[0] == {"sentence_idx": 3, "item": "총콜레스테롤", "answer_value": 4.0, "phr_value": 177.0, "kind": "value"}
+    assert rows[1]["sentence_idx"] == 2 and rows[1]["kind"] == "fabricated" and rows[1]["phr_value"] is None
+    assert c["fact_check"]["cited"] == 5 and "version" not in c["fact_check"]
+    fc_plain = dict(fc, mismatches=[])
+    c2 = eval_v3.compact(dict(res, validity=dict(res["validity"], fact_check=fc_plain)))
+    assert "mismatches" not in c2["fact_check"]

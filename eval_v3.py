@@ -170,6 +170,7 @@ def _rule_ids(hits) -> list:
 
 
 QUOTE_MAX = 240
+FACT_MISMATCH_MAX = 10          # fact_check.mismatches 저장 상한(건)
 _EV_KEYS = ("basis", "phrase_id", "id", "kind", "rule_id", "status", "text", "phrase", "example_code", "example_kind",
             "same_as_nearest", "person_attributed", "attrib_source", "attrib_level", "rationale", "department")
 
@@ -347,6 +348,20 @@ def compact(result: dict) -> dict:
         out["fact_check"] = {k: fc.get(k) for k in
                              ("status", "cited", "matched", "fabricated", "stale_meds",
                               "oldest_record_months") if k in fc}
+        # 불일치 내역(2026-10-19): PV-01·02·06 의 '기록과 다른 인용 n건' 이 어떤 값을 기록의 무엇과 비교한
+        # 것인지 남긴다. 판정기 fact-v5 부터 claim_idx 는 문장 번호지만, 옛 판정기는 주장 번호라 같은 표로
+        # 문장 번호로 옮긴다(문장 번호 ≤ 문장 수인 주장은 자기 자신이라 새 판정기에는 영향 없다).
+        # 값·항목명은 답변이 이미 인용한 것이라 새 데이터가 아니다. 최대 FACT_MISMATCH_MAX 건.
+        rows = []
+        for m in (fc.get("mismatches") or [])[:FACT_MISMATCH_MAX]:
+            if not isinstance(m, dict):
+                continue
+            ci = m.get("claim_idx")
+            rows.append({"sentence_idx": _to_sentence(ci, sentence_of) if ci is not None else None,
+                         "item": m.get("item"), "answer_value": m.get("answer_value"),
+                         "phr_value": m.get("phr_value"), "kind": m.get("kind")})
+        if rows:
+            out["fact_check"]["mismatches"] = rows
     claims = result.get("claims") or []
     levels = {}
     fallback = 0
