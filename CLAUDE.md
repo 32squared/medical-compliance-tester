@@ -139,6 +139,10 @@ python -c "import py_compile; py_compile.compile('proxy_server.py', doraise=True
   `EVAL_V2_LEGAL=0`(v2 법률 A~F 끔 — v3 legal gate 가 대체) · `EVAL_FINAL=v3`(status·finalScore 를
   v3 verdict 로: legal fail→0점 fail, pass→PV/SV 등급 A100·B85·C70·D60, 등급 없음 90. HealthBench 문항(HB-*/source=healthbench)만 rubric 이 최종 — 별개 평가).
   `EVAL_V3_REASONING_EFFORT`(gpt-6 계열 reasoning_effort. 판정기 judge_client 도 같은 변수를 기본값으로 읽는다).
+  `EVAL_SV_LLM_MODEL`(판정기 sv-v3, medical_eval aa9e06f 이후: SV-02·03·04 키워드에 안 걸린 항목을 **답변당 1회** LLM 으로
+  확인하는 2차 모델. 비우면 `EVAL_V3_MODEL` 과 같은 모델을 쓴다 — 비용을 위해 mini 계열 권장(2026-10-19 사용자 결정 ②).
+  판정기가 환경변수를 직접 읽으므로 호스트 코드 변경 없음. 결과 `validity.checklist` 에 `version`(체크리스트 판, cl-v2)·
+  `match_source`·`candidates`·`emergency_template`·`llm_checked`·`llm_confirmed`·`judge_model`·`llm_status` 가 추가됨).
   운영 설정: EVAL_V3=1 · EVAL_V3_MODEL=gpt-6-luna · EVAL_V3_REASONING_EFFORT=none · EVAL_PHR=0 · EVAL_V2_LEGAL=0 · EVAL_FINAL=v3.
   **2단 판정 폐지(2026-10-19)**: `EVAL_V3_ESCALATE_MODEL`(1차 legal fail 이면 다른 모델로 통째로 재판정, 9-18 mini→gpt-5.4 ·
   10-14 luna→sol)은 1차 근거를 2차에 넘기지 않아 두 모델이 다른 규칙으로 FAIL 시키는 비일관을 남겼다(Dev 10/16 25건 중 6건, DOC-HSCEY).

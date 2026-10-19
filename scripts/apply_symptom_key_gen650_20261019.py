@@ -43,7 +43,8 @@ def main(argv=None):
 
     data = json.load(open(a.table, encoding='utf-8'))
     items = data['items']
-    valid = {g['symptom_key'] for g in json.load(open(CHECKLISTS, encoding='utf-8'))} | {'none'}
+    valid = {g['symptom_key'] for g in json.load(open(CHECKLISTS, encoding='utf-8'))
+             if isinstance(g, dict) and g.get('symptom_key')} | {'none'}   # cl-v2 판 표시 행 제외
     bad = [it['id'] for it in items if it['symptom_key'] not in valid]
     if bad or len(items) != 650:
         print(f'[apply] 표 오류: 건수 {len(items)}, 잘못된 키 {bad[:5]}'); return 2

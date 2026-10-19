@@ -412,7 +412,8 @@ def cmd_estimate(a):
     grader = Grader(a.snapshot)
     vs = grader.vs
     import mhc_viz
-    groups = {g["symptom_key"]: g for g in json.load(open(a.checklists, encoding="utf-8"))}
+    groups = {g["symptom_key"]: g for g in json.load(open(a.checklists, encoding="utf-8"))
+              if isinstance(g, dict) and g.get("symptom_key")}   # cl-v2 판 표시 행 제외
     rows = []
     d = json.load(open(a.dump, encoding="utf-8"))
 

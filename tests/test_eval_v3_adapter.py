@@ -334,7 +334,12 @@ def test_checklists_resolve_without_medical_eval_data_dir(monkeypatch):
     assert os.environ[eval_v3.CHECKLIST_ENV] == path
     with io.open(path, encoding="utf-8") as fh:
         rows = json.load(fh)
-    assert len(rows) == 42
+    groups = [r for r in rows if isinstance(r, dict) and r.get("symptom_key")]
+    assert len(groups) == 42
+    # cl-v2(medical-shared, 2026-10-19): 맨 앞에 symptom_key 없는 판 표시 행 — 판정기는 이것을 checklist.version 으로 낸다
+    meta = [r for r in rows if isinstance(r, dict) and not r.get("symptom_key")]
+    assert [m.get("version") for m in meta] == ["cl-v2"]
+    assert eval_v3.load_checklists() and len(eval_v3.load_checklists()) == 42   # 판정기 로더도 증상군 42만
 
 
 def test_checklists_env_wins_when_set(monkeypatch, tmp_path):
