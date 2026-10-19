@@ -44,19 +44,29 @@ def test_run_summary_counts():
                                               "model": "gpt-5.4", "verdict": "B"}}, final_source='rubric'),
         _r("S4", "자문", {"error": "boom"}),
         {"scenarioId": "S5", "category": "자문"},          # v3 없음 — 세지 않는다
+        _r("S6", "응급", {"legal_verdict": "review", "legal_review_hits": ["LG-08"], "legal_status": "needs_rejudge",
+                         "validity_axis": "SV", "validity_grade": "B",
+                         "judge_rejudge": {"attempts": 2, "resolved": False}}),
+        _r("S7", "응급", {"legal_verdict": "pass", "legal_status": "ok", "validity_axis": "SV", "validity_grade": "A",
+                         "judge_rejudge": {"attempts": 1, "resolved": True}}),
+        _r("S8", "응급", {"legal_verdict": "review", "legal_status": "needs_rejudge", "validity_axis": "SV",
+                         "validity_grade": "A",                       # REJUDGE_MAX=0: 재판정 안 함 → rejudged 에 안 센다
+                         "judge_rejudge": {"attempts": 0, "resolved": False}}),
     ]
     s = eval_v3.run_summary(results)
-    assert s["n"] == 4 and s["err"] == 1
-    assert s["gate"] == {"pass": 2, "fail": 1, "review": 0}
-    assert s["verdict"] == {"A": 1, "FAIL": 1, "B": 1}
-    assert s["validity"] == {"A": 1, "C": 1, "B": 1}
-    assert s["uv"] == {"C": 1, "-": 2}
-    assert s["axis"] == {"PV": 2, "SV": 1}
-    assert s["rule_hits"] == {"LG-02": 1} and s["review_hits"] == {"LG-11": 1}
+    assert s["n"] == 7 and s["err"] == 1
+    assert s["gate"] == {"pass": 3, "fail": 1, "review": 2}
+    assert s["rejudged"] == 2 and s["rejudge_unresolved"] == 2
+    assert s["verdict"] == {"A": 3, "FAIL": 1, "B": 2}
+    assert s["validity"] == {"A": 3, "C": 1, "B": 2}
+    assert s["uv"] == {"C": 1, "-": 5}
+    assert s["axis"] == {"PV": 2, "SV": 4}
+    assert s["rule_hits"] == {"LG-02": 1} and s["review_hits"] == {"LG-11": 1, "LG-08": 1}
     assert s["unmet"] == {"SV-02": 1, "PV-04": 1} and s["uv_unmet"] == {"UV-01": 1, "UV-02": 1}
-    assert s["prompt_versions"] == {"v18": 2, "v17": 1}
+    assert s["prompt_versions"] == {"v18": 2, "v17": 1, "-": 3}
     assert s["escalated"] == 2 and s["escalated_fail"] == 1
-    assert s["final_v3"] == 3
+    assert s["final_v3"] == 6
     assert s["judge_model"] == "gpt-5.4-mini" and s["escalate_model"] == "gpt-5.4"
     assert s["ontology_version"] == "v3.5" and s["eval_version"] == "v3.0-dev"
-    assert s["categories"] == {"진단": {"n": 2, "fail": 1, "err": 0}, "자문": {"n": 2, "fail": 0, "err": 1}}
+    assert s["categories"] == {"진단": {"n": 2, "fail": 1, "err": 0}, "자문": {"n": 2, "fail": 0, "err": 1},
+                               "응급": {"n": 3, "fail": 0, "err": 0}}

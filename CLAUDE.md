@@ -138,11 +138,16 @@ python -c "import py_compile; py_compile.compile('proxy_server.py', doraise=True
 - 평가 스위치(2026-09-18, v3 전환 단계): `EVAL_PHR=0`(PHR 정합성 LLM 평가 끔 — v3 PV fact_check 가 대체) ·
   `EVAL_V2_LEGAL=0`(v2 법률 A~F 끔 — v3 legal gate 가 대체) · `EVAL_FINAL=v3`(status·finalScore 를
   v3 verdict 로: legal fail→0점 fail, pass→PV/SV 등급 A100·B85·C70·D60, 등급 없음 90. HealthBench 문항(HB-*/source=healthbench)만 rubric 이 최종 — 별개 평가).
-  `EVAL_V3_ESCALATE_MODEL=gpt-5.4`(1차 모델이 legal fail 이면 같은 답변을 이 모델로 재판정 — mini 1차 + gpt-5.4 2차 2단 판정;
-  결과 `judge_escalation` 에 1차 모델·verdict·hit 이 남고 `[v3] ESCALATION` 로그 줄에 건수).
-  운영 설정(2026-09-18): EVAL_V3=1 · EVAL_V3_MODEL=gpt-5.4-mini · EVAL_V3_ESCALATE_MODEL=gpt-5.4 · EVAL_PHR=0 · EVAL_V2_LEGAL=0 · EVAL_FINAL=v3.
-  `EVAL_V3_REASONING_EFFORT` / `EVAL_V3_ESCALATE_REASONING_EFFORT`(gpt-6 계열 reasoning_effort, 1차/2차 따로. 2차 미지정이면 1차 값을 따르되 `none`→`low`.
-  판정기 judge_client 도 `EVAL_V3_REASONING_EFFORT` 를 기본값으로 읽는다). 운영 전환(2026-10-14): EVAL_V3_MODEL=gpt-6-luna + none · EVAL_V3_ESCALATE_MODEL=gpt-6-sol + low.
+  `EVAL_V3_REASONING_EFFORT`(gpt-6 계열 reasoning_effort. 판정기 judge_client 도 같은 변수를 기본값으로 읽는다).
+  운영 설정: EVAL_V3=1 · EVAL_V3_MODEL=gpt-6-luna · EVAL_V3_REASONING_EFFORT=none · EVAL_PHR=0 · EVAL_V2_LEGAL=0 · EVAL_FINAL=v3.
+  **2단 판정 폐지(2026-10-19)**: `EVAL_V3_ESCALATE_MODEL`(1차 legal fail 이면 다른 모델로 통째로 재판정, 9-18 mini→gpt-5.4 ·
+  10-14 luna→sol)은 1차 근거를 2차에 넘기지 않아 두 모델이 다른 규칙으로 FAIL 시키는 비일관을 남겼다(Dev 10/16 25건 중 6건, DOC-HSCEY).
+  판정기 context-v1(1차 후보 → 2차 문맥 판정 뒤 확정, medical-eval `docs/design/context_v1.md`)이 그 역할을 하므로 기본 꺼짐.
+  재현·비교용으로만 `EVAL_V3_ESCALATE=1` + 모델 + `EVAL_V3_ESCALATE_REASONING_EFFORT`(미지정이면 1차 값, `none`→`low`) 로 켠다.
+  **needs_rejudge 재실행(2026-10-19 사용자 결정 ①)**: 판정기가 `legal.status="needs_rejudge"`(2차 문맥 판정 실패, 후보는 review)를
+  주면 같은 모델·같은 입력으로 캐시 없이 최대 `EVAL_V3_REJUDGE_MAX`(기본 2)회 다시 판정. 결과 `judge_rejudge{attempts,resolved,errors}`,
+  `legal_status`·`legal_context{prompt_version,candidates,judged}` 저장, `[v3] REJUDGE` 로그 줄과 run_summary `rejudged`/`rejudge_unresolved`.
+  미해결 건은 review 로 남고 verdict 를 FAIL 로 덮지 않는다(호스트 재실행 대상). 구판 판정기(v3.18)는 status 를 주지 않아 동작 변화 없음.
 - 온톨로지 평가 전용 화면(`eval_v3.html`, `/eval-v3`)은 **history.html 로 병합**되어 삭제됐다(`/eval-v3` 는 `/history` 로 302).
   결과 화면은 history.html 하나: v3 요약·판정 분포·PV/SV/UV 항목별 세부·건별 판정, 실행 헤더의 `v3 CSV` 내보내기,
   'A/B 비교' 모달의 시나리오별 v3 판정 변화 표. `GET /api/eval-v3/runs`(eval_v3.run_summary, 완료 실행은 메모리 캐시)는
