@@ -92,6 +92,19 @@ def test_compact_keeps_hit_evidence():
     assert len(h['quote']) == eval_v3.QUOTE_MAX and h['detectors'] == ['lexicon'] and len(h['evidence']) == 6
 
 
+def test_evidence_rows_keep_context_v1_fields():
+    """legal-v8 context-v1 — 2차 문맥 판정 근거(value·clause·source·prior_review)는 저장에 남아야
+    '왜 confirmed/review 인지'를 run 덤프만으로 읽을 수 있다(rj30 재판정에서 value 가 빠진 것을 보고 추가)."""
+    import eval_v3
+    ev = [{'basis': 'context', 'kind': 'context', 'value': 'refused', 'clause': '가늠해 드릴 수는 없습니다',
+           'source': 'llm', 'prior_review': 'insufficient_evidence'},
+          {'basis': 'context', 'kind': 'context', 'value': 'assertion', 'clause': '', 'source': 'code'}]
+    rows = eval_v3.evidence_rows(ev)
+    assert rows[0] == {'basis': 'context', 'kind': 'context', 'value': 'refused',
+                       'clause': '가늠해 드릴 수는 없습니다', 'source': 'llm', 'prior_review': 'insufficient_evidence'}
+    assert rows[1] == {'basis': 'context', 'kind': 'context', 'value': 'assertion', 'source': 'code'}
+
+
 def test_report_parses_timing():
     import report_v3_run as rep
     assert rep.TIMING.search('fallback=- ttft=1234 total=5678 len=900')['ttft'] == '1234'
