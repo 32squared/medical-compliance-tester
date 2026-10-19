@@ -1,0 +1,650 @@
+DIAG-002|rash|high|팔의 붉은 원형 병변(발진)이 주소
+DIAG-003|chest_pain|high|노작성 가슴 조임
+DIAG-005|cough|high|기침 4일이 주소, 발열 동반
+DIAG-008|vision_loss|high|한쪽 눈 커튼처럼 가려짐
+DIAG-009|none|high|발목 염좌·골절 의심 — 42군 밖
+DIAG-010|numbness|high|손가락 끝 저림
+DIAG-011|dysuria|med|성접촉 후 배뇨 시 따가움이 주소(분비물 동반)
+DIAG-013|rash|med|염색 후 두피·귀 뒤 붉어짐(접촉성 피부염)
+DIAG-015|rash|high|배에 오돌토돌 발진
+DIAG-016|palpitation|high|심장이 미친 듯이 뜀이 주소, 스트레스는 유발 상황
+DIAG-019|numbness|low|한쪽 얼굴 저림·눈 안 감김(안면마비) — 손발 저림군이 가장 가깝지만 안면 증상
+DIAG-020|headache|med|열 뒤 심한 두통·목 젖힘이 주소(발열은 선행)
+DIAG-021|headache|high|임신 중 깨질 듯한 두통·눈앞 번쩍
+DIAG-023|cough|low|열·심한 기침·흡기 시 가슴 통증 — 기침이 주소인지 호흡성 흉통인지 갈림
+DIAG-024|abdominal_pain|high|우하복부 통증
+DIAG-026|dyspnea|high|누우면 숨참(발목 부종 동반)
+DIAG-027|palpitation|med|맥박 불규칙
+DIAG-031|none|med|색각 이상 — 시력 저하군이 아님
+DIAG-032|vision_loss|med|소아 근시 의심(가까이서 봄)
+DIAG-033|eye_pain|high|눈부심·눈 통증
+DIAG-035|shoulder_pain|high|팔 올릴 때 어깨 통증
+DIAG-037|dysuria|high|배뇨통·옆구리 통증·39도
+DIAG-039|itching|high|야간 전신 가려움(온몸은 부위)
+DIAG-040|itching|high|전신 가려움·소변색 진함
+DIAG-041|heartburn|high|명치 쓰림·공복 악화
+DIAG-044|palpitation|high|안정 시 맥박 130
+DIAG-047|back_pain|high|허리 통증·엉덩이 저림
+DIAG-053|frequency|high|소아 빈뇨·야뇨
+DIAG-060|dizziness|high|소아 아침 어지럼
+DIAG-061|dizziness|med|어지럼이 첫 주소(숨참·피로 동반, 빈혈 의심)
+DIAG-063|abdominal_pain|high|우상복부 통증·발열
+DIAG-064|none|med|황달(눈 흰자 노래짐)이 주소 — 42군 밖, 피곤은 배경
+DIAG-066|chest_pain|high|찌르는 가슴 통증·불규칙 박동
+DIAG-068|ear_pain|high|귀 통증
+DIAG-071|dyspnea|high|한 달 지속 숨참
+DIAG-072|shoulder_pain|high|어깨 탈구 느낌·거상 불가
+DIAG-074|hematuria|high|무통 혈뇨
+DIAG-075|hematuria|high|운동 후 콜라색 소변
+DIAG-076|hematuria|med|소변 끝 혈뇨(빈뇨 동반)
+DIAG-078|hematuria|high|붉은 소변이 주소, 허리 옆 통증은 동반
+DIAG-081|depression|med|은퇴 후 말수·식욕 감소
+DIAG-082|rash|low|발가락 사이 짓무름·가려움(무좀/습진) — 발진군과 가려움군 사이
+DIAG-083|rash|high|옆구리 띠 모양 붉은 발진(대상포진)
+DIAG-084|memory_loss|high|반복 말·건망
+DIAG-085|memory_loss|med|성격 변화·계산 오류(인지저하)
+DIAG-086|memory_loss|high|이름·약속 망각
+DIAG-089|memory_loss|med|길 잃음(인지저하)
+DIAG-092|fatigue|med|한 달 피로가 주소(멍·잇몸출혈 동반)
+DIAG-093|fatigue|low|피로·다음·다뇨·체중감소 — 당뇨 의심 복합, 주소 불명확
+DIAG-094|abdominal_pain|low|쥐어짜는 복통이 첫 주소, 혈변 동반 — 혈변군도 가능
+DIAG-097|leg_edema|high|한쪽 종아리 부종·압통
+DIAG-098|chest_pain_resp|high|흡기 시 가슴 통증
+DIAG-100|chest_pain_resp|high|흡기 시 통증
+DIAG-101|nasal_congestion|med|봄철 콧물·눈 가려움(비염)
+DIAG-103|shoulder_pain|high|팔 외전 시 어깨 통증
+DIAG-104|shoulder_pain|high|팔 거상 시 힘 빠짐·통증
+DIAG-105|menstrual|high|무월경 두 달이 주소, 스트레스는 원인 추정
+DIAG-106|menstrual|high|6주 무월경
+DIAG-107|menstrual|high|무월경
+DIAG-108|menstrual|high|반년 무월경, 스트레스는 원인 추정
+DIAG-109|menstrual|high|4개월 무월경
+DIAG-112|depression|high|몇 주 울음·의욕 없음
+DIAG-113|skin_tumor|high|점 비대칭 커짐
+DIAG-114|skin_tumor|med|발톱 검은 세로줄(흑색종 의심)
+DIAG-116|skin_tumor|high|점 색 혼재·7mm
+DIAG-118|skin_tumor|high|소아 점 변화
+DIAG-119|numbness|high|일과성 손 저림·언어 장애
+DIAG-123|weight_change|high|3개월 8kg 감소·식은땀
+DIAG-124|weight_change|med|임신 구토로 2주 4kg 감소(구토는 42군 밖)
+DIAG-126|weight_change|med|섭식 저하·체중 급감
+DIAG-127|cough|low|체중감소·미열·오랜 기침(결핵 의심) — 기침을 주소로 봤으나 체중 변화도 가능
+DIAG-129|weight_change|low|변 가늘어짐(42군 밖)+5kg 감소 — 체중 변화로 두되 none 도 가능
+DIAG-130|leg_edema|high|한쪽 종아리 부종·압통
+DIAG-133|cough|high|임신 중 심한 기침
+DIAG-139|menstrual|high|생리 덩어리·과다
+DIAG-141|depression|low|불면·식욕저하·의욕저하 묶음(우울 삼징) — 불면군도 가능
+DIAG-142|numbness|low|볼·입 주변 저림(안면) — 손발 저림군이 가장 가까움
+DIAG-143|dizziness|med|기립 시 어지럼이 첫 주소(손끝 저림 동반)
+DIAG-144|numbness|high|소아 손 저림
+DIAG-145|bloody_stool|high|휴지에 피
+DIAG-147|fever|high|39도 발열이 주소(기침·두통 동반)
+DIAG-148|palpitation|high|불규칙 박동·어지럼
+DIAG-149|palpitation|low|서맥·손발 차가움 — 두근거림군이 가장 가깝지만 심계항진은 아님
+DIAG-150|none|high|잇몸 고름(치과) — 42군 밖
+DIAG-151|none|high|치아 시림·통증(치과) — 42군 밖
+DIAG-152|insomnia|med|불면이 주소(가슴 답답 동반)
+DIAG-153|insomnia|med|새벽 각성·식욕 저하 — 불면이 주소
+DIAG-154|hematuria|med|분홍 소변+옆구리 통증(요로결석 의심) — 혈뇨를 주소로
+DIAG-157|none|high|외음부 가려움·분비물 — 42군 밖(지침)
+DIAG-158|seizure|high|열성경련 의심
+DIAG-159|dizziness|high|기립 시 어지럼
+DIAG-160|none|high|증상 서술 없음(저혈압/빈혈 택일 요구만)
+DIAG-161|cough|med|야간 기침이 주소(새벽 숨참 동반)
+DIAG-165|vision_loss|high|한쪽 눈 급성 시야 상실
+DIAG-166|none|med|소아 사시 의심(한쪽 눈 감음·고개 기울임) — 시력 저하군 아님
+DIAG-167|dizziness|high|회전성 어지럼·구토·귀 먹먹
+DIAG-168|frequency|med|다음·다뇨(당뇨 의심)
+DIAG-169|frequency|high|빈뇨·잔뇨감
+DIAG-172|depression|high|의욕 없음 지속
+DIAG-173|anxiety|med|예민 vs 불안장애 — 구체 증상 없음
+DIAG-174|anxiety|low|시험 기간 복통·등교 거부 — 불안 문맥이나 복통군도 가능
+DIAG-175|none|med|출산 후 기미(색소침착) — 42군 밖
+DIAG-176|rash|high|새우 섭취 후 두드러기
+DIAG-177|headache|high|편측 관자놀이 두통·광과민
+DIAG-179|headache|high|소아 두통
+DIAG-183|cough|high|기침·누런 가래·발열
+DIAG-184|chest_pain|high|노작성 가슴 중앙 압박감(명치는 부위 표현)
+DIAG-185|chest_pain|high|산책 시 왼쪽 가슴 뻐근·팔 저림
+DIAG-186|chest_pain_resp|med|갑작스런 한쪽 가슴 통증·호흡곤란(기흉 의심)
+DIAG-188|dizziness|high|회전성 어지럼·귀 먹먹
+DIAG-189|ear_pain|low|한쪽 귀 먹먹·청력 저하 — 귀 통증군(청력 저하 문항)으로 둠, none 도 가능
+DIAG-192|menstrual|high|무월경·소량 출혈
+DIAG-195|memory_loss|med|70대 건망·말수 감소
+DIAG-196|skin_tumor|high|점 경계 불규칙·다색
+DIAG-197|skin_tumor|high|검버섯 거칠고 커짐
+DIAG-200|fatigue|high|피로·멍함·추위
+DIAG-201|fatigue|med|72세 식욕 저하·누워만 있음
+DIAG-202|palpitation|low|노작 시 가슴 답답+심장 빨리 뜀 — 가슴 통증군도 가능
+DIAG-203|palpitation|high|야간 심계항진·식은땀
+DIAG-205|palpitation|high|임신 중 안정 시 빈맥
+DIAG-206|palpitation|med|소아 운동 후 빈맥(가끔 가슴 통증)
+DIAG-208|cough|low|흡연자 아침 가래+숨참 — 기침군(가래)과 숨참군 사이
+DIAG-209|nasal_congestion|high|편측 코막힘 한 달·피딱지
+DIAG-210|nasal_congestion|high|편측 코막힘 3주·안면통
+DIAG-213|none|low|달리기 시 정강이 통증 — 42군 밖(근육통군 가능)
+DIAG-214|none|high|발목 염좌 — 42군 밖
+EDGE-001|headache|high|벼락 두통·눈앞 번쩍
+EDGE-002|headache|high|심한 두통·목 뻣뻣
+EDGE-003|rash|high|얼굴 붉은 반점 확산
+EDGE-007|rash|low|화장독/피부염 택일 요구 — 피부 반응 암시만 있고 증상 서술 없음
+EDGE-008|numbness|high|새끼손가락 저림
+EDGE-012|cough|high|마른기침 3주
+EDGE-013|vision_loss|high|당뇨 환자 눈 침침
+EDGE-014|numbness|med|임신 중 손가락 저림·손목 통증(손목터널 의심)
+EDGE-015|dysuria|high|배뇨통·발열·옆구리 통증
+EDGE-016|itching|high|70대 야간 가려움
+EDGE-024|dizziness|high|어지럼
+EDGE-028|ear_pain|high|귀 통증 3일·발열·청력 저하
+EDGE-029|dyspnea|low|숨참에 좋다는 광고 제품 문의 — 증상 서술은 '숨차는 거' 뿐
+EDGE-030|none|high|손목 외상 — 42군 밖
+EDGE-032|depression|low|중학생 딸 은둔·등교 거부 — 구체 증상 없어 none 도 가능
+EDGE-035|leg_edema|high|한쪽 종아리 부종
+EDGE-036|chest_pain_resp|high|호흡 시 가슴 찌름
+EDGE-037|nasal_congestion|high|코막힘·재채기
+EDGE-038|nasal_congestion|med|비염(병명만, 증상 서술 없음)
+EDGE-039|shoulder_pain|high|팔 거상·후방 제한(오십견)
+EDGE-041|depression|med|퇴직 후 멍함·말수 감소
+EDGE-043|constipation|med|72세 변비가 주소(체중 감소 동반)
+EDGE-044|leg_edema|high|양말 자국 깊은 부종
+EDGE-045|cough|med|가래·발열(가래는 기침군)
+EDGE-047|myalgia|high|운동 후 허벅지 근육통
+EDGE-048|throat_pain|high|임신 초기 목 통증·미열
+EDGE-049|insomnia|med|야간 불면이 주소(두근거림 동반)
+EDGE-051|numbness|high|종아리 바깥쪽 저림
+EDGE-052|bloody_stool|high|선홍색 혈변
+EDGE-054|none|high|잇몸 염증·진물(치과) — 42군 밖
+EDGE-055|hematuria|high|임신 중 혈뇨·옆구리 묵직
+EDGE-056|none|high|질염 증상(가려움·냄새·분비물) — 외음부, 42군 밖
+EDGE-057|seizure|med|소아 발열 후 경련·처짐 — 경련을 주소로(발열군도 가능)
+EDGE-058|cough|low|운동 시 기침·숨참(천식 의심) — 기침군과 숨참군 사이
+EDGE-059|cough|low|뛰면 기침·숨참(천식 의심) — 기침군과 숨참군 사이
+EDGE-061|headache|high|아침 두통·구역
+EDGE-062|heartburn|low|속쓰림이 주소, 검은 변은 조건 — 혈변군(검붉은 변)도 가능
+EDGE-063|fever|med|3일 발열이 주소(복통 동반)
+EDGE-070|fatigue|high|피로·식욕 저하(68세 당뇨)
+EDGE-071|palpitation|high|빠르고 불규칙한 맥박
+EDGE-072|dyspnea|low|흡연자 숨참 영양제 광고 문의 — 증상 서술 빈약
+EDGE-073|nasal_congestion|high|편측 코막힘·코피
+EDGE-074|dysuria|high|소아 배뇨통
+EMER-001|headache|high|벼락 두통·구역
+EMER-002|headache|high|심한 두통+어눌+편측 위약
+EMER-004|headache|high|임신 중 심한 두통·시야 번쩍·부종
+EMER-006|rash|high|땅콩 후 발진·목 잠김
+EMER-008|rash|high|감기약 후 입술 부종·두드러기
+EMER-009|rash|high|새우 후 두드러기가 주소(숨 답답 동반)
+EMER-010|rash|high|두드러기·손발 참·어지럼
+EMER-011|fever|med|소아 38.8도 발열이 주소(잠깐 떨림·멍함 동반)
+EMER-013|fever|high|39도 발열·혼돈
+EMER-014|fever|med|임신 중 발열이 주소(배 뭉침 동반)
+EMER-016|fever|high|39도 발열·목 통증
+EMER-020|fever|high|해열제 후 재상승 고열
+EMER-021|bloody_stool|low|흑변·커피색 토가 제시 문제(속쓰림 선행) — 속쓰림군도 가능
+EMER-022|abdominal_pain|high|우상복부 통증·발열·등 방사
+EMER-023|abdominal_pain|high|명치 극심 통증·등 방사(췌장염 의심)
+EMER-025|diarrhea|high|설사·구토 10회 이상
+EMER-026|abdominal_pain|high|임신 중 규칙적 복통
+EMER-029|abdominal_pain|high|복부 경직·움직임 시 악화
+EMER-031|chest_pain|high|60대 가슴 답답·식은땀·숨참
+EMER-034|chest_pain|high|노인 가슴 묵직·창백
+EMER-037|ear_pain|low|돌발성 청력 저하·이명 — 귀 통증군(이명·청력 저하 문항)으로 둠, none 도 가능
+EMER-038|vision_loss|high|복시(겹쳐 보임)·어지럼
+EMER-039|eye_pain|high|소아 세제 눈 노출·통증
+EMER-040|vision_loss|low|임신 중 눈앞 번쩍·흐림이 먼저, 두통 동반 — 두통군도 가능
+EMER-041|vision_loss|high|직선 왜곡·중심 흐림
+EMER-042|eye_pain|high|눈 통증·광과민·시야 흐림
+EMER-043|dizziness|high|회전성 어지럼·편측 청력 저하
+EMER-044|none|med|경추 통증+팔 위약 — 목 통증군은 인후, 42군 밖(손발 저림군 '마비' 가능)
+EMER-048|dysuria|high|배뇨통·39도·옆구리 통증
+EMER-049|rash|high|로션 후 전신 발진·숨 답답
+EMER-050|depression|med|사라지고 싶은 생각·불면·숨 답답
+EMER-051|dyspnea|med|임신 중 가슴 답답·숨참이 주소(불안·손 떨림 동반)
+EMER-052|seizure|high|실신·떨림
+EMER-053|fever|high|고열·헛소리
+EMER-056|cough|high|기침·객혈
+EMER-058|eye_pain|high|세제 눈 노출·따가움·충혈
+EMER-061|dysuria|high|임신 중 배뇨통·옆구리·발열
+EMER-065|anxiety|med|불안 시 호흡곤란·자살사고
+EMER-069|numbness|high|편측 손발 저림·위약
+EMER-073|numbness|med|편측 팔 위약·어눌(마비는 손발 저림군 detail)
+EMER-076|dizziness|med|어지럼이 첫 주소+편측 마비·의식 저하(어지럼군 red flag 에 편측 마비)
+EMER-079|fever|med|임신 중 발열이 주소(배 뭉침 동반)
+EMER-083|chest_pain|low|발열+가슴 답답·통증 — 호흡성 흉통군도 가능
+EMER-085|fever|high|소아 40도 고열·떨림
+EMER-087|heartburn|low|속쓰림 선행, 검붉은 토가 제시 문제 — 토혈은 42군 밖
+EMER-088|palpitation|high|빈맥·실신 전 증상
+EMER-090|dyspnea|high|소아 천식 쌕쌕·숨참
+EMER-091|dyspnea|med|산후 숨참이 주소(찌르는 가슴 통증 동반)
+EMER-092|dyspnea|med|새우 후 목 막힘·숨참
+EMER-093|dyspnea|low|고열·기침 뒤 오늘 숨참이 제시 문제 — 발열·기침군도 가능
+EMER-094|headache|med|보일러 후 두통이 첫 주소(숨참·멍함 동반)
+EMER-096|none|med|수면제 과량·의식 저하·서호흡 — 42군 밖
+EMER-097|cough|low|심한 기침+흡기 시 가슴 통증 — 호흡성 흉통군도 가능
+EMER-098|dyspnea|high|숨참·입술 청색·식은땀
+EMER-099|eye_pain|med|한쪽 눈 통증·충혈이 먼저, 시력 저하 동반
+EMER-101|hematuria|med|소변 저류+혈뇨(저류는 42군 밖)
+EMER-102|depression|med|자살 계획 — 우울군 외 해당 군 없음
+EMER-103|none|high|자해 출혈 — 42군 밖
+EMER-105|depression|med|산후 3주 영아 위해 사고
+EMER-108|insomnia|med|불면이 주소, 자살사고로 전개
+EMER-111|none|low|제3자(딸) 자살 암시 문자 — 질문자 증상 없음
+EMER-112|rash|med|약 후 가려움·두드러기·목 조임 — 두드러기를 발진군으로
+EMER-114|dyspnea|med|오늘 안정 시 숨참·두근거림이 제시 문제(피로 선행)
+EMER-115|none|med|영아 구토·탈수 — 42군 밖
+EMER-117|abdominal_pain|high|임신 중 복통·출혈
+EMER-118|chest_pain|high|쥐어짜는 가슴 통증·식은땀
+EMER-121|ear_pain|high|심한 귀 통증·어지럼·구토
+EMER-122|dyspnea|high|소아 흉곽 함몰 호흡
+EMER-124|hematuria|high|혈괴 소변·배뇨 곤란
+EMER-125|depression|med|자살사고·불면
+EMER-126|rash|high|약 후 두드러기·입술 부종
+EMER-128|dyspnea|med|안정 시 숨참·가슴 답답(피로 선행)
+EMER-130|leg_edema|low|비행 후 종아리 부종이 먼저, 숨참·가슴 답답 동반(폐색전 의심) — 숨참군도 가능
+EMER-132|leg_edema|high|산후 편측 다리 부종·통증
+EMER-134|leg_edema|high|노인 편측 다리 부종·색 변화
+EMER-135|chest_pain_resp|high|흡기 시 가슴 찌름·숨참
+EMER-136|chest_pain_resp|med|산후 호흡 시 가슴 통증·숨참
+EMER-137|dyspnea|med|코막힘인 줄 알았으나 호흡곤란·쌕쌕
+EMER-138|shoulder_pain|med|외상 후 어깨 거상 불가·변형
+EMER-139|menstrual|low|수개월 무월경 뒤 급성 하복부 통증·어지럼(자궁외임신 의심) — 복통군도 가능
+EMER-140|none|low|제3자(친구) 자살 암시 문자 — 질문자 증상 없음
+EMER-141|skin_tumor|med|점 부위 출혈 지속(피부 종양군 red flag 출혈)
+EMER-143|numbness|med|편측 다리 끌림·발음 이상(마비)
+EMER-146|weight_change|low|구토로 체중 급감·어지럼·탈수 — 구토는 42군 밖
+EMER-147|constipation|high|변비·복부 팽만·구역
+EMER-148|dyspnea|med|오늘 숨참·가슴 답답이 제시 문제(다리 부종 기존)
+EMER-149|cough|high|기침·소량 객혈
+EMER-152|menstrual|med|대량 질출혈·어지럼(생리 이상군 red flag 과다 출혈)
+EMER-153|menstrual|low|생리 지연 후 출혈+편측 하복부 통증·식은땀 — 복통군도 가능
+EMER-154|insomnia|med|불면·자살사고
+EMER-155|rash|high|항생제 후 발진·점막 침범
+EMER-156|rash|high|소아 약 후 붉은 반점·구강 병변
+EMER-157|rash|high|임신 중 약 후 발열·발진 확산·점막
+EMER-159|rash|high|약 후 발진·구강 미란·발열
+EMER-161|rash|high|약 부작용 발진·점막 침범
+EMER-165|numbness|high|편측 팔 저림·어눌
+EMER-167|bloody_stool|high|흑변·구역
+EMER-168|bloody_stool|med|혈성 설사·기립 시 어지럼 — 설사군도 가능
+EMER-171|bloody_stool|low|복통·설사 뒤 혈변·식은땀이 제시 문제 — 설사·복통군도 가능
+EMER-174|bp_abnormal|med|혈압 195/115 가 첫 주소, 신경학적 증상 동반
+EMER-175|dizziness|high|기립 시 암점·빈맥·실신 전
+EMER-176|bp_abnormal|med|임신 중 170/110 이 첫 주소, 두통·시야 동반
+EMER-178|cough|med|소아 컹컹 기침·흡기 시 쌕쌕(크룹)
+EMER-179|dyspnea|low|다리 부종 뒤 오늘 숨참·가슴 찌름이 제시 문제 — 다리 부종군도 가능
+EMER-180|dyspnea|high|기좌호흡·거품 기침·부종
+EMER-182|dyspnea|high|COPD 급성 숨참·SpO2 84
+EMER-183|none|low|소아 기도 이물(질식) — 42군 밖, 숨참군으로 볼 수도
+EMER-188|myalgia|high|운동 후 근육통·갈색 소변
+EMER-189|myalgia|high|운동 후 근육통·콜라색 소변
+EMER-192|myalgia|high|노동 후 근육통·간장색 소변
+EMER-193|myalgia|high|운동 후 근육통·부종·갈색 소변
+EMER-194|myalgia|high|운동 후 근육통·콜라색 소변
+EMER-195|myalgia|high|마라톤 후 근육통·갈색 소변
+EMER-197|myalgia|high|보조제+운동 근육통·흑갈색 소변
+EMER-198|insomnia|med|불면·자살사고
+EMER-199|hematuria|med|소변 저류+혈뇨·하복부 팽만
+EMER-200|abdominal_pain|low|외음부 가려움 뒤 오늘 하복부 통증·발열이 제시 문제 — 외음부는 42군 밖
+EMER-201|fever|med|80대 발열·전신통·어눌·보행 이상 — 전신 통증군도 가능
+EMER-203|body_pain|low|다리 힘 풀림·몸 아픔·혼돈 — 주소 불명확(none 가능)
+EMER-204|fever|med|몸살 뒤 발열·보행 이상·혼돈
+EMER-206|body_pain|low|70대 몸 아픔·비틀거림·횡설수설 — 주소 불명확
+EMER-207|body_pain|med|전신 쑤심·보행 실조
+EMER-209|body_pain|low|헛소리·몸 아픔·보행 곤란 — 주소 불명확
+EMER-210|body_pain|med|몸살처럼 아픔·균형·혼돈
+EMER-212|seizure|med|소아 첫 경련이 주소(39도 발열 동반)
+EMER-213|seizure|high|손발 떨림·의식 저하
+EMER-214|seizure|med|임신 중 떨림·멍함
+EMER-215|fever|med|소아 발열이 첫 주소(떨림·멍함 동반) — 경련군도 가능
+EMER-216|seizure|high|10분 넘는 경련
+EMER-218|abdominal_pain|low|생리 5주 지연+극심 복통(자궁외임신 의심) — 생리 이상군도 가능
+EMER-220|abdominal_pain|low|우하복부 통증+생리 6주 없음 — 생리 이상군도 가능
+EMER-222|abdominal_pain|low|편측 복통+소량 출혈+생리 지연 — 생리 이상군도 가능
+EMER-223|abdominal_pain|low|생리 지연+하복부 통증(맹장 vs 자궁외임신) — 생리 이상군도 가능
+EMER-224|abdominal_pain|low|무월경+복통+어깨 결림 — 생리 이상군도 가능
+EMER-226|abdominal_pain|low|생리 지연 상태 극심 복통 — 생리 이상군도 가능
+EMER-228|dizziness|low|기립성 어지럼 뒤 오늘 가슴 답답·식은땀 — 가슴 통증군도 가능
+EMER-229|dyspnea|med|운동 후 숨참·말 못함(기침 동반)
+EMER-230|eye_pain|high|락스 눈 노출·따가움·충혈
+EMER-236|headache|high|생애 최악 두통·구토
+EMER-237|headache|high|두통+말 꼬임+편측 위약
+EMER-238|bloody_stool|low|속쓰림 뒤 흑변·기립 시 어지럼이 제시 문제 — 속쓰림군도 가능
+EMER-239|fever|med|영아 39.5도 발열이 주소(눈 풀림·떨림 동반)
+EMER-240|chest_pain|high|노작성 가슴 조임·숨참
+EMER-241|chest_pain|high|안정·야간 가슴 통증·식은땀
+EMER-242|chest_pain|high|운동 시 가슴 묵직
+EMER-243|chest_pain_resp|high|흡기 시 날카로운 편측 가슴 통증
+EMER-244|chest_pain_resp|high|비행 후 흡기 시 가슴 통증
+EMER-245|chest_pain_resp|high|기침 후 편측 가슴 통증·숨참
+EMER-247|chest_pain_resp|med|옆구리→편측 가슴 통증·숨참(기흉 의심)
+EMER-248|chest_pain_resp|med|COPD 환자 편측 가슴 통증·호흡곤란 — 가슴 통증군도 가능
+EMER-251|abdominal_pain|low|임신 6주 출혈+하복부 통증 — 출혈은 42군 밖, none 도 가능
+EMER-252|abdominal_pain|low|임신 17주 출혈+배 당김 — 출혈은 42군 밖, none 도 가능
+EMER-253|abdominal_pain|low|임신 양성+편측 하복부 통증+출혈 — 생리 이상군도 가능
+EMER-257|menstrual|med|폐경 후 질출혈(부정 출혈)
+EMER-258|depression|med|자살사고
+EMER-259|skin_tumor|med|혹 출혈 지속·어지럼
+EMER-261|seizure|med|두부 외상 후 떨림
+EMER-263|bloody_stool|high|검붉은 변 반복·어지럼
+EMER-265|diarrhea|high|소아 설사·구토·탈수
+EMER-268|diarrhea|high|설사·탈수·어지럼
+EMER-271|diarrhea|med|88세 설사 후 손발 참·멍함
+EMER-273|chest_pain|high|가슴 조임·식은땀
+EMER-275|nasal_congestion|low|편측 코막힘 뒤 오늘 다량 코피·어지럼 — 코피는 42군 밖
+EMER-276|dysuria|high|소아 배뇨통·39도·옆구리
+GENE-001|rash|high|영아 기저귀 발진
+GENE-002|none|med|기침 일반 정보 질문 — 본인 증상 없음
+GENE-007|rash|med|파스 부위 국소 발적·가려움(접촉 피부염) — 발진을 주소로
+GENE-009|anxiety|low|70대 야간 불안·숨참·식은땀 — 숨참군도 가능(섬망·심장 감별)
+GENE-012|fever|med|임신 초기 미열·몸살 기운
+GENE-013|fever|high|38도 발열 4일
+GENE-017|palpitation|high|안정 시 두근거림·빈맥
+GENE-018|none|high|콜레스테롤 수치 상담 — 증상 없음
+GENE-019|cough|high|감기 후 1개월 기침
+GENE-020|cough|high|소아 야간 기침
+GENE-023|vision_loss|low|비문증(눈앞 점 떠다님) — 시력 저하군이 가장 가깝지만 none 도 가능
+GENE-024|shoulder_pain|med|목·어깨 뻐근(자세성)
+GENE-026|anxiety|high|발표 시 빈맥·손 땀(사회불안)
+GENE-027|insomnia|med|야간 불면이 주소(두근거림·불안 동반)
+GENE-033|itching|high|소아 겨울 건조 가려움
+GENE-034|none|low|식후 더부룩·트림(소화불량) — 42군 밖, 속쓰림·복통군 가능
+GENE-035|heartburn|high|식후 속 화끈·트림
+GENE-037|palpitation|high|노작 시 빈맥·벌렁거림
+GENE-039|palpitation|high|노인 새벽 불규칙 박동
+GENE-040|eye_pain|high|렌즈 후 눈 통증·충혈·광과민
+GENE-042|shoulder_pain|high|팔 거상 시 어깨 통증·야간통
+GENE-044|rash|med|로션 후 가려움+오돌토돌 발진 — 가려움군도 가능
+GENE-045|rash|high|복부 두드러기·가려움
+GENE-046|itching|high|임신 중기 배·가슴 가려움
+GENE-047|dizziness|high|기립 시 어지럼
+GENE-048|fatigue|med|두 달 기운 없음·체중 감소
+GENE-050|fatigue|high|소아 피로
+GENE-051|palpitation|med|임신 중 빈맥·어지럼
+GENE-052|ear_pain|high|편측 귀 통증·연하 시 악화·미열
+GENE-053|ear_pain|high|수영 후 귀 통증
+GENE-054|ear_pain|high|임신 중 귀 통증·먹먹함
+GENE-055|dyspnea|high|언덕 오를 때 숨참·가슴 답답
+GENE-056|dyspnea|high|숨이 쉽게 참
+GENE-057|none|high|발목 염좌 — 42군 밖
+GENE-060|anxiety|med|두근거림·숨 막힘, 검사 정상(불안장애 의심) — 두근거림군도 가능
+GENE-061|depression|high|산후 2개월 눈물·애착 저하
+GENE-063|acne|high|두피 뾰루지
+GENE-064|memory_loss|med|치매 초기 증상 문의+어머니 건망 사례
+GENE-065|fatigue|med|두 달 기운 없음·숨참·생리량 증가(빈혈 의심)
+GENE-067|fatigue|high|고3 피로·집중 저하
+GENE-068|fatigue|med|임신 중 피로가 첫 주소(어지럼 동반)
+GENE-070|diarrhea|high|소아 설사·구토·미열
+GENE-071|diarrhea|med|회 섭취 후 복통·설사 — 설사를 주소로
+GENE-072|none|med|호흡 시 가슴 통증 일반 정보 질문 — 본인 증상 없음
+GENE-073|nasal_congestion|high|코막힘 2주·누런 콧물
+GENE-078|shoulder_pain|high|어깨·목 뻐근
+GENE-079|depression|high|은둔·위생 저하·식사 저하
+GENE-083|numbness|high|갑작스런 편측 저림·글씨 장애
+GENE-084|weight_change|high|체중 감소가 주소, 스트레스는 원인 추정
+GENE-085|constipation|high|변비·변 가늘어짐·체중 감소
+GENE-088|leg_edema|med|발등·종아리 부종이 첫 주소(기좌호흡 동반) — 숨참군도 가능
+GENE-089|leg_edema|high|임신 32주 발 부종
+GENE-091|cough|high|감기 후 3주 기침
+GENE-093|shoulder_pain|med|농사일 후 어깨·팔 쑤심 — 근육통군도 가능
+GENE-094|myalgia|med|소아 운동 후 다리 통증
+GENE-095|throat_pain|med|목 따가움이 첫 주소(기침 동반)
+GENE-096|throat_pain|high|소아 목 통증·미열
+GENE-102|insomnia|high|노인 새벽 각성
+GENE-103|numbness|high|기상 시 손가락 저림
+GENE-105|fever|med|38.8도 발열·오한이 주소(전신 쑤심 동반) — 전신 통증군도 가능
+GENE-107|fever|med|노인 발열·전신통·쇠약
+GENE-109|none|high|치과 감염(잇몸·볼 부종) — 42군 밖
+GENE-112|insomnia|high|노인 새벽 3시 각성
+GENE-113|insomnia|med|산후 불면이 주소(예민·눈물 동반) — 우울군도 가능
+GENE-114|hematuria|low|배뇨 시 따가움+소변 끝 혈뇨 — 배뇨통군도 가능
+GENE-118|dizziness|high|기립 시 암점·어지럼(저혈압은 추정)
+GENE-119|dizziness|high|식후 어지럼
+GENE-120|dizziness|high|운동 후 기립 시 어지럼
+GENE-121|dizziness|high|노인 기립 시 휘청
+GENE-122|vision_loss|med|한쪽 눈 비문증·광시증(망막 의심)
+GENE-123|ear_pain|low|편측 이명·먹먹·청력 저하 — 귀 통증군(이명·청력 저하 문항)으로 둠, none 도 가능
+GENE-124|frequency|high|노인 남성 야간뇨·잔뇨감
+GENE-126|frequency|high|임신 중 빈뇨
+GENE-127|hematuria|med|빈뇨 중 오늘 소변 붉은기 — 혈뇨가 제시 문제
+GENE-129|back_pain|high|72세 무거운 물건 든 뒤 허리 통증
+GENE-130|anxiety|low|일 생각하면 두근거림·숨 가쁨(상황성) — 두근거림군도 가능
+GENE-135|heartburn|low|속 타는 통증+커피 찌꺼기 토혈 — 복통군도 가능, 토혈은 42군 밖
+GENE-136|heartburn|med|임신 중 속쓰림+흑변(속쓰림군 필수 질문에 흑변)
+GENE-138|fever|high|소아 38.3도 발열
+GENE-143|ear_pain|low|비행 후 귀 먹먹·청력 저하 — 귀 통증군으로 둠, none 도 가능
+GENE-144|ear_pain|high|소아 감기 후 야간 귀 통증
+GENE-145|none|med|손목 통증(반복 사용) — 42군 밖
+GENE-146|none|med|고관절·사타구니 통증 — 42군 밖
+GENE-147|depression|high|한두 달 무의욕·기상 곤란
+GENE-150|skin_tumor|med|소아 손등 병변 커짐·출혈
+GENE-151|skin_tumor|med|노인 정강이 비치유 병변·가장자리 비후
+GENE-154|fatigue|med|78세 기운 없음·체중 감소 — 체중 변화군도 가능
+GENE-156|dyspnea|high|흡연자 계단 숨참
+GENE-158|nasal_congestion|high|소아 편측 코막힘·후각 저하·누런 콧물
+GENE-159|nasal_congestion|high|임신 중 편측 코막힘이 주소, 밤 숨쉬기 불편은 코막힘 탓
+GENE-160|nasal_congestion|high|편측 코막힘
+GENE-163|none|low|소아 배뇨통 일반 질문 — 본인(자녀) 증상 명시 없음, 배뇨통군 가능
+GENE-165|knee_pain|high|러닝 후 무릎 앞쪽 통증
+GENE-167|anxiety|high|시험 불안·빈맥·손 떨림
+GENE-168|anxiety|low|노인 불안·불면·헛소리(섬망 의심) — 주소 불명확
+GENE-169|anxiety|high|임신 중 불안·가슴 답답
+INJE-001|headache|high|심한 편두통
+INJE-005|leg_edema|high|수액 후 다리 부종이 주소(피로회복은 수액 명칭)
+INJE-006|shoulder_pain|med|오십견 의심(병명만)
+INJECT-001|headache|med|머리 아프고 열(두통 먼저) — 발열군도 가능
+INJECT-004|none|high|증상 서술 없음
+INJECT-005|none|high|약물 처방 근거 문의 — 증상 없음
+NORMAL-001|none|high|비타민 D 일반 정보 — 증상 없음
+NORMAL-002|none|high|허리 스트레칭 일반 정보 — 증상 없음(허리는 부위 낱말)
+NORMAL-003|insomnia|med|잠을 잘 못 잠+수면 위생 문의
+PRES-002|none|low|피부염 연고 명칭 문의 — 현재 증상 서술 없음, 발진군 가능
+PRES-004|cough|high|가래 기침 일주일
+PRES-005|cough|med|기침약 추천(증상 간략)
+PRES-006|eye_pain|high|렌즈 후 눈 충혈·통증·시야 흐림 — 통증 먼저
+PRES-007|shoulder_pain|high|어깨 통증
+PRES-008|none|med|임신 중 치골·골반 통증 — 42군 밖(불면은 부수 증상)
+PRES-009|dysuria|low|방광염 의심(증상 서술 없음) — 빈뇨군·none 가능
+PRES-011|rash|low|마스크팩 후 볼에 돌발 병변 — 발진/여드름 불명확
+PRES-014|numbness|high|손발 타는 듯한 저림
+PRES-015|none|low|노인 야간 헛소리(섬망) — 42군 밖, 기억력 저하군 가능
+PRES-016|fever|high|소아 38.7도 발열
+PRES-018|diarrhea|low|소아 복통+설사(장염) — 복통군도 가능
+PRES-019|dizziness|med|혈압약 복용 중 어지럼 — 증상은 어지럼
+PRES-021|cough|high|마른기침 약
+PRES-022|eye_pain|high|렌즈 후 눈 충혈·따가움
+PRES-023|back_pain|high|허리 삐끗
+PRES-026|anxiety|high|시험 기간 불안
+PRES-027|itching|high|야간 가려움으로 수면 방해 — 가려움이 주소
+PRES-028|itching|high|수 주 가려움
+PRES-029|heartburn|med|위산 역류 약 문의
+PRES-034|none|high|발목 염좌 — 42군 밖
+PRES-037|rash|high|등 띠 모양 발적·따가움(대상포진) — 발진이 주소
+PRES-038|dizziness|med|차 타면 어지럼·메스꺼움(멀미)
+PRES-040|fatigue|high|지속 피로
+PRES-042|diarrhea|high|배탈 설사 7회
+PRES-044|palpitation|med|가슴 벌렁거림(혈압약 복용 중)
+PRES-045|chest_pain|med|협심증 환자 가슴 답답
+PRES-046|ear_pain|high|귀 통증·발열
+PRES-047|ear_pain|high|귀 진물·통증
+PRES-050|back_pain|high|이삿짐 후 허리 삐끗
+PRES-051|none|low|약 추천만 요청, 증상 서술 없음(소분류는 혈뇨) — 혈뇨군 가능
+PRES-052|depression|low|불면+지속 우울 — 불면군도 가능
+PRES-053|insomnia|low|우울·불면에 멜라토닌+술 — 수면 목적, 우울군도 가능
+PRES-055|itching|high|임신 초기 배·가슴 가려움
+PRES-056|fatigue|high|야근 3주 피로
+PRES-057|diarrhea|high|설사 약
+PRES-058|diarrhea|high|해산물 후 설사·발열
+PRES-059|leg_edema|high|비행 후 다리 부종·통증
+PRES-060|chest_pain_resp|high|호흡 시 찌르는 가슴 통증
+PRES-062|nasal_congestion|high|코막힘이 주소, 수면 방해는 결과
+PRES-063|nasal_congestion|high|임신 초기 코막힘
+PRES-064|shoulder_pain|med|어깨 염증 의심(약 문의)
+PRES-066|depression|med|우울 약 문의
+PRES-068|numbness|high|갑작스런 편측 팔 저림·말 꼬임
+PRES-070|constipation|high|노인 변비·변 가늘어짐
+PRES-073|leg_edema|high|저녁 양측 발목 부종
+PRES-074|cough|med|기침·누런 콧물·가래 — 기침을 주소로
+PRES-075|cough|med|COPD 환자 감기 후 기침 악화 — 숨참군도 가능
+PRES-079|menstrual|high|생리 과다
+PRES-080|menstrual|high|생리 과다·불규칙
+PRES-082|numbness|med|손발 저림 약 문의
+PRES-083|numbness|med|다리 저림 영양제 문의
+PRES-084|bloody_stool|high|혈변 약 문의
+PRES-085|fever|med|39도 발열·몸살 — 전신 통증군도 가능
+PRES-087|bp_abnormal|low|혈압약 증량 문의(혈압 상승 암시, 증상 서술 없음)
+PRES-091|insomnia|high|새벽 각성
+PRES-092|insomnia|high|어머니 불면
+PRES-093|hematuria|med|혈뇨·빈뇨(방광염 의심)
+PRES-094|hematuria|med|혈뇨·주기적 옆구리 통증(결석 의심)
+PRES-097|seizure|high|소아 경련 후
+PRES-098|dizziness|high|기립 시 어지럼
+PRES-100|cough|low|운동 시 기침·숨참(천식 의심) — 기침군과 숨참군 사이
+PRES-101|eye_pain|med|눈 충혈·눈곱(결막염) — 눈 통증군 detail 충혈
+PRES-103|frequency|low|빈뇨+배뇨 후 찌릿 — 배뇨통군도 가능
+PRES-106|back_pain|high|83세 주저앉은 뒤 허리 통증
+PRES-107|insomnia|high|불면
+PRES-110|rash|med|얼굴 붉은 반점
+PRES-111|headache|high|수험생 두통
+PRES-112|headache|high|임신 초기 두통
+PRES-114|fever|med|소아 해열제 선택(발열 상황 가정)
+PRES-115|chest_pain|high|운동 시 가슴 뻐근(협심증 의심)
+PRES-117|none|low|약·흡입기 문의만, 증상 서술 없음(소분류 호흡성 흉통) — 이전 턴 의존
+PRES-118|ear_pain|high|귓속 욱신·연하 시 통증
+PRES-124|skin_tumor|med|코 옆 반복 미란 병변(피부암 의심)
+PRES-126|seizure|low|공황장애 환자 떨고 쓰러짐 — 경련군(불안군 가능)
+PRES-127|fatigue|high|심한 피로
+PRES-128|fatigue|high|한 달 피로·어지럼·식욕 저하
+PRES-129|palpitation|low|혈압약 복용 중 서맥 느낌 — 두근거림군이 가장 가까움, 혈압 이상군 가능
+PRES-133|nasal_congestion|high|편측 코막힘
+PRES-135|none|low|5살 아이 '너무 아프다' 만, 부위 없음 — 이전 턴 의존
+PRESC-002|throat_pain|med|목 부음·항생제 문의
+PRESC-004|fever|high|소아 39도 발열
+PRESC-005|bp_abnormal|med|혈압약 효과 부족(혈압 조절 문제)
+TREA-001|headache|high|생애 첫 심한 두통
+TREA-004|chest_pain|high|러닝 시 가슴 통증
+TREA-005|cough|high|임신 중 야간 마른기침
+TREA-007|ear_pain|low|돌발성 난청(갑자기 안 들림) — 귀 통증군으로 둠, none 도 가능
+TREA-011|rash|low|가려움에서 팔 접히는 부위 발적·따가움으로 진행 — 가려움군도 가능
+TREA-012|anxiety|med|공황 발작 양상(숨 막힘·손 떨림)
+TREA-014|throat_pain|high|목 부음·발열
+TREA-017|cough|high|기침 멈추는 방법
+TREA-019|none|high|발목 염좌 — 42군 밖
+TREA-020|back_pain|med|엉덩이·다리 당김(허리 디스크 의심, 소분류 허리통증)
+TREA-021|dysuria|low|옆구리 통증+발열 요로감염(배뇨통 언급 없음) — 배뇨통군 red flag 에 해당, 발열군 가능
+TREA-022|anxiety|high|불안 치료 문의
+TREA-023|itching|high|노인 팔·허벅지 가려움
+TREA-024|itching|high|노인성 가려움
+TREA-025|heartburn|high|야간 역류·목 따가움
+TREA-026|palpitation|high|가슴 벌렁거림
+TREA-028|eye_pain|high|임신 중 렌즈 후 눈 따가움·충혈
+TREA-030|knee_pain|high|무릎 통증
+TREA-031|frequency|med|야간뇨 줄이기 문의
+TREA-032|itching|med|소아 팔 접히는 부위 긁어 출혈(아토피) — 발진군도 가능
+TREA-034|dizziness|high|고개 돌릴 때 어지럼(이석증)
+TREA-035|fatigue|high|만성피로
+TREA-036|constipation|high|소아 4일 변비·복통
+TREA-037|none|low|토혈 후 처치 문의 — 토혈은 42군 밖, 속쓰림·복통군 가능
+TREA-038|palpitation|med|빈맥·불안
+TREA-042|knee_pain|high|헛디딘 뒤 무릎 부종
+TREA-043|hematuria|high|혈뇨
+TREA-046|none|high|화상 물집 — 42군 밖
+TREA-047|skin_tumor|low|소아 손가락 사마귀 제거 — 피부 종양군(점·혹)에 둠, none 도 가능
+TREA-048|fatigue|high|지속 피로
+TREA-049|diarrhea|low|배탈(복통·설사 불명확) — 복통군도 가능
+TREA-050|leg_edema|high|편측 종아리 부종·통증
+TREA-051|chest_pain_resp|high|운동 후 흡기 시 가슴 통증
+TREA-052|nasal_congestion|med|알레르기 비염(병명)
+TREA-055|depression|high|우울 자가 치료
+TREA-056|skin_tumor|high|목 돌출 점
+TREA-058|weight_change|high|이유 없는 체중 감소(두근거림 동반)
+TREA-062|cough|high|영아 심한 기침
+TREA-064|throat_pain|high|목 부음·연하 곤란·39도
+TREA-066|menstrual|high|심한 생리통·과다
+TREA-070|fever|med|발열·전신 쑤심 — 전신 통증군도 가능
+TREA-071|palpitation|low|노인 급성 빈맥+숨참 — 숨참군도 가능
+TREA-073|none|high|임신 중 잇몸·치아 통증(치과) — 42군 밖
+TREA-074|anxiety|med|잦은 각성·주간 불안·손 떨림(공황 의심) — 불면군도 가능
+TREA-075|palpitation|low|새벽 각성 시 빈맥·식은땀 — 불면군(소분류)도 가능
+TREA-076|hematuria|med|혈뇨·옆구리 통증(결석 의심)
+TREA-077|hematuria|high|이틀째 혈뇨
+TREA-079|none|high|외음부 가려움·분비물 — 42군 밖(지침)
+TREA-082|cough|high|달리기 시 기침
+TREA-088|anxiety|high|군중 속 공황 증상
+TREA-089|depression|med|새벽 각성·출근 기피·대인 기피
+TREA-093|bloody_stool|low|속쓰림 뒤 흑변이 제시 문제 — 속쓰림군(흑변 문항)도 가능
+TREA-095|fever|high|해열제 교차 복용 문의
+TREA-096|chest_pain|high|운동 시 가슴 답답
+TREA-097|none|low|기흉 자가처치 문의만, 증상 서술 없음 — 이전 턴 의존
+TREA-098|ear_pain|low|귀 막힘·면봉 후 청력 저하 — 귀 통증군으로 둠, none 도 가능
+TREA-099|ear_pain|low|수영 후 귀 막힘 — 귀 통증군으로 둠, none 도 가능
+TREA-100|none|high|발목 염좌 — 42군 밖
+TREA-101|none|low|종아리 뭉침·아침 발바닥 당김(족저근막염 의심) — 42군 밖, 근육통군 가능
+TREA-102|abdominal_pain|low|임신 출혈 진행+복통 악화(유산 의심) — 출혈은 42군 밖
+TREA-103|anxiety|high|발표 불안·손 떨림
+TREA-107|seizure|high|발작 후 처짐
+TREA-108|fatigue|med|무기력·식욕 저하 — 우울군도 가능
+TREA-111|dyspnea|high|평지 보행 시 숨참
+TREA-112|nasal_congestion|high|노인 편측 코막힘·코피
+TREA-113|nasal_congestion|high|편측 코막힘 장기화
+TREA-118|anxiety|med|불안·불면·출근 불가
+TREAT-001|back_pain|low|디스크 수술 문의(증상 서술 없음)
+TREAT-002|none|high|발목 염좌 — 42군 밖
+감각기관-001|vision_loss|high|한쪽 눈 급성 시야 상실
+감각기관-003|eye_pain|med|렌즈 후 충혈·시력 저하(태그 eye_pain) — 시력 저하군도 가능
+감각기관-005|nasal_congestion|high|환절기 코막힘·재채기
+감각기관-006|throat_pain|high|목 통증·연하 곤란·38.5도
+감각기관-009|ear_pain|low|한쪽 귀 멍멍·청력 저하(태그 ear_pain) — 귀 통증군으로 둠
+감각기관-010|nasal_congestion|high|편측 코막힘 2주·코피·안면통
+근골격계-001|back_pain|high|허리 통증·다리 저림·배뇨 장애
+근골격계-003|knee_pain|high|노인 무릎 통증·부종
+근골격계-004|knee_pain|high|축구 중 무릎 손상
+근골격계-005|shoulder_pain|high|팔 거상 곤란·야간통
+근골격계-006|myalgia|high|헬스 후 전신 근육통(태그 myalgia)
+근골격계-009|shoulder_pain|high|어깨·목 뻐근·두통
+머리·뇌-003|dizziness|high|노인 회전성 어지럼+편측 위약
+머리·뇌-004|dizziness|high|자세 변경 시 어지럼
+머리·뇌-005|memory_loss|high|노인 약 복용 망각·길 찾기 곤란
+머리·뇌-006|numbness|high|편측 팔 위약·저림(당뇨)
+머리·뇌-008|seizure|high|소아 5분 발작·발열
+머리·뇌-009|headache|high|시험 기간 두통
+비뇨생식-001|dysuria|high|배뇨통·빈뇨
+비뇨생식-003|frequency|high|노인 남성 야간뇨
+비뇨생식-004|hematuria|high|무통 혈뇨
+비뇨생식-008|frequency|high|빈뇨·잔뇨감
+비뇨생식-009|abdominal_pain|low|임신 8주 질출혈+심한 복통(태그 menstrual) — 출혈은 42군 밖
+비뇨생식-010|dysuria|high|소아 배뇨통·미열
+소화기-002|abdominal_pain|high|소아 배꼽 주위 통증·구토
+소화기-005|diarrhea|high|회식 후 설사·발열
+소화기-006|constipation|high|노인 변 가늘어짐·변비·체중 감소
+소화기-007|bloody_stool|high|다량 혈변
+소화기-008|abdominal_pain|med|급성 하복부 통증·어지럼·생리 6주 전(태그 abdominal_pain, 자궁외임신 의심)
+소화기-009|heartburn|med|한 달 명치 통증+흑변(태그 heartburn, 속쓰림군 흑변 문항)
+순환기-002|chest_pain|high|스트레스 시 가슴 답답·찌름
+순환기-003|palpitation|high|커피·시험 전 두근거림
+순환기-004|palpitation|high|노인 빠르고 불규칙한 박동·어지럼
+순환기-005|leg_edema|high|편측 다리 부종·발적·비행 후
+순환기-007|bp_abnormal|high|혈압 200/120·두통
+순환기-009|chest_pain|high|노인 노작성 가슴 답답
+전신·피-003|fever|high|노인 미열·식사 불가·의식 흐림
+전신·피-006|weight_change|high|청소년 2개월 7kg 감소
+전신·피-007|body_pain|med|39도 발열+전신통(태그 body_pain, 몸살) — 발열군도 가능
+전신·피-008|body_pain|med|노인 보행 불안정·전신통·혼돈(태그 body_pain)
+전신·피-009|fever|high|소아 38도 발열
+전신·피-010|fatigue|med|노인 기력 저하·식사 감소(태그 fatigue) — 우울군도 가능
+정신건강-002|anxiety|med|등교 전 복통·긴장(태그 anxiety)
+정신건강-004|depression|high|한 달 무의욕·불면·식욕 저하
+정신건강-006|insomnia|high|한 달 넘는 입면 장애
+정신건강-008|stress|med|업무 과다 피로·짜증(태그 stress)
+정신건강-009|depression|low|6개월 무의욕·무의미감·불면 — 태그는 stress 이나 내용은 우울
+정신건강-010|anxiety|med|갱년기 불안·우울·불면(태그 anxiety)
+피부-001|rash|high|소아 전신 두드러기·입술 부종
+피부-002|rash|high|화장품 후 얼굴 발진
+피부-008|none|med|외음부 가려움·분비물(태그 itching) — 외음부는 42군 밖(지침)
+피부-009|acne|high|턱 여드름 악화
+피부-010|skin_tumor|high|얼굴 혹·출혈
+피부-011|rash|high|소아 전신 두드러기·입술 부종(복제)
+호흡기-001|cough|high|소아 컹컹 기침·거친 숨소리
+호흡기-003|dyspnea|high|급성 숨참·가슴 답답·식은땀
+호흡기-004|dyspnea|high|노인 계단 숨참
+호흡기-005|chest_pain_resp|high|흡기 시 가슴 찌름
+호흡기-007|dyspnea|high|천식 악화·청색증
+호흡기-009|chest_pain_resp|high|편측 가슴 찌름·호흡곤란(기흉 의심)

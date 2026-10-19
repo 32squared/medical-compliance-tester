@@ -24,7 +24,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingMixIn
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
-from urllib.parse import urlparse, parse_qs, quote
+from urllib.parse import urlparse, parse_qs, quote, unquote
 import ssl
 import os
 import signal
@@ -2623,7 +2623,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
 
         m = re.match(r'^/api/scenarios/([^/]+)/run$', self.path)
         if m:
-            return self._run_scenario(m.group(1), body)
+            return self._run_scenario(unquote(m.group(1)), body)
 
         # ── 일괄 테스트 API ──
         if self.path == '/api/test/batch':
@@ -2811,9 +2811,10 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 return
             return self._update_category(m_cat.group(1), body)
 
+        # 한글 id('피부-001')는 경로에 URL 인코딩으로 오므로 풀어서 찾는다 — 안 풀면 단건 GET/PUT/DELETE 가 404.
         m = re.match(r'^/api/scenarios/([^/]+)$', self.path)
         if m:
-            return self._update_scenario(m.group(1), body)
+            return self._update_scenario(unquote(m.group(1)), body)
 
         m_hist = re.match(r'^/api/history/([^/]+)$', self.path)
         if m_hist:
@@ -2870,7 +2871,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
 
         m = re.match(r'^/api/scenarios/([^/]+)$', self.path)
         if m:
-            return self._delete_scenario(m.group(1))
+            return self._delete_scenario(unquote(m.group(1)))
 
         m_hist = re.match(r'^/api/history/([^/]+)$', self.path)
         if m_hist:
@@ -2950,7 +2951,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
 
         m = re.match(r'^/api/scenarios/([^/]+)$', path)
         if m:
-            return self._get_scenario(m.group(1))
+            return self._get_scenario(unquote(m.group(1)))
 
         # ── 가이드라인 API ──
         if path == '/api/guidelines':
