@@ -20,6 +20,7 @@ def test_verdict_of():
     assert eval_v3.verdict_of({"legal_verdict": "fail", "validity_grade": "A"}) == "FAIL"
     assert eval_v3.verdict_of({"legal_verdict": "pass", "validity_grade": "b"}) == "B"
     assert eval_v3.verdict_of({"legal_verdict": "pass"}) == "PASS"
+    assert eval_v3.verdict_of({"legal_verdict": "review", "validity_grade": "A"}) == "REVIEW"   # 미판정은 등급으로 안 읽는다
 
 
 def test_run_summary_none_without_v3():
@@ -57,7 +58,7 @@ def test_run_summary_counts():
     assert s["n"] == 7 and s["err"] == 1
     assert s["gate"] == {"pass": 3, "fail": 1, "review": 2}
     assert s["rejudged"] == 2 and s["rejudge_unresolved"] == 2
-    assert s["verdict"] == {"A": 3, "FAIL": 1, "B": 2}
+    assert s["verdict"] == {"A": 2, "FAIL": 1, "B": 1, "REVIEW": 2}     # S6·S8 게이트 review → REVIEW
     assert s["validity"] == {"A": 3, "C": 1, "B": 2}
     assert s["uv"] == {"C": 1, "-": 5}
     assert s["axis"] == {"PV": 2, "SV": 4}

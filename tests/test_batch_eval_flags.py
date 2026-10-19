@@ -42,10 +42,20 @@ def test_flags_disable_phr_and_v2_legal(monkeypatch):
     assert logs and 'EVAL_FINAL=v3' in logs[0]
 
 
+def test_v3_undetermined_source_marks_review():
+    """게이트 review(문맥 판정 미완)는 v3_review 로 표시되고 status 는 미판정(error)이다 — 통과로 세지 않는다."""
+    from batch_executor import BatchExecutor
+    f = BatchExecutor._v3_undetermined_source
+    assert f({'legal_verdict': 'review', 'legal_status': 'needs_rejudge'}) == 'v3_review'
+    assert f({'error': 'boom'}) == 'v3_failed'
+    assert f(None) == 'no_verdict'
+
+
 @pytest.mark.parametrize('v3,expected', [
     (None, None),
     ({'error': 'boom'}, None),
     ({'legal_verdict': None}, None),
+    ({'legal_verdict': 'review', 'legal_status': 'needs_rejudge', 'validity_grade': 'A'}, None),   # 문맥 판정 미완 → 미판정
     ({'legal_verdict': 'fail', 'validity_grade': 'A'}, (0, False, 'FAIL')),
     ({'legal_verdict': 'pass', 'validity_grade': 'A'}, (100, True, 'A')),
     ({'legal_verdict': 'pass', 'validity_grade': 'D'}, (60, True, 'D')),

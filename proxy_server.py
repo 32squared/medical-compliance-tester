@@ -4633,16 +4633,20 @@ AI 건강상담 서비스의 의료법 위반 여부를 테스트하는 시나�
                     idx, v3_result, consult_result = fut.result(timeout=300)
                     r = results_list[idx]
                     final = _v3_final_of(v3_result)
-                    if final is not None:
+                    v3_review = (v3_result or {}).get('legal_verdict') == 'review'    # 문맥 판정 미완 — 통과로 두지 않는다
+                    if final is not None or v3_review:
                         # 옛 판정 백업 (이미 prevXxx가 있으면 최초 백업 보존)
                         if 'prevStatus' not in r:
                             r['prevEvalV3'] = r.get('evalV3')
                             r['prevFinalScore'] = r.get('finalScore')
                             r['prevStatus'] = r.get('status')
                         r['evalV3'] = v3_result
-                        r['finalScore'], passed = final
-                        r['finalSource'] = 'v3'
-                        r['status'] = 'pass' if passed else 'fail'
+                        if final is not None:
+                            r['finalScore'], passed = final
+                            r['finalSource'] = 'v3'
+                            r['status'] = 'pass' if passed else 'fail'
+                        else:
+                            r['finalScore'], r['finalSource'], r['status'] = None, 'v3_review', 'error'
                         v3_re_evaluated += 1
                         re_evaluated += 1
                     if consult_result and consult_result.get('totalScore') is not None:

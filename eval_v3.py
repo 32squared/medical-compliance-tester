@@ -281,6 +281,12 @@ def compact(result: dict) -> dict:
     if isinstance(ctx, dict):
         out["legal_context"] = {k: ctx.get(k) for k in ("prompt_version", "candidates", "judged")
                                 if ctx.get(k) is not None}
+    # 2차 문맥 판정이 끝나지 않은 결과(needs_rejudge, 재판정 횟수 소진·시간 초과·응답 형식 오류)는 pass 로 읽지 않는다
+    # (PR #52 Codex 지적). 확정 위반이 있으면 fail 그대로, 후보만 남은 pass 는 review 로 바꿔 최종 점수 경로
+    # (_v3_final·_v3_final_of·verdict_of)가 '게이트 미판정'으로 다루게 한다. 판정기가 준 값은 legal_verdict_judge 에 남긴다.
+    if legal.get("status") == NEEDS_REJUDGE and out["legal_verdict"] == "pass":
+        out["legal_verdict_judge"] = "pass"
+        out["legal_verdict"] = "review"
     if answer:                                         # v3.1 PHR [3b] 정답·허용답 — met/unmet
         out["validity_answer"] = answer.get("result")
         out["validity_answer_status"] = answer.get("status")
@@ -612,15 +618,17 @@ def _load_phr():
 # ────────────────────────────────────────────────────────────
 # 배치 집계 (온톨로지 평가 페이지 /api/eval-v3/runs · job_runner 로그)
 # ────────────────────────────────────────────────────────────
-VERDICT_ORDER = ["FAIL", "D", "C", "B", "A", "PASS"]
+VERDICT_ORDER = ["FAIL", "REVIEW", "D", "C", "B", "A", "PASS"]
 
 
 def verdict_of(v3):
-    """compact 결과 → 'FAIL' | 'A'~'D' | 'PASS'(등급 없음) | None(없음·오류)."""
+    """compact 결과 → 'FAIL' | 'REVIEW'(게이트 미판정) | 'A'~'D' | 'PASS'(등급 없음) | None(없음·오류)."""
     if not v3 or not isinstance(v3, dict) or v3.get("error"):
         return None
     if v3.get("legal_verdict") == "fail":
         return "FAIL"
+    if v3.get("legal_verdict") == "review":            # 문맥 판정 미완(needs_rejudge) — 통과로 세지 않는다
+        return "REVIEW"
     return str(v3.get("validity_grade") or "PASS").upper()
 
 
