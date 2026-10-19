@@ -1903,6 +1903,29 @@ function v3EvidenceText(list) {
   }).filter(Boolean).join(' / ');
 }
 
+// PV-01·02·06 불일치 내역(eval_v3.compact 의 fact_check.mismatches[] {sentence_idx,item,answer_value,phr_value,kind})
+// → "총콜레스테롤: 답변 4 ↔ 기록 177 (값)" 줄. 저장된 mismatches 가 없는 옛 결과는 빈 목록(기존 표시 유지).
+var V3_MISMATCH_KINDS = { 'PV-01': ['value', 'date', 'unit'], 'PV-02': ['fabricated', 'missing_cited'], 'PV-06': ['stale_med'] };
+var V3_MISMATCH_LABEL = { value: '값', date: '날짜', unit: '단위', fabricated: '기록에 없음', missing_cited: '결측 항목에 값 제시',
+  stale_med: '종료된 처방', undated_old_record: '시점 미표기' };
+function v3FactMismatchLines(v3, itemId) {
+  var kinds = V3_MISMATCH_KINDS[itemId];
+  var list = v3 && v3.fact_check && Array.isArray(v3.fact_check.mismatches) ? v3.fact_check.mismatches : [];
+  if (!kinds || !list.length) return [];
+  var fmt = function(x) {
+    if (x == null || x === '') return '없음';
+    if (typeof x === 'number') return String(Number.isInteger(x) ? x : Math.round(x * 100) / 100);
+    return String(x);
+  };
+  var out = [];
+  for (var i = 0; i < list.length; i++) {
+    var m = list[i]; if (!m || kinds.indexOf(m.kind) < 0) continue;
+    out.push({ sentence: m.sentence_idx != null ? m.sentence_idx : null,
+      text: (m.item || '항목') + ': 답변 ' + fmt(m.answer_value) + ' ↔ 기록 ' + fmt(m.phr_value) + ' (' + (V3_MISMATCH_LABEL[m.kind] || m.kind) + ')' });
+  }
+  return out;
+}
+
 // 구문별 판정 근거 행 — 법률 히트(규칙) + 미충족 유효성·UV 항목. 행 하나 = 기준 하나.
 // 저장 형태는 eval_v3.compact(): legal_hit_detail[] {rule_id, severity, level, sentence_idx, quote, detectors, evidence}
 // · validity_items[] / uv_items[] {id, result, detail, sentence_idx[], quotes[]}
@@ -1919,9 +1942,13 @@ function v3EvidenceRows(ev) {
   [ev.validity_items, ev.uv_items].forEach(function(items) {
     (Array.isArray(items) ? items : []).forEach(function(it) {
       if (!it || it.result !== 'unmet') return;
-      rows.push({ kind: 'item', id: it.id || '', verdict: '미충족', severity: 'MEDIUM',
-        sentences: Array.isArray(it.sentence_idx) ? it.sentence_idx : (Array.isArray(it.claim_idx) ? it.claim_idx : []),
-        quotes: Array.isArray(it.quotes) ? it.quotes : [], why: it.detail || '' });
+      var sentences = Array.isArray(it.sentence_idx) ? it.sentence_idx.slice() : (Array.isArray(it.claim_idx) ? it.claim_idx.slice() : []);
+      var quotes = Array.isArray(it.quotes) ? it.quotes.slice() : [];
+      v3FactMismatchLines(ev, it.id).forEach(function(m) {   // PV-01·02·06: 무엇이 기록의 무엇과 달랐나
+        quotes.push(m.text);
+        if (m.sentence != null && sentences.indexOf(m.sentence) < 0) sentences.push(m.sentence);
+      });
+      rows.push({ kind: 'item', id: it.id || '', verdict: '미충족', severity: 'MEDIUM', sentences: sentences, quotes: quotes, why: it.detail || '' });
     });
   });
   return rows;
