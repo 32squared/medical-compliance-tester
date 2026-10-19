@@ -182,6 +182,14 @@
   .v3-summary { font-size:13px; color:var(--text); margin-top:4px; }
   .v3-meta { font-size:12px; color:var(--text-dim); margin-top:6px; }
   .v3-error { font-size:12px; color:var(--red); }
+  /* 구문별 판정 근거 표 — 규칙·항목마다 걸린 문장 번호·인용문·검출 근거 */
+  .v3-ev-table { width:100%; border-collapse:collapse; margin:6px 0 4px; font-size:12px; line-height:1.5; }
+  .v3-ev-table th { text-align:left; font-weight:700; color:var(--text-dim); padding:4px 6px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  .v3-ev-table td { padding:5px 6px; border-bottom:1px solid var(--border); vertical-align:top; color:var(--text); }
+  .v3-ev-table td.v3-ev-quote { font-style:normal; color:var(--text); word-break:break-word; }
+  .v3-ev-table td.v3-ev-why { color:var(--text-dim); font-size:11.5px; word-break:break-word; }
+  .v3-ev-table td.v3-ev-no, .v3-ev-table td:first-child { white-space:nowrap; }
+  .v3-ev-table td.v3-ev-no { color:var(--text-dim); }
 
   /* ── 평가 결과 통합 박스 ── */
   .eval-result-box { margin-top:10px; background:var(--bg); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
@@ -1881,6 +1889,69 @@ function v3El(tag, cls, text) {
   return el;
 }
 
+// 판정 근거 목록(evidence[]: basis·kind·phrase·text·rationale·person_attributed …) → 한 줄 글
+function v3EvidenceText(list) {
+  if (!Array.isArray(list)) return '';
+  return list.map(function(e) {
+    if (!e || typeof e !== 'object') return '';
+    var head = e.kind || e.basis || '';
+    var body = e.phrase || e.text || e.example_code || '';
+    var why = e.rationale || '';
+    if (e.person_attributed != null) why = (why ? why + ' · ' : '') + '사람 귀속 ' + (e.person_attributed ? '예' : '아니오');
+    if (e.attrib_source) why = (why ? why + ' · ' : '') + '출처 ' + e.attrib_source;
+    return [head, body ? '「' + body + '」' : '', why].filter(Boolean).join(' ');
+  }).filter(Boolean).join(' / ');
+}
+
+// 구문별 판정 근거 행 — 법률 히트(규칙) + 미충족 유효성·UV 항목. 행 하나 = 기준 하나.
+// 저장 형태는 eval_v3.compact(): legal_hit_detail[] {rule_id, severity, level, sentence_idx, quote, detectors, evidence}
+// · validity_items[] / uv_items[] {id, result, detail, sentence_idx[], quotes[]}
+function v3EvidenceRows(ev) {
+  var rows = [];
+  (Array.isArray(ev.legal_hit_detail) ? ev.legal_hit_detail : []).forEach(function(h) {
+    if (!h) return;
+    var verdict = [h.severity, h.level].filter(Boolean).join(' · ') + (h.review ? ' · 검토' : '');
+    var why = [(h.detectors || []).length ? '검출 ' + h.detectors.join(', ') : '', v3EvidenceText(h.evidence)].filter(Boolean).join(' — ');
+    rows.push({ kind: 'hit', id: h.rule_id || '', verdict: verdict || '위반', severity: h.severity,
+      sentences: h.sentence_idx != null ? [h.sentence_idx] : (h.claim_idx != null ? [h.claim_idx] : []),
+      quotes: h.quote ? [h.quote] : [], why: why });
+  });
+  [ev.validity_items, ev.uv_items].forEach(function(items) {
+    (Array.isArray(items) ? items : []).forEach(function(it) {
+      if (!it || it.result !== 'unmet') return;
+      rows.push({ kind: 'item', id: it.id || '', verdict: '미충족', severity: 'MEDIUM',
+        sentences: Array.isArray(it.sentence_idx) ? it.sentence_idx : (Array.isArray(it.claim_idx) ? it.claim_idx : []),
+        quotes: Array.isArray(it.quotes) ? it.quotes : [], why: it.detail || '' });
+    });
+  });
+  return rows;
+}
+
+function buildV3EvidenceTable(ev) {
+  var rows = v3EvidenceRows(ev);
+  if (!rows.length) return null;
+  var table = v3El('table', 'v3-ev-table');
+  var thead = document.createElement('thead');
+  var hr = document.createElement('tr');
+  ['기준', '판정', '문장', '걸린 구문', '근거'].forEach(function(t) { var th = document.createElement('th'); th.textContent = t; hr.appendChild(th); });
+  thead.appendChild(hr); table.appendChild(thead);
+  var tbody = document.createElement('tbody');
+  rows.forEach(function(r) {
+    var tr = document.createElement('tr');
+    var tdId = document.createElement('td'); tdId.appendChild(v3El('span', 'v3-tag ' + (r.kind === 'hit' ? v3Severity(r.severity) : 'mid'), r.id)); tr.appendChild(tdId);
+    var tdV = document.createElement('td'); tdV.textContent = r.verdict; tr.appendChild(tdV);
+    var tdN = v3El('td', 'v3-ev-no', r.sentences.length ? r.sentences.map(function(n) { return '문장 ' + n; }).join(', ') : '—'); tr.appendChild(tdN);
+    var tdQ = v3El('td', 'v3-ev-quote', '');
+    if (r.quotes.length) r.quotes.forEach(function(q) { tdQ.appendChild(v3El('div', '', '「' + q + '」')); });
+    else tdQ.textContent = '—';
+    tr.appendChild(tdQ);
+    var tdW = v3El('td', 'v3-ev-why', r.why || '—'); tr.appendChild(tdW);
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  return table;
+}
+
 function buildEvalV3Detail(ev) {
   var box = v3El('div', 'v3-eval-detail');
 
@@ -1917,6 +1988,15 @@ function buildEvalV3Detail(ev) {
       unmet.forEach(function(id) { vRow.appendChild(v3El('span', 'v3-tag mid', String(id))); });
     }
     box.appendChild(vRow);
+  }
+
+  // 구문별 판정 근거 — 어떤 문장이 어떤 기준(규칙·항목)으로 판정됐는지
+  var evTable = buildV3EvidenceTable(ev);
+  if (evTable) {
+    var evRow = v3El('div', 'v3-detail-row');
+    evRow.appendChild(v3El('span', 'v3-detail-label', '구문별 근거'));
+    evRow.appendChild(evTable);
+    box.appendChild(evRow);
   }
 
   if (ev.summary_line) box.appendChild(v3El('div', 'v3-summary', ev.summary_line));
