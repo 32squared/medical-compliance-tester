@@ -280,7 +280,14 @@ def cmd_report(a):
                   (c["uvgrade"] in ("C", "D") and c["regrade_uv"].get("strict") not in (None, c["uvgrade"]))
         meta_line = " · ".join(x for x in [E(c["run"]), E(c["cat"]), E(c["sub"]), E(c["symptom"] or ""), ("의도 " + E(c["intent"])) if c["intent"] else "",
                                             ("법률 " + E(c["legal"])) if c["legal"] else ""] if x)
+        # 원래 C·D 였던 축의 (원래 등급, 거짓 제외 뒤 등급) 쌍 — 필터 '원래 등급'·'거짓 제외 뒤 등급' 용
+        pairs = []
+        if c["vgrade"] in ("C", "D"):
+            pairs.append((c["vgrade"], c["regrade_v"].get("strict") or ""))
+        if c["uvgrade"] in ("C", "D"):
+            pairs.append((c["uvgrade"], c["regrade_uv"].get("strict") or ""))
         data_attr = (f'data-run="{E(c["run"])}" data-vg="{E(c["vgrade"] or "")}" data-uvg="{E(c["uvgrade"] or "")}" '
+                     f'data-orig="{E(" ".join(p[0] for p in pairs))}" data-re="{E(" ".join(p[1] for p in pairs))}" '
                      f'data-verdicts="{E(" ".join(c["verdict_set"]))}" data-rules="{E(" ".join(i["id"] for i in c["items"]))}" '
                      f'data-changed="{"1" if changed else "0"}" data-text="{E((c["id"] + " " + c["prompt"] + " " + " ".join(i["reason"] for i in c["items"])).lower())}"')
         sents = "".join(f"<div class=s>{E(s)}</div>" for s in c["sentences"])
@@ -358,6 +365,8 @@ tr.v-거짓 td{{background:rgba(185,28,28,.06)}} tr.v-경계 td{{background:rgba
 <select id=fRun><option value="">실행 전체</option>{''.join(f'<option>{E(l)}</option>' for l in gd)}</select>
 <select id=fAxis><option value="">등급 축</option><option value=vg>유효성(PV·SV) C/D</option><option value=uvg>UV C/D</option></select>
 <select id=fVerdict><option value="">검토 결과</option>{''.join(f'<option>{v}</option>' for v in VERDICTS + ('미검토',))}</select>
+<select id=fOrig><option value="">원래 등급</option><option value=D>D</option><option value=C>C</option></select>
+<select id=fRe><option value="">거짓 제외 뒤 등급</option><option value=D>D 유지 (진짜 낮은 답변 후보)</option><option value=C>C</option><option value=B>B</option><option value=A>A</option></select>
 <select id=fChanged><option value="">등급 변화</option><option value=1>거짓 제외 시 등급 상향</option><option value=0>등급 유지</option></select>
 <input id=fRule placeholder="기준 id (예: SV-02)" size=12><input id=fText placeholder="문항 id·질문·검토 사유 검색" size=28>
 <span id=nShown class=dim></span><button id=bOpen>모두 펼치기</button><button id=bClose>접기</button></div>
@@ -365,11 +374,11 @@ tr.v-거짓 td{{background:rgba(185,28,28,.06)}} tr.v-경계 td{{background:rgba
 <script>
 (function(){{
 const $=s=>document.querySelector(s);const cards=[...document.querySelectorAll('.card')];
-function apply(){{const run=$('#fRun').value,axis=$('#fAxis').value,vd=$('#fVerdict').value,ch=$('#fChanged').value,rule=$('#fRule').value.trim().toUpperCase(),tx=$('#fText').value.trim().toLowerCase();let n=0;
+function apply(){{const run=$('#fRun').value,axis=$('#fAxis').value,vd=$('#fVerdict').value,ch=$('#fChanged').value,og=$('#fOrig').value,re=$('#fRe').value,rule=$('#fRule').value.trim().toUpperCase(),tx=$('#fText').value.trim().toLowerCase();let n=0;
 for(const c of cards){{let ok=true;if(run&&c.dataset.run!==run)ok=false;if(axis==='vg'&&!/^[CD]$/.test(c.dataset.vg))ok=false;if(axis==='uvg'&&!/^[CD]$/.test(c.dataset.uvg))ok=false;
-if(vd&&!c.dataset.verdicts.split(' ').includes(vd))ok=false;if(ch!==''&&c.dataset.changed!==ch)ok=false;if(rule&&!c.dataset.rules.split(' ').includes(rule))ok=false;if(tx&&!c.dataset.text.includes(tx))ok=false;
+if(vd&&!c.dataset.verdicts.split(' ').includes(vd))ok=false;if(ch!==''&&c.dataset.changed!==ch)ok=false;if(og&&!c.dataset.orig.split(' ').includes(og))ok=false;if(re&&!c.dataset.re.split(' ').includes(re))ok=false;if(rule&&!c.dataset.rules.split(' ').includes(rule))ok=false;if(tx&&!c.dataset.text.includes(tx))ok=false;
 c.classList.toggle('hide',!ok);if(ok)n++;}}$('#nShown').textContent=n+'건 표시';}}
-for(const id of ['fRun','fAxis','fVerdict','fChanged'])$('#'+id).addEventListener('change',apply);for(const id of ['fRule','fText'])$('#'+id).addEventListener('input',apply);
+for(const id of ['fRun','fAxis','fVerdict','fChanged','fOrig','fRe'])$('#'+id).addEventListener('change',apply);for(const id of ['fRule','fText'])$('#'+id).addEventListener('input',apply);
 $('#bOpen').addEventListener('click',()=>cards.forEach(c=>{{if(!c.classList.contains('hide'))c.open=true}}));$('#bClose').addEventListener('click',()=>cards.forEach(c=>c.open=false));apply();
 }})();
 </script></body></html>"""
