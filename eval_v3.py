@@ -171,7 +171,10 @@ def _rule_ids(hits) -> list:
 
 QUOTE_MAX = 240
 _EV_KEYS = ("basis", "phrase_id", "id", "kind", "rule_id", "status", "text", "phrase", "example_code", "example_kind",
-            "same_as_nearest", "person_attributed", "attrib_source", "attrib_level", "rationale", "department")
+            "same_as_nearest", "person_attributed", "attrib_source", "attrib_level", "rationale", "department",
+            # context-v1(legal-v8): 2차 문맥 판정 — value(directive·assertion·negated·quoted·refused·fixed_notice·general),
+            # clause(근거 절), source(code·llm), prior_review(문맥 판정 전 review). 없으면 "왜 confirmed 인지"를 볼 수 없다.
+            "value", "clause", "source", "prior_review")
 
 
 def evidence_rows(evidence, limit=6):
