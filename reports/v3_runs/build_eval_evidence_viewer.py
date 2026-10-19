@@ -54,18 +54,60 @@ except Exception as e:
 
 
 def rule_titles(snapshot_path):
-    """온톨로지 rule 표 → {id: title}. 스냅샷을 못 읽으면 빈 dict."""
+    """온톨로지 rule 표 → ({id: title}, {id: required}, 버전). 스냅샷을 못 읽으면 빈 dict."""
     try:
         from medical_eval.ontology import latest_snapshot_path, load_snapshot
         p = snapshot_path or latest_snapshot_path(os.path.join(ROOT, "packages", "medical_eval", "ontology", "snapshot"))
         s = load_snapshot(p)
-        return {str(r.get("id")): str(r.get("title") or "") for r in s.table("rule") if r.get("id")}, s.version
+        rules = [r for r in s.table("rule") if r.get("id")]
+        titles = {str(r["id"]): str(r.get("title") or "") for r in rules}
+        required = {str(r["id"]): bool(r.get("required")) for r in rules}
+        return titles, required, s.version
     except Exception as e:
         print(f"[warn] 규칙 제목을 읽지 못함: {e}", file=sys.stderr)
-        return {}, None
+        return {}, {}, None
 
 
-TITLES, SNAP_VER = rule_titles(a.snapshot)
+TITLES, REQUIRED, SNAP_VER = rule_titles(a.snapshot)
+
+# ── 누락형 기준(SV-02·03·04)의 '무엇이 빠졌나' — 판정기와 같은 체크리스트·같은 판정 함수로 다시 센다 ──
+# 저장 결과에는 건수("red flag 3건 중 확인 0건")만 있어 어떤 질문이 빠졌는지 보이지 않는다. 판정기의
+# validity_symptom 모듈(_mentions·_covered·_norm)을 그대로 불러 같은 입력(질문·답변·증상군)으로 다시 계산하면
+# 판정 때와 같은 목록이 나온다(prior_turns 는 배치에 없으므로 빈 값).
+try:
+    from medical_eval import validity_symptom as _vs
+    _CHECKLISTS = _vs.load_checklists(os.path.join(ROOT, "packages", "medical_shared", "compliance_rules",
+                                                   "consultation_checklists.json"))
+    _GROUPS = {str(g.get("symptom_key")): g for g in (_CHECKLISTS or []) if g.get("symptom_key")}
+except Exception as e:
+    print(f"[warn] 증상군 체크리스트를 쓰지 못해 누락 목록을 건너뜁니다: {e}", file=sys.stderr)
+    _vs, _GROUPS = None, {}
+
+
+def _label(entry):
+    kws = [str(k) for k in (entry.get("keywords") or []) if str(k).strip()]
+    return str(entry.get("label") or "") + (f" ({'·'.join(kws)})" if kws else "")
+
+
+def missing_lists(v, question, answer):
+    """{SV-02: [...red flag 라벨], SV-03: [...필수 질문], SV-04: [...맥락 질문]} — 답변이 확인하지 않은 항목.
+    SV-03 은 사용자가 이미 말한 질문을 빼고(loose) 남은 것 중 답변이 짚지 않은 것."""
+    cl = v.get("checklist") or {}
+    key = cl.get("symptom_key")
+    if _vs is None or not key or key not in _GROUPS:
+        return {}
+    g = _GROUPS[key]
+    answer_text = _vs._norm(answer)
+    user_text = _vs._norm(question) + " "
+    out = {"symptom": f"{g.get('symptom_name') or key} ({key})"}
+    flags = g.get("red_flags") or []
+    out["SV-02"] = [_label(f) for f in flags if not _vs._mentions(answer_text, f)]
+    pending = [q for q in (g.get("required_questions") or []) if not _vs._mentions(user_text, q, loose=True)]
+    out["SV-03"] = [_label(q) for q in pending if not _vs._mentions(answer_text, q)]
+    out["SV-03_said"] = [_label(q) for q in (g.get("required_questions") or []) if _vs._mentions(user_text, q, loose=True)]
+    ctxq = g.get("context_questions") or []
+    out["SV-04"] = [_label(q) for q in ctxq if not _vs._mentions(answer_text, q)]
+    return out
 
 
 def load_run(label, path):
@@ -134,6 +176,44 @@ def item_rows(items, sents, spots):
     return out
 
 
+def grade_basis(v, vitems, uvitems, hits, missing):
+    """등급·판정이 어디서 왔는지 사람이 읽는 형태로. 뷰어의 '왜 이 등급인가' 블록 재료.
+
+    - legal: 확정 히트(review 아님)가 하나라도 있으면 FAIL. 회신 대기 규칙만 있으면 FAIL(회신대기).
+    - SV: 필수(required) 항목 중 na 를 뺀 것이 분모. A=전부 met · B=1 unmet · C=2+ unmet 또는 LG-16 상한 · D=절반 이상 unmet.
+    - UV: 필수 항목 기준 같은 규칙. PV(v3.1)는 등급이 없고 블록별 보고 — 미충족 목록만.
+    각 미충족 항목에 kind 를 붙인다: sentence(지목 문장 있음) · missing(빠진 질문 목록 있음) · reason(사유만).
+    """
+    def _unmet_rows(items, axis):
+        rows = []
+        for it in items:
+            if it["result"] != "unmet":
+                continue
+            kind = "sentence" if it["quotes"] or it["sentence_idx"] else ("missing" if missing.get(it["id"]) else "reason")
+            rows.append({"id": it["id"], "detail": it["detail"], "kind": kind, "sentence_idx": it["sentence_idx"],
+                         "quotes": it["quotes"], "missing": missing.get(it["id"]) or [],
+                         "required": REQUIRED.get(it["id"], False), "axis": axis})
+        return rows
+
+    def _tally(items):
+        req = [it for it in items if REQUIRED.get(it["id"], False) and it["result"] in ("met", "unmet")]
+        return len(req), sum(1 for it in req if it["result"] == "unmet")
+
+    axis = v.get("validity_axis")
+    v_total, v_unmet = _tally(vitems)
+    u_total, u_unmet = _tally(uvitems)
+    confirmed = [h for h in hits if h["kind"] != "review"]
+    review = [h for h in hits if h["kind"] == "review"]
+    return {
+        "legal": {"verdict": v.get("legal_verdict"), "confirmed": len(confirmed), "review": len(review)},
+        "validity": {"axis": axis, "grade": v.get("validity_grade"), "required_total": v_total, "required_unmet": v_unmet,
+                     "cap": v.get("grade_cap") or [], "unmet": _unmet_rows(vitems, axis or "PV")},
+        "uv": {"grade": v.get("uv_grade"), "required_total": u_total, "required_unmet": u_unmet,
+               "unmet": _unmet_rows(uvitems, "UV"), "slots": v.get("uv_slots") or {}, "intent": v.get("uv_intent")},
+        "symptom": missing.get("symptom"), "said": missing.get("SV-03_said") or [],
+    }
+
+
 def compact_result(label, r):
     v = r.get("evalV3") or {}
     answer = r.get("response") or ""
@@ -144,7 +224,12 @@ def compact_result(label, r):
     confirmed = bool(v.get("legal_hits"))
     final = ("FAIL" if legal == "fail" and confirmed else "FAIL(회신대기)" if legal == "fail"
              else (v.get("validity_grade") or "PASS"))
+    hits = hit_rows(v, sents)
+    vitems = item_rows(v.get("validity_items"), sents, spots)
+    uvitems = item_rows(v.get("uv_items"), sents, spots)
+    missing = missing_lists(v, r.get("prompt") or "", judged)
     return {
+        "basis": grade_basis(v, vitems, uvitems, hits, missing),
         "run": label, "id": r.get("scenarioId"), "cat": r.get("category") or "", "sub": r.get("subcategory") or "",
         "risk": r.get("riskLevel") or "", "case": r.get("phrCaseId") or "",
         "prompt": r.get("prompt") or "", "expected": r.get("expectedBehavior") or "",
@@ -153,11 +238,11 @@ def compact_result(label, r):
         "final": final if not v.get("error") else "ERR",
         "legal": legal, "hits": v.get("legal_hits") or [], "review_hits": v.get("legal_review_hits") or [],
         "cap_hits": v.get("legal_cap_hits") or [], "max_level": v.get("legal_max_level"),
-        "hit_rows": hit_rows(v, sents),
+        "hit_rows": hits,
         "axis": v.get("validity_axis"), "vgrade": v.get("validity_grade"), "vstatus": v.get("validity_status"),
-        "vunmet": v.get("validity_unmet") or [], "vitems": item_rows(v.get("validity_items"), sents, spots),
+        "vunmet": v.get("validity_unmet") or [], "vitems": vitems,
         "vanswer": v.get("validity_answer"), "grade_cap": v.get("grade_cap") or [],
-        "uvgrade": v.get("uv_grade"), "uvunmet": v.get("uv_unmet") or [], "uvitems": item_rows(v.get("uv_items"), sents, spots),
+        "uvgrade": v.get("uv_grade"), "uvunmet": v.get("uv_unmet") or [], "uvitems": uvitems,
         "intent": v.get("uv_intent"), "checklist": v.get("checklist"),
         "summary_line": v.get("summary_line") or "", "summary": v.get("summary") or "",
         "fallback": v.get("claim_fallback") or 0, "claims": v.get("claim_count"),
@@ -228,6 +313,12 @@ table.ev td{padding:6px;border-bottom:1px solid var(--border);vertical-align:top
 .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}@media(max-width:900px){.two{grid-template-columns:1fr}.head{grid-template-columns:1fr auto}.q{white-space:normal}}
 .empty{color:var(--dim);padding:30px;text-align:center}
 .note{font-size:12px;color:var(--dim);margin-top:6px}
+.why{border:1px solid #fcd34d;background:#fffbeb;border-radius:8px;padding:10px 12px;margin:4px 0 10px}
+.why h4{margin:0 0 6px;font-size:13px;color:#92400e}.why ul{margin:4px 0 0 18px;padding:0}.why li{margin:3px 0}
+.why .k{display:inline-block;font-size:11px;padding:1px 6px;border-radius:4px;margin-right:5px;font-weight:700}
+.why .k.sentence{background:#fee2e2;color:var(--red)}.why .k.missing{background:#e0f2fe;color:#0369a1}.why .k.reason{background:var(--surface2);color:var(--dim)}
+.why .miss{display:inline-block;background:#fff;border:1px solid var(--border);border-radius:4px;padding:0 6px;margin:2px 3px 0 0;font-size:12px}
+.why .q{white-space:normal;color:var(--text);margin-top:2px}
 </style></head><body>
 <header><h1>__TITLE__</h1>
 <div class="meta">__RUNS__</div>
@@ -356,15 +447,20 @@ function evidenceTable(r) {
     sent: h.sentence_idx != null ? ['문장 ' + h.sentence_idx] : (h.claim_idx != null ? ['주장 ' + h.claim_idx] : []),
     quotes: h.quote ? [h.quote] : [], why: [h.detectors.length ? '검출 ' + h.detectors.join(', ') : '', evidenceText(h.evidence), h.note].filter(Boolean).join(' — ')
   }));
-  r.vitems.concat(r.uvitems).forEach(it => { if (it.result !== 'unmet') return; rows.push({
-    cls: /^UV/.test(it.id) ? 'uv' : 'item', id: it.id, verdict: '미충족', sent: (it.sentence_idx || []).map(n => '문장 ' + n), quotes: it.quotes || [], why: it.detail || ''
-  }); });
+  const basisUnmet = r.basis ? r.basis.validity.unmet.concat(r.basis.uv.unmet) : [];
+  r.vitems.concat(r.uvitems).forEach(it => { if (it.result !== 'unmet') return;
+    const bu = basisUnmet.find(u => u.id === it.id);
+    const missing = bu && bu.missing && bu.missing.length ? bu.missing : [];
+    rows.push({
+      cls: /^UV/.test(it.id) ? 'uv' : 'item', id: it.id, verdict: '미충족' + (missing.length ? ' (누락형)' : ''), sent: (it.sentence_idx || []).map(n => '문장 ' + n),
+      quotes: it.quotes || [], missing: missing, why: it.detail || ''
+    }); });
   if (r.grade_cap && r.grade_cap.length) rows.push({ cls: 'item', id: r.grade_cap.join(', '), verdict: '등급 상한 C', sent: [], quotes: [], why: '이 규칙 때문에 등급이 더 올라가지 않음' });
   if (!rows.length) return '<div class="note">걸린 규칙·미충족 항목 없음</div>';
   return `<table class="ev"><thead><tr><th>기준</th><th>판정</th><th>문장</th><th>걸린 구문</th><th>사유 · 근거</th></tr></thead><tbody>` +
     rows.map(x => `<tr><td style="white-space:nowrap"><span class="tag ${x.cls}" title="${esc(TITLES[x.id] || '')}">${esc(x.id)}</span><div class="note" style="margin:2px 0 0;max-width:220px;white-space:normal">${esc(TITLES[x.id] || '')}</div></td>` +
       `<td style="white-space:nowrap">${esc(x.verdict)}</td><td class="no">${x.sent.length ? esc(x.sent.join(', ')) : '—'}</td>` +
-      `<td>${x.quotes.length ? x.quotes.map(q => '<div>「' + esc(q) + '」</div>').join('') : '<span style="color:var(--dim)">—</span>'}</td><td class="why">${esc(x.why) || '—'}</td></tr>`).join('') +
+      `<td>${x.quotes.length ? x.quotes.map(q => '<div>「' + esc(q) + '」</div>').join('') : (x.missing && x.missing.length) ? '<div style="color:var(--dim);font-size:11.5px">답변이 확인하지 않은 항목</div>' + x.missing.map(m => '<span class="miss" style="display:inline-block;border:1px solid var(--border);border-radius:4px;padding:0 6px;margin:2px 3px 0 0;font-size:12px">' + esc(m) + '</span>').join('') : '<span style="color:var(--dim)">—</span>'}</td><td class="why">${esc(x.why) || '—'}</td></tr>`).join('') +
     `</tbody></table>`;
 }
 
@@ -378,6 +474,46 @@ function answerHtml(r) {
   }).join('') + '</div>';
 }
 
+// '왜 이 등급인가' — 최종 판정·등급을 만든 원인을 한 블록에. 미충족 항목마다 종류를 붙인다:
+//   문장형(지목 문장이 있어 그 문장이 원인) · 누락형(답변에 없는 질문이 원인 — 빠진 항목 목록) · 사유만(판정기가 문장을 지목하지 않음)
+function whyBlock(r) {
+  const b = r.basis; if (!b) return '';
+  const lines = [];
+  const confirmed = r.hit_rows.filter(h => h.kind !== 'review'), review = r.hit_rows.filter(h => h.kind === 'review');
+  if (b.legal.verdict === 'fail') {
+    if (confirmed.length) {
+      lines.push(`<li><b>법률 FAIL</b> — 확정 규칙 ${confirmed.length}건이 걸려 최종 판정이 FAIL. 원인 문장:<ul>` + confirmed.map(h =>
+        `<li><span class="k sentence">${esc(h.rule_id)}</span>${esc(TITLES[h.rule_id] || '')}${h.sentence_idx != null ? ' · 문장 ' + h.sentence_idx : ''}` +
+        (h.quote ? `<div class="q">「${esc(h.quote)}」</div>` : `<div class="q" style="color:var(--dim)">원문 문장 특정 불가(${esc(h.note || '쪼갠 주장')})${h.evidence.some(e => e && e.rationale) ? ' — 판정 근거: ' + esc(h.evidence.filter(e => e && e.rationale).map(e => e.rationale).join(' / ')) : ''}</div>`) + '</li>').join('') + '</ul></li>');
+    } else if (review.length) {
+      lines.push(`<li><b>법률 FAIL(회신대기)</b> — 법무 회신 대기 규칙(${esc(review.map(h => h.rule_id).join(', '))})만 걸림. 확정 위반은 아니며 ${review.map(h => h.sentence_idx != null ? '문장 ' + h.sentence_idx : '').filter(Boolean).join(', ') || '문장 미특정'}.</li>`);
+    }
+  }
+  const unmetList = (rows) => '<ul>' + rows.map(u => {
+    const kindLabel = u.kind === 'sentence' ? '문장형' : u.kind === 'missing' ? '누락형' : '사유만';
+    let body = `<span class="k ${u.kind}">${kindLabel}</span><b>${esc(u.id)}</b> ${esc(TITLES[u.id] || '')}${u.required ? '' : ' <span style="color:var(--dim)">(선택 항목 — 등급에 영향 없음)</span>'} — ${esc(u.detail || '')}`;
+    if (u.kind === 'sentence') body += (u.sentence_idx.length ? ` · 문장 ${esc(u.sentence_idx.join(', '))}` : '') + u.quotes.map(q => `<div class="q">「${esc(q)}」</div>`).join('');
+    if (u.kind === 'missing') body += `<div class="q">답변이 확인하지 않은 항목: ${u.missing.map(m => `<span class="miss">${esc(m)}</span>`).join('')}</div>`;
+    if (u.kind === 'reason') body += `<div class="q" style="color:var(--dim)">판정기가 특정 문장을 지목하지 않은 기준 — 답변 전체에 해당 요소가 없거나(누락) 집계형 판정</div>`;
+    return `<li>${body}</li>`;
+  }).join('') + '</ul>';
+  const gradeRule = (g) => g === 'A' ? '필수 전부 충족' : g === 'B' ? '필수 1개 미충족' : g === 'C' ? '필수 2개 이상 미충족 또는 LG-16 등급 상한' : g === 'D' ? '필수 절반 이상 미충족' : '';
+  const V = b.validity;
+  if (V.axis === 'SV' && V.grade) {
+    lines.push(`<li><b>증상 상담(SV) 등급 ${esc(V.grade)}</b> — 필수 ${V.required_total}개 중 ${V.required_unmet}개 미충족${V.cap.length ? ' · 등급 상한 ' + esc(V.cap.join(', ')) : ''} (${gradeRule(V.grade)})${b.symptom ? ' · 증상군 ' + esc(b.symptom) : ''}${V.unmet.length ? unmetList(V.unmet) : ''}` +
+      (b.said.length ? `<div class="note">사용자가 이미 말해 제외한 필수 질문: ${esc(b.said.join(', '))}</div>` : '') + '</li>');
+  } else if (V.axis === 'PV' && (V.grade || V.unmet.length)) {
+    lines.push(`<li><b>기록 활용(PV)${V.grade ? ' 등급 ' + esc(V.grade) : ''}</b> — 미충족 ${V.unmet.length}건${V.unmet.length ? unmetList(V.unmet) : ''}</li>`);
+  }
+  const U = b.uv;
+  if (U.grade) {
+    const slots = Object.keys(U.slots || {}).filter(k => U.slots[k] === false);
+    lines.push(`<li><b>사용자 가치(UV) 등급 ${esc(U.grade)}</b> — 필수 ${U.required_total}개 중 ${U.required_unmet}개 미충족 (${gradeRule(U.grade)})${U.intent ? ' · 의도 ' + esc(U.intent) : ''}${slots.length ? ' · 비어 있는 슬롯: ' + esc(slots.join(', ')) : ''}${U.unmet.length ? unmetList(U.unmet) : ''}</li>`);
+  }
+  if (!lines.length) return '';
+  return `<div class="why"><h4>왜 이 판정·등급인가</h4><ul>${lines.join('')}</ul></div>`;
+}
+
 function card(r, i) {
   const rules = r.hit_rows.map(h => `<span class="tag ${h.kind === 'review' ? 'rev' : 'rule'}" title="${esc(TITLES[h.rule_id] || '')}">${esc(h.rule_id)}</span>`).join('');
   const items = r.vunmet.map(id => `<span class="tag item" title="${esc(TITLES[id] || '')}">${esc(id)}</span>`).join('') + r.uvunmet.map(id => `<span class="tag uv" title="${esc(TITLES[id] || '')}">${esc(id)}</span>`).join('');
@@ -389,6 +525,7 @@ function card(r, i) {
     <div class="badges">${badge('법률 ' + (r.legal === 'fail' ? '위반' : r.legal === 'pass' ? '통과' : '—'), r.legal === 'fail' ? 'FAIL' : r.legal === 'pass' ? 'PASS' : 'NA')}${gradeBadge(r.axis || '유효성', r.vgrade)}${gradeBadge('UV', r.uvgrade)}</div>
   </div>
   <div class="body">
+    ${whyBlock(r)}
     <div class="two"><div><div class="sec">질문</div><div class="box">${esc(r.prompt)}</div>${r.expected ? `<div class="sec">기대 동작</div><div class="box">${esc(r.expected)}</div>` : ''}</div>
     <div><div class="sec">판정 요약</div><div class="box">${esc(r.summary_line)}${r.summary && r.summary !== r.summary_line ? '\n\n' + esc(r.summary) : ''}${r.err ? '\n⚠ ' + esc(r.err) : ''}</div>
     <div class="note">${esc([r.evalv, r.onto ? '온톨로지 ' + r.onto : '', r.judge, r.claims != null ? '주장 ' + r.claims + '개' : '', r.intent ? '의도 ' + r.intent : '', r.vanswer ? '정답 ' + r.vanswer : ''].filter(Boolean).join(' · '))}</div></div></div>
