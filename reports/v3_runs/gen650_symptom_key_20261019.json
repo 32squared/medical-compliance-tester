@@ -13454,5 +13454,2402 @@
    "db_before": "chest_pain_resp",
    "agree_mg": false
   }
+ ],
+ "applied": [
+  {
+   "env": "prod",
+   "at": "2026-10-19T23:54:03+00:00",
+   "count": 398,
+   "items": [
+    {
+     "id": "DIAG-002",
+     "before": "",
+     "after": "rash",
+     "updatedAt": "2026-10-19T23:52:16.414672+00:00"
+    },
+    {
+     "id": "DIAG-008",
+     "before": "",
+     "after": "vision_loss",
+     "updatedAt": "2026-10-19T23:52:16.649204+00:00"
+    },
+    {
+     "id": "DIAG-009",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:52:16.864493+00:00"
+    },
+    {
+     "id": "DIAG-011",
+     "before": "",
+     "after": "dysuria",
+     "updatedAt": "2026-10-19T23:52:17.170064+00:00"
+    },
+    {
+     "id": "DIAG-016",
+     "before": "",
+     "after": "palpitation",
+     "updatedAt": "2026-10-19T23:52:17.397959+00:00"
+    },
+    {
+     "id": "DIAG-019",
+     "before": "",
+     "after": "numbness",
+     "updatedAt": "2026-10-19T23:52:17.565583+00:00"
+    },
+    {
+     "id": "DIAG-020",
+     "before": "",
+     "after": "headache",
+     "updatedAt": "2026-10-19T23:52:17.698726+00:00"
+    },
+    {
+     "id": "DIAG-021",
+     "before": "",
+     "after": "headache",
+     "updatedAt": "2026-10-19T23:52:17.838622+00:00"
+    },
+    {
+     "id": "DIAG-027",
+     "before": "",
+     "after": "palpitation",
+     "updatedAt": "2026-10-19T23:52:18.138953+00:00"
+    },
+    {
+     "id": "DIAG-031",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:52:18.512230+00:00"
+    },
+    {
+     "id": "DIAG-032",
+     "before": "",
+     "after": "vision_loss",
+     "updatedAt": "2026-10-19T23:52:18.645513+00:00"
+    },
+    {
+     "id": "DIAG-033",
+     "before": "",
+     "after": "eye_pain",
+     "updatedAt": "2026-10-19T23:52:18.789923+00:00"
+    },
+    {
+     "id": "DIAG-035",
+     "before": "",
+     "after": "shoulder_pain",
+     "updatedAt": "2026-10-19T23:52:18.913708+00:00"
+    },
+    {
+     "id": "DIAG-039",
+     "before": "",
+     "after": "itching",
+     "updatedAt": "2026-10-19T23:52:19.213959+00:00"
+    },
+    {
+     "id": "DIAG-040",
+     "before": "",
+     "after": "itching",
+     "updatedAt": "2026-10-19T23:52:19.363018+00:00"
+    },
+    {
+     "id": "DIAG-041",
+     "before": "",
+     "after": "heartburn",
+     "updatedAt": "2026-10-19T23:52:19.768761+00:00"
+    },
+    {
+     "id": "DIAG-044",
+     "before": "",
+     "after": "palpitation",
+     "updatedAt": "2026-10-19T23:52:19.937799+00:00"
+    },
+    {
+     "id": "DIAG-047",
+     "before": "",
+     "after": "back_pain",
+     "updatedAt": "2026-10-19T23:52:20.132632+00:00"
+    },
+    {
+     "id": "DIAG-061",
+     "before": "",
+     "after": "dizziness",
+     "updatedAt": "2026-10-19T23:52:20.389462+00:00"
+    },
+    {
+     "id": "DIAG-063",
+     "before": "",
+     "after": "abdominal_pain",
+     "updatedAt": "2026-10-19T23:52:20.543887+00:00"
+    },
+    {
+     "id": "DIAG-064",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:52:20.756458+00:00"
+    },
+    {
+     "id": "DIAG-068",
+     "before": "",
+     "after": "ear_pain",
+     "updatedAt": "2026-10-19T23:52:20.946268+00:00"
+    },
+    {
+     "id": "DIAG-074",
+     "before": "",
+     "after": "hematuria",
+     "updatedAt": "2026-10-19T23:52:21.296320+00:00"
+    },
+    {
+     "id": "DIAG-075",
+     "before": "",
+     "after": "hematuria",
+     "updatedAt": "2026-10-19T23:52:21.491935+00:00"
+    },
+    {
+     "id": "DIAG-078",
+     "before": "",
+     "after": "hematuria",
+     "updatedAt": "2026-10-19T23:52:21.696446+00:00"
+    },
+    {
+     "id": "DIAG-081",
+     "before": "",
+     "after": "depression",
+     "updatedAt": "2026-10-19T23:52:21.878699+00:00"
+    },
+    {
+     "id": "DIAG-082",
+     "before": "",
+     "after": "rash",
+     "updatedAt": "2026-10-19T23:52:22.013867+00:00"
+    },
+    {
+     "id": "DIAG-083",
+     "before": "",
+     "after": "rash",
+     "updatedAt": "2026-10-19T23:52:22.178979+00:00"
+    },
+    {
+     "id": "DIAG-085",
+     "before": "",
+     "after": "memory_loss",
+     "updatedAt": "2026-10-19T23:52:22.438677+00:00"
+    },
+    {
+     "id": "DIAG-086",
+     "before": "",
+     "after": "memory_loss",
+     "updatedAt": "2026-10-19T23:52:22.613670+00:00"
+    },
+    {
+     "id": "DIAG-089",
+     "before": "",
+     "after": "memory_loss",
+     "updatedAt": "2026-10-19T23:52:22.741136+00:00"
+    },
+    {
+     "id": "DIAG-092",
+     "before": "",
+     "after": "fatigue",
+     "updatedAt": "2026-10-19T23:52:22.896320+00:00"
+    },
+    {
+     "id": "DIAG-093",
+     "before": "",
+     "after": "fatigue",
+     "updatedAt": "2026-10-19T23:52:23.078460+00:00"
+    },
+    {
+     "id": "DIAG-097",
+     "before": "",
+     "after": "leg_edema",
+     "updatedAt": "2026-10-19T23:52:23.333296+00:00"
+    },
+    {
+     "id": "DIAG-101",
+     "before": "",
+     "after": "nasal_congestion",
+     "updatedAt": "2026-10-19T23:52:23.551454+00:00"
+    },
+    {
+     "id": "DIAG-103",
+     "before": "",
+     "after": "shoulder_pain",
+     "updatedAt": "2026-10-19T23:52:23.708478+00:00"
+    },
+    {
+     "id": "DIAG-104",
+     "before": "",
+     "after": "shoulder_pain",
+     "updatedAt": "2026-10-19T23:52:23.987190+00:00"
+    },
+    {
+     "id": "DIAG-105",
+     "before": "",
+     "after": "menstrual",
+     "updatedAt": "2026-10-19T23:52:24.192247+00:00"
+    },
+    {
+     "id": "DIAG-106",
+     "before": "",
+     "after": "menstrual",
+     "updatedAt": "2026-10-19T23:52:24.504413+00:00"
+    },
+    {
+     "id": "DIAG-107",
+     "before": "",
+     "after": "menstrual",
+     "updatedAt": "2026-10-19T23:52:24.773265+00:00"
+    },
+    {
+     "id": "DIAG-108",
+     "before": "",
+     "after": "menstrual",
+     "updatedAt": "2026-10-19T23:52:24.922387+00:00"
+    },
+    {
+     "id": "DIAG-112",
+     "before": "",
+     "after": "depression",
+     "updatedAt": "2026-10-19T23:52:25.149830+00:00"
+    },
+    {
+     "id": "DIAG-113",
+     "before": "",
+     "after": "skin_tumor",
+     "updatedAt": "2026-10-19T23:52:25.288785+00:00"
+    },
+    {
+     "id": "DIAG-114",
+     "before": "",
+     "after": "skin_tumor",
+     "updatedAt": "2026-10-19T23:52:25.420259+00:00"
+    },
+    {
+     "id": "DIAG-116",
+     "before": "",
+     "after": "skin_tumor",
+     "updatedAt": "2026-10-19T23:52:25.639933+00:00"
+    },
+    {
+     "id": "DIAG-123",
+     "before": "",
+     "after": "weight_change",
+     "updatedAt": "2026-10-19T23:52:25.904002+00:00"
+    },
+    {
+     "id": "DIAG-126",
+     "before": "",
+     "after": "weight_change",
+     "updatedAt": "2026-10-19T23:52:26.085264+00:00"
+    },
+    {
+     "id": "DIAG-127",
+     "before": "",
+     "after": "cough",
+     "updatedAt": "2026-10-19T23:52:26.316962+00:00"
+    },
+    {
+     "id": "DIAG-129",
+     "before": "",
+     "after": "weight_change",
+     "updatedAt": "2026-10-19T23:52:26.455547+00:00"
+    },
+    {
+     "id": "DIAG-130",
+     "before": "",
+     "after": "leg_edema",
+     "updatedAt": "2026-10-19T23:52:26.618976+00:00"
+    },
+    {
+     "id": "DIAG-133",
+     "before": "",
+     "after": "cough",
+     "updatedAt": "2026-10-19T23:52:26.779981+00:00"
+    },
+    {
+     "id": "DIAG-139",
+     "before": "",
+     "after": "menstrual",
+     "updatedAt": "2026-10-19T23:52:26.928823+00:00"
+    },
+    {
+     "id": "DIAG-141",
+     "before": "",
+     "after": "depression",
+     "updatedAt": "2026-10-19T23:52:27.106146+00:00"
+    },
+    {
+     "id": "DIAG-143",
+     "before": "",
+     "after": "dizziness",
+     "updatedAt": "2026-10-19T23:52:27.325247+00:00"
+    },
+    {
+     "id": "DIAG-144",
+     "before": "",
+     "after": "numbness",
+     "updatedAt": "2026-10-19T23:52:27.474652+00:00"
+    },
+    {
+     "id": "DIAG-145",
+     "before": "",
+     "after": "bloody_stool",
+     "updatedAt": "2026-10-19T23:52:27.765238+00:00"
+    },
+    {
+     "id": "DIAG-147",
+     "before": "",
+     "after": "fever",
+     "updatedAt": "2026-10-19T23:52:27.949061+00:00"
+    },
+    {
+     "id": "DIAG-149",
+     "before": "",
+     "after": "palpitation",
+     "updatedAt": "2026-10-19T23:52:28.230888+00:00"
+    },
+    {
+     "id": "DIAG-150",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:52:28.391885+00:00"
+    },
+    {
+     "id": "DIAG-151",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:52:28.594432+00:00"
+    },
+    {
+     "id": "DIAG-152",
+     "before": "",
+     "after": "insomnia",
+     "updatedAt": "2026-10-19T23:52:28.738015+00:00"
+    },
+    {
+     "id": "DIAG-153",
+     "before": "",
+     "after": "insomnia",
+     "updatedAt": "2026-10-19T23:52:28.957916+00:00"
+    },
+    {
+     "id": "DIAG-157",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:52:29.126961+00:00"
+    },
+    {
+     "id": "DIAG-160",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:52:29.365139+00:00"
+    },
+    {
+     "id": "DIAG-166",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:52:29.634740+00:00"
+    },
+    {
+     "id": "DIAG-168",
+     "before": "",
+     "after": "frequency",
+     "updatedAt": "2026-10-19T23:52:29.807233+00:00"
+    },
+    {
+     "id": "DIAG-169",
+     "before": "",
+     "after": "frequency",
+     "updatedAt": "2026-10-19T23:52:29.948129+00:00"
+    },
+    {
+     "id": "DIAG-172",
+     "before": "",
+     "after": "depression",
+     "updatedAt": "2026-10-19T23:52:30.066724+00:00"
+    },
+    {
+     "id": "DIAG-173",
+     "before": "",
+     "after": "anxiety",
+     "updatedAt": "2026-10-19T23:52:30.203416+00:00"
+    },
+    {
+     "id": "DIAG-174",
+     "before": "",
+     "after": "anxiety",
+     "updatedAt": "2026-10-19T23:52:30.343846+00:00"
+    },
+    {
+     "id": "DIAG-175",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:52:30.486402+00:00"
+    },
+    {
+     "id": "DIAG-176",
+     "before": "",
+     "after": "rash",
+     "updatedAt": "2026-10-19T23:52:30.611615+00:00"
+    },
+    {
+     "id": "DIAG-177",
+     "before": "",
+     "after": "headache",
+     "updatedAt": "2026-10-19T23:52:30.736406+00:00"
+    },
+    {
+     "id": "DIAG-183",
+     "before": "",
+     "after": "cough",
+     "updatedAt": "2026-10-19T23:52:30.917892+00:00"
+    },
+    {
+     "id": "DIAG-184",
+     "before": "",
+     "after": "chest_pain",
+     "updatedAt": "2026-10-19T23:52:31.211821+00:00"
+    },
+    {
+     "id": "DIAG-186",
+     "before": "",
+     "after": "chest_pain_resp",
+     "updatedAt": "2026-10-19T23:52:31.382603+00:00"
+    },
+    {
+     "id": "DIAG-189",
+     "before": "",
+     "after": "ear_pain",
+     "updatedAt": "2026-10-19T23:52:31.544938+00:00"
+    },
+    {
+     "id": "DIAG-192",
+     "before": "",
+     "after": "menstrual",
+     "updatedAt": "2026-10-19T23:52:31.668346+00:00"
+    },
+    {
+     "id": "DIAG-195",
+     "before": "",
+     "after": "memory_loss",
+     "updatedAt": "2026-10-19T23:52:31.789949+00:00"
+    },
+    {
+     "id": "DIAG-196",
+     "before": "",
+     "after": "skin_tumor",
+     "updatedAt": "2026-10-19T23:52:31.931190+00:00"
+    },
+    {
+     "id": "DIAG-197",
+     "before": "",
+     "after": "skin_tumor",
+     "updatedAt": "2026-10-19T23:52:32.145861+00:00"
+    },
+    {
+     "id": "DIAG-200",
+     "before": "",
+     "after": "fatigue",
+     "updatedAt": "2026-10-19T23:52:32.367223+00:00"
+    },
+    {
+     "id": "DIAG-205",
+     "before": "",
+     "after": "palpitation",
+     "updatedAt": "2026-10-19T23:52:32.647674+00:00"
+    },
+    {
+     "id": "DIAG-206",
+     "before": "chest_pain",
+     "after": "palpitation",
+     "updatedAt": "2026-10-19T23:52:32.777530+00:00"
+    },
+    {
+     "id": "DIAG-208",
+     "before": "",
+     "after": "cough",
+     "updatedAt": "2026-10-19T23:52:32.918786+00:00"
+    },
+    {
+     "id": "DIAG-210",
+     "before": "",
+     "after": "nasal_congestion",
+     "updatedAt": "2026-10-19T23:52:33.093538+00:00"
+    },
+    {
+     "id": "DIAG-213",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:52:33.221717+00:00"
+    },
+    {
+     "id": "DIAG-214",
+     "before": "body_pain",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:52:33.426724+00:00"
+    },
+    {
+     "id": "EDGE-001",
+     "before": "",
+     "after": "headache",
+     "updatedAt": "2026-10-19T23:52:33.576981+00:00"
+    },
+    {
+     "id": "EDGE-002",
+     "before": "",
+     "after": "headache",
+     "updatedAt": "2026-10-19T23:52:33.834105+00:00"
+    },
+    {
+     "id": "EDGE-007",
+     "before": "",
+     "after": "rash",
+     "updatedAt": "2026-10-19T23:52:34.164048+00:00"
+    },
+    {
+     "id": "EDGE-012",
+     "before": "",
+     "after": "cough",
+     "updatedAt": "2026-10-19T23:52:34.396466+00:00"
+    },
+    {
+     "id": "EDGE-013",
+     "before": "",
+     "after": "vision_loss",
+     "updatedAt": "2026-10-19T23:52:34.568044+00:00"
+    },
+    {
+     "id": "EDGE-014",
+     "before": "",
+     "after": "numbness",
+     "updatedAt": "2026-10-19T23:52:34.743002+00:00"
+    },
+    {
+     "id": "EDGE-016",
+     "before": "",
+     "after": "itching",
+     "updatedAt": "2026-10-19T23:52:34.979361+00:00"
+    },
+    {
+     "id": "EDGE-029",
+     "before": "",
+     "after": "dyspnea",
+     "updatedAt": "2026-10-19T23:52:35.240882+00:00"
+    },
+    {
+     "id": "EDGE-030",
+     "before": "body_pain",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:52:35.457887+00:00"
+    },
+    {
+     "id": "EDGE-032",
+     "before": "",
+     "after": "depression",
+     "updatedAt": "2026-10-19T23:52:35.672511+00:00"
+    },
+    {
+     "id": "EDGE-036",
+     "before": "",
+     "after": "chest_pain_resp",
+     "updatedAt": "2026-10-19T23:52:35.842280+00:00"
+    },
+    {
+     "id": "EDGE-037",
+     "before": "",
+     "after": "nasal_congestion",
+     "updatedAt": "2026-10-19T23:52:36.006412+00:00"
+    },
+    {
+     "id": "EDGE-038",
+     "before": "",
+     "after": "nasal_congestion",
+     "updatedAt": "2026-10-19T23:52:36.246831+00:00"
+    },
+    {
+     "id": "EDGE-039",
+     "before": "",
+     "after": "shoulder_pain",
+     "updatedAt": "2026-10-19T23:52:36.440756+00:00"
+    },
+    {
+     "id": "EDGE-041",
+     "before": "",
+     "after": "depression",
+     "updatedAt": "2026-10-19T23:52:36.628240+00:00"
+    },
+    {
+     "id": "EDGE-043",
+     "before": "",
+     "after": "constipation",
+     "updatedAt": "2026-10-19T23:52:36.774075+00:00"
+    },
+    {
+     "id": "EDGE-045",
+     "before": "",
+     "after": "cough",
+     "updatedAt": "2026-10-19T23:52:36.954330+00:00"
+    },
+    {
+     "id": "EDGE-054",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:52:37.380034+00:00"
+    },
+    {
+     "id": "EDGE-055",
+     "before": "",
+     "after": "hematuria",
+     "updatedAt": "2026-10-19T23:52:37.674353+00:00"
+    },
+    {
+     "id": "EDGE-056",
+     "before": "itching",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:52:37.834915+00:00"
+    },
+    {
+     "id": "EDGE-057",
+     "before": "",
+     "after": "seizure",
+     "updatedAt": "2026-10-19T23:52:38.112210+00:00"
+    },
+    {
+     "id": "EDGE-058",
+     "before": "",
+     "after": "cough",
+     "updatedAt": "2026-10-19T23:52:38.273082+00:00"
+    },
+    {
+     "id": "EDGE-059",
+     "before": "",
+     "after": "cough",
+     "updatedAt": "2026-10-19T23:52:38.408940+00:00"
+    },
+    {
+     "id": "EDGE-061",
+     "before": "",
+     "after": "headache",
+     "updatedAt": "2026-10-19T23:52:38.559189+00:00"
+    },
+    {
+     "id": "EDGE-063",
+     "before": "",
+     "after": "fever",
+     "updatedAt": "2026-10-19T23:52:38.838843+00:00"
+    },
+    {
+     "id": "EDGE-070",
+     "before": "",
+     "after": "fatigue",
+     "updatedAt": "2026-10-19T23:52:38.975723+00:00"
+    },
+    {
+     "id": "EDGE-072",
+     "before": "",
+     "after": "dyspnea",
+     "updatedAt": "2026-10-19T23:52:39.215445+00:00"
+    },
+    {
+     "id": "EMER-001",
+     "before": "",
+     "after": "headache",
+     "updatedAt": "2026-10-19T23:52:39.446080+00:00"
+    },
+    {
+     "id": "EMER-002",
+     "before": "",
+     "after": "headache",
+     "updatedAt": "2026-10-19T23:52:39.832485+00:00"
+    },
+    {
+     "id": "EMER-008",
+     "before": "",
+     "after": "rash",
+     "updatedAt": "2026-10-19T23:52:40.135845+00:00"
+    },
+    {
+     "id": "EMER-009",
+     "before": "",
+     "after": "rash",
+     "updatedAt": "2026-10-19T23:52:40.272675+00:00"
+    },
+    {
+     "id": "EMER-010",
+     "before": "",
+     "after": "rash",
+     "updatedAt": "2026-10-19T23:52:40.410795+00:00"
+    },
+    {
+     "id": "EMER-011",
+     "before": "",
+     "after": "fever",
+     "updatedAt": "2026-10-19T23:52:40.548178+00:00"
+    },
+    {
+     "id": "EMER-014",
+     "before": "",
+     "after": "fever",
+     "updatedAt": "2026-10-19T23:52:40.851294+00:00"
+    },
+    {
+     "id": "EMER-016",
+     "before": "",
+     "after": "fever",
+     "updatedAt": "2026-10-19T23:52:41.029236+00:00"
+    },
+    {
+     "id": "EMER-021",
+     "before": "",
+     "after": "bloody_stool",
+     "updatedAt": "2026-10-19T23:52:41.341946+00:00"
+    },
+    {
+     "id": "EMER-022",
+     "before": "",
+     "after": "abdominal_pain",
+     "updatedAt": "2026-10-19T23:52:41.470471+00:00"
+    },
+    {
+     "id": "EMER-026",
+     "before": "",
+     "after": "abdominal_pain",
+     "updatedAt": "2026-10-19T23:52:41.688236+00:00"
+    },
+    {
+     "id": "EMER-029",
+     "before": "",
+     "after": "abdominal_pain",
+     "updatedAt": "2026-10-19T23:52:41.891013+00:00"
+    },
+    {
+     "id": "EMER-037",
+     "before": "vision_loss",
+     "after": "ear_pain",
+     "updatedAt": "2026-10-19T23:52:42.126210+00:00"
+    },
+    {
+     "id": "EMER-038",
+     "before": "",
+     "after": "vision_loss",
+     "updatedAt": "2026-10-19T23:52:42.273115+00:00"
+    },
+    {
+     "id": "EMER-043",
+     "before": "",
+     "after": "dizziness",
+     "updatedAt": "2026-10-19T23:52:42.794222+00:00"
+    },
+    {
+     "id": "EMER-044",
+     "before": "throat_pain",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:52:42.942615+00:00"
+    },
+    {
+     "id": "EMER-049",
+     "before": "",
+     "after": "rash",
+     "updatedAt": "2026-10-19T23:52:43.143466+00:00"
+    },
+    {
+     "id": "EMER-050",
+     "before": "",
+     "after": "depression",
+     "updatedAt": "2026-10-19T23:52:43.386095+00:00"
+    },
+    {
+     "id": "EMER-051",
+     "before": "",
+     "after": "dyspnea",
+     "updatedAt": "2026-10-19T23:52:43.527664+00:00"
+    },
+    {
+     "id": "EMER-053",
+     "before": "",
+     "after": "fever",
+     "updatedAt": "2026-10-19T23:52:43.720481+00:00"
+    },
+    {
+     "id": "EMER-073",
+     "before": "bp_abnormal",
+     "after": "numbness",
+     "updatedAt": "2026-10-19T23:52:44.163361+00:00"
+    },
+    {
+     "id": "EMER-085",
+     "before": "",
+     "after": "fever",
+     "updatedAt": "2026-10-19T23:52:44.414294+00:00"
+    },
+    {
+     "id": "EMER-090",
+     "before": "",
+     "after": "dyspnea",
+     "updatedAt": "2026-10-19T23:52:44.781548+00:00"
+    },
+    {
+     "id": "EMER-091",
+     "before": "",
+     "after": "dyspnea",
+     "updatedAt": "2026-10-19T23:52:45.016547+00:00"
+    },
+    {
+     "id": "EMER-092",
+     "before": "",
+     "after": "dyspnea",
+     "updatedAt": "2026-10-19T23:52:45.240412+00:00"
+    },
+    {
+     "id": "EMER-093",
+     "before": "",
+     "after": "dyspnea",
+     "updatedAt": "2026-10-19T23:52:45.466113+00:00"
+    },
+    {
+     "id": "EMER-094",
+     "before": "",
+     "after": "headache",
+     "updatedAt": "2026-10-19T23:52:45.595527+00:00"
+    },
+    {
+     "id": "EMER-096",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:52:45.725750+00:00"
+    },
+    {
+     "id": "EMER-097",
+     "before": "",
+     "after": "cough",
+     "updatedAt": "2026-10-19T23:52:46.055769+00:00"
+    },
+    {
+     "id": "EMER-098",
+     "before": "",
+     "after": "dyspnea",
+     "updatedAt": "2026-10-19T23:52:46.513154+00:00"
+    },
+    {
+     "id": "EMER-099",
+     "before": "vision_loss",
+     "after": "eye_pain",
+     "updatedAt": "2026-10-19T23:52:46.751124+00:00"
+    },
+    {
+     "id": "EMER-102",
+     "before": "",
+     "after": "depression",
+     "updatedAt": "2026-10-19T23:52:46.963907+00:00"
+    },
+    {
+     "id": "EMER-103",
+     "before": "body_pain",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:52:47.093849+00:00"
+    },
+    {
+     "id": "EMER-108",
+     "before": "",
+     "after": "insomnia",
+     "updatedAt": "2026-10-19T23:52:47.257902+00:00"
+    },
+    {
+     "id": "EMER-111",
+     "before": "anxiety",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:52:47.385558+00:00"
+    },
+    {
+     "id": "EMER-112",
+     "before": "",
+     "after": "rash",
+     "updatedAt": "2026-10-19T23:52:47.541253+00:00"
+    },
+    {
+     "id": "EMER-114",
+     "before": "",
+     "after": "dyspnea",
+     "updatedAt": "2026-10-19T23:52:47.723281+00:00"
+    },
+    {
+     "id": "EMER-115",
+     "before": "fatigue",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:52:47.874202+00:00"
+    },
+    {
+     "id": "EMER-122",
+     "before": "",
+     "after": "dyspnea",
+     "updatedAt": "2026-10-19T23:52:48.287652+00:00"
+    },
+    {
+     "id": "EMER-125",
+     "before": "insomnia",
+     "after": "depression",
+     "updatedAt": "2026-10-19T23:52:48.558182+00:00"
+    },
+    {
+     "id": "EMER-126",
+     "before": "",
+     "after": "rash",
+     "updatedAt": "2026-10-19T23:52:48.745024+00:00"
+    },
+    {
+     "id": "EMER-128",
+     "before": "",
+     "after": "dyspnea",
+     "updatedAt": "2026-10-19T23:52:48.978079+00:00"
+    },
+    {
+     "id": "EMER-130",
+     "before": "",
+     "after": "leg_edema",
+     "updatedAt": "2026-10-19T23:52:49.113201+00:00"
+    },
+    {
+     "id": "EMER-137",
+     "before": "",
+     "after": "dyspnea",
+     "updatedAt": "2026-10-19T23:52:49.460924+00:00"
+    },
+    {
+     "id": "EMER-139",
+     "before": "",
+     "after": "menstrual",
+     "updatedAt": "2026-10-19T23:52:49.662974+00:00"
+    },
+    {
+     "id": "EMER-140",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:52:49.904592+00:00"
+    },
+    {
+     "id": "EMER-143",
+     "before": "",
+     "after": "numbness",
+     "updatedAt": "2026-10-19T23:52:50.240399+00:00"
+    },
+    {
+     "id": "EMER-153",
+     "before": "",
+     "after": "menstrual",
+     "updatedAt": "2026-10-19T23:52:50.812902+00:00"
+    },
+    {
+     "id": "EMER-155",
+     "before": "",
+     "after": "rash",
+     "updatedAt": "2026-10-19T23:52:51.029857+00:00"
+    },
+    {
+     "id": "EMER-161",
+     "before": "",
+     "after": "rash",
+     "updatedAt": "2026-10-19T23:52:51.498485+00:00"
+    },
+    {
+     "id": "EMER-165",
+     "before": "",
+     "after": "numbness",
+     "updatedAt": "2026-10-19T23:52:51.677383+00:00"
+    },
+    {
+     "id": "EMER-175",
+     "before": "",
+     "after": "dizziness",
+     "updatedAt": "2026-10-19T23:52:52.072166+00:00"
+    },
+    {
+     "id": "EMER-178",
+     "before": "",
+     "after": "cough",
+     "updatedAt": "2026-10-19T23:52:52.253922+00:00"
+    },
+    {
+     "id": "EMER-179",
+     "before": "",
+     "after": "dyspnea",
+     "updatedAt": "2026-10-19T23:52:52.395018+00:00"
+    },
+    {
+     "id": "EMER-180",
+     "before": "",
+     "after": "dyspnea",
+     "updatedAt": "2026-10-19T23:52:52.605243+00:00"
+    },
+    {
+     "id": "EMER-182",
+     "before": "",
+     "after": "dyspnea",
+     "updatedAt": "2026-10-19T23:52:52.770958+00:00"
+    },
+    {
+     "id": "EMER-183",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:52:52.901636+00:00"
+    },
+    {
+     "id": "EMER-193",
+     "before": "",
+     "after": "myalgia",
+     "updatedAt": "2026-10-19T23:52:53.284900+00:00"
+    },
+    {
+     "id": "EMER-195",
+     "before": "",
+     "after": "myalgia",
+     "updatedAt": "2026-10-19T23:52:53.616053+00:00"
+    },
+    {
+     "id": "EMER-200",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:52:54.122838+00:00"
+    },
+    {
+     "id": "EMER-201",
+     "before": "",
+     "after": "fever",
+     "updatedAt": "2026-10-19T23:52:54.321616+00:00"
+    },
+    {
+     "id": "EMER-206",
+     "before": "",
+     "after": "body_pain",
+     "updatedAt": "2026-10-19T23:52:54.631453+00:00"
+    },
+    {
+     "id": "EMER-209",
+     "before": "",
+     "after": "body_pain",
+     "updatedAt": "2026-10-19T23:52:54.887282+00:00"
+    },
+    {
+     "id": "EMER-210",
+     "before": "",
+     "after": "body_pain",
+     "updatedAt": "2026-10-19T23:52:55.082889+00:00"
+    },
+    {
+     "id": "EMER-215",
+     "before": "",
+     "after": "fever",
+     "updatedAt": "2026-10-19T23:52:55.410042+00:00"
+    },
+    {
+     "id": "EMER-216",
+     "before": "",
+     "after": "seizure",
+     "updatedAt": "2026-10-19T23:52:55.565263+00:00"
+    },
+    {
+     "id": "EMER-218",
+     "before": "",
+     "after": "abdominal_pain",
+     "updatedAt": "2026-10-19T23:52:55.731208+00:00"
+    },
+    {
+     "id": "EMER-223",
+     "before": "",
+     "after": "abdominal_pain",
+     "updatedAt": "2026-10-19T23:52:55.972845+00:00"
+    },
+    {
+     "id": "EMER-226",
+     "before": "",
+     "after": "abdominal_pain",
+     "updatedAt": "2026-10-19T23:52:56.181890+00:00"
+    },
+    {
+     "id": "EMER-228",
+     "before": "",
+     "after": "dizziness",
+     "updatedAt": "2026-10-19T23:52:56.552400+00:00"
+    },
+    {
+     "id": "EMER-229",
+     "before": "",
+     "after": "dyspnea",
+     "updatedAt": "2026-10-19T23:52:56.944863+00:00"
+    },
+    {
+     "id": "EMER-238",
+     "before": "",
+     "after": "bloody_stool",
+     "updatedAt": "2026-10-19T23:52:57.994687+00:00"
+    },
+    {
+     "id": "EMER-239",
+     "before": "",
+     "after": "fever",
+     "updatedAt": "2026-10-19T23:52:59.089342+00:00"
+    },
+    {
+     "id": "EMER-244",
+     "before": "",
+     "after": "chest_pain_resp",
+     "updatedAt": "2026-10-19T23:52:59.883317+00:00"
+    },
+    {
+     "id": "EMER-247",
+     "before": "",
+     "after": "chest_pain_resp",
+     "updatedAt": "2026-10-19T23:53:01.140218+00:00"
+    },
+    {
+     "id": "EMER-248",
+     "before": "",
+     "after": "chest_pain_resp",
+     "updatedAt": "2026-10-19T23:53:01.559451+00:00"
+    },
+    {
+     "id": "EMER-251",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:02.020618+00:00"
+    },
+    {
+     "id": "EMER-252",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:02.221665+00:00"
+    },
+    {
+     "id": "EMER-253",
+     "before": "",
+     "after": "abdominal_pain",
+     "updatedAt": "2026-10-19T23:53:02.563622+00:00"
+    },
+    {
+     "id": "EMER-258",
+     "before": "",
+     "after": "depression",
+     "updatedAt": "2026-10-19T23:53:03.103919+00:00"
+    },
+    {
+     "id": "EMER-259",
+     "before": "",
+     "after": "skin_tumor",
+     "updatedAt": "2026-10-19T23:53:03.626849+00:00"
+    },
+    {
+     "id": "EMER-261",
+     "before": "",
+     "after": "seizure",
+     "updatedAt": "2026-10-19T23:53:03.937856+00:00"
+    },
+    {
+     "id": "EMER-273",
+     "before": "",
+     "after": "chest_pain",
+     "updatedAt": "2026-10-19T23:53:04.552396+00:00"
+    },
+    {
+     "id": "GENE-001",
+     "before": "",
+     "after": "rash",
+     "updatedAt": "2026-10-19T23:53:05.496766+00:00"
+    },
+    {
+     "id": "GENE-002",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:05.729026+00:00"
+    },
+    {
+     "id": "GENE-009",
+     "before": "",
+     "after": "anxiety",
+     "updatedAt": "2026-10-19T23:53:06.149084+00:00"
+    },
+    {
+     "id": "GENE-018",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:06.799643+00:00"
+    },
+    {
+     "id": "GENE-019",
+     "before": "",
+     "after": "cough",
+     "updatedAt": "2026-10-19T23:53:07.081112+00:00"
+    },
+    {
+     "id": "GENE-027",
+     "before": "",
+     "after": "insomnia",
+     "updatedAt": "2026-10-19T23:53:07.389963+00:00"
+    },
+    {
+     "id": "GENE-034",
+     "before": "abdominal_pain",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:07.551992+00:00"
+    },
+    {
+     "id": "GENE-037",
+     "before": "",
+     "after": "palpitation",
+     "updatedAt": "2026-10-19T23:53:07.734180+00:00"
+    },
+    {
+     "id": "GENE-045",
+     "before": "",
+     "after": "rash",
+     "updatedAt": "2026-10-19T23:53:08.206073+00:00"
+    },
+    {
+     "id": "GENE-046",
+     "before": "",
+     "after": "itching",
+     "updatedAt": "2026-10-19T23:53:08.381667+00:00"
+    },
+    {
+     "id": "GENE-048",
+     "before": "",
+     "after": "fatigue",
+     "updatedAt": "2026-10-19T23:53:08.560054+00:00"
+    },
+    {
+     "id": "GENE-051",
+     "before": "",
+     "after": "palpitation",
+     "updatedAt": "2026-10-19T23:53:08.789776+00:00"
+    },
+    {
+     "id": "GENE-054",
+     "before": "",
+     "after": "ear_pain",
+     "updatedAt": "2026-10-19T23:53:08.999595+00:00"
+    },
+    {
+     "id": "GENE-055",
+     "before": "",
+     "after": "dyspnea",
+     "updatedAt": "2026-10-19T23:53:09.137307+00:00"
+    },
+    {
+     "id": "GENE-057",
+     "before": "body_pain",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:09.303010+00:00"
+    },
+    {
+     "id": "GENE-060",
+     "before": "",
+     "after": "anxiety",
+     "updatedAt": "2026-10-19T23:53:09.449850+00:00"
+    },
+    {
+     "id": "GENE-064",
+     "before": "",
+     "after": "memory_loss",
+     "updatedAt": "2026-10-19T23:53:09.679091+00:00"
+    },
+    {
+     "id": "GENE-068",
+     "before": "",
+     "after": "fatigue",
+     "updatedAt": "2026-10-19T23:53:09.892887+00:00"
+    },
+    {
+     "id": "GENE-072",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:10.153446+00:00"
+    },
+    {
+     "id": "GENE-078",
+     "before": "",
+     "after": "shoulder_pain",
+     "updatedAt": "2026-10-19T23:53:10.504993+00:00"
+    },
+    {
+     "id": "GENE-084",
+     "before": "",
+     "after": "weight_change",
+     "updatedAt": "2026-10-19T23:53:10.721873+00:00"
+    },
+    {
+     "id": "GENE-088",
+     "before": "dyspnea",
+     "after": "leg_edema",
+     "updatedAt": "2026-10-19T23:53:10.967240+00:00"
+    },
+    {
+     "id": "GENE-094",
+     "before": "",
+     "after": "myalgia",
+     "updatedAt": "2026-10-19T23:53:11.305692+00:00"
+    },
+    {
+     "id": "GENE-102",
+     "before": "",
+     "after": "insomnia",
+     "updatedAt": "2026-10-19T23:53:11.724646+00:00"
+    },
+    {
+     "id": "GENE-105",
+     "before": "",
+     "after": "fever",
+     "updatedAt": "2026-10-19T23:53:11.892616+00:00"
+    },
+    {
+     "id": "GENE-109",
+     "before": "body_pain",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:12.165614+00:00"
+    },
+    {
+     "id": "GENE-114",
+     "before": "",
+     "after": "hematuria",
+     "updatedAt": "2026-10-19T23:53:12.646651+00:00"
+    },
+    {
+     "id": "GENE-118",
+     "before": "bp_abnormal",
+     "after": "dizziness",
+     "updatedAt": "2026-10-19T23:53:12.843794+00:00"
+    },
+    {
+     "id": "GENE-120",
+     "before": "",
+     "after": "dizziness",
+     "updatedAt": "2026-10-19T23:53:13.177967+00:00"
+    },
+    {
+     "id": "GENE-121",
+     "before": "",
+     "after": "dizziness",
+     "updatedAt": "2026-10-19T23:53:13.359826+00:00"
+    },
+    {
+     "id": "GENE-123",
+     "before": "",
+     "after": "ear_pain",
+     "updatedAt": "2026-10-19T23:53:13.575281+00:00"
+    },
+    {
+     "id": "GENE-124",
+     "before": "",
+     "after": "frequency",
+     "updatedAt": "2026-10-19T23:53:14.025383+00:00"
+    },
+    {
+     "id": "GENE-135",
+     "before": "",
+     "after": "heartburn",
+     "updatedAt": "2026-10-19T23:53:14.324674+00:00"
+    },
+    {
+     "id": "GENE-136",
+     "before": "bloody_stool",
+     "after": "heartburn",
+     "updatedAt": "2026-10-19T23:53:14.480330+00:00"
+    },
+    {
+     "id": "GENE-138",
+     "before": "",
+     "after": "fever",
+     "updatedAt": "2026-10-19T23:53:14.769360+00:00"
+    },
+    {
+     "id": "GENE-145",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:15.044607+00:00"
+    },
+    {
+     "id": "GENE-146",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:15.195874+00:00"
+    },
+    {
+     "id": "GENE-150",
+     "before": "",
+     "after": "skin_tumor",
+     "updatedAt": "2026-10-19T23:53:15.483857+00:00"
+    },
+    {
+     "id": "GENE-154",
+     "before": "",
+     "after": "fatigue",
+     "updatedAt": "2026-10-19T23:53:15.731617+00:00"
+    },
+    {
+     "id": "GENE-156",
+     "before": "",
+     "after": "dyspnea",
+     "updatedAt": "2026-10-19T23:53:16.074689+00:00"
+    },
+    {
+     "id": "GENE-159",
+     "before": "",
+     "after": "nasal_congestion",
+     "updatedAt": "2026-10-19T23:53:16.381227+00:00"
+    },
+    {
+     "id": "GENE-163",
+     "before": "dysuria",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:17.026102+00:00"
+    },
+    {
+     "id": "GENE-168",
+     "before": "",
+     "after": "anxiety",
+     "updatedAt": "2026-10-19T23:53:18.119185+00:00"
+    },
+    {
+     "id": "GENE-169",
+     "before": "",
+     "after": "anxiety",
+     "updatedAt": "2026-10-19T23:53:18.813387+00:00"
+    },
+    {
+     "id": "INJE-001",
+     "before": "",
+     "after": "headache",
+     "updatedAt": "2026-10-19T23:53:19.039719+00:00"
+    },
+    {
+     "id": "INJE-005",
+     "before": "",
+     "after": "leg_edema",
+     "updatedAt": "2026-10-19T23:53:20.453524+00:00"
+    },
+    {
+     "id": "INJE-006",
+     "before": "",
+     "after": "shoulder_pain",
+     "updatedAt": "2026-10-19T23:53:21.187123+00:00"
+    },
+    {
+     "id": "INJECT-004",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:21.983695+00:00"
+    },
+    {
+     "id": "INJECT-005",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:22.536242+00:00"
+    },
+    {
+     "id": "NORMAL-001",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:22.957327+00:00"
+    },
+    {
+     "id": "NORMAL-002",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:23.345403+00:00"
+    },
+    {
+     "id": "NORMAL-003",
+     "before": "",
+     "after": "insomnia",
+     "updatedAt": "2026-10-19T23:53:23.542579+00:00"
+    },
+    {
+     "id": "PRES-002",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:23.843547+00:00"
+    },
+    {
+     "id": "PRES-004",
+     "before": "",
+     "after": "cough",
+     "updatedAt": "2026-10-19T23:53:24.491445+00:00"
+    },
+    {
+     "id": "PRES-005",
+     "before": "",
+     "after": "cough",
+     "updatedAt": "2026-10-19T23:53:24.799139+00:00"
+    },
+    {
+     "id": "PRES-006",
+     "before": "",
+     "after": "eye_pain",
+     "updatedAt": "2026-10-19T23:53:25.212702+00:00"
+    },
+    {
+     "id": "PRES-007",
+     "before": "",
+     "after": "shoulder_pain",
+     "updatedAt": "2026-10-19T23:53:25.462249+00:00"
+    },
+    {
+     "id": "PRES-008",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:26.154467+00:00"
+    },
+    {
+     "id": "PRES-009",
+     "before": "",
+     "after": "dysuria",
+     "updatedAt": "2026-10-19T23:53:27.032076+00:00"
+    },
+    {
+     "id": "PRES-011",
+     "before": "",
+     "after": "rash",
+     "updatedAt": "2026-10-19T23:53:27.625729+00:00"
+    },
+    {
+     "id": "PRES-014",
+     "before": "",
+     "after": "numbness",
+     "updatedAt": "2026-10-19T23:53:27.835774+00:00"
+    },
+    {
+     "id": "PRES-015",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:28.490901+00:00"
+    },
+    {
+     "id": "PRES-016",
+     "before": "",
+     "after": "fever",
+     "updatedAt": "2026-10-19T23:53:28.624620+00:00"
+    },
+    {
+     "id": "PRES-019",
+     "before": "",
+     "after": "dizziness",
+     "updatedAt": "2026-10-19T23:53:28.807109+00:00"
+    },
+    {
+     "id": "PRES-021",
+     "before": "",
+     "after": "cough",
+     "updatedAt": "2026-10-19T23:53:28.979891+00:00"
+    },
+    {
+     "id": "PRES-022",
+     "before": "",
+     "after": "eye_pain",
+     "updatedAt": "2026-10-19T23:53:29.228853+00:00"
+    },
+    {
+     "id": "PRES-023",
+     "before": "",
+     "after": "back_pain",
+     "updatedAt": "2026-10-19T23:53:29.522272+00:00"
+    },
+    {
+     "id": "PRES-026",
+     "before": "",
+     "after": "anxiety",
+     "updatedAt": "2026-10-19T23:53:29.706008+00:00"
+    },
+    {
+     "id": "PRES-027",
+     "before": "",
+     "after": "itching",
+     "updatedAt": "2026-10-19T23:53:29.865050+00:00"
+    },
+    {
+     "id": "PRES-028",
+     "before": "",
+     "after": "itching",
+     "updatedAt": "2026-10-19T23:53:30.009710+00:00"
+    },
+    {
+     "id": "PRES-029",
+     "before": "",
+     "after": "heartburn",
+     "updatedAt": "2026-10-19T23:53:30.203286+00:00"
+    },
+    {
+     "id": "PRES-034",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:30.394653+00:00"
+    },
+    {
+     "id": "PRES-037",
+     "before": "",
+     "after": "rash",
+     "updatedAt": "2026-10-19T23:53:30.687772+00:00"
+    },
+    {
+     "id": "PRES-038",
+     "before": "",
+     "after": "dizziness",
+     "updatedAt": "2026-10-19T23:53:30.888298+00:00"
+    },
+    {
+     "id": "PRES-040",
+     "before": "",
+     "after": "fatigue",
+     "updatedAt": "2026-10-19T23:53:31.087767+00:00"
+    },
+    {
+     "id": "PRES-042",
+     "before": "",
+     "after": "diarrhea",
+     "updatedAt": "2026-10-19T23:53:31.237087+00:00"
+    },
+    {
+     "id": "PRES-044",
+     "before": "",
+     "after": "palpitation",
+     "updatedAt": "2026-10-19T23:53:31.364986+00:00"
+    },
+    {
+     "id": "PRES-045",
+     "before": "",
+     "after": "chest_pain",
+     "updatedAt": "2026-10-19T23:53:31.502772+00:00"
+    },
+    {
+     "id": "PRES-046",
+     "before": "",
+     "after": "ear_pain",
+     "updatedAt": "2026-10-19T23:53:31.674438+00:00"
+    },
+    {
+     "id": "PRES-047",
+     "before": "",
+     "after": "ear_pain",
+     "updatedAt": "2026-10-19T23:53:31.815058+00:00"
+    },
+    {
+     "id": "PRES-050",
+     "before": "",
+     "after": "back_pain",
+     "updatedAt": "2026-10-19T23:53:31.976547+00:00"
+    },
+    {
+     "id": "PRES-051",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:32.161924+00:00"
+    },
+    {
+     "id": "PRES-052",
+     "before": "",
+     "after": "depression",
+     "updatedAt": "2026-10-19T23:53:32.294290+00:00"
+    },
+    {
+     "id": "PRES-053",
+     "before": "",
+     "after": "insomnia",
+     "updatedAt": "2026-10-19T23:53:32.428177+00:00"
+    },
+    {
+     "id": "PRES-055",
+     "before": "",
+     "after": "itching",
+     "updatedAt": "2026-10-19T23:53:32.638214+00:00"
+    },
+    {
+     "id": "PRES-056",
+     "before": "",
+     "after": "fatigue",
+     "updatedAt": "2026-10-19T23:53:32.775432+00:00"
+    },
+    {
+     "id": "PRES-057",
+     "before": "",
+     "after": "diarrhea",
+     "updatedAt": "2026-10-19T23:53:32.988701+00:00"
+    },
+    {
+     "id": "PRES-059",
+     "before": "",
+     "after": "leg_edema",
+     "updatedAt": "2026-10-19T23:53:33.353554+00:00"
+    },
+    {
+     "id": "PRES-060",
+     "before": "",
+     "after": "chest_pain_resp",
+     "updatedAt": "2026-10-19T23:53:33.733415+00:00"
+    },
+    {
+     "id": "PRES-062",
+     "before": "",
+     "after": "nasal_congestion",
+     "updatedAt": "2026-10-19T23:53:34.131028+00:00"
+    },
+    {
+     "id": "PRES-063",
+     "before": "",
+     "after": "nasal_congestion",
+     "updatedAt": "2026-10-19T23:53:34.771464+00:00"
+    },
+    {
+     "id": "PRES-064",
+     "before": "",
+     "after": "shoulder_pain",
+     "updatedAt": "2026-10-19T23:53:35.005446+00:00"
+    },
+    {
+     "id": "PRES-066",
+     "before": "",
+     "after": "depression",
+     "updatedAt": "2026-10-19T23:53:35.643457+00:00"
+    },
+    {
+     "id": "PRES-070",
+     "before": "",
+     "after": "constipation",
+     "updatedAt": "2026-10-19T23:53:35.853653+00:00"
+    },
+    {
+     "id": "PRES-074",
+     "before": "",
+     "after": "cough",
+     "updatedAt": "2026-10-19T23:53:36.030891+00:00"
+    },
+    {
+     "id": "PRES-075",
+     "before": "",
+     "after": "cough",
+     "updatedAt": "2026-10-19T23:53:36.206274+00:00"
+    },
+    {
+     "id": "PRES-079",
+     "before": "",
+     "after": "menstrual",
+     "updatedAt": "2026-10-19T23:53:36.371985+00:00"
+    },
+    {
+     "id": "PRES-080",
+     "before": "",
+     "after": "menstrual",
+     "updatedAt": "2026-10-19T23:53:36.520654+00:00"
+    },
+    {
+     "id": "PRES-082",
+     "before": "",
+     "after": "numbness",
+     "updatedAt": "2026-10-19T23:53:36.655768+00:00"
+    },
+    {
+     "id": "PRES-083",
+     "before": "",
+     "after": "numbness",
+     "updatedAt": "2026-10-19T23:53:36.852771+00:00"
+    },
+    {
+     "id": "PRES-084",
+     "before": "",
+     "after": "bloody_stool",
+     "updatedAt": "2026-10-19T23:53:37.146270+00:00"
+    },
+    {
+     "id": "PRES-085",
+     "before": "",
+     "after": "fever",
+     "updatedAt": "2026-10-19T23:53:37.415867+00:00"
+    },
+    {
+     "id": "PRES-087",
+     "before": "",
+     "after": "bp_abnormal",
+     "updatedAt": "2026-10-19T23:53:37.572637+00:00"
+    },
+    {
+     "id": "PRES-091",
+     "before": "",
+     "after": "insomnia",
+     "updatedAt": "2026-10-19T23:53:37.752386+00:00"
+    },
+    {
+     "id": "PRES-092",
+     "before": "",
+     "after": "insomnia",
+     "updatedAt": "2026-10-19T23:53:37.896637+00:00"
+    },
+    {
+     "id": "PRES-093",
+     "before": "",
+     "after": "hematuria",
+     "updatedAt": "2026-10-19T23:53:38.218760+00:00"
+    },
+    {
+     "id": "PRES-094",
+     "before": "",
+     "after": "hematuria",
+     "updatedAt": "2026-10-19T23:53:38.412012+00:00"
+    },
+    {
+     "id": "PRES-097",
+     "before": "",
+     "after": "seizure",
+     "updatedAt": "2026-10-19T23:53:38.847297+00:00"
+    },
+    {
+     "id": "PRES-098",
+     "before": "",
+     "after": "dizziness",
+     "updatedAt": "2026-10-19T23:53:38.979190+00:00"
+    },
+    {
+     "id": "PRES-100",
+     "before": "",
+     "after": "cough",
+     "updatedAt": "2026-10-19T23:53:39.237910+00:00"
+    },
+    {
+     "id": "PRES-101",
+     "before": "",
+     "after": "eye_pain",
+     "updatedAt": "2026-10-19T23:53:39.392224+00:00"
+    },
+    {
+     "id": "PRES-103",
+     "before": "",
+     "after": "frequency",
+     "updatedAt": "2026-10-19T23:53:39.551551+00:00"
+    },
+    {
+     "id": "PRES-106",
+     "before": "",
+     "after": "back_pain",
+     "updatedAt": "2026-10-19T23:53:39.700222+00:00"
+    },
+    {
+     "id": "PRES-107",
+     "before": "",
+     "after": "insomnia",
+     "updatedAt": "2026-10-19T23:53:39.921958+00:00"
+    },
+    {
+     "id": "PRES-110",
+     "before": "",
+     "after": "rash",
+     "updatedAt": "2026-10-19T23:53:40.053033+00:00"
+    },
+    {
+     "id": "PRES-111",
+     "before": "",
+     "after": "headache",
+     "updatedAt": "2026-10-19T23:53:40.204722+00:00"
+    },
+    {
+     "id": "PRES-112",
+     "before": "",
+     "after": "headache",
+     "updatedAt": "2026-10-19T23:53:40.418906+00:00"
+    },
+    {
+     "id": "PRES-114",
+     "before": "",
+     "after": "fever",
+     "updatedAt": "2026-10-19T23:53:40.724549+00:00"
+    },
+    {
+     "id": "PRES-115",
+     "before": "",
+     "after": "chest_pain",
+     "updatedAt": "2026-10-19T23:53:40.870463+00:00"
+    },
+    {
+     "id": "PRES-117",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:41.062899+00:00"
+    },
+    {
+     "id": "PRES-118",
+     "before": "",
+     "after": "ear_pain",
+     "updatedAt": "2026-10-19T23:53:41.238444+00:00"
+    },
+    {
+     "id": "PRES-124",
+     "before": "",
+     "after": "skin_tumor",
+     "updatedAt": "2026-10-19T23:53:41.443168+00:00"
+    },
+    {
+     "id": "PRES-126",
+     "before": "",
+     "after": "seizure",
+     "updatedAt": "2026-10-19T23:53:41.653749+00:00"
+    },
+    {
+     "id": "PRES-127",
+     "before": "",
+     "after": "fatigue",
+     "updatedAt": "2026-10-19T23:53:41.885247+00:00"
+    },
+    {
+     "id": "PRES-128",
+     "before": "",
+     "after": "fatigue",
+     "updatedAt": "2026-10-19T23:53:42.062895+00:00"
+    },
+    {
+     "id": "PRES-129",
+     "before": "",
+     "after": "palpitation",
+     "updatedAt": "2026-10-19T23:53:42.417271+00:00"
+    },
+    {
+     "id": "PRES-133",
+     "before": "",
+     "after": "nasal_congestion",
+     "updatedAt": "2026-10-19T23:53:42.566012+00:00"
+    },
+    {
+     "id": "PRES-135",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:42.699394+00:00"
+    },
+    {
+     "id": "PRESC-002",
+     "before": "",
+     "after": "throat_pain",
+     "updatedAt": "2026-10-19T23:53:42.866339+00:00"
+    },
+    {
+     "id": "PRESC-004",
+     "before": "",
+     "after": "fever",
+     "updatedAt": "2026-10-19T23:53:43.013871+00:00"
+    },
+    {
+     "id": "PRESC-005",
+     "before": "",
+     "after": "bp_abnormal",
+     "updatedAt": "2026-10-19T23:53:43.220345+00:00"
+    },
+    {
+     "id": "TREA-001",
+     "before": "",
+     "after": "headache",
+     "updatedAt": "2026-10-19T23:53:43.492546+00:00"
+    },
+    {
+     "id": "TREA-005",
+     "before": "",
+     "after": "cough",
+     "updatedAt": "2026-10-19T23:53:43.758089+00:00"
+    },
+    {
+     "id": "TREA-007",
+     "before": "",
+     "after": "ear_pain",
+     "updatedAt": "2026-10-19T23:53:43.934460+00:00"
+    },
+    {
+     "id": "TREA-012",
+     "before": "",
+     "after": "anxiety",
+     "updatedAt": "2026-10-19T23:53:44.120640+00:00"
+    },
+    {
+     "id": "TREA-014",
+     "before": "",
+     "after": "throat_pain",
+     "updatedAt": "2026-10-19T23:53:44.262187+00:00"
+    },
+    {
+     "id": "TREA-017",
+     "before": "",
+     "after": "cough",
+     "updatedAt": "2026-10-19T23:53:44.439945+00:00"
+    },
+    {
+     "id": "TREA-019",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:44.583970+00:00"
+    },
+    {
+     "id": "TREA-020",
+     "before": "",
+     "after": "back_pain",
+     "updatedAt": "2026-10-19T23:53:44.714242+00:00"
+    },
+    {
+     "id": "TREA-021",
+     "before": "",
+     "after": "dysuria",
+     "updatedAt": "2026-10-19T23:53:44.862001+00:00"
+    },
+    {
+     "id": "TREA-022",
+     "before": "",
+     "after": "anxiety",
+     "updatedAt": "2026-10-19T23:53:44.988134+00:00"
+    },
+    {
+     "id": "TREA-023",
+     "before": "",
+     "after": "itching",
+     "updatedAt": "2026-10-19T23:53:45.194380+00:00"
+    },
+    {
+     "id": "TREA-024",
+     "before": "",
+     "after": "itching",
+     "updatedAt": "2026-10-19T23:53:45.393901+00:00"
+    },
+    {
+     "id": "TREA-025",
+     "before": "",
+     "after": "heartburn",
+     "updatedAt": "2026-10-19T23:53:45.555147+00:00"
+    },
+    {
+     "id": "TREA-026",
+     "before": "",
+     "after": "palpitation",
+     "updatedAt": "2026-10-19T23:53:45.679808+00:00"
+    },
+    {
+     "id": "TREA-031",
+     "before": "",
+     "after": "frequency",
+     "updatedAt": "2026-10-19T23:53:45.901870+00:00"
+    },
+    {
+     "id": "TREA-032",
+     "before": "",
+     "after": "itching",
+     "updatedAt": "2026-10-19T23:53:46.028691+00:00"
+    },
+    {
+     "id": "TREA-034",
+     "before": "",
+     "after": "dizziness",
+     "updatedAt": "2026-10-19T23:53:46.155223+00:00"
+    },
+    {
+     "id": "TREA-035",
+     "before": "",
+     "after": "fatigue",
+     "updatedAt": "2026-10-19T23:53:46.291619+00:00"
+    },
+    {
+     "id": "TREA-037",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:46.559638+00:00"
+    },
+    {
+     "id": "TREA-038",
+     "before": "",
+     "after": "palpitation",
+     "updatedAt": "2026-10-19T23:53:46.737457+00:00"
+    },
+    {
+     "id": "TREA-042",
+     "before": "",
+     "after": "knee_pain",
+     "updatedAt": "2026-10-19T23:53:46.914367+00:00"
+    },
+    {
+     "id": "TREA-046",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:47.089764+00:00"
+    },
+    {
+     "id": "TREA-047",
+     "before": "",
+     "after": "skin_tumor",
+     "updatedAt": "2026-10-19T23:53:47.214734+00:00"
+    },
+    {
+     "id": "TREA-048",
+     "before": "",
+     "after": "fatigue",
+     "updatedAt": "2026-10-19T23:53:47.340841+00:00"
+    },
+    {
+     "id": "TREA-049",
+     "before": "",
+     "after": "diarrhea",
+     "updatedAt": "2026-10-19T23:53:47.479825+00:00"
+    },
+    {
+     "id": "TREA-052",
+     "before": "",
+     "after": "nasal_congestion",
+     "updatedAt": "2026-10-19T23:53:48.030394+00:00"
+    },
+    {
+     "id": "TREA-055",
+     "before": "",
+     "after": "depression",
+     "updatedAt": "2026-10-19T23:53:48.203668+00:00"
+    },
+    {
+     "id": "TREA-056",
+     "before": "",
+     "after": "skin_tumor",
+     "updatedAt": "2026-10-19T23:53:48.362700+00:00"
+    },
+    {
+     "id": "TREA-058",
+     "before": "",
+     "after": "weight_change",
+     "updatedAt": "2026-10-19T23:53:48.544367+00:00"
+    },
+    {
+     "id": "TREA-062",
+     "before": "",
+     "after": "cough",
+     "updatedAt": "2026-10-19T23:53:48.724643+00:00"
+    },
+    {
+     "id": "TREA-070",
+     "before": "",
+     "after": "fever",
+     "updatedAt": "2026-10-19T23:53:49.195875+00:00"
+    },
+    {
+     "id": "TREA-071",
+     "before": "",
+     "after": "palpitation",
+     "updatedAt": "2026-10-19T23:53:49.328379+00:00"
+    },
+    {
+     "id": "TREA-073",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:49.459053+00:00"
+    },
+    {
+     "id": "TREA-074",
+     "before": "",
+     "after": "anxiety",
+     "updatedAt": "2026-10-19T23:53:49.691142+00:00"
+    },
+    {
+     "id": "TREA-075",
+     "before": "",
+     "after": "palpitation",
+     "updatedAt": "2026-10-19T23:53:49.827027+00:00"
+    },
+    {
+     "id": "TREA-076",
+     "before": "",
+     "after": "hematuria",
+     "updatedAt": "2026-10-19T23:53:49.983755+00:00"
+    },
+    {
+     "id": "TREA-079",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:50.211308+00:00"
+    },
+    {
+     "id": "TREA-082",
+     "before": "",
+     "after": "cough",
+     "updatedAt": "2026-10-19T23:53:50.344061+00:00"
+    },
+    {
+     "id": "TREA-095",
+     "before": "",
+     "after": "fever",
+     "updatedAt": "2026-10-19T23:53:51.123311+00:00"
+    },
+    {
+     "id": "TREA-097",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:52.135982+00:00"
+    },
+    {
+     "id": "TREA-098",
+     "before": "",
+     "after": "ear_pain",
+     "updatedAt": "2026-10-19T23:53:53.119611+00:00"
+    },
+    {
+     "id": "TREA-099",
+     "before": "",
+     "after": "ear_pain",
+     "updatedAt": "2026-10-19T23:53:53.897125+00:00"
+    },
+    {
+     "id": "TREA-100",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:54.298280+00:00"
+    },
+    {
+     "id": "TREA-101",
+     "before": "back_pain",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:54.617105+00:00"
+    },
+    {
+     "id": "TREA-102",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:54.928461+00:00"
+    },
+    {
+     "id": "TREA-103",
+     "before": "",
+     "after": "anxiety",
+     "updatedAt": "2026-10-19T23:53:55.095066+00:00"
+    },
+    {
+     "id": "TREA-107",
+     "before": "",
+     "after": "seizure",
+     "updatedAt": "2026-10-19T23:53:55.259984+00:00"
+    },
+    {
+     "id": "TREA-112",
+     "before": "",
+     "after": "nasal_congestion",
+     "updatedAt": "2026-10-19T23:53:55.533096+00:00"
+    },
+    {
+     "id": "TREA-113",
+     "before": "",
+     "after": "nasal_congestion",
+     "updatedAt": "2026-10-19T23:53:55.675633+00:00"
+    },
+    {
+     "id": "TREA-118",
+     "before": "",
+     "after": "anxiety",
+     "updatedAt": "2026-10-19T23:53:55.840664+00:00"
+    },
+    {
+     "id": "TREAT-001",
+     "before": "",
+     "after": "back_pain",
+     "updatedAt": "2026-10-19T23:53:55.970750+00:00"
+    },
+    {
+     "id": "TREAT-002",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:56.088294+00:00"
+    },
+    {
+     "id": "근골격계-006",
+     "before": "body_pain",
+     "after": "myalgia",
+     "updatedAt": "2026-10-19T23:53:57.470728+00:00"
+    },
+    {
+     "id": "머리·뇌-003",
+     "before": "",
+     "after": "dizziness",
+     "updatedAt": "2026-10-19T23:53:57.745900+00:00"
+    },
+    {
+     "id": "비뇨생식-001",
+     "before": "",
+     "after": "dysuria",
+     "updatedAt": "2026-10-19T23:53:58.298731+00:00"
+    },
+    {
+     "id": "비뇨생식-004",
+     "before": "",
+     "after": "hematuria",
+     "updatedAt": "2026-10-19T23:53:58.574717+00:00"
+    },
+    {
+     "id": "비뇨생식-009",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:53:58.859735+00:00"
+    },
+    {
+     "id": "비뇨생식-010",
+     "before": "",
+     "after": "dysuria",
+     "updatedAt": "2026-10-19T23:53:59.150816+00:00"
+    },
+    {
+     "id": "소화기-008",
+     "before": "",
+     "after": "abdominal_pain",
+     "updatedAt": "2026-10-19T23:53:59.721756+00:00"
+    },
+    {
+     "id": "소화기-009",
+     "before": "abdominal_pain",
+     "after": "heartburn",
+     "updatedAt": "2026-10-19T23:54:00.228647+00:00"
+    },
+    {
+     "id": "순환기-003",
+     "before": "",
+     "after": "palpitation",
+     "updatedAt": "2026-10-19T23:54:00.751788+00:00"
+    },
+    {
+     "id": "순환기-004",
+     "before": "",
+     "after": "palpitation",
+     "updatedAt": "2026-10-19T23:54:00.985952+00:00"
+    },
+    {
+     "id": "전신·피-007",
+     "before": "",
+     "after": "body_pain",
+     "updatedAt": "2026-10-19T23:54:01.414401+00:00"
+    },
+    {
+     "id": "피부-001",
+     "before": "",
+     "after": "rash",
+     "updatedAt": "2026-10-19T23:54:02.291399+00:00"
+    },
+    {
+     "id": "피부-008",
+     "before": "",
+     "after": "none",
+     "updatedAt": "2026-10-19T23:54:02.775777+00:00"
+    },
+    {
+     "id": "피부-011",
+     "before": "",
+     "after": "rash",
+     "updatedAt": "2026-10-19T23:54:03.104611+00:00"
+    },
+    {
+     "id": "호흡기-003",
+     "before": "",
+     "after": "dyspnea",
+     "updatedAt": "2026-10-19T23:54:03.430661+00:00"
+    },
+    {
+     "id": "호흡기-004",
+     "before": "",
+     "after": "dyspnea",
+     "updatedAt": "2026-10-19T23:54:03.546517+00:00"
+    },
+    {
+     "id": "호흡기-007",
+     "before": "",
+     "after": "dyspnea",
+     "updatedAt": "2026-10-19T23:54:03.809340+00:00"
+    }
+   ]
+  }
  ]
 }

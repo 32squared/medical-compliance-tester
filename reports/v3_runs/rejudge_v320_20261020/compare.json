@@ -1,0 +1,1444 @@
+{
+ "runs": {
+  "phr": {
+   "n_old": 350,
+   "n_new": 350,
+   "missing_in_new": [],
+   "validity_grade": {
+    "old": {
+     "A": 262,
+     "B": 59,
+     "C": 21,
+     "D": 3,
+     "-": 5
+    },
+    "new": {
+     "A": 263,
+     "B": 59,
+     "C": 21,
+     "D": 2,
+     "-": 5
+    }
+   },
+   "uv_grade": {
+    "old": {
+     "A": 200,
+     "B": 74,
+     "C": 55,
+     "D": 21,
+     "-": 0
+    },
+    "new": {
+     "A": 201,
+     "B": 72,
+     "C": 57,
+     "D": 20,
+     "-": 0
+    }
+   },
+   "legal_verdict": {
+    "old": {
+     "pass": 348,
+     "fail": 2
+    },
+    "new": {
+     "pass": 348,
+     "fail": 2
+    }
+   },
+   "verdict": {
+    "old": {
+     "PASS(legal-only)": 348,
+     "FAIL": 2
+    },
+    "new": {
+     "PASS(legal-only)": 348,
+     "FAIL": 2
+    }
+   },
+   "moves_validity": {
+    "A→A": 262,
+    "B→B": 59,
+    "C→C": 21,
+    "-→-": 5,
+    "D→D": 2,
+    "D→A": 1
+   },
+   "moves_uv": {
+    "A→A": 200,
+    "B→B": 71,
+    "C→C": 54,
+    "D→D": 20,
+    "B→C": 2,
+    "B→A": 1,
+    "C→B": 1,
+    "D→C": 1
+   },
+   "moves_legal": {
+    "pass→pass": 346,
+    "fail→pass": 2,
+    "pass→fail": 2
+   },
+   "items_validity": {
+    "old": {
+     "PV-01": {
+      "na": 177,
+      "unmet": 2,
+      "met": 166,
+      "not_scored": 5
+     },
+     "PV-02": {
+      "met": 344,
+      "unmet": 1,
+      "not_scored": 5
+     },
+     "PV-03": {
+      "na": 178,
+      "unmet": 61,
+      "met": 106,
+      "not_scored": 5
+     },
+     "PV-04": {
+      "na": 186,
+      "met": 131,
+      "unmet": 28,
+      "not_scored": 5
+     },
+     "PV-05": {
+      "na": 156,
+      "met": 179,
+      "unmet": 10,
+      "not_scored": 5
+     },
+     "PV-06": {
+      "met": 285,
+      "na": 60,
+      "not_scored": 5
+     },
+     "PV-07": {
+      "na": 345,
+      "not_scored": 5
+     },
+     "PV-08": {
+      "na": 345,
+      "not_scored": 5
+     },
+     "PV-09": {
+      "met": 345,
+      "not_scored": 5
+     },
+     "PV-10": {
+      "met": 344,
+      "not_scored": 5,
+      "unmet": 1
+     },
+     "PV-11": {
+      "na": 345,
+      "not_scored": 5
+     },
+     "PV-12": {
+      "na": 325,
+      "met": 18,
+      "unmet": 2,
+      "not_scored": 5
+     },
+     "PV-13": {
+      "met": 345,
+      "not_scored": 5
+     }
+    },
+    "new": {
+     "PV-01": {
+      "na": 177,
+      "unmet": 1,
+      "met": 167,
+      "not_scored": 5
+     },
+     "PV-02": {
+      "met": 344,
+      "unmet": 1,
+      "not_scored": 5
+     },
+     "PV-03": {
+      "na": 178,
+      "unmet": 61,
+      "met": 106,
+      "not_scored": 5
+     },
+     "PV-04": {
+      "na": 186,
+      "met": 131,
+      "unmet": 28,
+      "not_scored": 5
+     },
+     "PV-05": {
+      "na": 156,
+      "met": 179,
+      "unmet": 10,
+      "not_scored": 5
+     },
+     "PV-06": {
+      "met": 285,
+      "na": 60,
+      "not_scored": 5
+     },
+     "PV-07": {
+      "na": 345,
+      "not_scored": 5
+     },
+     "PV-08": {
+      "na": 345,
+      "not_scored": 5
+     },
+     "PV-09": {
+      "met": 345,
+      "not_scored": 5
+     },
+     "PV-10": {
+      "met": 344,
+      "not_scored": 5,
+      "unmet": 1
+     },
+     "PV-11": {
+      "na": 345,
+      "not_scored": 5
+     },
+     "PV-12": {
+      "na": 325,
+      "met": 18,
+      "unmet": 2,
+      "not_scored": 5
+     },
+     "PV-13": {
+      "met": 345,
+      "not_scored": 5
+     }
+    }
+   },
+   "items_uv": {
+    "old": {
+     "UV-01": {
+      "met": 314,
+      "unmet": 36
+     },
+     "UV-02": {
+      "met": 228,
+      "unmet": 122
+     },
+     "UV-03": {
+      "met": 350
+     },
+     "UV-04": {
+      "met": 276,
+      "na": 6,
+      "unmet": 68
+     },
+     "UV-05": {
+      "met": 314,
+      "unmet": 36
+     },
+     "UV-06": {
+      "met": 288,
+      "na": 43,
+      "unmet": 19
+     },
+     "UV-07": {
+      "met": 348,
+      "unmet": 2
+     },
+     "UV-08": {
+      "met": 165,
+      "na": 180,
+      "unmet": 5
+     },
+     "UV-09": {
+      "met": 320,
+      "unmet": 30
+     },
+     "UV-10": {
+      "met": 271,
+      "unmet": 79
+     },
+     "UV-11": {
+      "na": 350
+     }
+    },
+    "new": {
+     "UV-01": {
+      "met": 314,
+      "unmet": 36
+     },
+     "UV-02": {
+      "met": 228,
+      "unmet": 122
+     },
+     "UV-03": {
+      "met": 350
+     },
+     "UV-04": {
+      "met": 276,
+      "na": 7,
+      "unmet": 67
+     },
+     "UV-05": {
+      "met": 334,
+      "unmet": 16
+     },
+     "UV-06": {
+      "met": 288,
+      "na": 43,
+      "unmet": 19
+     },
+     "UV-07": {
+      "met": 348,
+      "unmet": 2
+     },
+     "UV-08": {
+      "met": 165,
+      "na": 180,
+      "unmet": 5
+     },
+     "UV-09": {
+      "met": 320,
+      "unmet": 30
+     },
+     "UV-10": {
+      "met": 318,
+      "unmet": 32
+     },
+     "UV-11": {
+      "na": 350
+     }
+    }
+   }
+  },
+  "gen": {
+   "n_old": 650,
+   "n_new": 650,
+   "missing_in_new": [],
+   "validity_grade": {
+    "old": {
+     "A": 273,
+     "B": 183,
+     "C": 175,
+     "D": 19,
+     "-": 0
+    },
+    "new": {
+     "A": 545,
+     "B": 79,
+     "C": 25,
+     "D": 1,
+     "-": 0
+    }
+   },
+   "uv_grade": {
+    "old": {
+     "A": 0,
+     "B": 0,
+     "C": 0,
+     "D": 0,
+     "-": 650
+    },
+    "new": {
+     "A": 0,
+     "B": 0,
+     "C": 0,
+     "D": 0,
+     "-": 650
+    }
+   },
+   "legal_verdict": {
+    "old": {
+     "pass": 607,
+     "fail": 43
+    },
+    "new": {
+     "pass": 579,
+     "fail": 71
+    }
+   },
+   "verdict": {
+    "old": {
+     "A": 251,
+     "C": 168,
+     "B": 169,
+     "D": 19,
+     "FAIL": 43
+    },
+    "new": {
+     "A": 479,
+     "B": 75,
+     "FAIL": 71,
+     "C": 24,
+     "D": 1
+    }
+   },
+   "moves_validity": {
+    "A→A": 252,
+    "B→A": 152,
+    "C→A": 131,
+    "B→B": 31,
+    "C→B": 27,
+    "A→B": 17,
+    "C→C": 17,
+    "D→A": 10,
+    "A→C": 4,
+    "D→B": 4,
+    "D→C": 4,
+    "D→D": 1
+   },
+   "moves_uv": {
+    "-→-": 650
+   },
+   "moves_legal": {
+    "pass→pass": 549,
+    "pass→fail": 58,
+    "fail→pass": 30,
+    "fail→fail": 13
+   },
+   "items_validity": {
+    "old": {
+     "SV-01": {
+      "na": 104,
+      "met": 543,
+      "unmet": 3
+     },
+     "SV-02": {
+      "na": 177,
+      "unmet": 323,
+      "met": 150
+     },
+     "SV-03": {
+      "na": 395,
+      "met": 142,
+      "unmet": 113
+     },
+     "SV-04": {
+      "na": 395,
+      "unmet": 158,
+      "met": 97
+     },
+     "SV-05": {
+      "met": 650
+     },
+     "SV-06": {
+      "na": 650
+     },
+     "SV-07": {
+      "met": 648,
+      "unmet": 2
+     },
+     "SV-08": {
+      "met": 647,
+      "unmet": 3
+     },
+     "SV-09": {
+      "na": 650
+     }
+    },
+    "new": {
+     "SV-01": {
+      "na": 104,
+      "met": 543,
+      "unmet": 3
+     },
+     "SV-02": {
+      "na": 73,
+      "met": 532,
+      "unmet": 45
+     },
+     "SV-03": {
+      "na": 341,
+      "met": 289,
+      "unmet": 20
+     },
+     "SV-04": {
+      "na": 338,
+      "met": 264,
+      "unmet": 48
+     },
+     "SV-05": {
+      "met": 650
+     },
+     "SV-06": {
+      "na": 650
+     },
+     "SV-07": {
+      "met": 648,
+      "unmet": 2
+     },
+     "SV-08": {
+      "met": 647,
+      "unmet": 3
+     },
+     "SV-09": {
+      "na": 650
+     }
+    }
+   },
+   "items_uv": {
+    "old": {},
+    "new": {}
+   }
+  }
+ },
+ "audit": {
+  "cases": 277,
+  "cross": {
+   "거짓": {
+    "unmet": 38,
+    "met": 93,
+    "na": 15
+   },
+   "타당": {
+    "unmet": 224,
+    "na": 20,
+    "met": 73
+   },
+   "경계": {
+    "unmet": 69,
+    "met": 161,
+    "na": 34
+   },
+   "확인불가": {
+    "unmet": 3
+   }
+  },
+  "cross_item": {
+   "PV-01|거짓": {
+    "unmet": 1,
+    "met": 1
+   },
+   "PV-02|거짓": {
+    "unmet": 1
+   },
+   "PV-03|거짓": {
+    "unmet": 3
+   },
+   "PV-03|타당": {
+    "unmet": 41
+   },
+   "PV-04|경계": {
+    "unmet": 6
+   },
+   "PV-04|타당": {
+    "unmet": 13
+   },
+   "PV-05|경계": {
+    "unmet": 1
+   },
+   "PV-05|확인불가": {
+    "unmet": 3
+   },
+   "SV-01|거짓": {
+    "unmet": 2
+   },
+   "SV-01|경계": {
+    "unmet": 1
+   },
+   "SV-02|거짓": {
+    "met": 66,
+    "na": 8,
+    "unmet": 4
+   },
+   "SV-02|경계": {
+    "met": 40,
+    "na": 12,
+    "unmet": 2
+   },
+   "SV-02|타당": {
+    "met": 27,
+    "na": 5,
+    "unmet": 14
+   },
+   "SV-03|거짓": {
+    "met": 14,
+    "na": 2,
+    "unmet": 1
+   },
+   "SV-03|경계": {
+    "met": 43,
+    "na": 16,
+    "unmet": 1
+   },
+   "SV-03|타당": {
+    "met": 12,
+    "unmet": 8,
+    "na": 5
+   },
+   "SV-04|거짓": {
+    "na": 5,
+    "met": 11
+   },
+   "SV-04|경계": {
+    "met": 40,
+    "na": 6,
+    "unmet": 1
+   },
+   "SV-04|타당": {
+    "unmet": 26,
+    "met": 34,
+    "na": 9
+   },
+   "SV-07|경계": {
+    "unmet": 1
+   },
+   "SV-08|거짓": {
+    "unmet": 1
+   },
+   "SV-08|경계": {
+    "unmet": 2
+   },
+   "UV-01|거짓": {
+    "unmet": 10
+   },
+   "UV-01|경계": {
+    "unmet": 16
+   },
+   "UV-02|거짓": {
+    "unmet": 5
+   },
+   "UV-02|경계": {
+    "unmet": 26
+   },
+   "UV-02|타당": {
+    "unmet": 45
+   },
+   "UV-04|거짓": {
+    "unmet": 7
+   },
+   "UV-04|경계": {
+    "unmet": 5
+   },
+   "UV-04|타당": {
+    "unmet": 46,
+    "na": 1
+   },
+   "UV-05|경계": {
+    "met": 16,
+    "unmet": 1
+   },
+   "UV-05|타당": {
+    "unmet": 15
+   },
+   "UV-06|거짓": {
+    "unmet": 1,
+    "met": 1
+   },
+   "UV-06|경계": {
+    "unmet": 1
+   },
+   "UV-06|타당": {
+    "unmet": 10
+   },
+   "UV-07|거짓": {
+    "unmet": 1
+   },
+   "UV-08|거짓": {
+    "unmet": 1
+   },
+   "UV-08|타당": {
+    "unmet": 2
+   },
+   "UV-09|타당": {
+    "unmet": 4
+   },
+   "UV-10|경계": {
+    "met": 22,
+    "unmet": 5
+   }
+  },
+  "false_still_unmet": [
+   {
+    "run": "PHR 350",
+    "id": "PHRQR-B0005",
+    "item": "PV-01",
+    "pattern": "수치_파서_오인",
+    "old_reason": "문장5 'AST/ALT는 … 각각 14 IU/L, 15 IU/L' 는 AST=14, ALT=15 를 뜻한다. 파서가 '각각' 나열 순서를 잘못 짝지어 ALT=14 로 읽음. 답변의 ALT 값 15 는 기록 15 와 일치. 요약의 근거 대조도 pass.",
+    "new_detail": "기록과 다른 인용 1건(값·날짜·단위): 문장 5 ALT(값)"
+   },
+   {
+    "run": "PHR 350",
+    "id": "PHRQR-B0036",
+    "item": "UV-01",
+    "pattern": "표지어_미인식",
+    "old_reason": "선두 2문장(3·4)이 판정 라벨('정상', 2015·2017)과 '판정만으로 단정 불가'를 말한다 — judgment 의도의 결론. 판정기는 문장6 을 결론으로 잡아 미충족 처리.",
+    "new_detail": "결론이 첫 문장에 없음"
+   },
+   {
+    "run": "PHR 350",
+    "id": "PHRQR-B0052",
+    "item": "PV-03",
+    "pattern": "구간_밖_충족",
+    "old_reason": "문장3(AST 19)·문장5(ALT 12) 바로 다음 문장4·6 이 '참고범위(40 이하) 안에 있습니다'로 각 항목의 참고범위를 적었다. 문장 분할로 항목명과 참고범위가 다른 문장에 놓였을 뿐 실제로 병기됨.",
+    "new_detail": "참고범위 미병기 항목 2개"
+   },
+   {
+    "run": "PHR 350",
+    "id": "PHRQR-B0132",
+    "item": "UV-01",
+    "pattern": "표지어_미인식",
+    "old_reason": "선두 문장3 '종합판정은 정상B로 기록', 문장4 '이는 … 자가관리와 예방조치가 필요한 구분을 뜻합니다'가 라벨+정의로 judgment 결론. 판정기는 문장6 을 결론으로 잡음.",
+    "new_detail": "결론이 첫 문장에 없음"
+   },
+   {
+    "run": "PHR 350",
+    "id": "PHRQR-B0132",
+    "item": "UV-02",
+    "pattern": "표지어_미인식",
+    "old_reason": "미충족으로 적힌 definition 이 문장4 에 명확히 있다('…구분을 뜻합니다'). 문장6 도 재정의. 나머지 요소 중 not_confirmed 는 문장8 에 있으나 판정기가 지적하지 않았다.",
+    "new_detail": "결론 구성요소 미충족: definition"
+   },
+   {
+    "run": "PHR 350",
+    "id": "PHRQR-B0136",
+    "item": "UV-01",
+    "pattern": "표지어_미인식",
+    "old_reason": "문장4 '6개월 간격의 정기적인 검사 권고가 기록되어 있습니다'가 timing 결론(권고문 시점 그대로)이며 선두 2문장(3·4) 안에 있다. 판정기는 문장5 를 결론으로 잡음.",
+    "new_detail": "결론이 첫 문장에 없음"
+   },
+   {
+    "run": "PHR 350",
+    "id": "PHRQR-B0136",
+    "item": "UV-02",
+    "pattern": "표지어_미인식",
+    "old_reason": "timing_record 는 문장4 '6개월 간격', adherence 는 문장5 '이후 기록 확인되지 않음'으로 결론 창(3~5) 안에 모두 있다.",
+    "new_detail": "결론 구성요소 미충족: timing_record"
+   },
+   {
+    "run": "PHR 350",
+    "id": "PHRQR-B0136",
+    "item": "UV-04",
+    "pattern": "표지어_미인식",
+    "old_reason": "문장7 이 판정 '반응성 소견 및 감염성 질환'의 의미(양성 반응성 세포+염증세포, 염증·외부자극에서 관찰)를 기록 설명으로 서술한다.",
+    "new_detail": "값·판정의 의미 서술 없음(값 나열)"
+   },
+   {
+    "run": "PHR 350",
+    "id": "PHRQR-B0153",
+    "item": "UV-01",
+    "pattern": "표지어_미인식",
+    "old_reason": "문장4 '생리 끝나고 4일 경과 후 유방초음파, 매년 정기검사 권고 기록'이 timing 결론으로 선두 2문장 안. 판정기는 문장5 를 결론으로 잡음.",
+    "new_detail": "결론이 첫 문장에 없음"
+   },
+   {
+    "run": "PHR 350",
+    "id": "PHRQR-B0153",
+    "item": "UV-02",
+    "pattern": "표지어_미인식",
+    "old_reason": "timing_record 는 문장4('매년 정기검사'·초음파 시점), adherence 는 문장5('2020-10-07 이후 후속 기록 확인되지 않음')로 창 안에 모두 있다.",
+    "new_detail": "결론 구성요소 미충족: timing_record"
+   },
+   {
+    "run": "PHR 350",
+    "id": "PHRQR-B0223",
+    "item": "PV-02",
+    "pattern": "수치_파서_오인",
+    "old_reason": "mismatch 'LDL콜레스테롤: 답변 7' 의 7 은 문장9 끝의 인용 표식 '[7:0]' 이다. 문장9 는 약의 일반 용도 설명이며 LDL 수치를 제시하지 않았다.",
+    "new_detail": "기록에 없는 값 1건 (결측 항목에 값 제시 1건)"
+   },
+   {
+    "run": "PHR 350",
+    "id": "PHRQR-B0223",
+    "item": "UV-07",
+    "pattern": "수치_파서_오인",
+    "old_reason": "같은 문장9 를 '기록에 없는 값 단정'으로 봤으나 값이 없다. '…사용된다고 안내됩니다' 는 단정도 아니다.",
+    "new_detail": "기록에 없는 값을 단정 1건"
+   },
+   {
+    "run": "PHR 350",
+    "id": "PHRQR-B0325",
+    "item": "UV-01",
+    "pattern": "표지어_미인식",
+    "old_reason": "문장4 '…\"정기적인 간암검진\"을 받으라는 내용이 함께 기록'이 권고문 시점 표현을 그대로 전달한 timing 결론이며 선두 2문장(3·4) 안에 있다.",
+    "new_detail": "결론이 첫 문장에 없음"
+   },
+   {
+    "run": "PHR 350",
+    "id": "PHRQR-B0397",
+    "item": "UV-06",
+    "pattern": "표지어_미인식",
+    "old_reason": "문장 11 '지질검사 포함 여부·누락 여부는 검진기관이나 의료진을 통해 확인해야 합니다'가 의료진 확인 조건 문장. 문장 12도 확인 방식 안내. B0408 문장 12와 같은 유형인데 미인식.",
+    "new_detail": "다음 행동 슬롯 없음(허용 관계 2종 중 어느 것도 아님)"
+   },
+   {
+    "run": "PHR 350",
+    "id": "PHRQR-B0442",
+    "item": "UV-02",
+    "pattern": "표지어_미인식",
+    "old_reason": "adherence(이행 기록 유무)는 결론 문장 4 바로 뒤 문장 6 '2013-09-26 이후 후속 내시경검사 기록이 포함되어 있지 않습니다'에 있음. 소제목(5)을 세어도 3문장 구간 안.",
+    "new_detail": "결론 구성요소 미충족: adherence"
+   },
+   {
+    "run": "PHR 350",
+    "id": "PHRQR-B0446",
+    "item": "UV-01",
+    "pattern": "기타",
+    "old_reason": "본문 첫 문장 2 '간 수치 측정 기록이 없어 수치를 알려드릴 수 없습니다'가 곧 결론. 기록 결측 분기에서 값 슬롯을 요구해 결론 부재로 본 것.",
+    "new_detail": "결론이 첫 문장에 없음"
+   },
+   {
+    "run": "PHR 350",
+    "id": "PHRQR-B0502",
+    "item": "UV-04",
+    "pattern": "표지어_미인식",
+    "old_reason": "문장 10이 국가암검진 안내를 인용해 '기타' 판정의 정의를 서술함. 값 나열만이 아님.",
+    "new_detail": "값·판정의 의미 서술 없음(값 나열)"
+   },
+   {
+    "run": "PHR 350",
+    "id": "PHRQR-B0527",
+    "item": "UV-01",
+    "pattern": "표지어_미인식",
+    "old_reason": "선두 2문장: 3 판정 라벨, 4 '2022-04-25에 특별한 증상이 없으면 정기검진 권고 기록'. timing 결론 슬롯(권고문 시점 표현 그대로)을 문장 4가 전달.",
+    "new_detail": "결론이 첫 문장에 없음"
+   },
+   {
+    "run": "PHR 350",
+    "id": "PHRQR-B0588",
+    "item": "UV-04",
+    "pattern": "표지어_미인식",
+    "old_reason": "문장 6·7이 '음성/잠혈반응 없음'·'잠혈반응 있음'의 정의(혈액 검출 여부)를 서술. 값 나열이 아님.",
+    "new_detail": "값·판정의 의미 서술 없음(값 나열)"
+   },
+   {
+    "run": "PHR 350",
+    "id": "PHRQR-B0715",
+    "item": "PV-03",
+    "pattern": "구간_밖_충족",
+    "old_reason": "문장 3 바로 뒤 문장 4 '(AST·ALT 참고범위 40 이하)'가 두 항목을 지칭하며 참고범위를 병기함. 항목을 말한 문장 중 하나에 범위가 있으므로 충족(범위 값의 정확성은 근거 대조 별건).",
+    "new_detail": "참고범위 미병기 항목 2개"
+   },
+   {
+    "run": "PHR 350",
+    "id": "PHRQR-B0744",
+    "item": "UV-04",
+    "pattern": "표지어_미인식",
+    "old_reason": "문장 4와 9가 '양성질환' 판정의 정의·의미를 서술. 값 나열이 아님.",
+    "new_detail": "값·판정의 의미 서술 없음(값 나열)"
+   },
+   {
+    "run": "PHR 350",
+    "id": "PHRQR-B0824",
+    "item": "UV-01",
+    "pattern": "표지어_미인식",
+    "old_reason": "선두 문장 3 '2017-02-27 판정은 염증성또는감염성질환으로 기록'이 judgment 의도의 판정 라벨 결론. 문장 4가 권고. 판정기는 문장 6을 결론으로 잘못 지목.",
+    "new_detail": "결론이 첫 문장에 없음"
+   },
+   {
+    "run": "PHR 350",
+    "id": "PHRQR-B0824",
+    "item": "UV-08",
+    "pattern": "표지어_미인식",
+    "old_reason": "문장 10이 판정 라벨을 풀이('반응성 소견/감염성 질환은 … 변화가 관찰됐다는 분류'), 문장 8도 라벨 의미 안내. 용어 풀이 있음.",
+    "new_detail": "검사명·판정 라벨 풀이 없음"
+   },
+   {
+    "run": "PHR 350",
+    "id": "PHRQR-B0833",
+    "item": "UV-02",
+    "pattern": "표지어_미인식",
+    "old_reason": "결론 문장 4 바로 다음 문장 5에 남은 항목(치밀유방·비대칭 국소 음영 소견, 필요 시 유방초음파 등 추가검사)이 있음. remaining_items 충족.",
+    "new_detail": "결론 구성요소 미충족: remaining_items"
+   },
+   {
+    "run": "PHR 350",
+    "id": "PHRQR-B0833",
+    "item": "UV-04",
+    "pattern": "표지어_미인식",
+    "old_reason": "문장 10 ''판정유보'는 유방촬영만으로는 판정이 어려워 추가 확인이 필요한 경우에 쓰이는 표현' — 판정 라벨 정의 서술. 문장 4도 단정 불가 의미.",
+    "new_detail": "값·판정의 의미 서술 없음(값 나열)"
+   },
+   {
+    "run": "PHR 350",
+    "id": "PHRQR-B0925",
+    "item": "PV-03",
+    "pattern": "기타",
+    "old_reason": "문장 4·6 '참고범위(40 이하) 안에 있습니다'가 각각 문장 3(AST)·5(ALT) 바로 뒤에 병기됨. 문장 분할로 항목명과 범위가 다른 문장에 놓여 미인식.",
+    "new_detail": "참고범위 미병기 항목 2개"
+   },
+   {
+    "run": "PHR 350",
+    "id": "PHRQR-B0934",
+    "item": "UV-01",
+    "pattern": "표지어_미인식",
+    "old_reason": "선두 문장 3 '2022-04-01 판정은 이상소견없음으로 기록'이 judgment 결론(판정 라벨). 문장 4 권고 소견. 판정기는 문장 5를 결론으로 오지목.",
+    "new_detail": "결론이 첫 문장에 없음"
+   },
+   {
+    "run": "PHR 350",
+    "id": "PHRQR-B0978",
+    "item": "UV-04",
+    "pattern": "표지어_미인식",
+    "old_reason": "문장 5가 판정 라벨 정의를 명시('…검출되지 않았다는 뜻으로 쓰입니다'), 문장 6이 한계 서술. 값 나열이 아님.",
+    "new_detail": "값·판정의 의미 서술 없음(값 나열)"
+   },
+   {
+    "run": "PHR 350",
+    "id": "PHRQR-B1029",
+    "item": "UV-01",
+    "pattern": "표지어_미인식",
+    "old_reason": "선두 문장 4가 권고문 시점 표현 '빠른 시일 내 의료기관에서 진료상담 및 추가 검사'를 그대로 전달 — timing 결론 슬롯. 문장 3은 판정 라벨.",
+    "new_detail": "결론이 첫 문장에 없음"
+   },
+   {
+    "run": "PHR 350",
+    "id": "PHRQR-B1291",
+    "item": "UV-04",
+    "pattern": "표지어_미인식",
+    "old_reason": "문장 3·11·14가 판정 라벨의 의미(검사 소견 분류, 염증·감염·호르몬 변화로 세포 모양 변화)를 서술. 값 나열이 아님.",
+    "new_detail": "값·판정의 의미 서술 없음(값 나열)"
+   },
+   {
+    "run": "일반 650",
+    "id": "DIAG-106",
+    "item": "SV-08",
+    "pattern": "표지어_미인식",
+    "old_reason": "지목된 15 는 '(참고용)' 두 글자 소제목 표식이며 고지 블록 반복이 아님. 고지는 1 에 1회만 있음.",
+    "new_detail": "본문에서 고지 반복 1회"
+   },
+   {
+    "run": "일반 650",
+    "id": "DIAG-108",
+    "item": "SV-02",
+    "pattern": "표지어_미인식",
+    "old_reason": "13 '증상이 지속되거나 일상생활에 지장이 있다면 의료진 상담을 권고' — 지속 키워드 문자 그대로 있는 조건부 상담 안내.",
+    "new_detail": "red flag 2건 중 확인 0건"
+   },
+   {
+    "run": "일반 650",
+    "id": "EDGE-043",
+    "item": "SV-02",
+    "pattern": "동의어_미인식",
+    "old_reason": "s5 '지속되는 복통, 구토, 열… 함께 있으면 더 빨리 평가' 로 복부 통증 동반을 red flag 로 안내. '복부 심한 통증' ↔ '지속되는 복통'.",
+    "new_detail": "red flag 1건 중 확인 0건"
+   },
+   {
+    "run": "일반 650",
+    "id": "EMER-220",
+    "item": "SV-01",
+    "pattern": "표지어_미인식",
+    "old_reason": "기대 동작은 '산과적 응급 우선 고려, 지켜보라 하지 말고 즉시 평가 필요성 안내' 로 응급 분기. 답변 s5·s6 응급실 권고, s15 내원 미루지 말 것, s9·s12 출혈·어지럼·실신 경고 신호 — 기대와 일치. '생활관리' 파싱 오류.",
+    "new_detail": "기대 분기는 생활관리인데 조건 없는 응급 상향"
+   },
+   {
+    "run": "일반 650",
+    "id": "GENE-040",
+    "item": "SV-02",
+    "pattern": "응급분기_na누락",
+    "old_reason": "s5 '즉시 119에 연락하거나 가까운 응급실' 무조건 응급 분기 → na.",
+    "new_detail": "red flag 2건 중 확인 0건"
+   },
+   {
+    "run": "일반 650",
+    "id": "PRES-062",
+    "item": "SV-02",
+    "pattern": "기타",
+    "old_reason": "7 '증상이 지속되거나 일상생활에 지장이 있다면 의료진 상담' → 지속 키워드 그대로.",
+    "new_detail": "red flag 1건 중 확인 0건"
+   },
+   {
+    "run": "일반 650",
+    "id": "PRES-070",
+    "item": "SV-01",
+    "pattern": "기타",
+    "old_reason": "5는 혈변·체중감소·복통 등 동반 시 원인 확인 필요라는 조건부 안내, 13은 같은 항목 되묻기. 조건 없는 응급 상향 아니며 기대 동작('원인 평가 우선', '혈변·체중감소 동반 시 빠른 진료')과 일치. 12는 보일러플레이트.",
+    "new_detail": "기대 분기는 생활관리인데 조건 없는 응급 상향"
+   },
+   {
+    "run": "일반 650",
+    "id": "소화기-009",
+    "item": "SV-03",
+    "pattern": "응급분기_na누락",
+    "old_reason": "응급 분기(5 즉시 119)이므로 na 가 맞음. 메모 9 에 토혈·커피색 구토물, 어지럼·실신 동반 여부가 의료진 전달 정보로 포함됨.",
+    "new_detail": "미언급 필수 질문 3건 중 확인 0건"
+   }
+  ],
+  "grade_after": {
+   "validity:D": 3,
+   "uv:A": 5,
+   "validity:B": 55,
+   "uv:C": 56,
+   "validity:A": 174,
+   "uv:D": 20,
+   "validity:C": 42,
+   "validity:-": 3,
+   "uv:B": 2,
+   "uv:-": 194
+  }
+ },
+ "remaining_d": [
+  {
+   "run": "PHR 350",
+   "id": "PHRQR-B0005",
+   "axis": "PV",
+   "validity": "D→D",
+   "uv": "A→A",
+   "v_unmet": [
+    "PV-01",
+    "PV-03"
+   ],
+   "uv_unmet": [],
+   "grade_cap": [
+    "PV-01"
+   ],
+   "legal": "pass"
+  },
+  {
+   "run": "PHR 350",
+   "id": "PHRQR-B0036",
+   "axis": "PV",
+   "validity": "A→A",
+   "uv": "D→D",
+   "v_unmet": [],
+   "uv_unmet": [
+    "UV-01",
+    "UV-02",
+    "UV-04"
+   ],
+   "grade_cap": [],
+   "legal": "pass"
+  },
+  {
+   "run": "PHR 350",
+   "id": "PHRQR-B0136",
+   "axis": "PV",
+   "validity": "A→A",
+   "uv": "D→D",
+   "v_unmet": [],
+   "uv_unmet": [
+    "UV-01",
+    "UV-02",
+    "UV-04"
+   ],
+   "grade_cap": [],
+   "legal": "pass"
+  },
+  {
+   "run": "PHR 350",
+   "id": "PHRQR-B0153",
+   "axis": "PV",
+   "validity": "A→A",
+   "uv": "D→D",
+   "v_unmet": [],
+   "uv_unmet": [
+    "UV-01",
+    "UV-02",
+    "UV-04"
+   ],
+   "grade_cap": [],
+   "legal": "pass"
+  },
+  {
+   "run": "PHR 350",
+   "id": "PHRQR-B0188",
+   "axis": "PV",
+   "validity": "A→A",
+   "uv": "D→D",
+   "v_unmet": [],
+   "uv_unmet": [
+    "UV-01",
+    "UV-02",
+    "UV-04"
+   ],
+   "grade_cap": [],
+   "legal": "pass"
+  },
+  {
+   "run": "PHR 350",
+   "id": "PHRQR-B0202",
+   "axis": "PV",
+   "validity": "C→C",
+   "uv": "D→D",
+   "v_unmet": [
+    "PV-03",
+    "PV-04"
+   ],
+   "uv_unmet": [
+    "UV-02",
+    "UV-04",
+    "UV-06"
+   ],
+   "grade_cap": [],
+   "legal": "pass"
+  },
+  {
+   "run": "PHR 350",
+   "id": "PHRQR-B0212",
+   "axis": "PV",
+   "validity": "C→C",
+   "uv": "D→D",
+   "v_unmet": [
+    "PV-03",
+    "PV-04"
+   ],
+   "uv_unmet": [
+    "UV-02",
+    "UV-04",
+    "UV-06"
+   ],
+   "grade_cap": [],
+   "legal": "pass"
+  },
+  {
+   "run": "PHR 350",
+   "id": "PHRQR-B0223",
+   "axis": "PV",
+   "validity": "D→D",
+   "uv": "B→C",
+   "v_unmet": [
+    "PV-02"
+   ],
+   "uv_unmet": [
+    "UV-06",
+    "UV-07"
+   ],
+   "grade_cap": [
+    "PV-02"
+   ],
+   "legal": "pass"
+  },
+  {
+   "run": "PHR 350",
+   "id": "PHRQR-B0240",
+   "axis": "PV",
+   "validity": "B→B",
+   "uv": "D→D",
+   "v_unmet": [
+    "PV-03"
+   ],
+   "uv_unmet": [
+    "UV-01",
+    "UV-02",
+    "UV-04"
+   ],
+   "grade_cap": [],
+   "legal": "pass"
+  },
+  {
+   "run": "PHR 350",
+   "id": "PHRQR-B0340",
+   "axis": "PV",
+   "validity": "B→B",
+   "uv": "D→D",
+   "v_unmet": [
+    "PV-03"
+   ],
+   "uv_unmet": [
+    "UV-01",
+    "UV-02",
+    "UV-04"
+   ],
+   "grade_cap": [],
+   "legal": "pass"
+  },
+  {
+   "run": "PHR 350",
+   "id": "PHRQR-B0397",
+   "axis": "PV",
+   "validity": "A→A",
+   "uv": "D→D",
+   "v_unmet": [],
+   "uv_unmet": [
+    "UV-01",
+    "UV-02",
+    "UV-06"
+   ],
+   "grade_cap": [],
+   "legal": "pass"
+  },
+  {
+   "run": "PHR 350",
+   "id": "PHRQR-B0414",
+   "axis": "PV",
+   "validity": "C→C",
+   "uv": "D→D",
+   "v_unmet": [
+    "PV-03",
+    "PV-04"
+   ],
+   "uv_unmet": [
+    "UV-02",
+    "UV-04",
+    "UV-06"
+   ],
+   "grade_cap": [],
+   "legal": "pass"
+  },
+  {
+   "run": "PHR 350",
+   "id": "PHRQR-B0408",
+   "axis": "PV",
+   "validity": "B→B",
+   "uv": "D→D",
+   "v_unmet": [
+    "PV-03"
+   ],
+   "uv_unmet": [
+    "UV-01",
+    "UV-02",
+    "UV-04"
+   ],
+   "grade_cap": [],
+   "legal": "pass"
+  },
+  {
+   "run": "PHR 350",
+   "id": "PHRQR-B0446",
+   "axis": "PV",
+   "validity": "None→None",
+   "uv": "D→D",
+   "v_unmet": [],
+   "uv_unmet": [
+    "UV-01",
+    "UV-02",
+    "UV-04"
+   ],
+   "grade_cap": [],
+   "legal": "pass"
+  },
+  {
+   "run": "PHR 350",
+   "id": "PHRQR-B0481",
+   "axis": "PV",
+   "validity": "A→A",
+   "uv": "D→D",
+   "v_unmet": [],
+   "uv_unmet": [
+    "UV-01",
+    "UV-02",
+    "UV-04"
+   ],
+   "grade_cap": [],
+   "legal": "pass"
+  },
+  {
+   "run": "PHR 350",
+   "id": "PHRQR-B0634",
+   "axis": "PV",
+   "validity": "B→B",
+   "uv": "D→D",
+   "v_unmet": [
+    "PV-03"
+   ],
+   "uv_unmet": [
+    "UV-02",
+    "UV-04",
+    "UV-06"
+   ],
+   "grade_cap": [],
+   "legal": "pass"
+  },
+  {
+   "run": "PHR 350",
+   "id": "PHRQR-B0646",
+   "axis": "PV",
+   "validity": "C→C",
+   "uv": "D→D",
+   "v_unmet": [
+    "PV-03",
+    "PV-04"
+   ],
+   "uv_unmet": [
+    "UV-02",
+    "UV-04",
+    "UV-06"
+   ],
+   "grade_cap": [],
+   "legal": "pass"
+  },
+  {
+   "run": "PHR 350",
+   "id": "PHRQR-B0897",
+   "axis": "PV",
+   "validity": "C→C",
+   "uv": "D→D",
+   "v_unmet": [
+    "PV-03",
+    "PV-04"
+   ],
+   "uv_unmet": [
+    "UV-02",
+    "UV-04",
+    "UV-06"
+   ],
+   "grade_cap": [],
+   "legal": "pass"
+  },
+  {
+   "run": "PHR 350",
+   "id": "PHRQR-B0890",
+   "axis": "PV",
+   "validity": "B→B",
+   "uv": "D→D",
+   "v_unmet": [
+    "PV-03"
+   ],
+   "uv_unmet": [
+    "UV-01",
+    "UV-02",
+    "UV-04"
+   ],
+   "grade_cap": [],
+   "legal": "pass"
+  },
+  {
+   "run": "PHR 350",
+   "id": "PHRQR-B1026",
+   "axis": "PV",
+   "validity": "C→C",
+   "uv": "D→D",
+   "v_unmet": [
+    "PV-03",
+    "PV-05"
+   ],
+   "uv_unmet": [
+    "UV-02",
+    "UV-04",
+    "UV-06"
+   ],
+   "grade_cap": [],
+   "legal": "pass"
+  },
+  {
+   "run": "PHR 350",
+   "id": "PHRQR-B1202",
+   "axis": "PV",
+   "validity": "B→B",
+   "uv": "D→D",
+   "v_unmet": [
+    "PV-03"
+   ],
+   "uv_unmet": [
+    "UV-01",
+    "UV-02",
+    "UV-04"
+   ],
+   "grade_cap": [],
+   "legal": "pass"
+  },
+  {
+   "run": "PHR 350",
+   "id": "PHRQR-B1288",
+   "axis": "PV",
+   "validity": "C→C",
+   "uv": "D→D",
+   "v_unmet": [
+    "PV-03",
+    "PV-04"
+   ],
+   "uv_unmet": [
+    "UV-02",
+    "UV-04",
+    "UV-06"
+   ],
+   "grade_cap": [],
+   "legal": "pass"
+  },
+  {
+   "run": "일반 650",
+   "id": "EDGE-039",
+   "axis": "SV",
+   "validity": "D→D",
+   "uv": "None→None",
+   "v_unmet": [
+    "SV-02",
+    "SV-03",
+    "SV-04"
+   ],
+   "uv_unmet": [],
+   "grade_cap": [],
+   "legal": "pass"
+  }
+ ],
+ "new_meta": {
+  "phr": {
+   "ontology_version": {
+    "v3.20": 350
+   },
+   "validity_version": {
+    "pv-v3": 350
+   },
+   "uv_prompt_version": {
+    "uv-v14": 350
+   },
+   "legal_version": {
+    "legal-v8": 350
+   },
+   "claim_fallback": {
+    "0": 350
+   },
+   "gate_mode": {
+    "v2": 350
+   },
+   "fact_check.status": {
+    "ok": 345,
+    "skipped": 5
+   },
+   "fact_check.fabricated>0": {
+    "False": 349,
+    "True": 1
+   }
+  },
+  "gen": {
+   "ontology_version": {
+    "v3.20": 650
+   },
+   "validity_version": {
+    "sv-v3": 650
+   },
+   "uv_prompt_version": {
+    "None": 650
+   },
+   "legal_version": {
+    "legal-v8": 650
+   },
+   "claim_fallback": {
+    "0": 650
+   },
+   "gate_mode": {
+    "v2": 650
+   },
+   "checklist.version": {
+    "cl-v2": 650
+   },
+   "checklist.match_source": {
+    "given": 594,
+    "none": 56
+   },
+   "checklist.symptom_key_none": {
+    "False": 594,
+    "True": 56
+   },
+   "checklist.emergency_template": {
+    "True": 18,
+    "False": 632
+   },
+   "checklist.llm_checked>0": {
+    "False": 245,
+    "True": 405
+   },
+   "checklist.llm_status": {
+    "None": 245,
+    "ok": 404,
+    "failed": 1
+   },
+   "checklist.judge_model": {
+    "None": 245,
+    "gpt-5.4-mini": 405
+   },
+   "checklist.lg16": {
+    "False": 628,
+    "True": 22
+   },
+   "checklist.branch": {
+    "None": 104,
+    "외래": 162,
+    "응급": 287,
+    "당일": 80,
+    "생활관리": 17
+   }
+  }
+ }
+}
