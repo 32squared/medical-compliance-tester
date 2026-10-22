@@ -288,6 +288,10 @@ def main():
         import uuid as _uuid
         run_id = f"job-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}-{_uuid.uuid4().hex[:6]}"
         _job_log(f"[job] RUN_ID 미지정 → 자동 생성: {run_id}")
+    if run_id.startswith(db.SERVICE_BATCH_ID_PREFIX):
+        # db.init_db 는 'batch-…' running 행을 서비스 스레드 배치의 고아로 보고 cancelled 로 바꾼다.
+        _job_log(f"[job] 경고: RUN_ID 가 서비스 배치 접두사 '{db.SERVICE_BATCH_ID_PREFIX}' 로 시작한다 — "
+                 f"서비스 인스턴스가 재시작되면 이 run 이 '중지됨' 으로 표시될 수 있다: {run_id}")
 
     run_by = os.environ.get('RUN_BY', 'job-runner').strip()
     label = os.environ.get('LABEL', '').strip()
