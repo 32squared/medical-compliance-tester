@@ -44,6 +44,11 @@ elif [ "$RUN_MODE" = "rejudge_v3" ]; then
     if [ "$SEED_DRY_RUN" = "1" ]; then SEED_ARGS="--dry-run"; fi
     echo "[entrypoint] mode=rejudge_v3 → scripts/rejudge_v3.py source=${REJUDGE_SOURCE} new=${RUN_ID} ${SEED_ARGS}"
     exec python /app/scripts/rejudge_v3.py ${SEED_ARGS}
+elif [ "$RUN_MODE" = "advisory_export_v3" ]; then
+    # 의사 자문 판정(advisory_reviews) 반출 + 같은 답변의 판정기 v3 결과 — scripts/advisory_export_v3.py 참고.
+    # ADV_SINCE·ADV_REVIEWERS·ADV_GCS_PATH·ADV_NO_JUDGE·ADV_WORKERS 환경변수로 받는다.
+    echo "[entrypoint] mode=advisory_export_v3 -> scripts/advisory_export_v3.py since=${ADV_SINCE} gcs=${ADV_GCS_PATH}"
+    exec python /app/scripts/advisory_export_v3.py
 elif [ "$RUN_MODE" = "ai_verify" ]; then
     # 판정 결과 AI 독립 검수 — scripts/ai_verify.py 참고 (VERIFY_RUNS·VERIFY_PASS·VERIFY_MODEL).
     # 결과는 gold_labels(labeler ai:verifier)에 저장되고 검토 화면의 'AI: 확인 필요' 로 사람에게 넘어간다.
