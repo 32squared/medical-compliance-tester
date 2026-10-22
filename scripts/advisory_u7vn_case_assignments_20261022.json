@@ -1,0 +1,57 @@
+{
+ "at": "2026-10-22T05:15:53.477366+00:00",
+ "base": "https://medical-compliance-tester-cbtevhmzrq-du.a.run.app",
+ "dry_run": false,
+ "cases": {
+  "phr_CASE-33": {
+   "label": "J1",
+   "before": [
+    "rexsoft04"
+   ],
+   "after": [
+    "rexsoft04",
+    "rexsoft01",
+    "rexsoft03"
+   ],
+   "verified": [
+    "rexsoft01",
+    "rexsoft03",
+    "rexsoft04"
+   ]
+  },
+  "phr_CASE-63": {
+   "label": "J2",
+   "before": [
+    "rexsoft07"
+   ],
+   "after": [
+    "rexsoft07",
+    "rexsoft01",
+    "rexsoft03",
+    "rexsoft04"
+   ],
+   "verified": [
+    "rexsoft01",
+    "rexsoft03",
+    "rexsoft04",
+    "rexsoft07"
+   ]
+  },
+  "phr_CASE-08": {
+   "label": "J3",
+   "before": [
+    "rexsoft01"
+   ],
+   "after": [
+    "rexsoft01",
+    "rexsoft03",
+    "rexsoft04"
+   ],
+   "verified": [
+    "rexsoft01",
+    "rexsoft03",
+    "rexsoft04"
+   ]
+  }
+ }
+}
