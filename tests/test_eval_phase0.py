@@ -111,12 +111,14 @@ def test_compact_keeps_frame_rule_and_conflicts():
     ev = [{'basis': 'frame', 'kind': 'frame', 'value': 'emergency', 'phrase_id': 'PH-EN-001',
            'rule_from': 'LG-02', 'rule_to': 'LG-11', 'source': 'code'}]
     assert eval_v3.evidence_rows(ev)[0]['rule_from'] == 'LG-02' and eval_v3.evidence_rows(ev)[0]['rule_to'] == 'LG-11'
-    res = {'verdict': 'pass', 'legal': {
+    # conflicts 는 판정기 최상위 키(aggregate.py), suppressed 는 legal 안(legal_gate.to_dict)
+    res = {'verdict': 'pass',
+           'conflicts': [{'claim_idx': 2, 'field': 'rule_id', 'llm': 'LG-02', 'code': 'LG-11'},
+                         {'claim_idx': 3, 'field': 'level', 'llm': 'L5', 'code': 'L3'}],
+           'legal': {
         'verdict': 'pass', 'status': 'ok', 'hits': [],
         'review_hits': [{'rule_id': 'LG-11', 'claim_idx': 2, 'review': 'context_fixed_notice', 'evidence': ev}],
         'context': {'prompt_version': 'context-v1', 'candidates': 1, 'judged': 0},
-        'conflicts': [{'claim_idx': 2, 'field': 'rule_id', 'llm': 'LG-02', 'code': 'LG-11'},
-                      {'claim_idx': 3, 'field': 'level', 'llm': 'L5', 'code': 'L3'}],
         'suppressed': [{'rule_id': 'LG-02', 'claim_idx': 2}]}}
     out = eval_v3.compact(res)
     assert out['legal_context'] == {'prompt_version': 'context-v1', 'candidates': 1, 'judged': 0,

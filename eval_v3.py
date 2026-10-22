@@ -285,8 +285,10 @@ def compact(result: dict) -> dict:
                                 if ctx.get(k) is not None}
     # legal-v10: 틀 고정으로 규칙이 바뀐 건(conflicts field=rule_id: llm=원래 규칙 → code=LG-11)과 같은 문장 중복 억제 수를
     # legal_context 에 남겨 재판정 run 에서 '1차 규칙이 바뀐 건'을 셀 수 있게 한다(DOC-SDOQQ 결정 4). 없으면 넣지 않는다.
+    # conflicts 는 판정기 최상위(aggregate: result["conflicts"] = legal.conflicts)에 있고 legal.to_dict 에는 없다.
+    all_conflicts = list(result.get("conflicts") or []) or list(legal.get("conflicts") or [])
     rule_conflicts = [{"claim_idx": c.get("claim_idx"), "llm": c.get("llm"), "code": c.get("code")}
-                      for c in (legal.get("conflicts") or []) if isinstance(c, dict) and c.get("field") == "rule_id"]
+                      for c in all_conflicts if isinstance(c, dict) and c.get("field") == "rule_id"]
     if rule_conflicts or legal.get("suppressed"):
         out.setdefault("legal_context", {})
         if rule_conflicts:
