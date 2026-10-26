@@ -267,8 +267,11 @@ function nowStamp() {
 // 판정 참고 범위 — 국가건강검진 판정 기준(일반 기준)으로 계산한 참고 표시.
 // 원본 PHR 에는 항목별 판정이 없고 종합판정만 있다.
 // ──────────────────────────────────────────
+const SEX_DEPENDENT = new Set(['허리둘레', '혈색소', '감마지티피']);
 function judgeNumeric(name, v, sex) {
   if (v == null || isNaN(v)) return null;
+  // 원본에 성별이 없어 infer_persona 가 비워 둔 케이스는 성별 기준 항목을 판정하지 않는다
+  if (SEX_DEPENDENT.has(name) && sex !== '남성' && sex !== '여성') return null;
   const male = sex === '남성';
   const band = (lo, hi) => (v < lo ? '정상' : (v < hi ? '경계' : '의심'));   // 높을수록 나쁜 항목
   switch (name) {
@@ -421,10 +424,10 @@ SCREENS.select = function () {
     h += `<div class="empty">등록된 PHR 케이스가 없습니다.<br><span style="font-size:12px">PHR 케이스 관리에서 엑셀을 업로드하면 여기 나타납니다.</span></div>`;
   } else {
     h += `<div class="sub" style="margin:0 2px 10px">본인인증 대신 샘플을 고르면 그 사람의 최근 5년 기록이 연동된 상태로 시작합니다.</div>`;
-    cases.forEach(c => {
+    cases.forEach((c, ci) => {
       const cnt = c.counts || {}, p = c.persona || {};
       const who = [p.sex, p.age ? p.age + '세' : ''].filter(Boolean).join(' · ');
-      h += `<div class="sel-case" onclick="selectCase('${esc(c.id)}')">
+      h += `<div class="sel-case" onclick="selectCaseAt(${ci})">
         <div class="c1"><span class="no">${esc(c.caseNo)}</span><span class="sub">${esc(c.periodFrom)}~${esc(c.periodTo)}</span></div>
         <div class="lb">${esc(c.label || '')}</div>
         <div class="meta">검진 ${(cnt.general||0)+(cnt.cancer||0)+(cnt.oral||0)}건 · 처방 ${cnt.prescription||0}건${who ? ' · ' + esc(who) : ''}</div>
@@ -556,10 +559,11 @@ SCREENS.rx = function (p) {
     h += '<div class="empty">처방 기록이 없습니다</div>';
   }
   let lastDate = null;
-  groups.forEach(g => {
+  // 핸들러에는 숫자 인덱스만 넣는다 — 기관명 같은 외부 문자열을 실행 코드에 끼워 넣지 않는다
+  groups.forEach((g, gi) => {
     if (g.date !== lastDate) { h += `<div class="datehead">${esc(fmtDate(g.date))}</div>`; lastDate = g.date; }
     const first = g.items[0] || {}, more = g.items.length - 1;
-    h += `<div class="acard click" onclick="nav('rxdetail',{key:'${esc(g.key)}'})"><div class="row">
+    h += `<div class="acard click" onclick="nav('rxdetail',{gi:${gi}})"><div class="row">
       <div class="grow"><div class="ttl1" style="font-size:14px">${esc(g.institution)}</div>
         <div class="sub">${esc(first.name || '')}${more > 0 ? ' 외 ' + more + '건' : ''}</div>
         <div class="sub">${esc(fmtDate(g.date))}</div></div>
@@ -570,7 +574,7 @@ SCREENS.rx = function (p) {
 
 // 6. 처방 상세 ─ 설명서 11단계
 SCREENS.rxdetail = function (p) {
-  const g = rxGroups().find(x => x.key === p.key) || { items: [], institution: '', date: null };
+  const g = rxGroups()[p.gi] || { items: [], institution: '', date: null };
   let h = head(g.institution || '처방 상세', true) + '<div class="body">';
   h += `<div class="sect">처방 정보</div><div class="acard">
     <div class="kv"><span class="k">조제 기관</span><span>${esc(g.institution)}</span></div>
@@ -611,6 +615,7 @@ function closeSheet() { const s = document.getElementById('sheet'); if (s) s.cla
 // ──────────────────────────────────────────
 // 케이스 선택·메모
 // ──────────────────────────────────────────
+function selectCaseAt(i) { const c = cases[i]; if (c) selectCase(c.id); }
 async function selectCase(id) {
   let d;
   try {
@@ -647,7 +652,8 @@ function renderSummary() {
   else items.push('모든 수치 항목에 측정 기록이 있다.');
   items.push('진료(상병명) 기록은 원본에 없어 <b>진료 탭이 비어 있다</b>. 처방만 조제일·투여일수로 복용 종료 여부가 계산된다.');
   if (warns.length) items.push(`<b class="warn">처방 ${warns.length}개 연도</b>는 컬럼 조각 수가 맞지 않아 제외됐다 (${warns.map(w=>esc(w.year)).join(', ')}).`);
-  items.push('항목별 정상·경계·의심 표시는 원본에 없고, 국가건강검진 판정 기준(일반 기준)으로 화면에서 계산한 참고값이다.');
+  items.push('항목별 정상·경계·의심 표시는 원본에 없고, 국가건강검진 판정 기준(일반 기준)으로 화면에서 계산한 참고값이다.'
+    + (p.sex === '남성' || p.sex === '여성' ? '' : ' 성별이 미상이라 허리둘레·혈색소·감마지티피는 판정을 표시하지 않는다.'));
   if (!p.reviewed) items.push('페르소나 미검수 — 나이·배경은 PHR 케이스 관리에서 채운다.');
   notes.innerHTML = '<ul style="margin:0;padding-left:16px">' + items.map(i => `<li style="margin-bottom:5px">${i}</li>`).join('') + '</ul>';
 }
