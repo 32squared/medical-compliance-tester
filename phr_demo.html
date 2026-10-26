@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PHR 시연 — 나만의 주치의</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.1/marked.min.js"></script>
 <style>
   /* 호스트 공통 다크 테마 (phr_manager 와 같은 토큰) */
   :root {
@@ -150,6 +151,79 @@
               border-radius:10px; padding:11px 12px; font-size:13px; margin-bottom:8px; cursor:pointer; font-family:inherit; }
   .sheet .q:hover { background:#2d2e34; }
   .phone-wrap { position:relative; }
+
+  /* ── AI 건강상담 (앱 채팅 화면) ── */
+  .chat { display:flex; flex-direction:column; height:100%; }
+  .chat .apphead { border-bottom:1px solid var(--app-line); padding-bottom:10px; }
+  .chat .apphead .ttl { font-size:15px; }
+  .chat .apphead .ttl small { display:block; font-size:10.5px; color:var(--app-mint); font-weight:500; }
+  .chat .ctx { display:flex; align-items:center; gap:8px; margin:8px 14px 0; padding:8px 10px; border-radius:10px;
+               background:var(--app-card); font-size:11px; color:var(--app-dim); }
+  .chat .ctx b { color:var(--app-text); }
+  .chat .ctx .pill { margin-left:auto; background:var(--app-mint-dark); color:#dff7f0; border-radius:8px; padding:1px 7px; font-size:10px; white-space:nowrap; }
+  .chat .msgs { flex:1; overflow:auto; padding:10px 14px 6px; display:flex; flex-direction:column; gap:10px; }
+  .chat .msgs::-webkit-scrollbar { width:0; }
+  .cm { display:flex; gap:8px; max-width:100%; }
+  .cm.user { justify-content:flex-end; }
+  .cm .av { width:28px; height:28px; border-radius:50%; background:#2a3a62; flex:0 0 28px; display:flex; align-items:center; justify-content:center; font-size:14px; margin-top:2px; }
+  .cm .bubble { max-width:84%; border-radius:16px; padding:10px 13px; font-size:13px; line-height:1.6; word-break:break-word; }
+  .cm.user .bubble { background:var(--app-mint); color:#0b2a24; border-bottom-right-radius:4px; }
+  .cm.ai .bubble { background:var(--app-card); color:var(--app-text); border-top-left-radius:4px; }
+  .cm.ai .bubble p { margin:0 0 8px; } .cm.ai .bubble p:last-child { margin-bottom:0; }
+  .cm.ai .bubble ul, .cm.ai .bubble ol { margin:4px 0 8px 18px; padding:0; }
+  .cm.ai .bubble li { margin:2px 0; }
+  .cm.ai .bubble h1, .cm.ai .bubble h2, .cm.ai .bubble h3, .cm.ai .bubble h4 { font-size:13px; margin:10px 0 4px; color:var(--app-mint); }
+  .cm.ai .bubble strong { color:#fff; }
+  .cm.ai .bubble code { background:var(--app-card2); padding:1px 4px; border-radius:4px; font-size:12px; }
+  .cm.ai .bubble a { color:var(--app-blue); }
+  .cm.ai .bubble table { border-collapse:collapse; width:100%; font-size:12px; margin:6px 0; }
+  .cm.ai .bubble th, .cm.ai .bubble td { border-bottom:1px solid var(--app-line); padding:4px 5px; text-align:left; }
+  .cm.ai .bubble hr { border:none; border-top:1px solid var(--app-line); margin:8px 0; }
+  .cm .meta { font-size:10px; color:var(--app-dim); margin-top:4px; }
+  .typing { display:inline-flex; gap:4px; align-items:center; height:14px; }
+  .typing i { width:6px; height:6px; border-radius:50%; background:var(--app-dim); animation:tdot 1.2s infinite; }
+  .typing i:nth-child(2) { animation-delay:.2s; } .typing i:nth-child(3) { animation-delay:.4s; }
+  @keyframes tdot { 0%,80%,100% { opacity:.25; transform:translateY(0);} 40% { opacity:1; transform:translateY(-3px);} }
+  .prog { font-size:11px; color:var(--app-mint); margin:0 0 0 36px; display:flex; align-items:center; gap:6px; }
+  .prog::before { content:''; width:10px; height:10px; border:2px solid var(--app-mint-dark); border-top-color:var(--app-mint); border-radius:50%; animation:spin .7s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 0 36px; }
+  .chip { background:var(--app-card2); border:1px solid var(--app-line); color:var(--app-text); border-radius:14px; padding:6px 11px;
+          font-size:11.5px; cursor:pointer; font-family:inherit; text-align:left; }
+  .chip:hover { border-color:var(--app-mint); color:var(--app-mint); }
+  .chips.start { margin:0; flex-direction:column; align-items:stretch; }
+  .chips.start .chip { padding:10px 12px; font-size:12.5px; border-radius:12px; }
+  .src { margin:6px 0 0 36px; font-size:10.5px; color:var(--app-dim); }
+  .src summary { cursor:pointer; }
+  .src .si { padding:4px 0; border-bottom:1px solid var(--app-line); }
+  .src .si a { color:var(--app-blue); text-decoration:none; }
+  .err { color:var(--app-red); }
+  .chat .inbar { display:flex; gap:8px; align-items:flex-end; padding:8px 12px 14px; border-top:1px solid var(--app-line); background:var(--app-bg); }
+  .chat textarea { flex:1; resize:none; background:var(--app-card); color:var(--app-text); border:1px solid var(--app-line); border-radius:20px;
+                   padding:10px 14px; font-size:13px; font-family:inherit; line-height:1.4; max-height:96px; outline:none; }
+  .chat textarea:focus { border-color:var(--app-mint); }
+  .chat .send { width:40px; height:40px; border-radius:50%; border:none; background:var(--app-mint); color:#0b2a24; font-size:16px; cursor:pointer; flex:0 0 40px; }
+  .chat .send.stop { background:var(--app-red); color:#fff; }
+  .chat .disc { font-size:9.5px; color:var(--app-dim); text-align:center; padding:0 14px 8px; line-height:1.4; }
+  /* mhc-viz 시각 블록 (규약 v1.0 — docs/mhc_viz_convention_v1_20261014.html) — 앱 색 */
+  .mhc-viz { border:1px solid var(--app-line); border-radius:10px; padding:8px 10px; margin:8px 0; background:var(--app-bg); --accent:var(--app-mint); --surface:var(--app-card); }
+  .mhc-viz .mhc-viz-hd { font-size:11px; color:var(--app-dim); margin-bottom:4px; }
+  .mhc-viz table { width:100%; border-collapse:collapse; font-size:11.5px; table-layout:fixed; margin:0; }
+  .mhc-viz th, .mhc-viz td { padding:3px 4px; border-bottom:1px solid var(--app-line); text-align:right; font-variant-numeric:tabular-nums; overflow:hidden; text-overflow:ellipsis; }
+  .mhc-viz th { color:var(--app-dim); font-weight:600; }
+  .mhc-viz th:first-child, .mhc-viz td:first-child, .mhc-viz th:last-child, .mhc-viz td:last-child { text-align:left; }
+  .mhc-viz .mhc-viz-cap { font-size:10.5px; color:var(--app-dim); margin:5px 0 0; }
+  .mhc-viz .mhc-tag { display:inline-block; font-size:10.5px; padding:0 6px; border-radius:6px; font-weight:700; white-space:nowrap; }
+  .mhc-viz .mhc-tag.in { background:rgba(88,196,127,.18); color:var(--app-green); }
+  .mhc-viz .mhc-tag.above, .mhc-viz .mhc-tag.border, .mhc-viz .mhc-tag.below { background:rgba(240,169,74,.22); color:var(--app-amber); }
+  .mhc-viz .mhc-bands { display:flex; height:12px; border-radius:4px; overflow:hidden; }
+  .mhc-viz .mhc-bandlbl { display:flex; font-size:10.5px; color:var(--app-dim); margin-top:2px; }
+  .mhc-viz .mhc-tl-row { display:grid; grid-template-columns:100px 1fr; align-items:center; gap:8px; margin:3px 0; font-size:11.5px; }
+  .mhc-viz .mhc-tl-bar { position:relative; height:10px; background:var(--app-card2); border-radius:3px; }
+  .mhc-viz .mhc-tl-bar span { position:absolute; top:0; height:10px; background:var(--app-mint); border-radius:3px; }
+  .mhc-viz .mhc-tl-axis { display:flex; justify-content:space-between; font-size:10px; color:var(--app-dim); margin-left:108px; }
+  .mhc-viz-pending { border:1px dashed var(--app-line); border-radius:8px; padding:8px 10px; margin:8px 0; font-size:11.5px; color:var(--app-dim); }
+  .mhc-viz-fallback { font-size:10.5px; white-space:pre-wrap; word-break:break-all; background:var(--app-card2); border-radius:6px; padding:8px; margin:8px 0; }
 </style>
 </head>
 <body>
@@ -177,11 +251,12 @@
         <div class="step" data-screen="checkup" onclick="nav('checkups')"><div class="no">4</div><div><div class="t">검진 상세 → AI 상담 시작</div><div class="d">종합판정과 계측·혈액·소변 항목별 수치·판정. 아래 버튼으로 이 케이스를 붙인 채 채팅 테스터를 연다.</div></div></div>
         <div class="step" data-screen="rx" onclick="nav('rx')"><div class="no">5</div><div><div class="t">진료·처방 목록</div><div class="d">전체·진료·처방 탭. 샘플에는 처방 기록만 있고 진료(상병명)는 제공되지 않는다.</div></div></div>
         <div class="step" data-screen="rxdetail" onclick="nav('rx')"><div class="no">6</div><div><div class="t">처방 상세</div><div class="d">조제 기관, 조제일, 처방 약품 목록과 투여일수.</div></div></div>
+        <div class="step" data-screen="chat" onclick="nav('chat')"><div class="no">7</div><div><div class="t">AI 건강상담</div><div class="d">앱 채팅 화면. 이 케이스의 기록이 붙은 채로 SKIX 에 묻고 답변을 스트리밍으로 받는다. 대화는 테스트 이력에도 남는다.</div></div></div>
       </div>
     </div>
     <div class="card">
       <h2>이렇게 질문해 보세요</h2>
-      <div class="muted" style="line-height:1.5">누르면 이 케이스를 붙인 채팅 테스터가 새 탭에서 열리고 질문이 입력된다.</div>
+      <div class="muted" style="line-height:1.5">누르면 폰 화면의 AI 건강상담에서 이 케이스를 붙여 바로 질문한다.</div>
       <div id="tipList"></div>
       <div class="muted" style="margin-top:8px;font-size:11px;line-height:1.5">
         ※ 답변은 내 기록의 수치와 검사 시점을 함께 안내하며, 검사나 치료가 필요한지는 의료진과 상담해 결정한다.
@@ -223,6 +298,7 @@
         화면에 보이는 요약이 아니라, 채팅·배치가 SKIX 에 실제로 보내는 원문이다.
       </div>
       <button class="btn ghost" onclick="loadTransmit()">원문 보기</button>
+      <button class="btn ghost" onclick="openInTester()" title="평가·검토 기능이 있는 채팅 테스터를 이 케이스로 연다">채팅 테스터에서 열기</button>
       <div id="transmitBox" style="margin-top:8px"></div>
     </div>
   </aside>
@@ -402,6 +478,7 @@ function render() {
 }
 const STEP_HINTS = {
   select: '시연 1 — 샘플 선택 (설명서 7단계 본인인증·불러오기 대체)',
+  chat: '시연 7 — AI 건강상담 (앱 채팅 화면, 이 케이스의 기록이 붙어 전달된다)',
   home: '시연 2 — 연동된 정보 확인 (설명서 8단계)',
   checkups: '시연 3 — 건강검진 목록 (설명서 9단계)',
   checkup: '시연 4 — 검진 상세, 아래 [AI 상담 시작하기] (설명서 9단계)',
@@ -592,17 +669,21 @@ SCREENS.rxdetail = function (p) {
   return h;
 };
 
-// ──────────────────────────────────────────
-// AI 상담 시작 — 채팅 테스터를 이 케이스로 연다.
-//   chat_tester 는 localStorage.phrCaseId 로 케이스를 복원하고 ?prompt= 로 질문을 입력란에 넣는다.
-// ──────────────────────────────────────────
+// ──────────────────────────────────────
+// AI 상담 시작 — 폰 안의 채팅 화면으로 간다. 질문을 주면 바로 보낸다.
+// ──────────────────────────────────────
 function startChat(question) {
   if (!cur) { toast('먼저 샘플을 선택하세요'); return; }
-  try { localStorage.setItem('phrCaseId', cur.id); } catch (e) { /* 저장 불가 환경이면 케이스 없이 열린다 */ }
-  const url = '/' + (question ? '?prompt=' + encodeURIComponent(question) : '');
-  window.open(url, 'phr_demo_chat');
   closeSheet();
-  toast(`${cur.caseNo} 케이스로 채팅 테스터를 열었습니다`);
+  const top = stack[stack.length - 1];
+  if (!top || top.name !== 'chat') nav('chat');
+  if (question) sendChat(question);
+}
+// 평가·검토 기능이 필요하면 채팅 테스터 — localStorage.phrCaseId 로 같은 케이스가 선택된다
+function openInTester() {
+  if (!cur) { toast('먼저 샘플을 선택하세요'); return; }
+  try { localStorage.setItem('phrCaseId', cur.id); } catch (e) {}
+  window.open('/', 'phr_demo_tester');
 }
 function openSheet() {
   const box = document.getElementById('sheetQs');
@@ -624,6 +705,7 @@ async function selectCase(id) {
     d = await res.json();
   } catch (e) { toast('케이스 조회 실패: ' + e.message); return; }
   cur = d;
+  resetChat();   // 케이스 1건 = 대화 1건. 이전 케이스의 PHR 이 SKIX 문맥에 남지 않게 한다
   try { history.replaceState({}, '', '?case=' + encodeURIComponent(cur.caseNo || cur.id)); } catch (e) {}
   renderSummary();
   const tb = document.getElementById('transmitBox'); if (tb) tb.innerHTML = '';
@@ -689,12 +771,310 @@ async function loadCases() {
   } catch (e) { toast('케이스 목록 조회 실패: ' + e.message); }
 }
 
+// ──────────────────────────────────────
+// 7. AI 건강상담 — 앱 채팅 화면
+//   호출 경로는 채팅 테스터와 같다: 같은 origin 의 프록시(POST /)에 X-Target-URL 로 SKIX 를 지정하고,
+//   케이스는 X-PHR-Case-Id 로 id 만 보내면 서버가 PHR payload 를 붙인다. 대화는 /api/conversations 에 남는다.
+// ──────────────────────────────────────
+const ENVS = {
+  dev:  { url: 'https://dev-skix.phnyx.ai',     tenant: 'dev-skix' },
+  stg:  { url: 'https://staging-skix.phnyx.ai',  tenant: 'staging-skix-test' },
+  prod: { url: 'https://skix.phnyx.ai',          tenant: 'prod-skix-test' },
+};
+let savedSettings = {};
+let chat = null;
+function resetChat() { chat = { convId: null, strid: null, msgs: [], loading: false, cancel: false }; }
+resetChat();
+
+async function loadSettings() {
+  try {
+    const res = await fetch('/api/settings');
+    if (res.ok) savedSettings = (await res.json()) || {};
+  } catch (e) { /* 설정이 없으면 ENVS 기본값으로 간다 */ }
+}
+function chatEnv() { return savedSettings.currentEnv || 'dev'; }
+function envConfig() {
+  const env = chatEnv();
+  const e = (savedSettings.environments || {})[env] || {};
+  const base = ENVS[env] || ENVS.dev;
+  return { url: e.apiUrl || base.url, tenant: e.xTenantDomain || base.tenant,
+           apiKey: e.xApiKey || savedSettings.xApiKey || '', apiUid: e.xApiUid || savedSettings.xApiUid || '' };
+}
+function testerUid() { const m = document.cookie.match(/(?:^|;\s*)tester_uid=([^;]*)/); return m ? decodeURIComponent(m[1]) : ''; }
+
+SCREENS.chat = function () {
+  const p = cur.persona || {};
+  const who = [p.sex, p.age ? p.age + '세' : ''].filter(Boolean).join(' · ');
+  const cnt = cur.counts || {};
+  const h = `<div class="chat">
+    <div class="apphead"><button class="back" onclick="back()">&#8249;</button>
+      <div class="ttl">AI 건강상담<small>내 건강기록 기반 · ${esc(chatEnv().toUpperCase())}</small></div><span class="sp"></span></div>
+    <div class="ctx">&#128274; <span><b>${esc(cur.caseNo)}</b>${who ? ' · ' + esc(who) : ''} · 검진 ${(cnt.general||0)+(cnt.cancer||0)+(cnt.oral||0)}건 · 처방 ${cnt.prescription||0}건</span><span class="pill">PHR 연동됨</span></div>
+    <div class="msgs" id="chatMsgs"></div>
+    <div class="inbar">
+      <textarea id="chatInput" rows="1" placeholder="궁금한 점을 물어보세요" onkeydown="chatKey(event)" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,96)+'px'"></textarea>
+      <button class="send" id="chatSend" onclick="chatSendClick()" title="보내기">&#10148;</button>
+    </div>
+    <div class="disc">본 서비스는 건강정보·교육 목적의 참고용이며, 진단·처방·치료 등 의료행위를 대신하지 않습니다.</div>
+  </div>`;
+  setTimeout(renderChatMsgs, 0);
+  return h;
+};
+
+function chatKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); chatSendClick(); }
+}
+function chatSendClick() {
+  if (chat.loading) { chat.cancel = true; return; }
+  const ta = document.getElementById('chatInput');
+  const t = ta ? ta.value.trim() : '';
+  if (!t) return;
+  ta.value = ''; ta.style.height = 'auto';
+  sendChat(t);
+}
+
+// 메시지 목록 전체 그리기 (스트리밍 중인 말풍선은 updateStream 이 따로 갱신)
+function renderChatMsgs() {
+  const box = document.getElementById('chatMsgs');
+  if (!box) return;
+  let h = '';
+  if (!chat.msgs.length) {
+    h += `<div class="cm ai"><div class="av">&#127973;</div><div><div class="bubble">안녕하세요. 연동된 최근 5년 건강검진 결과와 처방 이력을 바탕으로 답변해 드립니다.<br>궁금한 점을 물어보세요.</div></div></div>`;
+    h += '<div class="chips start">' + TIP_QUESTIONS.map(q => `<button class="chip" onclick="sendChat(${JSON.stringify(q).replace(/"/g,'&quot;')})">${esc(q)}</button>`).join('') + '</div>';
+  }
+  chat.msgs.forEach((m, i) => {
+    if (m.role === 'user') {
+      h += `<div class="cm user"><div><div class="bubble">${esc(m.text)}</div></div></div>`;
+      return;
+    }
+    const body = m.streaming
+      ? (m.text ? renderAnswerHtml(m.text, { streaming: true }) : '<span class="typing"><i></i><i></i><i></i></span>')
+      : (m.error ? '<span class="err">' + esc(m.error) + '</span>' : renderAnswerHtml(m.text));
+    h += `<div class="cm ai"><div class="av">&#127973;</div><div style="min-width:0;flex:1">
+      <div class="bubble" ${m.streaming ? 'id="chatStream"' : ''}>${body}</div>
+      ${m.streaming ? `<div class="prog" id="chatProg" style="${m.progress ? '' : 'display:none'}">${esc(m.progress || '')}</div>` : ''}
+      ${!m.streaming && m.meta ? `<div class="meta">${esc(m.meta)}</div>` : ''}
+      ${!m.streaming && m.sources && m.sources.length ? `<details class="src"><summary>참고 자료 ${m.sources.length}건</summary>${m.sources.slice(0, 8).map(sr => `<div class="si">${sr.url ? `<a href="${esc(sr.url)}" target="_blank" rel="noopener">${esc(sr.title || sr.url)}</a>` : esc(sr.title || '')}</div>`).join('')}</details>` : ''}
+      </div></div>`;
+    if (!m.streaming && m.followUps && m.followUps.length && i === chat.msgs.length - 1) {
+      h += '<div class="chips">' + m.followUps.slice(0, 3).map(q => `<button class="chip" onclick="sendChat(${JSON.stringify(String(q)).replace(/"/g,'&quot;')})">${esc(q)}</button>`).join('') + '</div>';
+    }
+  });
+  box.innerHTML = h;
+  box.scrollTop = box.scrollHeight;
+  const btn = document.getElementById('chatSend');
+  if (btn) { btn.classList.toggle('stop', chat.loading); btn.innerHTML = chat.loading ? '&#9632;' : '&#10148;'; btn.title = chat.loading ? '중지' : '보내기'; }
+}
+function updateStream(m) {
+  const b = document.getElementById('chatStream');
+  if (b) b.innerHTML = m.text ? renderAnswerHtml(m.text, { streaming: true }) : '<span class="typing"><i></i><i></i><i></i></span>';
+  const pg = document.getElementById('chatProg');
+  if (pg) { pg.textContent = m.progress || ''; pg.style.display = m.progress ? '' : 'none'; }
+  const box = document.getElementById('chatMsgs');
+  if (box) box.scrollTop = box.scrollHeight;
+}
+
+async function sendChat(text) {
+  if (!cur) { toast('먼저 샘플을 선택하세요'); return; }
+  if (chat.loading) { toast('답변을 받는 중입니다'); return; }
+  const top = stack[stack.length - 1];
+  if (!top || top.name !== 'chat') nav('chat');
+  chat.loading = true; chat.cancel = false;
+  chat.msgs.push({ role: 'user', text });
+  const m = { role: 'ai', text: '', streaming: true, progress: '', followUps: [], sources: [] };
+  chat.msgs.push(m);
+  renderChatMsgs();
+
+  await loadSettings();                       // 설정 화면에서 환경을 바꿨으면 바로 반영
+  const cfg = envConfig(), env = chatEnv();
+  if (!chat.convId) {
+    try {
+      const r = await fetch('/api/conversations', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: `[시연 ${cur.caseNo}] ` + text.slice(0, 30), env }) });
+      const d = await r.json();
+      if (d && d.success) chat.convId = d.id;
+    } catch (e) { /* 저장 실패해도 상담은 진행 */ }
+  }
+  const body = { query: text, conversation_strid: chat.strid || null,
+                 source_types: [savedSettings.srcWeb !== false ? 'WEB' : null, savedSettings.srcPubmed !== false ? 'PUBMED' : null].filter(Boolean) };
+  if (savedSettings.agentStrid) body.agent_strid = savedSettings.agentStrid;
+  const headers = { 'Content-Type': 'application/json', 'Accept': 'text/event-stream',
+    'X-API-Key': cfg.apiKey, 'X-tenant-Domain': cfg.tenant, 'X-Api-UID': testerUid() || cfg.apiUid,
+    'X-Target-URL': `${cfg.url}/api/service/conversations/${savedSettings.graphType || 'ORCHESTRATED_HYBRID_SEARCH'}`,
+    'X-PHR-Case-Id': cur.id };
+  if (chat.convId) headers['X-Conversation-Id'] = chat.convId;
+
+  const t0 = performance.now(); let tFirst = null;
+  try {
+    const resp = await fetch(window.location.origin + '/', { method: 'POST', headers, body: JSON.stringify(body) });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${(await resp.text()).slice(0, 160)}`);
+    const reader = resp.body.getReader(), dec = new TextDecoder();
+    let buf = '';
+    while (true) {
+      if (chat.cancel) { reader.cancel(); break; }
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split('\n'); buf = lines.pop();
+      let stop = false;
+      for (const line of lines) {
+        const tr = line.trim();
+        if (!tr.startsWith('data:')) continue;
+        let ev; try { ev = JSON.parse(tr.slice(5).trim()); } catch (e) { continue; }
+        if (ev.type === 'GENERATION') {
+          if (tFirst === null) tFirst = performance.now();
+          m.text += ev.text || ''; m.progress = ''; updateStream(m);
+        } else if (ev.type === 'PROGRESS') {
+          if (ev.display_message && ev.status !== 'SUCCESS' && ev.status !== 'FAILURE') { m.progress = ev.display_message; updateStream(m); }
+          if (Array.isArray(ev.result_items)) m.sources = m.sources.concat(ev.result_items);
+        } else if (ev.type === 'INFO') {
+          const d = ev.data || {};
+          if (d.conversation_strid) chat.strid = d.conversation_strid;
+          if (d.search_results) m.sources = d.search_results;
+          if (d.follow_ups) m.followUps = d.follow_ups;
+        } else if (ev.type === 'ERROR') {
+          m.error = ev.message || JSON.stringify(ev); stop = true; break;
+        } else if (ev.type === 'STOP') { stop = true; break; }
+      }
+      if (stop) break;
+    }
+  } catch (e) {
+    m.error = '오류: ' + e.message;
+  }
+  const t1 = performance.now();
+  m.streaming = false; m.progress = '';
+  if (!m.text && !m.error) m.error = chat.cancel ? '중지했습니다' : '답변을 받지 못했습니다';
+  if (m.text) m.meta = (tFirst !== null ? `첫 응답 ${((tFirst - t0) / 1000).toFixed(1)}초 · ` : '') + `전체 ${((t1 - t0) / 1000).toFixed(1)}초`;
+  chat.loading = false; chat.cancel = false;
+  renderChatMsgs();
+}
+
+// ── 답변 렌더러 — 채팅 테스터와 같은 규약 (마크다운 + ```mhc-viz``` 시각 블록, docs/mhc_viz_convention_v1_20261014.html) ──
+function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+const MHC_VIZ_POS = { in: '범위 안', border: '경계', above: '기준 위', below: '기준 아래' };
+const MHC_VIZ_FENCE = /```mhc-viz[ \t]*\r?\n([\s\S]*?)\r?\n```/g;
+function mhcVizFallback(jsonText, why) {
+  return '<pre class="mhc-viz-fallback" title="' + escapeHtml(why || '') + '">```mhc-viz\n' + escapeHtml(jsonText || '') + '\n```</pre>';
+}
+function mhcVizIsNum(x) { return typeof x === 'number' && isFinite(x); }
+function mhcVizCell(c) { return '<td>' + (c === null || c === undefined ? '—' : escapeHtml(String(c))) + '</td>'; }
+function renderMhcVizTable(b) {
+  if (!Array.isArray(b.columns) || !Array.isArray(b.rows)) return null;
+  const hasPos = Array.isArray(b.positions) && b.positions.length === b.rows.length;
+  let h = '<table><thead><tr>' + b.columns.map(c => '<th>' + escapeHtml(String(c)) + '</th>').join('') + (hasPos ? '<th>위치</th>' : '') + '</tr></thead><tbody>';
+  b.rows.forEach((r, i) => {
+    if (!Array.isArray(r)) return;
+    h += '<tr>' + r.map(mhcVizCell).join('');
+    if (hasPos) { const p = b.positions[i]; h += '<td><span class="mhc-tag ' + (MHC_VIZ_POS[p] ? p : '') + '">' + escapeHtml(MHC_VIZ_POS[p] || String(p)) + '</span></td>'; }
+    h += '</tr>';
+  });
+  return h + '</tbody></table>';
+}
+function renderMhcVizLine(b) {
+  if (!Array.isArray(b.series) || b.series.length < 2) return null;
+  const W = 320, H = 130, pl = 32, pr = 10, pt = 14, pb = 18;
+  const vals = b.series.map(p => p && p.value).filter(mhcVizIsNum);
+  if (vals.length < 2) return null;
+  const hi = b.reference && mhcVizIsNum(b.reference.high) ? b.reference.high : null;
+  const lo = b.reference && mhcVizIsNum(b.reference.low) ? b.reference.low : null;
+  const mx = Math.max.apply(null, vals.concat(hi !== null ? [hi] : [])) * 1.12 || 1;
+  const x = i => pl + (W - pl - pr) * i / (b.series.length - 1);
+  const y = v => pt + (H - pt - pb) * (1 - v / mx);
+  let h = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="' + escapeHtml(b.title || '') + '">';
+  [0, 0.5, 1].forEach(f => { const v = Math.round(mx * f); h += '<line x1="' + pl + '" y1="' + y(v) + '" x2="' + (W - pr) + '" y2="' + y(v) + '" stroke="currentColor" stroke-opacity="0.15" stroke-width="1"/><text x="' + (pl - 4) + '" y="' + (y(v) + 4) + '" font-size="9" fill="currentColor" fill-opacity="0.6" text-anchor="end">' + v + '</text>'; });
+  [[hi, 'high'], [lo, 'low']].forEach(([ref]) => {
+    if (ref === null) return;
+    h += '<line x1="' + pl + '" y1="' + y(ref) + '" x2="' + (W - pr) + '" y2="' + y(ref) + '" stroke="currentColor" stroke-opacity="0.5" stroke-width="1.2" stroke-dasharray="3 3"/><text x="' + (W - pr) + '" y="' + (y(ref) + 11) + '" font-size="9" fill="currentColor" fill-opacity="0.6" text-anchor="end">' + escapeHtml(b.reference.label || '') + ' ' + ref + '</text>';
+  });
+  const pts = b.series.map((p, i) => mhcVizIsNum(p && p.value) ? x(i) + ',' + y(p.value) : null).filter(Boolean).join(' ');
+  h += '<polyline points="' + pts + '" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>';
+  b.series.forEach((p, i) => {
+    if (!p || !mhcVizIsNum(p.value)) return;
+    h += '<circle cx="' + x(i) + '" cy="' + y(p.value) + '" r="3.5" fill="var(--accent)" stroke="var(--surface)" stroke-width="1.5"/><text x="' + x(i) + '" y="' + (y(p.value) - 7) + '" font-size="9.5" fill="currentColor" text-anchor="middle">' + p.value + '</text><text x="' + x(i) + '" y="' + (H - 5) + '" font-size="9" fill="currentColor" fill-opacity="0.6" text-anchor="middle">' + escapeHtml(String(p.date || '').slice(0, 4)) + '</text>';
+  });
+  return h + '</svg>';
+}
+function renderMhcVizRange(b) {
+  if (!Array.isArray(b.bands) || b.bands.length < 2 || !mhcVizIsNum(b.value)) return null;
+  const bands = b.bands;
+  const widths = bands.map(bd => (mhcVizIsNum(bd.from) && mhcVizIsNum(bd.to)) ? Math.max(bd.to - bd.from, 1) : null);
+  const known = widths.filter(w => w !== null);
+  const dflt = known.length ? known.reduce((a, c) => a + c, 0) / known.length : 1;
+  const lo = mhcVizIsNum(bands[0].from) ? bands[0].from : (mhcVizIsNum(bands[0].to) ? bands[0].to - dflt : 0);
+  const last = bands[bands.length - 1];
+  const hi = mhcVizIsNum(last.to) ? last.to : (mhcVizIsNum(last.from) ? last.from + dflt : lo + dflt);
+  const span = Math.max(hi - lo, 1);
+  const colors = ['rgba(88,196,127,.55)', 'rgba(240,169,74,.6)', 'rgba(239,107,97,.55)', 'rgba(160,60,60,.6)'];
+  let h = '<div class="mhc-bands">' + bands.map((bd, i) => '<div style="flex:' + (widths[i] !== null ? widths[i] : dflt) + ';background:' + colors[Math.min(i, colors.length - 1)] + '"></div>').join('') + '</div>';
+  const pct = Math.min(100, Math.max(0, (b.value - lo) / span * 100));
+  h += '<div style="position:relative;height:20px"><div style="position:absolute;left:' + pct + '%;top:-18px;width:3px;height:24px;background:currentColor;transform:translateX(-50%)"></div><div style="position:absolute;left:' + pct + '%;top:5px;transform:translateX(-50%);font-size:12px;font-weight:700">' + b.value + (b.unit ? ' ' + escapeHtml(b.unit) : '') + '</div></div>';
+  h += '<div class="mhc-bandlbl">' + bands.map((bd, i) => '<span style="flex:' + (widths[i] !== null ? widths[i] : dflt) + '">' + (mhcVizIsNum(bd.from) ? bd.from : '') + (mhcVizIsNum(bd.to) ? '~' + bd.to : (mhcVizIsNum(bd.from) ? ' 이상' : '')) + ' ' + escapeHtml(bd.label || '') + '</span>').join('') + '</div>';
+  return h;
+}
+function renderMhcVizTimeline(b) {
+  if (!Array.isArray(b.items) || !b.items.length) return null;
+  const today = new Date().toISOString().slice(0, 10);
+  const toT = s => { const t = Date.parse(String(s || '')); return isNaN(t) ? null : t; };
+  const starts = b.items.map(it => toT(it.from)).filter(t => t !== null);
+  const ends = b.items.map(it => toT(it.to || today)).filter(t => t !== null);
+  if (!starts.length || !ends.length) return null;
+  const t0 = Math.min.apply(null, starts), t1 = Math.max.apply(null, ends), span = Math.max(t1 - t0, 86400000);
+  let h = '';
+  b.items.forEach(it => {
+    const a = toT(it.from), z = toT(it.to || today);
+    if (a === null || z === null) return;
+    const left = (a - t0) / span * 100, width = Math.max((z - a) / span * 100, 1.5);
+    h += '<div class="mhc-tl-row"><div>' + escapeHtml(it.label || '') + (it.status === 'ongoing' ? ' <span class="mhc-tag border">진행 중</span>' : '') + '</div><div class="mhc-tl-bar"><span style="left:' + left + '%;width:' + width + '%"></span></div></div>';
+  });
+  const mid = new Date((t0 + t1) / 2).toISOString().slice(0, 10);
+  h += '<div class="mhc-tl-axis"><span>' + new Date(t0).toISOString().slice(0, 10) + '</span><span>' + mid + '</span><span>' + new Date(t1).toISOString().slice(0, 10) + '</span></div>';
+  return h;
+}
+function renderMhcVizBlock(jsonText) {
+  let b;
+  try { b = JSON.parse(jsonText); } catch (e) { return mhcVizFallback(jsonText, 'JSON 파싱 실패: ' + e.message); }
+  if (!b || typeof b !== 'object' || b.v !== 1 || !b.caption || typeof b.caption !== 'string') return mhcVizFallback(jsonText, '스키마 위반 (v·caption)');
+  const kindLabel = { table: '표', line: '그래프', range: '구간', timeline: '기간' }[b.kind];
+  if (!kindLabel) return mhcVizFallback(jsonText, '알 수 없는 kind');
+  let body = null;
+  try {
+    body = b.kind === 'table' ? renderMhcVizTable(b) : b.kind === 'line' ? renderMhcVizLine(b)
+         : b.kind === 'range' ? renderMhcVizRange(b) : renderMhcVizTimeline(b);
+  } catch (e) { body = null; }
+  if (!body) return mhcVizFallback(jsonText, '그릴 수 없는 블록');
+  const src = b.source && b.source.ref ? ' 기준: ' + escapeHtml(b.source.ref) + '.' : '';
+  return '<div class="mhc-viz" data-kind="' + b.kind + '"><div class="mhc-viz-hd">' + kindLabel + ' · ' + escapeHtml(b.title || '') + '</div>' + body + '<p class="mhc-viz-cap">' + escapeHtml(b.caption) + src + '</p></div>';
+}
+function renderAnswerHtml(text, opts) {
+  opts = opts || {};
+  text = text || '';
+  if (typeof marked === 'undefined') return escapeHtml(text).replace(/\n/g, '<br>');
+  if (text.indexOf('```mhc-viz') < 0) return marked.parse(text);
+  const re = new RegExp(MHC_VIZ_FENCE.source, 'g');
+  let out = '', last = 0, m;
+  while ((m = re.exec(text)) !== null) {
+    out += marked.parse(text.slice(last, m.index));
+    out += renderMhcVizBlock(m[1]);
+    last = m.index + m[0].length;
+  }
+  const rest = text.slice(last), open = rest.indexOf('```mhc-viz');
+  if (open >= 0) {
+    out += marked.parse(rest.slice(0, open));
+    out += opts.streaming
+      ? '<div class="mhc-viz-pending">&#9203; 표 준비 중 — 블록이 닫히면 그립니다</div>'
+      : mhcVizFallback(rest.slice(open + 10).trim(), '닫히지 않은 블록');
+  } else {
+    out += marked.parse(rest);
+  }
+  return out;
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   const tl = document.getElementById('tipList');
   if (tl) tl.innerHTML = TIP_QUESTIONS.map(q => `<button class="tipq" onclick="startChat(${JSON.stringify(q).replace(/"/g,'&quot;')})">"${esc(q)}"</button>`).join('');
   const clock = document.getElementById('clock');
   if (clock) { const d = new Date(); clock.textContent = `${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`; }
-  await loadCases();
+  await Promise.all([loadCases(), loadSettings()]);
   goSelect();
   // 딥링크: ?case=CASE-01 — 발표 직전에 케이스를 고정해 둘 때 쓴다
   const want = new URLSearchParams(location.search).get('case');
