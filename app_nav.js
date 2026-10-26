@@ -13,7 +13,8 @@
     { id: 'scenario', label: '시나리오', items: [
       { label: '시나리오 관리', tab: '시나리오', href: '/manager', perm: 'manage_scenarios' },
       { label: 'HealthBench', href: '/healthbench', perm: 'view_history|run_batch' },
-      { label: 'PHR 케이스', href: '/phr', perm: 'admin' }
+      { label: 'PHR 케이스', href: '/phr', perm: 'admin' },
+      { label: 'PHR 시연', href: '/phr-demo', perm: 'auth' }
     ] },
     { id: 'result', label: '결과', items: [
       { label: '테스트 이력', href: '/history', perm: 'view_history' },
@@ -53,6 +54,7 @@
     '/kb_manager.html': '/kb_manager',
     '/settings.html': '/settings',
     '/phr_manager.html': '/phr',
+    '/phr_demo.html': '/phr-demo',
     '/advisory_viewer.html': '/advisory',
     '/search_probe.html': '/admin/search-probe'
   };

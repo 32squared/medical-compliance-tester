@@ -3234,6 +3234,10 @@ class ProxyHandler(BaseHTTPRequestHandler):
             # PHR 케이스 관리 (Admin)
             '/phr': 'phr_manager.html',
             '/phr_manager.html': 'phr_manager.html',
+            # PHR 시연 — 앱 화면(연동 정보→검진→처방) 재현. 페이지는 로그인 사용자 누구나,
+            # 데이터는 /api/phr/* 가 인증·배정 범위를 강제한다.
+            '/phr-demo': 'phr_demo.html',
+            '/phr_demo.html': 'phr_demo.html',
             # 자문 판정 뷰어 (Admin) — 분과별 질문·답변·판정을 한 화면에서 대조
             '/advisory': 'advisory_viewer.html',
             '/advisory_viewer.html': 'advisory_viewer.html',

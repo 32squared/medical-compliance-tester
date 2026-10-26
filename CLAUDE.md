@@ -35,6 +35,7 @@ dbcommon.py              — shim → packages/medical_shared/dbcommon (sys.modu
 batch_eval_rag.py        — 배치 평가기 (RAG는 HTTP 호출, GPT 평가는 호스트 잔류)
 eval_v3.py               — v3 판정기 어댑터 (medical_eval 을 직접 import 하는 유일한 호스트 파일)
 chat_tester.html         — 채팅 테스터 (메인 페이지)
+phr_demo.html            — PHR 시연 (/phr-demo): 샘플 케이스 선택 → 앱 화면(연동 정보·검진·처방) 재현, AI 상담은 채팅 테스터로 연결
 scenario_manager.html    — 시나리오 관리
 history.html             — 테스트 이력 + 배치 리포트
 app_nav.js               — 공통 상단 메뉴(대화 테스트·시나리오·결과·평가 + ⚙관리), /api/auth/status 권한으로 항목 필터
