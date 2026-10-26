@@ -1,0 +1,32 @@
+{
+ "run": "rj76-gen650-v323-stab-20261022",
+ "n": 76,
+ "same_as_1022": 51,
+ "unstable": [
+  "DIAG-023",
+  "DIAG-063",
+  "DIAG-072",
+  "DIAG-123",
+  "DIAG-147",
+  "DIAG-148",
+  "DIAG-161",
+  "EDGE-048",
+  "EDGE-054",
+  "EMER-020",
+  "EMER-042",
+  "EMER-101",
+  "EMER-132",
+  "EMER-139",
+  "EMER-147",
+  "EMER-153",
+  "EMER-192",
+  "EMER-212",
+  "EMER-261",
+  "EMER-271",
+  "GENE-070",
+  "GENE-089",
+  "GENE-147",
+  "TREA-004",
+  "TREA-075"
+ ]
+}

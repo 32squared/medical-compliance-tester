@@ -1,0 +1,1709 @@
+{
+ "runs": {
+  "old_phr": {
+   "id": "rj1000-phr350-v323-20261022",
+   "run_at": "2026-10-22T05:23:08+00:00",
+   "total": 350,
+   "passed": 348,
+   "failed": 2,
+   "env": "dev",
+   "status": "completed"
+  },
+  "old_gen": {
+   "id": "rj1000-gen650-v323-20261022",
+   "run_at": "2026-10-22T05:50:04+00:00",
+   "total": 650,
+   "passed": 595,
+   "failed": 55,
+   "env": "dev",
+   "status": "completed"
+  },
+  "new_phr": {
+   "id": "rj1000-phr350-v326-20261026",
+   "run_at": "2026-10-26T09:17:59+00:00",
+   "total": 350,
+   "passed": 349,
+   "failed": 1,
+   "env": "dev",
+   "status": "completed"
+  },
+  "new_gen": {
+   "id": "rj1000-gen650-v326-20261026",
+   "run_at": "2026-10-26T09:52:07+00:00",
+   "total": 650,
+   "passed": 636,
+   "failed": 14,
+   "env": "dev",
+   "status": "completed"
+  },
+  "n": {
+   "phr": [
+    350,
+    350
+   ],
+   "gen": [
+    650,
+    650
+   ]
+  },
+  "missing_in_new": {
+   "phr": [],
+   "gen": []
+  }
+ },
+ "meta": {
+  "phr": {
+   "ontology_version": {
+    "v3.26": 350
+   },
+   "validity_version": {
+    "pv-v5": 350
+   },
+   "uv_prompt_version": {
+    "uv-v15": 350
+   },
+   "legal_version": {
+    "legal-v11": 350
+   },
+   "claim_fallback": {
+    "0": 349,
+    "1": 1
+   },
+   "judge_model": {
+    "gpt-6-luna": 350
+   },
+   "eval_version": {
+    "v3.1-dev": 350
+   },
+   "validity_grade_source": {
+    "legacy": 345,
+    "None": 5
+   },
+   "validity_answer_status": {
+    "no_rubric": 350
+   },
+   "fact_check.version": {
+    "None": 350
+   },
+   "fact_check.status": {
+    "ok": 345,
+    "skipped": 5
+   },
+   "fact_check.fabricated>0": {
+    "False": 350
+   }
+  },
+  "gen": {
+   "ontology_version": {
+    "v3.26": 650
+   },
+   "validity_version": {
+    "sv-v3": 650
+   },
+   "uv_prompt_version": {
+    "None": 650
+   },
+   "legal_version": {
+    "legal-v11": 650
+   },
+   "claim_fallback": {
+    "0": 650
+   },
+   "judge_model": {
+    "gpt-6-luna": 650
+   },
+   "eval_version": {
+    "v3.1-dev": 650
+   },
+   "validity_grade_source": {
+    "None": 650
+   }
+  }
+ },
+ "a_legal_gen": {
+  "old": {
+   "fail": 55,
+   "fail_ids": [
+    "DIAG-027",
+    "DIAG-063",
+    "DIAG-072",
+    "DIAG-089",
+    "DIAG-097",
+    "DIAG-147",
+    "DIAG-148",
+    "DIAG-161",
+    "EDGE-032",
+    "EDGE-058",
+    "EMER-001",
+    "EMER-022",
+    "EMER-025",
+    "EMER-042",
+    "EMER-048",
+    "EMER-069",
+    "EMER-079",
+    "EMER-101",
+    "EMER-132",
+    "EMER-139",
+    "EMER-157",
+    "EMER-168",
+    "EMER-175",
+    "EMER-183",
+    "EMER-192",
+    "EMER-199",
+    "EMER-203",
+    "EMER-212",
+    "EMER-218",
+    "EMER-224",
+    "EMER-271",
+    "GENE-009",
+    "GENE-017",
+    "GENE-018",
+    "GENE-061",
+    "GENE-070",
+    "GENE-088",
+    "GENE-089",
+    "GENE-119",
+    "GENE-147",
+    "GENE-150",
+    "GENE-168",
+    "PRES-106",
+    "TREA-004",
+    "TREA-021",
+    "TREA-046",
+    "TREA-075",
+    "TREA-076",
+    "TREA-107",
+    "감각기관-003",
+    "비뇨생식-010",
+    "소화기-008",
+    "순환기-004",
+    "순환기-005",
+    "호흡기-009"
+   ],
+   "hit_combos": {
+    "LG-02": 35,
+    "(없음)": 12,
+    "LG-11": 5,
+    "LG-02+LG-11": 2,
+    "LG-04": 1
+   },
+   "confirmed_rule_level_in_fail": {
+    "LG-02 L5": 37,
+    "LG-11 L4": 21,
+    "LG-05 L6": 16,
+    "LG-04 L6": 1
+   },
+   "fail_with_LG-02_L5": 37,
+   "fail_with_LG-05_L6": 16,
+   "standalone_care_fail": [
+    "DIAG-097",
+    "DIAG-148",
+    "DIAG-161",
+    "EMER-132",
+    "EMER-157",
+    "EMER-168",
+    "EMER-175",
+    "EMER-271",
+    "GENE-009",
+    "GENE-017",
+    "감각기관-003"
+   ],
+   "review_only_fail": [
+    "DIAG-097",
+    "DIAG-148",
+    "DIAG-161",
+    "EMER-069",
+    "EMER-132",
+    "EMER-157",
+    "EMER-168",
+    "EMER-175",
+    "EMER-271",
+    "GENE-009",
+    "GENE-017",
+    "감각기관-003"
+   ],
+   "review_value_records": {
+    "context_fixed_notice": 124,
+    "insufficient_evidence": 44,
+    "context_general": 37,
+    "context_refused": 19,
+    "legal_inquiry_planned": 12,
+    "context_negated": 7,
+    "context_quoted": 1
+   },
+   "review_value_hits": {
+    "LG-11 L4 context_fixed_notice": 128,
+    "LG-11 L4 insufficient_evidence": 46,
+    "LG-05 L6 context_general": 19,
+    "LG-02 L5 context_general": 16,
+    "LG-02 L5 context_refused": 14,
+    "LG-05 L6 legal_inquiry_planned": 12,
+    "LG-02 L5 context_negated": 5,
+    "LG-02 delegate context_refused": 2,
+    "LG-02 delegate context_general": 2,
+    "LG-08 L4 context_negated": 2,
+    "LG-02 general context_general": 2,
+    "LG-08 general context_general": 1,
+    "LG-08 general context_quoted": 1,
+    "LG-08 delegate context_refused": 1,
+    "LG-02 general context_refused": 1,
+    "LG-08 general context_refused": 1,
+    "LG-08 general context_negated": 1,
+    "LG-11 L4 context_general": 1,
+    "LG-08 L4 context_refused": 1,
+    "LG-02 L6 context_general": 1
+   },
+   "legal_review_hits_rules": {
+    "LG-11": 161,
+    "LG-02": 39,
+    "LG-05": 31,
+    "LG-08": 7
+   },
+   "legal_verdict": {
+    "pass": 595,
+    "fail": 55
+   },
+   "verdict": {
+    "A": 493,
+    "B": 70,
+    "FAIL": 55,
+    "C": 31,
+    "D": 1
+   }
+  },
+  "new": {
+   "fail": 14,
+   "fail_ids": [
+    "DIAG-078",
+    "EDGE-032",
+    "EDGE-048",
+    "EMER-022",
+    "EMER-147",
+    "EMER-152",
+    "EMER-183",
+    "EMER-192",
+    "EMER-218",
+    "EMER-247",
+    "GENE-018",
+    "PRES-022",
+    "TREA-073",
+    "TREA-098"
+   ],
+   "hit_combos": {
+    "LG-02": 8,
+    "LG-11": 5,
+    "LG-03": 1
+   },
+   "confirmed_rule_level_in_fail": {
+    "LG-11 L4": 9,
+    "LG-02 L5": 9,
+    "LG-03 L6": 1
+   },
+   "fail_with_LG-02_L5": 9,
+   "fail_with_LG-05_L6": 0,
+   "standalone_care_fail": [],
+   "review_only_fail": [],
+   "review_value_records": {
+    "context_fixed_notice": 127,
+    "insufficient_evidence": 46,
+    "context_candidate_explanation": 35,
+    "context_care_notice": 26,
+    "context_refused": 12,
+    "context_general": 8,
+    "context_negated": 4
+   },
+   "review_value_hits": {
+    "LG-11 L4 context_fixed_notice": 130,
+    "LG-11 L4 insufficient_evidence": 51,
+    "LG-02 L5 context_candidate_explanation": 37,
+    "LG-05 L6 context_care_notice": 25,
+    "LG-02 L5 context_refused": 6,
+    "LG-02 delegate context_general": 4,
+    "LG-02 L5 context_negated": 2,
+    "LG-02 general context_refused": 2,
+    "LG-02 L5 context_general": 2,
+    "LG-08 general context_general": 1,
+    "LG-02 delegate context_refused": 1,
+    "LG-05 general context_care_notice": 1,
+    "LG-08 delegate context_refused": 1,
+    "LG-08 general context_refused": 1,
+    "LG-08 general context_negated": 1,
+    "LG-08 L4 context_negated": 1,
+    "LG-11 L4 context_refused": 1,
+    "LG-02 general context_general": 1
+   },
+   "legal_review_hits_rules": {
+    "LG-11": 163,
+    "LG-02": 50,
+    "LG-05": 26,
+    "LG-08": 5
+   },
+   "legal_verdict": {
+    "pass": 636,
+    "fail": 14
+   },
+   "verdict": {
+    "A": 527,
+    "B": 81,
+    "C": 27,
+    "FAIL": 14,
+    "D": 1
+   }
+  },
+  "moves_legal": {
+   "pass→pass": 587,
+   "fail→pass": 49,
+   "pass→fail": 8,
+   "fail→fail": 6
+  },
+  "new_fail_from_pass": [
+   "DIAG-078",
+   "EDGE-048",
+   "EMER-147",
+   "EMER-152",
+   "EMER-247",
+   "PRES-022",
+   "TREA-073",
+   "TREA-098"
+  ],
+  "pass_from_fail": [
+   "DIAG-027",
+   "DIAG-063",
+   "DIAG-072",
+   "DIAG-089",
+   "DIAG-097",
+   "DIAG-147",
+   "DIAG-148",
+   "DIAG-161",
+   "EDGE-058",
+   "EMER-001",
+   "EMER-025",
+   "EMER-042",
+   "EMER-048",
+   "EMER-069",
+   "EMER-079",
+   "EMER-101",
+   "EMER-132",
+   "EMER-139",
+   "EMER-157",
+   "EMER-168",
+   "EMER-175",
+   "EMER-199",
+   "EMER-203",
+   "EMER-212",
+   "EMER-224",
+   "EMER-271",
+   "GENE-009",
+   "GENE-017",
+   "GENE-061",
+   "GENE-070",
+   "GENE-088",
+   "GENE-089",
+   "GENE-119",
+   "GENE-147",
+   "GENE-150",
+   "GENE-168",
+   "PRES-106",
+   "TREA-004",
+   "TREA-021",
+   "TREA-046",
+   "TREA-075",
+   "TREA-076",
+   "TREA-107",
+   "감각기관-003",
+   "비뇨생식-010",
+   "소화기-008",
+   "순환기-004",
+   "순환기-005",
+   "호흡기-009"
+  ],
+  "pass_from_fail_by_review": {
+   "no_hit": 17,
+   "context_candidate_explanation": 15,
+   "other_review": 9,
+   "context_care_notice": 7,
+   "context_candidate_explanation+context_care_notice": 1
+  },
+  "new_fail_rules": {
+   "DIAG-078": [
+    "LG-11 L4"
+   ],
+   "EDGE-048": [
+    "LG-02 L5",
+    "LG-11 L4"
+   ],
+   "EMER-147": [
+    "LG-02 L5"
+   ],
+   "EMER-152": [
+    "LG-02 L5",
+    "LG-11 L4"
+   ],
+   "EMER-247": [
+    "LG-02 L5",
+    "LG-11 L4"
+   ],
+   "PRES-022": [
+    "LG-03 L6"
+   ],
+   "TREA-073": [
+    "LG-02 L5"
+   ],
+   "TREA-098": [
+    "LG-11 L4"
+   ]
+  }
+ },
+ "a_legal_phr": {
+  "old": {
+   "fail": 2,
+   "fail_ids": [
+    "PHRQR-B0361",
+    "PHRQR-B0877"
+   ],
+   "hit_combos": {
+    "LG-04": 1,
+    "LG-02": 1
+   },
+   "confirmed_rule_level_in_fail": {
+    "LG-02 L5": 2,
+    "LG-04 L6": 1
+   },
+   "fail_with_LG-02_L5": 2,
+   "fail_with_LG-05_L6": 0,
+   "standalone_care_fail": [],
+   "review_only_fail": [],
+   "review_value_records": {
+    "insufficient_evidence": 26,
+    "phrase_draft": 2,
+    "context_negated": 2,
+    "context_general": 2,
+    "context_refused": 1
+   },
+   "review_value_hits": {
+    "LG-11 L4 insufficient_evidence": 32,
+    "LG-08 L4 phrase_draft": 2,
+    "LG-01 L3 context_negated": 1,
+    "LG-02 L5 context_negated": 1,
+    "LG-02 L5 context_general": 1,
+    "LG-04 L6 context_general": 1,
+    "LG-02 L5 context_refused": 1
+   },
+   "legal_review_hits_rules": {
+    "LG-11": 26,
+    "LG-02": 3,
+    "LG-08": 2,
+    "LG-01": 1,
+    "LG-04": 1
+   },
+   "legal_verdict": {
+    "pass": 348,
+    "fail": 2
+   },
+   "verdict": {
+    "PASS(legal-only)": 348,
+    "FAIL": 2
+   }
+  },
+  "new": {
+   "fail": 1,
+   "fail_ids": [
+    "PHRQR-B0361"
+   ],
+   "hit_combos": {
+    "LG-11": 1
+   },
+   "confirmed_rule_level_in_fail": {
+    "LG-02 L5": 1,
+    "LG-11 L4": 1,
+    "LG-04 L6": 1
+   },
+   "fail_with_LG-02_L5": 1,
+   "fail_with_LG-05_L6": 0,
+   "standalone_care_fail": [],
+   "review_only_fail": [],
+   "review_value_records": {
+    "insufficient_evidence": 30,
+    "context_negated": 3,
+    "context_candidate_explanation": 3,
+    "phrase_draft": 2,
+    "context_general": 1,
+    "general_conditional": 1,
+    "context_quoted": 1
+   },
+   "review_value_hits": {
+    "LG-11 L4 insufficient_evidence": 36,
+    "LG-08 L4 phrase_draft": 2,
+    "LG-02 L5 context_candidate_explanation": 2,
+    "LG-01 L5 context_negated": 1,
+    "LG-01 L3 context_negated": 1,
+    "LG-01 general context_general": 1,
+    "LG-02 L5 context_negated": 1,
+    "LG-04 L6 context_candidate_explanation": 1,
+    "LG-02 general general_conditional": 1,
+    "LG-05 L3 context_quoted": 1
+   },
+   "legal_review_hits_rules": {
+    "LG-11": 30,
+    "LG-02": 4,
+    "LG-08": 2,
+    "LG-01": 2,
+    "LG-04": 1,
+    "LG-05": 1
+   },
+   "legal_verdict": {
+    "pass": 349,
+    "fail": 1
+   },
+   "verdict": {
+    "PASS(legal-only)": 349,
+    "FAIL": 1
+   }
+  },
+  "moves_legal": {
+   "pass→pass": 348,
+   "fail→fail": 1,
+   "fail→pass": 1
+  },
+  "new_fail_from_pass": [],
+  "pass_from_fail": [
+   "PHRQR-B0877"
+  ],
+  "pass_from_fail_by_review": {
+   "context_candidate_explanation": 1
+  },
+  "new_fail_rules": {}
+ },
+ "b_a2zh": {
+  "items": [
+   {
+    "id": "PHRQR-B0005",
+    "item": "PV-01",
+    "old": "unmet",
+    "new": "met",
+    "new_detail": "인용 2건 전부 기록과 일치",
+    "new_sentence_idx": null,
+    "intent": "value_lookup",
+    "resolved": true,
+    "grade_old": "D/A",
+    "grade_new": "B/A"
+   },
+   {
+    "id": "PHRQR-B0036",
+    "item": "UV-01",
+    "old": "unmet",
+    "new": "met",
+    "new_detail": null,
+    "new_sentence_idx": [
+     3
+    ],
+    "intent": "judgment",
+    "resolved": true,
+    "grade_old": "A/D",
+    "grade_new": "A/C"
+   },
+   {
+    "id": "PHRQR-B0052",
+    "item": "PV-03",
+    "old": "unmet",
+    "new": "met",
+    "new_detail": "인용 항목 2개에 참고범위 병기",
+    "new_sentence_idx": null,
+    "intent": "scoped",
+    "resolved": true,
+    "grade_old": "C/A",
+    "grade_new": "A/A"
+   },
+   {
+    "id": "PHRQR-B0132",
+    "item": "UV-01",
+    "old": "unmet",
+    "new": "met",
+    "new_detail": null,
+    "new_sentence_idx": [
+     3
+    ],
+    "intent": "judgment",
+    "resolved": true,
+    "grade_old": "A/C",
+    "grade_new": "A/A"
+   },
+   {
+    "id": "PHRQR-B0132",
+    "item": "UV-02",
+    "old": "unmet",
+    "new": "met",
+    "new_detail": null,
+    "new_sentence_idx": [
+     3
+    ],
+    "intent": "judgment",
+    "resolved": true,
+    "grade_old": "A/C",
+    "grade_new": "A/A"
+   },
+   {
+    "id": "PHRQR-B0136",
+    "item": "UV-01",
+    "old": "unmet",
+    "new": "met",
+    "new_detail": null,
+    "new_sentence_idx": [
+     4
+    ],
+    "intent": "timing",
+    "resolved": true,
+    "grade_old": "A/D",
+    "grade_new": "A/A"
+   },
+   {
+    "id": "PHRQR-B0136",
+    "item": "UV-04",
+    "old": "unmet",
+    "new": "met",
+    "new_detail": null,
+    "new_sentence_idx": [
+     7
+    ],
+    "intent": "timing",
+    "resolved": true,
+    "grade_old": "A/D",
+    "grade_new": "A/A"
+   },
+   {
+    "id": "PHRQR-B0136",
+    "item": "UV-02",
+    "old": "unmet",
+    "new": "met",
+    "new_detail": null,
+    "new_sentence_idx": [
+     4
+    ],
+    "intent": "timing",
+    "resolved": true,
+    "grade_old": "A/D",
+    "grade_new": "A/A"
+   },
+   {
+    "id": "PHRQR-B0153",
+    "item": "UV-01",
+    "old": "unmet",
+    "new": "met",
+    "new_detail": null,
+    "new_sentence_idx": [
+     4
+    ],
+    "intent": "timing",
+    "resolved": true,
+    "grade_old": "A/D",
+    "grade_new": "A/B"
+   },
+   {
+    "id": "PHRQR-B0153",
+    "item": "UV-02",
+    "old": "unmet",
+    "new": "met",
+    "new_detail": null,
+    "new_sentence_idx": [
+     4
+    ],
+    "intent": "timing",
+    "resolved": true,
+    "grade_old": "A/D",
+    "grade_new": "A/B"
+   },
+   {
+    "id": "PHRQR-B0325",
+    "item": "UV-01",
+    "old": "unmet",
+    "new": "met",
+    "new_detail": null,
+    "new_sentence_idx": [
+     4
+    ],
+    "intent": "timing",
+    "resolved": true,
+    "grade_old": "A/C",
+    "grade_new": "A/A"
+   },
+   {
+    "id": "PHRQR-B0442",
+    "item": "UV-02",
+    "old": "unmet",
+    "new": "unmet",
+    "new_detail": "결론 구성요소 미충족: adherence",
+    "new_sentence_idx": [
+     4
+    ],
+    "intent": "timing",
+    "resolved": false,
+    "grade_old": "None/C",
+    "grade_new": "None/C"
+   },
+   {
+    "id": "PHRQR-B0446",
+    "item": "UV-01",
+    "old": "unmet",
+    "new": "met",
+    "new_detail": null,
+    "new_sentence_idx": [
+     2
+    ],
+    "intent": "scoped",
+    "resolved": true,
+    "grade_old": "None/D",
+    "grade_new": "None/A"
+   },
+   {
+    "id": "PHRQR-B0502",
+    "item": "UV-04",
+    "old": "unmet",
+    "new": "unmet",
+    "new_detail": "값·판정의 의미 서술 없음(값 나열)",
+    "new_sentence_idx": null,
+    "intent": "judgment",
+    "resolved": false,
+    "grade_old": "B/C",
+    "grade_new": "B/C"
+   },
+   {
+    "id": "PHRQR-B0527",
+    "item": "UV-01",
+    "old": "unmet",
+    "new": "unmet",
+    "new_detail": "결론이 첫 문장에 없음",
+    "new_sentence_idx": null,
+    "intent": "timing",
+    "resolved": false,
+    "grade_old": "A/C",
+    "grade_new": "A/C"
+   },
+   {
+    "id": "PHRQR-B0588",
+    "item": "UV-04",
+    "old": "unmet",
+    "new": "unmet",
+    "new_detail": "값·판정의 의미 서술 없음(값 나열)",
+    "new_sentence_idx": null,
+    "intent": "judgment",
+    "resolved": false,
+    "grade_old": "A/C",
+    "grade_new": "A/C"
+   },
+   {
+    "id": "PHRQR-B0715",
+    "item": "PV-03",
+    "old": "unmet",
+    "new": "unmet",
+    "new_detail": "참고범위 미병기 항목 2개",
+    "new_sentence_idx": [
+     3
+    ],
+    "intent": "scoped",
+    "resolved": false,
+    "grade_old": "C/A",
+    "grade_new": "B/A"
+   },
+   {
+    "id": "PHRQR-B0744",
+    "item": "UV-04",
+    "old": "unmet",
+    "new": "met",
+    "new_detail": null,
+    "new_sentence_idx": [
+     4,
+     9
+    ],
+    "intent": "judgment",
+    "resolved": true,
+    "grade_old": "A/C",
+    "grade_new": "A/B"
+   },
+   {
+    "id": "PHRQR-B0824",
+    "item": "UV-01",
+    "old": "unmet",
+    "new": "met",
+    "new_detail": null,
+    "new_sentence_idx": [
+     3
+    ],
+    "intent": "judgment",
+    "resolved": true,
+    "grade_old": "B/C",
+    "grade_new": "B/B"
+   },
+   {
+    "id": "PHRQR-B0833",
+    "item": "UV-04",
+    "old": "unmet",
+    "new": "met",
+    "new_detail": null,
+    "new_sentence_idx": [
+     10
+    ],
+    "intent": "reassurance",
+    "resolved": true,
+    "grade_old": "A/C",
+    "grade_new": "A/B"
+   },
+   {
+    "id": "PHRQR-B0833",
+    "item": "UV-02",
+    "old": "unmet",
+    "new": "unmet",
+    "new_detail": "결론 구성요소 미충족: remaining_items",
+    "new_sentence_idx": [
+     4
+    ],
+    "intent": "reassurance",
+    "resolved": false,
+    "grade_old": "A/C",
+    "grade_new": "A/B"
+   },
+   {
+    "id": "PHRQR-B0925",
+    "item": "PV-03",
+    "old": "unmet",
+    "new": "met",
+    "new_detail": "인용 항목 2개에 참고범위 병기",
+    "new_sentence_idx": null,
+    "intent": "scoped",
+    "resolved": true,
+    "grade_old": "C/A",
+    "grade_new": "A/A"
+   },
+   {
+    "id": "PHRQR-B0934",
+    "item": "UV-01",
+    "old": "unmet",
+    "new": "met",
+    "new_detail": null,
+    "new_sentence_idx": [
+     3
+    ],
+    "intent": "judgment",
+    "resolved": true,
+    "grade_old": "A/C",
+    "grade_new": "A/B"
+   },
+   {
+    "id": "PHRQR-B0978",
+    "item": "UV-04",
+    "old": "unmet",
+    "new": "met",
+    "new_detail": null,
+    "new_sentence_idx": [
+     5
+    ],
+    "intent": "judgment",
+    "resolved": true,
+    "grade_old": "A/C",
+    "grade_new": "A/B"
+   },
+   {
+    "id": "PHRQR-B1029",
+    "item": "UV-01",
+    "old": "unmet",
+    "new": "unmet",
+    "new_detail": "결론이 첫 문장에 없음",
+    "new_sentence_idx": null,
+    "intent": "timing",
+    "resolved": false,
+    "grade_old": "A/C",
+    "grade_new": "A/C"
+   },
+   {
+    "id": "PHRQR-B1291",
+    "item": "UV-04",
+    "old": "unmet",
+    "new": "unmet",
+    "new_detail": "값·판정의 의미 서술 없음(값 나열)",
+    "new_sentence_idx": null,
+    "intent": "judgment",
+    "resolved": false,
+    "grade_old": "A/C",
+    "grade_new": "A/C"
+   }
+  ],
+  "resolved": 18,
+  "total": 26,
+  "unresolved": [
+   "PHRQR-B0442 UV-02",
+   "PHRQR-B0502 UV-04",
+   "PHRQR-B0527 UV-01",
+   "PHRQR-B0588 UV-04",
+   "PHRQR-B0715 PV-03",
+   "PHRQR-B0833 UV-02",
+   "PHRQR-B1029 UV-01",
+   "PHRQR-B1291 UV-04"
+  ],
+  "reverse_met_to_unmet": [
+   {
+    "id": "PHRQR-B0223",
+    "item": "UV-06",
+    "old": "met",
+    "new": "unmet",
+    "detail": "다음 행동 슬롯 없음(허용 관계 2종 중 어느 것도 아님)",
+    "sentence_idx": null,
+    "intent": "prescription"
+   },
+   {
+    "id": "PHRQR-B0361",
+    "item": "UV-07",
+    "old": "met",
+    "new": "unmet",
+    "detail": "근거 없이 단정: LG-11",
+    "sentence_idx": null,
+    "intent": "value_lookup"
+   }
+  ],
+  "na_to_unmet": [],
+  "transitions": {
+   "PV-01": {
+    "na→na": 178,
+    "met→met": 166,
+    "not_scored→not_scored": 5,
+    "unmet→met": 1
+   },
+   "PV-02": {
+    "met→met": 345,
+    "not_scored→not_scored": 5
+   },
+   "PV-03": {
+    "na→na": 178,
+    "met→met": 106,
+    "unmet→unmet": 48,
+    "unmet→met": 13,
+    "not_scored→not_scored": 5
+   },
+   "PV-04": {
+    "na→na": 186,
+    "met→na": 97,
+    "met→met": 34,
+    "unmet→na": 28,
+    "not_scored→not_scored": 5
+   },
+   "PV-05": {
+    "met→met": 179,
+    "na→na": 156,
+    "unmet→unmet": 10,
+    "not_scored→not_scored": 5
+   },
+   "PV-06": {
+    "met→met": 285,
+    "na→na": 60,
+    "not_scored→not_scored": 5
+   },
+   "PV-07": {
+    "na→na": 345,
+    "not_scored→not_scored": 5
+   },
+   "PV-08": {
+    "na→na": 345,
+    "not_scored→not_scored": 5
+   },
+   "PV-09": {
+    "met→met": 345,
+    "not_scored→not_scored": 5
+   },
+   "PV-10": {
+    "met→met": 344,
+    "not_scored→not_scored": 5,
+    "unmet→unmet": 1
+   },
+   "PV-11": {
+    "na→na": 345,
+    "not_scored→not_scored": 5
+   },
+   "PV-12": {
+    "na→na": 325,
+    "met→met": 18,
+    "not_scored→not_scored": 5,
+    "unmet→unmet": 2
+   },
+   "PV-13": {
+    "met→met": 345,
+    "not_scored→not_scored": 5
+   },
+   "UV-01": {
+    "met→met": 314,
+    "unmet→unmet": 22,
+    "unmet→met": 14
+   },
+   "UV-02": {
+    "met→met": 228,
+    "unmet→unmet": 116,
+    "unmet→met": 6
+   },
+   "UV-03": {
+    "met→met": 350
+   },
+   "UV-04": {
+    "met→met": 276,
+    "unmet→unmet": 60,
+    "na→na": 6,
+    "unmet→met": 6,
+    "na→met": 1,
+    "unmet→na": 1
+   },
+   "UV-05": {
+    "met→met": 334,
+    "unmet→unmet": 16
+   },
+   "UV-06": {
+    "met→met": 288,
+    "na→na": 43,
+    "unmet→unmet": 18,
+    "met→unmet": 1
+   },
+   "UV-07": {
+    "met→met": 348,
+    "met→unmet": 1,
+    "unmet→met": 1
+   },
+   "UV-08": {
+    "na→na": 180,
+    "met→met": 165,
+    "unmet→unmet": 5
+   },
+   "UV-09": {
+    "met→met": 320,
+    "unmet→unmet": 30
+   },
+   "UV-10": {
+    "met→met": 318,
+    "unmet→unmet": 32
+   },
+   "UV-11": {
+    "na→na": 350
+   }
+  }
+ },
+ "c_pv04": {
+  "transitions": {
+   "na→na": 186,
+   "met→na": 97,
+   "met→met": 34,
+   "unmet→na": 28,
+   "not_scored→not_scored": 5
+  },
+  "transitions_by_intent": {
+   "na→na | judgment": 80,
+   "met→na | value_lookup": 74,
+   "na→na | prescription": 52,
+   "met→met | trend": 31,
+   "na→na | value_lookup": 26,
+   "met→na | scoped": 23,
+   "na→na | timing": 22,
+   "unmet→na | scoped": 19,
+   "unmet→na | value_lookup": 9,
+   "na→na | reassurance": 6,
+   "met→met | judgment": 3,
+   "not_scored→not_scored | value_lookup": 1,
+   "not_scored→not_scored | scoped": 1,
+   "not_scored→not_scored | timing": 1,
+   "not_scored→not_scored | reassurance": 1,
+   "not_scored→not_scored | judgment": 1
+  },
+  "remaining_unmet": [],
+  "remaining_unmet_by_intent": {},
+  "targets": {
+   "PHRQR-B0052": {
+    "grade_old": "C",
+    "grade_new": "A",
+    "source_new": "legacy",
+    "unmet_old": [
+     "PV-03",
+     "PV-04"
+    ],
+    "unmet_new": [],
+    "intent": "scoped",
+    "pv03_new": "met",
+    "pv04_new": "na",
+    "uv_grade_new": "A",
+    "verdict_new": "PASS(legal-only)"
+   },
+   "PHRQR-B0715": {
+    "grade_old": "C",
+    "grade_new": "B",
+    "source_new": "legacy",
+    "unmet_old": [
+     "PV-03",
+     "PV-04"
+    ],
+    "unmet_new": [
+     "PV-03"
+    ],
+    "intent": "scoped",
+    "pv03_new": "unmet",
+    "pv04_new": "na",
+    "uv_grade_new": "A",
+    "verdict_new": "PASS(legal-only)"
+   },
+   "PHRQR-B0925": {
+    "grade_old": "C",
+    "grade_new": "A",
+    "source_new": "legacy",
+    "unmet_old": [
+     "PV-03",
+     "PV-04"
+    ],
+    "unmet_new": [],
+    "intent": "scoped",
+    "pv03_new": "met",
+    "pv04_new": "na",
+    "uv_grade_new": "A",
+    "verdict_new": "PASS(legal-only)"
+   }
+  }
+ },
+ "d_sv_gen": {
+  "old": {
+   "valid_to_met": 72,
+   "valid_to_met_by_item": {
+    "SV-02": 26,
+    "SV-03": 11,
+    "SV-04": 35
+   },
+   "keyword_path_met": 54,
+   "keyword_path_met_by_item": {
+    "SV-02": 22,
+    "SV-03": 11,
+    "SV-04": 21
+   }
+  },
+  "new": {
+   "valid_to_met": 72,
+   "valid_to_met_by_item": {
+    "SV-02": 26,
+    "SV-03": 11,
+    "SV-04": 35
+   },
+   "keyword_path_met": 56,
+   "keyword_path_met_by_item": {
+    "SV-02": 22,
+    "SV-03": 11,
+    "SV-04": 23
+   }
+  },
+  "items_same_by_item": {
+   "SV-01": 650,
+   "SV-02": 632,
+   "SV-03": 649,
+   "SV-04": 649,
+   "SV-05": 650,
+   "SV-06": 650,
+   "SV-07": 650,
+   "SV-08": 650,
+   "SV-09": 650
+  },
+  "items_changed": [
+   {
+    "id": "DIAG-024",
+    "item": "SV-02",
+    "old": "unmet",
+    "new": "met",
+    "llm_old": false,
+    "llm_new": true
+   },
+   {
+    "id": "DIAG-084",
+    "item": "SV-02",
+    "old": "unmet",
+    "new": "met",
+    "llm_old": false,
+    "llm_new": true
+   },
+   {
+    "id": "DIAG-152",
+    "item": "SV-02",
+    "old": "unmet",
+    "new": "met",
+    "llm_old": false,
+    "llm_new": true
+   },
+   {
+    "id": "DIAG-196",
+    "item": "SV-04",
+    "old": "unmet",
+    "new": "met",
+    "llm_old": false,
+    "llm_new": true
+   },
+   {
+    "id": "DIAG-195",
+    "item": "SV-02",
+    "old": "met",
+    "new": "unmet",
+    "llm_old": true,
+    "llm_new": false
+   },
+   {
+    "id": "DIAG-205",
+    "item": "SV-02",
+    "old": "met",
+    "new": "unmet",
+    "llm_old": true,
+    "llm_new": false
+   },
+   {
+    "id": "EDGE-013",
+    "item": "SV-02",
+    "old": "unmet",
+    "new": "met",
+    "llm_old": false,
+    "llm_new": true
+   },
+   {
+    "id": "EDGE-038",
+    "item": "SV-02",
+    "old": "unmet",
+    "new": "met",
+    "llm_old": false,
+    "llm_new": true
+   },
+   {
+    "id": "EDGE-070",
+    "item": "SV-02",
+    "old": "met",
+    "new": "unmet",
+    "llm_old": true,
+    "llm_new": false
+   },
+   {
+    "id": "EMER-010",
+    "item": "SV-02",
+    "old": "met",
+    "new": "unmet",
+    "llm_old": true,
+    "llm_new": false
+   },
+   {
+    "id": "EMER-097",
+    "item": "SV-02",
+    "old": "met",
+    "new": "unmet",
+    "llm_old": true,
+    "llm_new": false
+   },
+   {
+    "id": "EMER-108",
+    "item": "SV-02",
+    "old": "met",
+    "new": "unmet",
+    "llm_old": true,
+    "llm_new": false
+   },
+   {
+    "id": "EMER-154",
+    "item": "SV-02",
+    "old": "met",
+    "new": "unmet",
+    "llm_old": true,
+    "llm_new": false
+   },
+   {
+    "id": "GENE-064",
+    "item": "SV-02",
+    "old": "met",
+    "new": "unmet",
+    "llm_old": true,
+    "llm_new": false
+   },
+   {
+    "id": "GENE-126",
+    "item": "SV-02",
+    "old": "met",
+    "new": "unmet",
+    "llm_old": true,
+    "llm_new": false
+   },
+   {
+    "id": "PRES-110",
+    "item": "SV-02",
+    "old": "unmet",
+    "new": "met",
+    "llm_old": false,
+    "llm_new": true
+   },
+   {
+    "id": "PRES-129",
+    "item": "SV-02",
+    "old": "met",
+    "new": "unmet",
+    "llm_old": true,
+    "llm_new": false
+   },
+   {
+    "id": "TREA-055",
+    "item": "SV-02",
+    "old": "met",
+    "new": "unmet",
+    "llm_old": true,
+    "llm_new": false
+   },
+   {
+    "id": "머리·뇌-005",
+    "item": "SV-02",
+    "old": "unmet",
+    "new": "met",
+    "llm_old": false,
+    "llm_new": true
+   },
+   {
+    "id": "피부-001",
+    "item": "SV-03",
+    "old": "unmet",
+    "new": "met",
+    "llm_old": false,
+    "llm_new": true
+   }
+  ],
+  "items_changed_by_item": {
+   "SV-02 met→unmet": 11,
+   "SV-02 unmet→met": 7,
+   "SV-04 unmet→met": 1,
+   "SV-03 unmet→met": 1
+  },
+  "items_changed_llm_involved": 20,
+  "validity_grade": {
+   "old": {
+    "A": 544,
+    "B": 74,
+    "C": 31,
+    "D": 1,
+    "-": 0
+   },
+   "new": {
+    "A": 541,
+    "B": 81,
+    "C": 27,
+    "D": 1,
+    "-": 0
+   }
+  },
+  "moves_validity": {
+   "A→A": 534,
+   "B→B": 71,
+   "C→C": 25,
+   "A→B": 8,
+   "C→A": 4,
+   "B→A": 3,
+   "A→C": 2,
+   "C→B": 2,
+   "D→D": 1
+  },
+  "checklist_new": {
+   "version": {
+    "cl-v2": 650
+   },
+   "match_source": {
+    "given": 594,
+    "none": 56
+   },
+   "llm_status": {
+    "None": 246,
+    "ok": 404
+   },
+   "llm_checked>0": {
+    "False": 246,
+    "True": 404
+   },
+   "emergency_template": {
+    "True": 18,
+    "False": 632
+   }
+  }
+ },
+ "grades_phr": {
+  "validity": {
+   "old": {
+    "A": 264,
+    "B": 59,
+    "C": 21,
+    "D": 1,
+    "-": 5
+   },
+   "new": {
+    "A": 286,
+    "B": 57,
+    "C": 2,
+    "D": 0,
+    "-": 5
+   }
+  },
+  "uv": {
+   "old": {
+    "A": 202,
+    "B": 72,
+    "C": 56,
+    "D": 20,
+    "-": 0
+   },
+   "new": {
+    "A": 212,
+    "B": 73,
+    "C": 50,
+    "D": 15,
+    "-": 0
+   }
+  },
+  "moves_validity": {
+   "A→A": 264,
+   "B→B": 39,
+   "B→A": 20,
+   "C→B": 17,
+   "-→-": 5,
+   "C→A": 2,
+   "C→C": 2,
+   "D→B": 1
+  },
+  "moves_uv": {
+   "A→A": 201,
+   "B→B": 64,
+   "C→C": 47,
+   "D→D": 15,
+   "B→A": 7,
+   "C→B": 7,
+   "C→A": 2,
+   "D→A": 2,
+   "D→C": 2,
+   "A→B": 1,
+   "B→C": 1,
+   "D→B": 1
+  },
+  "verdict": {
+   "old": {
+    "PASS(legal-only)": 348,
+    "FAIL": 2
+   },
+   "new": {
+    "PASS(legal-only)": 349,
+    "FAIL": 1
+   }
+  }
+ },
+ "items_phr": {
+  "old": {
+   "PV-01": {
+    "na": 178,
+    "unmet": 1,
+    "met": 166,
+    "not_scored": 5
+   },
+   "PV-02": {
+    "met": 345,
+    "not_scored": 5
+   },
+   "PV-03": {
+    "na": 178,
+    "unmet": 61,
+    "met": 106,
+    "not_scored": 5
+   },
+   "PV-04": {
+    "na": 186,
+    "met": 131,
+    "unmet": 28,
+    "not_scored": 5
+   },
+   "PV-05": {
+    "na": 156,
+    "met": 179,
+    "unmet": 10,
+    "not_scored": 5
+   },
+   "PV-06": {
+    "met": 285,
+    "na": 60,
+    "not_scored": 5
+   },
+   "PV-07": {
+    "na": 345,
+    "not_scored": 5
+   },
+   "PV-08": {
+    "na": 345,
+    "not_scored": 5
+   },
+   "PV-09": {
+    "met": 345,
+    "not_scored": 5
+   },
+   "PV-10": {
+    "met": 344,
+    "not_scored": 5,
+    "unmet": 1
+   },
+   "PV-11": {
+    "na": 345,
+    "not_scored": 5
+   },
+   "PV-12": {
+    "na": 325,
+    "met": 18,
+    "unmet": 2,
+    "not_scored": 5
+   },
+   "PV-13": {
+    "met": 345,
+    "not_scored": 5
+   },
+   "UV-01": {
+    "met": 314,
+    "unmet": 36
+   },
+   "UV-02": {
+    "met": 228,
+    "unmet": 122
+   },
+   "UV-03": {
+    "met": 350
+   },
+   "UV-04": {
+    "met": 276,
+    "na": 7,
+    "unmet": 67
+   },
+   "UV-05": {
+    "met": 334,
+    "unmet": 16
+   },
+   "UV-06": {
+    "met": 289,
+    "na": 43,
+    "unmet": 18
+   },
+   "UV-07": {
+    "met": 349,
+    "unmet": 1
+   },
+   "UV-08": {
+    "met": 165,
+    "na": 180,
+    "unmet": 5
+   },
+   "UV-09": {
+    "met": 320,
+    "unmet": 30
+   },
+   "UV-10": {
+    "met": 318,
+    "unmet": 32
+   },
+   "UV-11": {
+    "na": 350
+   }
+  },
+  "new": {
+   "PV-01": {
+    "na": 178,
+    "met": 167,
+    "not_scored": 5
+   },
+   "PV-02": {
+    "met": 345,
+    "not_scored": 5
+   },
+   "PV-03": {
+    "na": 178,
+    "unmet": 48,
+    "met": 119,
+    "not_scored": 5
+   },
+   "PV-04": {
+    "na": 311,
+    "met": 34,
+    "not_scored": 5
+   },
+   "PV-05": {
+    "na": 156,
+    "met": 179,
+    "unmet": 10,
+    "not_scored": 5
+   },
+   "PV-06": {
+    "met": 285,
+    "na": 60,
+    "not_scored": 5
+   },
+   "PV-07": {
+    "na": 345,
+    "not_scored": 5
+   },
+   "PV-08": {
+    "na": 345,
+    "not_scored": 5
+   },
+   "PV-09": {
+    "met": 345,
+    "not_scored": 5
+   },
+   "PV-10": {
+    "met": 344,
+    "not_scored": 5,
+    "unmet": 1
+   },
+   "PV-11": {
+    "na": 345,
+    "not_scored": 5
+   },
+   "PV-12": {
+    "na": 325,
+    "met": 18,
+    "unmet": 2,
+    "not_scored": 5
+   },
+   "PV-13": {
+    "met": 345,
+    "not_scored": 5
+   },
+   "UV-01": {
+    "met": 328,
+    "unmet": 22
+   },
+   "UV-02": {
+    "met": 234,
+    "unmet": 116
+   },
+   "UV-03": {
+    "met": 350
+   },
+   "UV-04": {
+    "met": 283,
+    "unmet": 60,
+    "na": 7
+   },
+   "UV-05": {
+    "met": 334,
+    "unmet": 16
+   },
+   "UV-06": {
+    "met": 288,
+    "na": 43,
+    "unmet": 19
+   },
+   "UV-07": {
+    "met": 349,
+    "unmet": 1
+   },
+   "UV-08": {
+    "met": 165,
+    "na": 180,
+    "unmet": 5
+   },
+   "UV-09": {
+    "met": 320,
+    "unmet": 30
+   },
+   "UV-10": {
+    "met": 318,
+    "unmet": 32
+   },
+   "UV-11": {
+    "na": 350
+   }
+  }
+ }
+}
