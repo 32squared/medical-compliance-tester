@@ -17,12 +17,12 @@ const activeOf = s => s && s.tabs.filter(t => t.active).map(t => t.label);
 
 const admin = { isAdmin: true, permissions: ['*'] };
 let s = N._sectionFor('/manager', N._visibleMenus(admin));
-eq('admin /manager tabs', labels(s), ['시나리오', 'HealthBench', 'PHR 케이스']);
+eq('admin /manager tabs', labels(s), ['시나리오', 'HealthBench', 'PHR 케이스', 'PHR 시연']);
 eq('admin /manager active', activeOf(s), ['시나리오']);
 
 const tester = { tester: { role: 'tester' }, permissions: ['manage_scenarios', 'view_history'] };
 s = N._sectionFor('/manager', N._visibleMenus(tester));
-eq('tester /manager tabs', labels(s), ['시나리오', 'HealthBench']);
+eq('tester /manager tabs', labels(s), ['시나리오', 'HealthBench', 'PHR 시연']);
 eq('tester /manager active', activeOf(s), ['시나리오']);
 
 const advisor = { tester: { role: 'advisor' }, userRole: 'advisor', permissions: ['*'] };
