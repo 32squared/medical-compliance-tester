@@ -30,8 +30,21 @@
 
   .layout { display:grid; grid-template-columns:300px minmax(420px,1fr) 320px; gap:16px;
             padding:16px; max-width:1500px; margin:0 auto; align-items:start; }
-  body.present .layout { grid-template-columns:1fr; }
-  body.present .guide, body.present .notes { display:none; }
+  /* 발표 모드: 안내는 숨기고 폰 + 케이스 요약만 남긴다 */
+  body.present .layout { grid-template-columns:1fr 320px; }
+  body.present .guide { display:none; }
+  body.present .notes .card:not(.keep) { display:none; }
+  @media (max-width:1100px) { body.present .layout { grid-template-columns:1fr; } }
+
+  /* 케이스 요약 (발표자용) */
+  .brief .h { font-size:11px; color:var(--text-dim); margin:10px 0 3px; font-weight:700; }
+  .brief .ln { font-size:12px; line-height:1.6; margin:1px 0; color:var(--text); }
+  .brief .lv { display:inline-block; font-size:10.5px; padding:0 6px; border-radius:6px; font-weight:700; margin-left:3px; white-space:nowrap; }
+  .brief .lv.ok { background:rgba(76,175,125,.18); color:var(--green); }
+  .brief .lv.warn { background:rgba(212,162,74,.22); color:var(--amber); }
+  .brief .lv.bad { background:rgba(224,90,79,.22); color:var(--red); }
+  .brief .jud { font-size:15px; font-weight:800; color:var(--text); }
+  .brief .up { color:var(--amber); } .brief .dn { color:var(--accent); }
   @media (max-width:1100px) { .layout { grid-template-columns:1fr; } }
 
   .card { background:var(--surface); border:1px solid var(--border); border-radius:10px;
@@ -89,9 +102,49 @@
   .abtn.ghostx { background:transparent; color:var(--app-dim); font-size:13px; padding:8px; font-weight:500; }
   .noti { background:var(--app-card2); border-radius:14px; padding:12px 14px; display:flex; gap:10px; margin-bottom:14px; }
   .noti .logo { width:34px; height:34px; border-radius:9px; background:#2a3a62; display:flex; align-items:center; justify-content:center; font-size:16px; }
-  .noti .n1 { font-size:11px; color:var(--app-dim); }
-  .noti .n2 { font-size:13px; font-weight:700; margin-top:1px; }
-  .noti .n3 { font-size:12px; color:var(--app-text); margin-top:1px; }
+  .noti .n1, .push .n1 { font-size:11px; color:var(--app-dim); }
+  .noti .n2, .push .n2 { font-size:13px; font-weight:700; margin-top:1px; }
+  .noti .n3, .push .n3 { font-size:12px; color:var(--app-text); margin-top:1px; }
+  /* 7단계 모의 연동 화면: 홈(연동 시작) · 본인인증 · 불러오기 · 푸시 알림 */
+  .hero { background:linear-gradient(135deg,#1f3b36,#17242b); border-radius:16px; padding:18px 16px; margin-bottom:12px; }
+  .hero .h1 { font-size:17px; font-weight:800; line-height:1.4; }
+  .hero .h2 { color:var(--app-dim); font-size:12px; margin-top:6px; line-height:1.5; }
+  .menu-ico { width:30px; height:30px; border:none; background:transparent; color:var(--app-text); font-size:18px; cursor:pointer; border-radius:8px; }
+  .menu-ico:hover { background:var(--app-card); }
+  .fld { margin-bottom:12px; }
+  .fld label { display:block; font-size:11.5px; color:var(--app-dim); margin-bottom:5px; }
+  .fld input { width:100%; background:var(--app-card); border:1px solid var(--app-line); color:var(--app-text); border-radius:10px;
+               padding:11px 12px; font-size:14px; font-family:inherit; outline:none; }
+  .fld input:focus { border-color:var(--app-mint); }
+  .seg { display:flex; gap:8px; }
+  .seg button { flex:1; background:var(--app-card); border:1px solid var(--app-line); color:var(--app-dim); border-radius:10px;
+                padding:10px; font-size:13px; cursor:pointer; font-family:inherit; }
+  .seg button.on { border-color:var(--app-mint); color:var(--app-mint); font-weight:700; }
+  .auths { display:flex; gap:8px; }
+  .auths button { flex:1; border:1px solid var(--app-line); background:var(--app-card); color:var(--app-text); border-radius:12px; padding:12px 6px;
+                  cursor:pointer; font-family:inherit; font-size:12px; display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .auths button.on { border-color:var(--app-mint); background:var(--app-card2); }
+  .auths .lg { width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:15px; }
+  .auths .naver { background:#03c75a; color:#fff; } .auths .kakao { background:#fee500; color:#3c1e1e; } .auths .pass { background:#e5322d; color:#fff; }
+  .ld { text-align:center; padding:26px 8px 6px; }
+  .ld .ring { width:64px; height:64px; margin:0 auto 18px; border-radius:50%; border:5px solid var(--app-card2); border-top-color:var(--app-mint); animation:spin 1s linear infinite; }
+  .ld .t1 { font-size:16px; font-weight:800; line-height:1.4; }
+  .ld .t2 { color:var(--app-dim); font-size:12px; margin-top:8px; line-height:1.5; }
+  .bar { height:6px; background:var(--app-card2); border-radius:3px; margin:18px 0 10px; overflow:hidden; }
+  .bar i { display:block; height:100%; width:0; background:var(--app-mint); transition:width .6s ease; }
+  .ldrow { display:flex; align-items:center; gap:10px; padding:11px 2px; border-bottom:1px solid var(--app-line); font-size:13px; }
+  .ldrow:last-child { border-bottom:none; }
+  .ldrow .ic { width:22px; height:22px; border-radius:50%; background:var(--app-card2); color:var(--app-dim); font-size:12px;
+               display:flex; align-items:center; justify-content:center; flex:0 0 22px; }
+  .ldrow.run .ic { border:2px solid var(--app-mint-dark); border-top-color:var(--app-mint); background:transparent; color:transparent; animation:spin .8s linear infinite; }
+  .ldrow.done .ic { background:var(--app-mint); color:#0b2a24; font-weight:900; }
+  .ldrow .cnt { margin-left:auto; color:var(--app-dim); font-size:12px; }
+  .ldrow.done .cnt { color:var(--app-mint); }
+  .push { position:absolute; left:14px; right:14px; top:44px; background:#2b2c31; border-radius:16px; padding:12px 14px; display:flex; gap:10px;
+          box-shadow:0 10px 30px rgba(0,0,0,.5); transform:translateY(-160%); opacity:0; visibility:hidden;
+          transition:transform .45s cubic-bezier(.2,.8,.2,1), opacity .3s, visibility 0s .45s; cursor:pointer; z-index:6; }
+  .push.show { transform:translateY(0); opacity:1; visibility:visible; transition-delay:0s; }
+  .push .logo { width:34px; height:34px; border-radius:9px; background:#2a3a62; display:flex; align-items:center; justify-content:center; font-size:16px; flex:0 0 34px; }
   .switch { width:44px; height:24px; border-radius:12px; background:var(--app-mint); position:relative; flex:0 0 44px; }
   .switch::after { content:''; position:absolute; top:3px; right:3px; width:18px; height:18px; border-radius:50%; background:#fff; }
   .sync { text-align:center; color:var(--app-dim); font-size:11.5px; margin-top:10px; }
@@ -240,16 +293,19 @@
     <div class="card">
       <h2>시연 순서 <span class="muted" style="font-weight:400">— 사용 설명서 'PHR 연동' 장 순서</span></h2>
       <div class="muted" style="margin-bottom:8px;line-height:1.5">
-        본인인증·불러오기(7단계)는 시연에서 샘플 선택으로 대신한다. 이후 화면은 설명서 8~11단계와 같다.
+        샘플을 고른 뒤 설명서 7단계(연동 시작 → 본인인증 → 불러오기)를 모의 화면으로 보여 준다. 실제 공단·인증기관 연동은 없고, 고른 샘플의 기록이 붙는다. 이후 화면은 설명서 8~11단계와 같다.
       </div>
       <div id="steps">
-        <div class="step" data-screen="select" onclick="goSelect()"><div class="no">1</div><div><div class="t">샘플 데이터 선택</div><div class="d">등록된 PHR 케이스 중 하나를 고른다. (7단계 본인인증·불러오기 대체)</div></div></div>
-        <div class="step" data-screen="home" onclick="nav('home')"><div class="no">2</div><div><div class="t">연동된 정보 확인</div><div class="d">수신 완료 알림, 건강검진·진료·처방 건수와 최근 기록 날짜, 마지막 동기화 일시.</div></div></div>
-        <div class="step" data-screen="checkups" onclick="nav('checkups')"><div class="no">3</div><div><div class="t">건강검진 목록</div><div class="d">최근 기록을 날짜순으로, 전체·일반·암·구강 탭으로 나눠 본다.</div></div></div>
-        <div class="step" data-screen="checkup" onclick="nav('checkups')"><div class="no">4</div><div><div class="t">검진 상세 → AI 상담 시작</div><div class="d">종합판정과 계측·혈액·소변 항목별 수치·판정. 아래 버튼으로 이 케이스를 붙인 채 채팅 테스터를 연다.</div></div></div>
-        <div class="step" data-screen="rx" onclick="nav('rx')"><div class="no">5</div><div><div class="t">진료·처방 목록</div><div class="d">전체·진료·처방 탭. 샘플에는 처방 기록만 있고 진료(상병명)는 제공되지 않는다.</div></div></div>
-        <div class="step" data-screen="rxdetail" onclick="nav('rx')"><div class="no">6</div><div><div class="t">처방 상세</div><div class="d">조제 기관, 조제일, 처방 약품 목록과 투여일수.</div></div></div>
-        <div class="step" data-screen="chat" onclick="nav('chat')"><div class="no">7</div><div><div class="t">AI 건강상담</div><div class="d">앱 채팅 화면. 이 케이스의 기록이 붙은 채로 SKIX 에 묻고 답변을 스트리밍으로 받는다. 대화는 테스트 이력에도 남는다.</div></div></div>
+        <div class="step" data-screen="select" onclick="goSelect()"><div class="no">1</div><div><div class="t">샘플 데이터 선택</div><div class="d">등록된 PHR 케이스 중 하나를 고른다. 이 사람의 기록이 연동 결과로 쓰인다.</div></div></div>
+        <div class="step" data-screen="link" onclick="nav('link')"><div class="no">2</div><div><div class="t">연동 시작</div><div class="d">My Healthcare 홈에서 [개인 건강정보 연동하러 가기]. (설명서 7단계 ①)</div></div></div>
+        <div class="step" data-screen="auth" onclick="nav('auth')"><div class="no">3</div><div><div class="t">본인인증</div><div class="d">이름·생년월일·성별, 네이버·카카오톡·PASS 중 택일 → [본인인증하기]. 모의 인증이며 이름·생년월일은 가상값. (7단계 ②)</div></div></div>
+        <div class="step" data-screen="loading" onclick="nav('loading')"><div class="no">4</div><div><div class="t">건강정보 불러오기</div><div class="d">인증 확인 → 검진 → 처방 순으로 진행 표시, 끝나면 푸시 알림. 알림을 누르면 다음 화면. (7단계 ③)</div></div></div>
+        <div class="step" data-screen="home" onclick="nav('home')"><div class="no">5</div><div><div class="t">연동된 정보 확인</div><div class="d">수신 완료 알림, 건강검진·진료·처방 건수와 최근 기록 날짜, 마지막 동기화 일시. (8단계)</div></div></div>
+        <div class="step" data-screen="checkups" onclick="nav('checkups')"><div class="no">6</div><div><div class="t">건강검진 목록</div><div class="d">최근 기록을 날짜순으로, 전체·일반·암·구강 탭으로 나눠 본다. (9단계)</div></div></div>
+        <div class="step" data-screen="checkup" onclick="nav('checkups')"><div class="no">7</div><div><div class="t">검진 상세 → AI 상담 시작</div><div class="d">종합판정과 계측·혈액·소변 항목별 수치·판정. 아래 버튼으로 이 케이스를 붙인 채 상담을 연다. (9단계)</div></div></div>
+        <div class="step" data-screen="rx" onclick="nav('rx')"><div class="no">8</div><div><div class="t">진료·처방 목록</div><div class="d">전체·진료·처방 탭. 샘플에는 처방 기록만 있고 진료(상병명)는 제공되지 않는다. (11단계)</div></div></div>
+        <div class="step" data-screen="rxdetail" onclick="nav('rx')"><div class="no">9</div><div><div class="t">처방 상세</div><div class="d">조제 기관, 조제일, 처방 약품 목록과 투여일수. (11단계)</div></div></div>
+        <div class="step" data-screen="chat" onclick="nav('chat')"><div class="no">10</div><div><div class="t">AI 건강상담</div><div class="d">앱 채팅 화면. 이 케이스의 기록이 붙은 채로 SKIX 에 묻고 답변을 스트리밍으로 받는다. 대화는 테스트 이력에도 남는다.</div></div></div>
       </div>
     </div>
     <div class="card">
@@ -276,14 +332,21 @@
           </div>
         </div>
       </div>
+      <!-- 불러오기 완료 푸시 알림 (설명서 7단계 ③ → 8단계) -->
+      <div class="push" id="push" onclick="pushTap()">
+        <div class="logo">&#127973;</div>
+        <div><div class="n1">My Healthcare · 지금</div>
+          <div class="n2">개인건강기록(PHR) 수신이 완료되었어요!</div>
+          <div class="n3">건강상담을 시작해 보세요. 눌러서 확인</div></div>
+      </div>
     </div>
     <div class="muted" id="stageHint" style="font-size:11.5px"></div>
   </main>
 
   <!-- 우: 발표자 메모 -->
   <aside class="notes">
-    <div class="card">
-      <h2>선택한 케이스</h2>
+    <div class="card keep">
+      <h2>선택한 케이스 요약</h2>
       <div id="caseSummary" class="muted">아직 선택하지 않았다.</div>
     </div>
     <div class="card">
@@ -473,15 +536,20 @@ function render() {
   document.querySelectorAll('.step').forEach(s => s.classList.toggle('active', s.dataset.screen === top.name));
   const hint = document.getElementById('stageHint');
   if (hint) hint.textContent = STEP_HINTS[top.name] || '';
+  // 불러오기 화면은 진행 연출을 시작하고, 다른 화면으로 가면 연출·푸시 알림을 거둔다
+  if (top.name === 'loading') runLoading(); else { loadToken++; hidePush(); }
 }
 const STEP_HINTS = {
-  select: '시연 1 — 샘플 선택 (설명서 7단계 본인인증·불러오기 대체)',
-  chat: '시연 7 — AI 건강상담 (앱 채팅 화면, 이 케이스의 기록이 붙어 전달된다)',
-  home: '시연 2 — 연동된 정보 확인 (설명서 8단계)',
-  checkups: '시연 3 — 건강검진 목록 (설명서 9단계)',
-  checkup: '시연 4 — 검진 상세, 아래 [AI 상담 시작하기] (설명서 9단계)',
-  rx: '시연 5 — 진료·처방 목록 (설명서 11단계)',
-  rxdetail: '시연 6 — 처방 상세 (설명서 11단계)',
+  select: '시연 1 — 샘플 선택 (이 사람의 기록이 연동 결과로 쓰인다)',
+  link: '시연 2 — 연동 시작: My Healthcare 홈 → [개인 건강정보 연동하러 가기] (설명서 7단계 ①)',
+  auth: '시연 3 — 본인인증: 모의 화면, 이름·생년월일은 가상값 (설명서 7단계 ②)',
+  loading: '시연 4 — 건강정보 불러오기: 끝나면 푸시 알림, 알림을 누르면 연동 정보 화면 (설명서 7단계 ③)',
+  home: '시연 5 — 연동된 정보 확인 (설명서 8단계)',
+  checkups: '시연 6 — 건강검진 목록 (설명서 9단계)',
+  checkup: '시연 7 — 검진 상세, 아래 [AI 상담 시작하기] (설명서 9단계)',
+  rx: '시연 8 — 진료·처방 목록 (설명서 11단계)',
+  rxdetail: '시연 9 — 처방 상세 (설명서 11단계)',
+  chat: '시연 10 — AI 건강상담 (앱 채팅 화면, 이 케이스의 기록이 붙어 전달된다)',
 };
 function head(title, withBack) {
   return `<div class="apphead">${withBack ? '<button class="back" onclick="back()">&#8249;</button>' : '<span class="sp"></span>'}
@@ -512,7 +580,101 @@ SCREENS.select = function () {
   return h + '</div>';
 };
 
-// 2. 연동된 정보 확인 ─ 설명서 8단계
+// ──────────────────────────────────────────
+// 2~4. 설명서 7단계 모의 연동 — 연동 시작 → 본인인증 → 건강정보 불러오기
+//   실제 공단·인증기관 연동은 없다. 이름·생년월일은 케이스 번호에서 만든 가상값이고,
+//   불러오기는 시간차 연출 뒤 고른 샘플의 기록을 그대로 붙인다.
+// ──────────────────────────────────────────
+const DEMO_NAMES = ['김하늘', '이지안', '박서준', '최유진', '정도윤', '강지우', '윤서아', '임시우', '한예린', '오현우'];
+const AUTH_METHODS = { naver: '네이버', kakao: '카카오톡', pass: 'PASS' };
+let authMethod = 'pass';
+let authSex = '';          // 인증 화면에서 고른 성별 (없으면 페르소나 성별)
+function demoIdentity() {
+  const i = Math.max(0, cases.findIndex(c => cur && c.id === cur.id));
+  const p = (cur && cur.persona) || {};
+  let hash = 0;
+  for (const ch of String(cur ? cur.caseNo : '')) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  const year = p.age ? new Date().getFullYear() - p.age : 1965 + (hash % 25);
+  const mm = String(1 + hash % 12).padStart(2, '0'), dd = String(1 + (hash >> 4) % 28).padStart(2, '0');
+  return { name: DEMO_NAMES[i % DEMO_NAMES.length], birth: `${year}${mm}${dd}`, sex: authSex || p.sex || '' };
+}
+
+// 2. 연동 시작 ─ 설명서 7단계 ①
+SCREENS.link = function () {
+  return `<div class="apphead"><span class="sp"></span><div class="ttl">My Healthcare</div>
+      <button class="menu-ico" title="메뉴 — 설명서 10단계" onclick="toast('메뉴(≡) 맨 위 [개인 건강정보 연동]으로 연동 정보 화면에 간다 (설명서 10단계)')">&#8801;</button></div>
+    <div class="body">
+      <div class="hero"><div class="h1">내 건강기록으로<br>더 정확한 건강상담을 받아보세요</div>
+        <div class="h2">건강보험공단에 저장된 최근 5년간의 건강검진 결과와 진료·처방 이력을 불러옵니다. 답변에 내 검진 수치와 검사 시점이 함께 안내됩니다.</div>
+        <div style="margin-top:14px"><button class="abtn mint" onclick="nav('auth')">개인 건강정보 연동하러 가기 &#8250;</button></div></div>
+      <div class="acard click" onclick="toast('연동을 마친 뒤 AI 상담을 시작합니다')"><div class="row">
+        <div class="ico">&#128172;</div><div class="grow"><div class="ttl1">AI 건강상담</div><div class="sub">궁금한 건강 정보를 물어보세요</div></div><div class="chev">&#8250;</div></div></div>
+      <div class="acard"><div class="sub" style="line-height:1.6">연동한 정보는 언제든지 해제하거나 삭제할 수 있습니다.<br>본 서비스는 건강정보·교육 목적의 참고용이며, 진단·처방·치료 등 의료행위를 대신하지 않습니다.</div></div>
+    </div>`;
+};
+
+// 3. 본인인증 ─ 설명서 7단계 ②
+SCREENS.auth = function () {
+  const id = demoIdentity();
+  const seg = s => `<button class="${id.sex === s ? 'on' : ''}" onclick="authSex='${s}';render()">${s}</button>`;
+  const m = k => `<button class="${authMethod === k ? 'on' : ''}" onclick="authMethod='${k}';render()"><span class="lg ${k}">${k === 'pass' ? 'P' : k === 'naver' ? 'N' : 'K'}</span>${AUTH_METHODS[k]}</button>`;
+  return head('본인인증', true) + `<div class="body">
+      <div class="ttl1" style="font-size:17px;margin:4px 2px">본인 확인이 필요해요</div>
+      <div class="sub" style="margin:0 2px 16px;line-height:1.5">건강보험공단의 내 기록을 불러오기 위해 본인인증을 진행합니다.</div>
+      <div class="fld"><label>이름</label><input value="${esc(id.name)}" autocomplete="off"></div>
+      <div class="fld"><label>생년월일</label><input value="${esc(id.birth)}" inputmode="numeric" autocomplete="off"></div>
+      <div class="fld"><label>성별</label><div class="seg">${seg('남성')}${seg('여성')}</div></div>
+      <div class="fld"><label>인증 방식</label><div class="auths">${m('naver')}${m('kakao')}${m('pass')}</div></div>
+      <div class="sub" style="font-size:11px;line-height:1.5;margin-top:14px">※ 건강검진 결과는 건강보험공단을 통해 확인되며, 공단 반영까지 최소 2개월이 걸립니다. 최근에 받은 검진은 바로 보이지 않을 수 있습니다.</div>
+    </div>
+    <div class="foot"><button class="abtn mint" onclick="nav('loading')">본인인증하기</button>
+      <div class="sub" style="text-align:center;font-size:10.5px;margin-top:8px">시연용 화면 — 실제 인증기관·공단에 연결되지 않습니다</div></div>`;
+};
+
+// 4. 건강정보 불러오기 ─ 설명서 7단계 ③. 진행 연출 뒤 푸시 알림, 알림을 누르면 8단계로
+SCREENS.loading = function () {
+  return head('건강정보 불러오기', false) + `<div class="body">
+      <div class="ld"><div class="ring" id="ldRing"></div>
+        <div class="t1" id="ldTitle">최근 5년간의 건강검진 결과와<br>진료·처방 이력을 불러오고 있어요</div>
+        <div class="t2">보유한 기록이 많으면 시간이 걸릴 수 있으며,<br>불러오기가 끝나면 푸시 알림으로 알려 드립니다.</div>
+        <div class="bar"><i id="ldBar"></i></div></div>
+      <div class="acard">
+        <div class="ldrow run" id="ld1"><span class="ic">1</span>본인인증 확인<span class="cnt" id="ld1c">확인 중</span></div>
+        <div class="ldrow" id="ld2"><span class="ic">2</span>건강검진 결과<span class="cnt" id="ld2c">대기</span></div>
+        <div class="ldrow" id="ld3"><span class="ic">3</span>진료·처방 이력<span class="cnt" id="ld3c">대기</span></div>
+      </div>
+      <div class="sub" style="text-align:center;font-size:10.5px;margin-top:10px">시연용 화면 — 고른 샘플의 기록을 붙입니다 (실제 공단 연동 아님)</div>
+    </div>`;
+};
+let loadToken = 0;
+function runLoading() {
+  const tok = ++loadToken;
+  const c = checkups();
+  const nCheck = (c.general || []).length + (c.cancer || []).length + (c.oral || []).length;
+  const nRx = rxGroups().length;
+  const alive = () => tok === loadToken && (stack[stack.length - 1] || {}).name === 'loading';
+  const $ = id => document.getElementById(id);
+  const bar = pct => { const b = $('ldBar'); if (b) b.style.width = pct + '%'; };
+  const setRow = (n, cls, txt) => {
+    const r = $('ld' + n); if (!r) return;
+    r.classList.remove('run', 'done'); if (cls) r.classList.add(cls);
+    const ic = r.querySelector('.ic'); if (ic && cls === 'done') ic.textContent = '✓';
+    const cnt = $('ld' + n + 'c'); if (cnt) cnt.textContent = txt;
+  };
+  const at = (ms, fn) => setTimeout(() => { if (alive()) fn(); }, ms);
+  requestAnimationFrame(() => { if (alive()) bar(8); });
+  at(800,  () => { setRow(1, 'done', AUTH_METHODS[authMethod] + ' 인증 완료'); setRow(2, 'run', '불러오는 중'); bar(35); });
+  at(2000, () => { setRow(2, 'done', nCheck + '건'); setRow(3, 'run', '불러오는 중'); bar(70); });
+  at(3100, () => { setRow(3, 'done', nRx + '건'); bar(100);
+                   const r = $('ldRing'); if (r) r.style.display = 'none';
+                   const t = $('ldTitle'); if (t) t.textContent = '불러오기가 끝났어요'; });
+  at(3700, showPush);
+}
+function showPush() { const p = document.getElementById('push'); if (p) p.classList.add('show'); }
+function hidePush() { const p = document.getElementById('push'); if (p) p.classList.remove('show'); }
+function pushTap() { hidePush(); nav('home'); }
+
+// 5. 연동된 정보 확인 ─ 설명서 8단계
 SCREENS.home = function () {
   const c = checkups(), rx = rxGroups();
   const nCheck = (c.general||[]).length + (c.cancer||[]).length + (c.oral||[]).length;
@@ -704,11 +866,67 @@ async function selectCase(id) {
   } catch (e) { toast('케이스 조회 실패: ' + e.message); return; }
   cur = d;
   resetChat();   // 케이스 1건 = 대화 1건. 이전 케이스의 PHR 이 SKIX 문맥에 남지 않게 한다
+  authSex = ''; authMethod = 'pass';
   try { history.replaceState({}, '', '?case=' + encodeURIComponent(cur.caseNo || cur.id)); } catch (e) {}
   renderSummary();
   const tb = document.getElementById('transmitBox'); if (tb) tb.innerHTML = '';
-  stack = [{ name: 'select', params: {} }, { name: 'home', params: {} }];
+  // 샘플을 고르면 모의 연동(설명서 7단계)의 첫 화면부터 시작한다
+  stack = [{ name: 'select', params: {} }, { name: 'link', params: {} }];
   render();
+}
+
+// ──────────────────────────────────────────
+// 케이스 요약 — 발표자가 무엇을 물을지 고르도록, 최근 검진·주목 항목·추이·처방을 한눈에.
+// 정상·경계·의심은 화면 판정 기준과 같은 참고값이다.
+// ──────────────────────────────────────────
+function latestGeneral() {
+  const gs = (checkups().general || []).slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  return gs[0] || null;
+}
+function lvHtml(level) {
+  if (!level) return '';
+  const cls = level === '정상' ? 'ok' : (level === '경계' ? 'warn' : 'bad');
+  return `<span class="lv ${cls}">${esc(level)}</span>`;
+}
+function shortDrug(n) { return String(n || '').replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s+/g, ' ').trim(); }
+function caseBrief() {
+  const cd = caseData(), sex = personaSex(), g = latestGeneral();
+  // 최근 일반검진에서 참고범위를 벗어난 항목
+  const flagged = [];
+  if (g) {
+    Object.values(GROUPS).flat().forEach(([name, kind]) => {
+      if (kind === 'n') {
+        const v = (g.values || {})[name], l = judgeNumeric(name, v, sex);
+        if (l && l !== '정상') flagged.push({ name, v: `${v}${UNITS[name] ? ' ' + UNITS[name] : ''}`, l });
+      } else {
+        const t = (g.texts || {})[name], l = judgeText(name, t);
+        if (l && l !== '정상') flagged.push({ name: LABELS[name] || name, v: t, l });
+      }
+    });
+    flagged.sort((a, b) => (a.l === '의심' ? 0 : 1) - (b.l === '의심' ? 0 : 1));
+  }
+  // 추이 — 첫 회차 대비 10% 이상 달라진 항목 (신장 제외), 변화 폭 순
+  const trends = Object.entries(cd.timeline || {})
+    .filter(([n, e]) => n !== '신장' && e && Array.isArray(e.series) && e.series.length >= 2)
+    .map(([n, e]) => {
+      const last = e.series[0], first = e.series[e.series.length - 1];
+      const pct = Math.abs(last.value - first.value) / (Math.abs(first.value) || 1);
+      return { n, from: first.value, to: last.value, fy: first.year, ty: last.year, unit: e.unit || '', pct, up: last.value > first.value };
+    })
+    .filter(t => t.pct >= 0.1).sort((a, b) => b.pct - a.pct).slice(0, 4);
+  // 암검진 — 검진 종류별 최근 판정
+  const cancer = {};
+  (checkups().cancer || []).slice().sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')))
+    .forEach(x => { cancer[x.exam || '암'] = x; });
+  const oral = (checkups().oral || []).slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))[0] || null;
+  // 처방
+  const rx = prescriptions(), groups = rxGroups();
+  const active = rx.filter(p => p.status === '복용기간내');
+  const freq = new Map();
+  rx.forEach(p => { const k = shortDrug(p.name); freq.set(k, (freq.get(k) || 0) + 1); });
+  const top = Array.from(freq.entries()).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const insts = new Set(rx.map(p => p.institution).filter(Boolean));
+  return { g, flagged, trends, cancer, oral, rx, groups, active, top, insts };
 }
 
 function renderSummary() {
@@ -716,23 +934,63 @@ function renderSummary() {
   if (!box || !notes) return;
   if (!cur) { box.textContent = '아직 선택하지 않았다.'; return; }
   const p = cur.persona || {}, cd = caseData(), per = cd.period || {}, cnt = cur.counts || {};
-  box.innerHTML = `<div style="font-size:14px;font-weight:700;color:var(--text)">${esc(cur.caseNo)} <span class="muted" style="font-weight:400;font-size:11px">${esc(cur.personRef||'')}</span></div>
-    <div style="margin:4px 0">${esc(cur.label || '')}</div>
-    <div>${(cur.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>
-    <div style="margin-top:4px">${(cur.specialties||[]).map(s=>`<span class="tag sp">${esc(s)}</span>`).join('')}</div>
-    <div class="muted" style="margin-top:8px;line-height:1.6">
-      기간 ${esc(per.from)}~${esc(per.to)} (${esc(per.years||0)}년) · 첫 검진 ${esc(per.first_checkup||'-')} · 마지막 검진 ${esc(per.last_checkup||'-')}<br>
-      일반 ${cnt.general||0} · 암 ${cnt.cancer||0} · 구강 ${cnt.oral||0} · 처방 ${cnt.prescription||0}건<br>
-      성별 ${esc(p.sex || '미상')}${p.sexBasis ? ' <span style="font-size:10.5px">(' + esc(p.sexBasis) + ')</span>' : ''} · 나이 ${p.age ? esc(p.age) + '세' : '미입력'}
-      ${p.situation ? '<br>상황: ' + esc(p.situation) : ''}
-    </div>`;
+  const b = caseBrief();
+  const abnormalCancer = j => !/정상|이상\s*없음|음성|해당\s*없음/.test(String(j || ''));
+  let h = `<div class="brief">
+    <div style="font-size:14px;font-weight:700;color:var(--text)">${esc(cur.caseNo)} <span class="muted" style="font-weight:400;font-size:11px">${esc(cur.personRef||'')}</span></div>
+    <div style="margin:4px 0;color:var(--text)">${esc(cur.label || '')}</div>
+    <div>${(cur.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}${(cur.specialties||[]).map(s=>`<span class="tag sp">${esc(s)}</span>`).join('')}</div>
+    <div class="h">인적 사항</div>
+    <div class="ln">${esc(p.sex || '성별 미상')}${p.sexBasis ? ` <span class="muted" style="font-size:10.5px">(${esc(p.sexBasis)})</span>` : ''} · ${p.age ? esc(p.age) + '세' : '나이 미입력'}${p.height ? ` · ${esc(p.height)}cm` : ''}${p.weight ? ` · ${esc(p.weight)}kg` : ''}</div>
+    <div class="ln muted">기록 ${esc(per.from)}~${esc(per.to)} (${esc(per.years||0)}년) · 일반 ${cnt.general||0} · 암 ${cnt.cancer||0} · 구강 ${cnt.oral||0} · 처방 ${cnt.prescription||0}건</div>
+    ${p.situation ? `<div class="ln">상황: ${esc(p.situation)}</div>` : ''}`;
+  // 최근 일반검진
+  h += '<div class="h">최근 일반검진</div>';
+  if (b.g) {
+    h += `<div class="ln">${esc(fmtDate(b.g.date))} · ${esc(b.g.institution || '기관 미상')} — <span class="jud">${esc(b.g.judgment || '판정 없음')}</span></div>`;
+    h += b.flagged.length
+      ? `<div class="ln">참고범위 밖 ${b.flagged.length}항목: ${b.flagged.map(f => `${esc(f.name)} ${esc(f.v)}${lvHtml(f.l)}`).join(', ')}</div>`
+      : '<div class="ln">판정 가능한 항목이 모두 정상 범위다.</div>';
+  } else {
+    h += '<div class="ln muted">일반검진 기록이 없다.</div>';
+  }
+  // 추이
+  if (b.trends.length) {
+    h += '<div class="h">변화가 큰 항목 (첫 회차 → 최근)</div>';
+    b.trends.forEach(t => {
+      h += `<div class="ln">${esc(t.n)} ${esc(t.from)} → <b>${esc(t.to)}</b> ${esc(t.unit)} <span class="${t.up ? 'up' : 'dn'}">${t.up ? '▲' : '▼'} ${Math.round(t.pct * 100)}%</span> <span class="muted">(${esc(t.fy)}→${esc(t.ty)})</span></div>`;
+    });
+  }
+  // 암·구강
+  const cancerKeys = Object.keys(b.cancer);
+  if (cancerKeys.length || b.oral) {
+    h += '<div class="h">암·구강 검진 (종류별 최근 판정)</div>';
+    const parts = cancerKeys.map(k => { const x = b.cancer[k]; const bad = abnormalCancer(x.judgment);
+      return `${esc(k)} <span class="${bad ? 'warn' : ''}">${esc(x.judgment || '-')}</span> <span class="muted">(${esc((x.date||'').slice(0,4))})</span>`; });
+    if (b.oral) parts.push(`구강 <span class="${/필요|의심/.test(b.oral.judgment||'') ? 'warn' : ''}">${esc(b.oral.judgment || '-')}</span> <span class="muted">(${esc((b.oral.date||'').slice(0,4))})</span>`);
+    h += `<div class="ln">${parts.join(' · ')}</div>`;
+  }
+  // 처방
+  h += '<div class="h">처방</div>';
+  if (b.rx.length) {
+    const latest = b.groups[0];
+    h += `<div class="ln">${b.rx.length}건 (조제 ${b.groups.length}회, 기관 ${b.insts.size}곳) · 복용 중 ${b.active.length ? `<b class="warn">${b.active.length}건</b>` : '0건'}</div>`;
+    if (latest) h += `<div class="ln muted">최근 ${esc(fmtDate(latest.date))} ${esc(latest.institution)} — ${latest.items.slice(0, 3).map(i => esc(shortDrug(i.name))).join(', ')}${latest.items.length > 3 ? ` 외 ${latest.items.length - 3}` : ''}</div>`;
+    if (b.active.length) h += `<div class="ln">복용 중: ${b.active.slice(0, 4).map(i => esc(shortDrug(i.name))).join(', ')}${b.active.length > 4 ? ` 외 ${b.active.length - 4}` : ''}</div>`;
+    if (b.top.length) h += `<div class="ln">자주 처방: ${b.top.map(([n, c]) => `${esc(n)} ×${c}`).join(', ')}</div>`;
+  } else {
+    h += '<div class="ln muted">처방 기록이 없다.</div>';
+  }
+  box.innerHTML = h + '</div>';
+
   const miss = cd.missing_items || [], warns = cd.warnings || [];
   const items = [];
   if (miss.length) items.push(`<b class="warn">측정 기록 없음</b> ${miss.map(esc).join(' · ')} — 없다는 사실이 AI 에 전달되며, 정상이라는 뜻이 아니다.`);
   else items.push('모든 수치 항목에 측정 기록이 있다.');
+  items.push('연동 시작·본인인증·불러오기 화면은 <b>모의</b>다. 이름·생년월일은 케이스 번호로 만든 가상값이고, 실제 공단·인증기관에 연결되지 않는다.');
   items.push('진료(상병명) 기록은 원본에 없어 <b>진료 탭이 비어 있다</b>. 처방만 조제일·투여일수로 복용 종료 여부가 계산된다.');
   if (warns.length) items.push(`<b class="warn">처방 ${warns.length}개 연도</b>는 컬럼 조각 수가 맞지 않아 제외됐다 (${warns.map(w=>esc(w.year)).join(', ')}).`);
-  items.push('항목별 정상·경계·의심 표시는 원본에 없고, 국가건강검진 판정 기준(일반 기준)으로 화면에서 계산한 참고값이다.'
+  items.push('항목별 정상·경계·의심 표시(요약의 참고범위 밖 항목 포함)는 원본에 없고, 국가건강검진 판정 기준(일반 기준)으로 화면에서 계산한 참고값이다.'
     + (p.sex === '남성' || p.sex === '여성' ? '' : ' 성별이 미상이라 허리둘레·혈색소·감마지티피는 판정을 표시하지 않는다.'));
   if (!p.reviewed) items.push('페르소나 미검수 — 나이·배경은 PHR 케이스 관리에서 채운다.');
   notes.innerHTML = '<ul style="margin:0;padding-left:16px">' + items.map(i => `<li style="margin-bottom:5px">${i}</li>`).join('') + '</ul>';
