@@ -2187,6 +2187,8 @@ def _db_run_to_proxy(r):
         'results': r.get('results', []),
         'guidelineVersion': r.get('guidelineVersion', ''),
         'status': r.get('status', 'completed'),
+        # 소유자 보존 — 이 dict 를 다시 _save_run_to_db 에 넣는 경로(이력 PUT·재판정 갱신)에서 Job 소유가 host 로 덮이지 않게
+        'owner': r.get('owner') or db.RUN_OWNER_HOST,
     }
 
 

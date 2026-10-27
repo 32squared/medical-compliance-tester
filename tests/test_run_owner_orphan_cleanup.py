@@ -18,6 +18,22 @@ os.environ['DATABASE_URL'] = ''
 import db as _db
 import dbcommon as _dbcommon
 
+
+def _import_proxy():
+    # proxy_server 는 import 시점에 sys.stdout/err 을 UTF-8 래퍼로 교체한다 — test_share_eval_v3 와 같은 방식으로 되돌린다.
+    out, err = sys.stdout, sys.stderr
+    try:
+        import proxy_server
+    finally:
+        for stream, orig in ((sys.stdout, out), (sys.stderr, err)):
+            if stream is not orig:
+                try:
+                    stream.detach()
+                except Exception:
+                    pass
+        sys.stdout, sys.stderr = out, err
+    return proxy_server
+
 _TEST_DB = tempfile.mktemp(suffix='_test_run_owner.db')
 atexit.register(lambda: os.unlink(_TEST_DB) if os.path.exists(_TEST_DB) else None)
 
@@ -65,3 +81,15 @@ def test_job_runner_marks_its_runs_as_job_owned():
     src = open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'job_runner.py'), encoding='utf-8').read()
     assert "'owner': db.RUN_OWNER_JOB" in src
     assert "COALESCE(owner, 'host') <> 'job'" in _db.ORPHAN_RUN_CANCEL_SQL
+
+
+def test_db_run_to_proxy_preserves_owner():
+    """이력 PUT 경로(_save_run_to_db(_db_run_to_proxy(row))) 가 Job 소유를 host 로 덮지 않는다."""
+    ps = _import_proxy()
+    _db.save_test_run({'id': 'r-job2', 'status': 'running', 'results': [], 'owner': _db.RUN_OWNER_JOB})
+    row = _db.get_test_run('r-job2')
+    assert ps._db_run_to_proxy(row)['owner'] == 'job'
+    ps._save_run_to_db(ps._db_run_to_proxy(row))          # 갱신 왕복
+    assert _db.get_test_run('r-job2')['owner'] == 'job'
+    _db.init_db(_TEST_DB)
+    assert _status('r-job2') == 'running'
