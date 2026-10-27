@@ -184,6 +184,7 @@ def _flush_to_db(status='running'):
         _save_run_to_db({
             'runId': _state['run_id'],
             'type': 'job-batch',
+            'owner': db.RUN_OWNER_JOB,   # 호스트 재시작 시 고아 정리(cancelled) 대상에서 제외
             'env': _state['env'],
             'status': status,
             'startedAt': _state['started_at'],

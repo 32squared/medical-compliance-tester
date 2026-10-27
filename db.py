@@ -307,7 +307,8 @@ CREATE TABLE IF NOT EXISTS test_runs (
     guideline_version TEXT,
     tester TEXT DEFAULT '',
     results_json TEXT,
-    status TEXT DEFAULT 'completed'
+    status TEXT DEFAULT 'completed',
+    owner TEXT DEFAULT 'host'
 );
 
 CREATE TABLE IF NOT EXISTS settings (
@@ -666,7 +667,8 @@ CREATE TABLE IF NOT EXISTS test_runs (
     guideline_version TEXT,
     tester TEXT DEFAULT '',
     results_json JSONB,
-    status TEXT DEFAULT 'completed'
+    status TEXT DEFAULT 'completed',
+    owner TEXT DEFAULT 'host'
 );
 
 CREATE TABLE IF NOT EXISTS settings (
@@ -940,6 +942,17 @@ SCHEMA = SCHEMA_SQLITE
 #  DB 초기화 + 커넥션 관리
 # ════════════════════════════════════════
 
+# test_runs.owner 값. 'host' = 프록시 프로세스 안의 ThreadPool 배치(재시작하면 상태가 사라져
+# 고아가 된다), 'job' = Cloud Run Job(job_runner.py) 이 돌리는 run(호스트와 별 프로세스).
+RUN_OWNER_HOST = 'host'
+RUN_OWNER_JOB = 'job'
+# 호스트 기동 시 고아 정리: host 소유의 running 만 cancelled 로. owner 가 NULL 인 옛 행은 host 로 본다.
+ORPHAN_RUN_CANCEL_SQL = (
+    "UPDATE test_runs SET status = 'cancelled' "
+    f"WHERE status = 'running' AND COALESCE(owner, '{RUN_OWNER_HOST}') <> '{RUN_OWNER_JOB}'"
+)
+
+
 def init_db(db_path=None):
     """데이터베이스 초기화 (스키마 생성).
     연결/풀/모드는 dbcommon 소유(import 시점 확정 + lazy 풀). 여기선 스키마만 생성."""
@@ -959,6 +972,8 @@ def init_db(db_path=None):
             # 마이그레이션
             migrations_pg = [
                 "ALTER TABLE test_runs ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'completed'",
+                # run 소유자('host' 프로세스 내 배치 | 'job' Cloud Run Job) — 재시작 정리 대상 구분
+                "ALTER TABLE test_runs ADD COLUMN IF NOT EXISTS owner TEXT DEFAULT 'host'",
                 "ALTER TABLE comments ADD COLUMN IF NOT EXISTS selected_text TEXT DEFAULT ''",
                 "ALTER TABLE comments ADD COLUMN IF NOT EXISTS user_query TEXT DEFAULT ''",
                 "ALTER TABLE comments ADD COLUMN IF NOT EXISTS full_response TEXT DEFAULT ''",
@@ -1167,9 +1182,10 @@ def init_db(db_path=None):
                     cur.execute(sql)
                 except Exception:
                     pass
-            # 고아 running 배치 정리
+            # 고아 running 배치 정리 — 이 프로세스(host)가 메모리에서 돌리던 배치만.
+            # Cloud Run Job(job_runner) 이 돌리는 run 은 별 프로세스라 호스트 재시작과 무관하다.
             try:
-                cur.execute("UPDATE test_runs SET status = 'cancelled' WHERE status = 'running'")
+                cur.execute(ORPHAN_RUN_CANCEL_SQL)
             except Exception:
                 pass
             # ── RAG Phase 1 마이그레이션 (001_rag_tables) ──
@@ -1376,6 +1392,7 @@ def init_db(db_path=None):
         # 마이그레이션
         migrations = [
             "ALTER TABLE test_runs ADD COLUMN status TEXT DEFAULT 'completed'",
+            "ALTER TABLE test_runs ADD COLUMN owner TEXT DEFAULT 'host'",
             "ALTER TABLE comments ADD COLUMN selected_text TEXT DEFAULT ''",
             "ALTER TABLE comments ADD COLUMN user_query TEXT DEFAULT ''",
             "ALTER TABLE comments ADD COLUMN full_response TEXT DEFAULT ''",
@@ -1520,9 +1537,9 @@ def init_db(db_path=None):
             )""")
         except sqlite3.OperationalError:
             pass
-        # 고아 running 배치 정리
+        # 고아 running 배치 정리 — host 소유만 (Job 소유 run 은 건드리지 않는다)
         try:
-            conn.execute("UPDATE test_runs SET status = 'cancelled' WHERE status = 'running'")
+            conn.execute(ORPHAN_RUN_CANCEL_SQL)
         except sqlite3.OperationalError:
             pass
         # ── RAG Phase 1 마이그레이션 (SQLite 모킹) ──
@@ -2697,12 +2714,14 @@ def save_test_run(data):
     with get_conn() as (conn, cur):
         sql, params = _upsert(
             'test_runs', 'id', run_id,
-            ['id', 'run_at', 'total', 'passed', 'failed', 'env', 'guideline_version', 'tester', 'results_json', 'status'],
+            ['id', 'run_at', 'total', 'passed', 'failed', 'env', 'guideline_version', 'tester', 'results_json', 'status',
+             'owner'],
             (run_id, data.get('runAt', now), data.get('total', 0), data.get('passed', 0),
              data.get('failed', 0), data.get('env', 'dev'), data.get('guidelineVersion', ''),
              data.get('tester', ''),
              json.dumps(data.get('results', []), ensure_ascii=False),
-             status)
+             status,
+             data.get('owner') or RUN_OWNER_HOST)
         )
         cur.execute(sql, params)
     return run_id

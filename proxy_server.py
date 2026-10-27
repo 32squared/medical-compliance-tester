@@ -2146,6 +2146,8 @@ def _save_run_to_db(run):
         'tester': run.get('runBy', run.get('tester', '')),
         'results': run.get('results', []),
         'status': run.get('status', 'completed'),
+        # 소유자: 호스트 프로세스 배치는 'host'(기본), Cloud Run Job 은 'job' — 호스트 재시작 정리에서 제외
+        'owner': run.get('owner') or db.RUN_OWNER_HOST,
     })
 
 
