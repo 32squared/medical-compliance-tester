@@ -231,6 +231,16 @@
   .cm.ai .bubble strong { color:#fff; }
   .cm.ai .bubble code { background:var(--app-card2); padding:1px 4px; border-radius:4px; font-size:12px; }
   .cm.ai .bubble a { color:var(--app-blue); }
+  .cm.ai .bubble a.cite { font-size:11px; font-weight:700; text-decoration:none; background:rgba(94,160,255,.14); border-radius:5px; padding:0 4px; margin:0 1px; }
+  .cm.ai .bubble a.cite:hover { background:rgba(94,160,255,.3); }
+  .cm.ai .bubble span.cite { font-size:11px; color:var(--app-dim); }
+  /* 로그인 (폰 안) */
+  .login { padding:60px 22px 20px; text-align:center; }
+  .login .lg { width:64px; height:64px; border-radius:18px; background:var(--app-mint-dark); margin:0 auto 14px; display:flex; align-items:center; justify-content:center; font-size:30px; }
+  .login .t1 { font-size:19px; font-weight:800; }
+  .login .t2 { color:var(--app-dim); font-size:12px; margin:6px 0 26px; line-height:1.5; }
+  .login .fld { text-align:left; }
+  .login .err { font-size:12px; min-height:18px; margin:2px 0 8px; }
   .cm.ai .bubble table { border-collapse:collapse; width:100%; font-size:12px; margin:6px 0; }
   .cm.ai .bubble th, .cm.ai .bubble td { border-bottom:1px solid var(--app-line); padding:4px 5px; text-align:left; }
   .cm.ai .bubble hr { border:none; border-top:1px solid var(--app-line); margin:8px 0; }
@@ -279,11 +289,15 @@
 </head>
 <body>
 
+<!-- 독립 페이지: 호스트 메뉴(app_nav.js)를 싣지 않는다. 외부 시연자는 이 페이지와 로그인만 본다. -->
 <div class="topbar">
-  <h1>&#128241; PHR 시연</h1>
-  <nav id="appNav"></nav>
+  <h1>&#128241; 나만의 주치의 — PHR 시연</h1>
+  <span class="muted" style="font-size:11.5px">My Healthcare 앱의 개인 건강정보 연동 흐름을 샘플 데이터로 재현한다</span>
+  <span style="flex:1"></span>
+  <span class="muted" id="whoami" style="font-size:11.5px"></span>
   <button class="btn ghost" id="presentBtn" onclick="togglePresent()" title="좌우 안내를 숨기고 화면만 크게">발표 모드</button>
   <button class="btn ghost" onclick="goSelect()">샘플 다시 선택</button>
+  <button class="btn ghost" id="logoutBtn" onclick="doLogout()" style="display:none">로그아웃</button>
 </div>
 
 <div class="layout">
@@ -359,7 +373,7 @@
         화면에 보이는 요약이 아니라, 채팅·배치가 SKIX 에 실제로 보내는 원문이다.
       </div>
       <button class="btn ghost" onclick="loadTransmit()">원문 보기</button>
-      <button class="btn ghost" onclick="openInTester()" title="평가·검토 기능이 있는 채팅 테스터를 이 케이스로 연다">채팅 테스터에서 열기</button>
+      <button class="btn ghost admin-only" style="display:none" onclick="openInTester()" title="평가·검토 기능이 있는 채팅 테스터를 이 케이스로 연다">채팅 테스터에서 열기</button>
       <div id="transmitBox" style="margin-top:8px"></div>
     </div>
   </aside>
@@ -377,6 +391,7 @@ let cases = [];          // /api/phr/cases 목록
 let cur = null;          // 선택한 케이스 상세 (/api/phr/cases/{id})
 let stack = [];          // 화면 스택 [{name, params}]
 let authFailed = false;
+let me = null;           // /api/auth/me — {user_id, username, role}
 
 const TIP_QUESTIONS = [
   '최근 검진에서 참고범위를 벗어난 항목이 뭐야?',
@@ -525,7 +540,7 @@ function back() {
   if (stack.length > 1) stack.pop();
   render();
 }
-function goSelect() { stack = [{ name: 'select', params: {} }]; render(); }
+function goSelect() { stack = [{ name: authFailed ? 'login' : 'select', params: {} }]; render(); }
 function render() {
   const top = stack[stack.length - 1] || { name: 'select', params: {} };
   const el = document.getElementById('screen');
@@ -540,6 +555,7 @@ function render() {
   if (top.name === 'loading') runLoading(); else { loadToken++; hidePush(); }
 }
 const STEP_HINTS = {
+  login: '로그인 — 시연 계정(아이디·비밀번호)으로 들어가면 샘플 선택부터 시작한다',
   select: '시연 1 — 샘플 선택 (이 사람의 기록이 연동 결과로 쓰인다)',
   link: '시연 2 — 연동 시작: My Healthcare 홈 → [개인 건강정보 연동하러 가기] (설명서 7단계 ①)',
   auth: '시연 3 — 본인인증: 모의 화면, 이름·생년월일은 가상값 (설명서 7단계 ②)',
@@ -558,11 +574,75 @@ function head(title, withBack) {
 
 const SCREENS = {};
 
-// 1. 샘플 선택 ─ 설명서 7단계(본인인증·불러오기)를 대신한다
+// 0. 로그인 ─ 이 페이지만으로 들어올 수 있게 폰 안에 둔다. 테스터 계정은 /api/tester/login,
+//    'admin' 은 /api/auth/login. 쿠키(HttpOnly)는 서버가 심는다.
+SCREENS.login = function () {
+  return `<div class="login">
+    <div class="lg">&#127973;</div>
+    <div class="t1">PHR 시연</div>
+    <div class="t2">시연 계정으로 로그인하면 샘플 데이터를 골라<br>개인 건강정보 연동 흐름을 볼 수 있습니다.</div>
+    <div class="fld"><label>아이디</label><input id="loginId" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div class="fld"><label>비밀번호</label><input id="loginPw" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div class="err" id="loginErr"></div>
+    <button class="abtn mint" id="loginBtn" onclick="doLogin()">로그인</button>
+  </div>`;
+};
+async function doLogin() {
+  const idEl = document.getElementById('loginId'), pwEl = document.getElementById('loginPw'), err = document.getElementById('loginErr'), btn = document.getElementById('loginBtn');
+  const id = (idEl && idEl.value || '').trim(), pw = (pwEl && pwEl.value || '');
+  if (!id || !pw) { if (err) err.textContent = '아이디와 비밀번호를 입력하세요'; return; }
+  if (btn) { btn.disabled = true; btn.textContent = '확인 중...'; }
+  try {
+    const admin = id === 'admin';
+    const res = await fetch(admin ? '/api/auth/login' : '/api/tester/login', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(admin ? { password: pw } : { id, password: pw }) });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok || !d.success) throw new Error(d.error || d.message || `HTTP ${res.status}`);
+    authFailed = false;
+    await Promise.all([loadCases(), loadSettings(), loadMe()]);
+    goSelect();
+    applyDeepLink();
+  } catch (e) {
+    if (err) err.textContent = e.message;
+    if (btn) { btn.disabled = false; btn.textContent = '로그인'; }
+  }
+}
+async function doLogout() {
+  for (const p of ['/api/tester/logout', '/api/auth/logout']) {
+    try { await fetch(p, { method: 'POST' }); } catch (e) {}
+  }
+  cases = []; cur = null; me = null; authFailed = true; resetChat();
+  renderSummary(); renderWhoami();
+  try { history.replaceState({}, '', location.pathname); } catch (e) {}
+  goSelect();
+}
+async function loadMe() {
+  me = null;
+  try { const r = await fetch('/api/auth/me'); if (r.ok) me = await r.json(); } catch (e) {}
+  renderWhoami();
+}
+function renderWhoami() {
+  const w = document.getElementById('whoami'), lo = document.getElementById('logoutBtn');
+  const isAdmin = !!(me && me.role === 'admin');
+  if (w) w.textContent = me ? `${me.username || me.user_id || ''} · ${isAdmin ? '관리자' : (me.role === 'advisor' ? '자문위원' : '테스터')}` : '';
+  if (lo) lo.style.display = me ? '' : 'none';
+  // 호스트 도구로 나가는 버튼은 관리자에게만 — 외부 시연자는 이 페이지 안에서만 움직인다
+  document.querySelectorAll('.admin-only').forEach(el => { el.style.display = isAdmin ? '' : 'none'; });
+}
+function applyDeepLink() {
+  // ?case=CASE-01 — 발표 직전에 케이스를 고정해 둘 때 쓴다
+  const want = new URLSearchParams(location.search).get('case');
+  if (want && cases.length) {
+    const hit = cases.find(c => c.caseNo === want || c.id === want);
+    if (hit) selectCase(hit.id);
+  }
+}
+
+// 1. 샘플 선택
 SCREENS.select = function () {
   let h = head('PHR 샘플 선택', false) + '<div class="body">';
   if (authFailed) {
-    h += `<div class="empty">로그인이 필요합니다.<br><span style="font-size:12px">관리자는 <a href="/settings" style="color:var(--app-mint)">설정</a>, 테스터는 <a href="/" style="color:var(--app-mint)">채팅 테스터</a>에서 로그인한 뒤 돌아오세요.</span></div>`;
+    h += `<div class="empty">로그인이 필요합니다.<br><button class="abtn mint" style="margin-top:14px" onclick="goSelect()">로그인 화면으로</button></div>`;
   } else if (!cases.length) {
     h += `<div class="empty">등록된 PHR 케이스가 없습니다.<br><span style="font-size:12px">PHR 케이스 관리에서 엑셀을 업로드하면 여기 나타납니다.</span></div>`;
   } else {
@@ -1104,8 +1184,8 @@ function renderChatMsgs() {
       return;
     }
     const body = m.streaming
-      ? (m.text ? renderAnswerHtml(m.text, { streaming: true }) : '<span class="typing"><i></i><i></i><i></i></span>')
-      : (m.error ? '<span class="err">' + esc(m.error) + '</span>' : renderAnswerHtml(m.text));
+      ? (m.text ? linkCitations(renderAnswerHtml(m.text, { streaming: true }), m.sources) : '<span class="typing"><i></i><i></i><i></i></span>')
+      : (m.error ? '<span class="err">' + esc(m.error) + '</span>' : linkCitations(renderAnswerHtml(m.text), m.sources));
     h += `<div class="cm ai"><div>
       <div class="bubble" ${m.streaming ? 'id="chatStream"' : ''}>${body}</div>
       ${m.streaming ? `<div class="prog" id="chatProg" style="${m.progress ? '' : 'display:none'}">${esc(m.progress || '')}</div>` : ''}
@@ -1116,13 +1196,36 @@ function renderChatMsgs() {
     }
   });
   box.innerHTML = h;
+  externalizeLinks(box);
   box.scrollTop = box.scrollHeight;
   const btn = document.getElementById('chatSend');
   if (btn) { btn.classList.toggle('stop', chat.loading); btn.innerHTML = chat.loading ? '&#9632;' : '&#10148;'; btn.title = chat.loading ? '중지' : '보내기'; }
 }
+// 답변 속 참조 번호를 출처 링크로 — SKIX 는 [문서:문단] 꼴([9:1]), 간혹 [9] 꼴을 쓴다.
+// 출처는 INFO.search_results / PROGRESS.result_items 에서 받은 목록(sources)이며 번호는 1부터.
+function linkCitations(html, sources) {
+  const list = sources || [];
+  return html.replace(/\[(\d+)(?::\d+)?\]/g, (match, docIdx) => {
+    const src = list[parseInt(docIdx, 10) - 1];
+    if (!src) return match;
+    const title = esc(src.title || src.strid || '참고자료 ' + docIdx);
+    const url = src.url || src.source_url || '';
+    return url
+      ? `<a class="cite" href="${esc(url)}" target="_blank" rel="noopener noreferrer" title="${title}">[${docIdx}]</a>`
+      : `<span class="cite" title="${title}">[${docIdx}]</span>`;
+  });
+}
+// 폰 프레임 안에서는 링크가 새 창으로 열려야 시연 화면이 바뀌지 않는다
+function externalizeLinks(root) {
+  if (!root) return;
+  root.querySelectorAll('.bubble a[href]').forEach(a => { a.target = '_blank'; a.rel = 'noopener noreferrer'; });
+}
 function updateStream(m) {
   const b = document.getElementById('chatStream');
-  if (b) b.innerHTML = m.text ? renderAnswerHtml(m.text, { streaming: true }) : '<span class="typing"><i></i><i></i><i></i></span>';
+  if (b) {
+    b.innerHTML = m.text ? linkCitations(renderAnswerHtml(m.text, { streaming: true }), m.sources) : '<span class="typing"><i></i><i></i><i></i></span>';
+    externalizeLinks(b.parentElement);
+  }
   const pg = document.getElementById('chatProg');
   if (pg) { pg.textContent = m.progress || ''; pg.style.display = m.progress ? '' : 'none'; }
   const box = document.getElementById('chatMsgs');
@@ -1329,16 +1432,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (tl) tl.innerHTML = TIP_QUESTIONS.map(q => `<button class="tipq" onclick="startChat(${JSON.stringify(q).replace(/"/g,'&quot;')})">"${esc(q)}"</button>`).join('');
   const clock = document.getElementById('clock');
   if (clock) { const d = new Date(); clock.textContent = `${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`; }
-  await Promise.all([loadCases(), loadSettings()]);
+  await Promise.all([loadCases(), loadSettings(), loadMe()]);
   goSelect();
-  // 딥링크: ?case=CASE-01 — 발표 직전에 케이스를 고정해 둘 때 쓴다
-  const want = new URLSearchParams(location.search).get('case');
-  if (want && cases.length) {
-    const hit = cases.find(c => c.caseNo === want || c.id === want);
-    if (hit) selectCase(hit.id);
-  }
+  applyDeepLink();
 });
 </script>
-<script src="/app_nav.js"></script>
 </body>
 </html>
