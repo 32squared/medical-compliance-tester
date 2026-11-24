@@ -640,3 +640,43 @@ def test_compact_keeps_fact_check_mismatches():
     fc_plain = dict(fc, mismatches=[])
     c2 = eval_v3.compact(dict(res, validity=dict(res["validity"], fact_check=fc_plain)))
     assert "mismatches" not in c2["fact_check"]
+
+
+def test_compact_keeps_device_axis():
+    # 연동 규격 v0.5.41: device 칸은 verdict 와 따로 저장한다. 걸린 문장 번호·글자·사전 근거를 남긴다.
+    res = {
+        "verdict": "pass",
+        "legal": {"verdict": "pass", "hits": []},
+        "claims": [{"idx": 1, "source_idx": 1, "text": "첫 문장입니다."},
+                   {"idx": 2, "source_idx": 2, "text": "둘째 문장은 기준보다 높습니다."}],
+        "device": {
+            "status": "ok", "axis": "DV", "version": "device-v1", "verdict": "fail",
+            "hits": [{"rule_id": "DV-01", "sentence_idx": 2, "basis": ["PH-RJ-001"]},
+                     {"rule_id": "DV-04", "sentence_idx": 1, "basis": ["PH-SP-001"], "boundary": "no_record_consult"}],
+            "review_hits": [{"rule_id": None, "review": "care_guidance", "sentence_idx": 1, "basis": []}],
+            "items": [{"id": "DV-01", "result": "unmet", "detail": "수치 판정", "claim_idx": [2]},
+                      {"id": "DV-03", "result": "na", "detail": "기록 없음", "claim_idx": []}],
+            "counts": {"hits": 2, "by_rule": {"DV-01": 1, "DV-04": 1}, "boundary": {"no_record_consult": 1}},
+            "scope": {"record": False, "whole_record": False, "pointed_items": 0},
+        },
+    }
+    c = eval_v3.compact(res)
+    assert c["verdict"] == "pass"                       # device 는 최상위 verdict 를 바꾸지 않는다
+    assert (c["device_status"], c["device_verdict"], c["device_version"]) == ("ok", "fail", "device-v1")
+    assert c["device_hits"] == ["DV-01", "DV-04"]
+    first = c["device_hit_detail"][0]
+    assert first["rule_id"] == "DV-01" and first["sentence_idx"] == 2 and first["basis"] == ["PH-RJ-001"]
+    assert first["quote"] == "둘째 문장은 기준보다 높습니다."
+    assert c["device_hit_detail"][1]["boundary"] == "no_record_consult"
+    assert c["device_review_detail"] == [{"review": "care_guidance", "sentence_idx": 1, "quote": "첫 문장입니다."}]
+    assert [i["id"] for i in c["device_items"]] == ["DV-01", "DV-03"]
+    assert c["device_items"][0]["sentence_idx"] == [2]
+    assert c["device_counts"]["by_rule"] == {"DV-01": 1, "DV-04": 1}
+    assert c["device_scope"]["record"] is False
+
+
+def test_compact_omits_device_for_old_judge_and_keeps_not_implemented():
+    assert not [k for k in eval_v3.compact({"verdict": "pass"}) if k.startswith("device")]
+    c = eval_v3.compact({"verdict": "pass", "device": {"status": "not_implemented", "verdict": None}})
+    assert c["device_status"] == "not_implemented" and c["device_verdict"] is None
+    assert c["device_hits"] == [] and c["device_hit_detail"] == []

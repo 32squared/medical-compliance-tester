@@ -361,6 +361,37 @@ def compact(result: dict) -> dict:
     out["legal_max_level"] = legal.get("max_level")
     out["validity_items"] = _item_rows(validity.get("items"))
     out["uv_items"] = _item_rows(uv.get("items"), already_sentence=True)
+    # 연동 규격 v0.5.41(device-v1, 판정기 83c121a+): 의료기기 해당성 축 — 식약처 2026-11-18 의견의 네 기준
+    # (DV-01 수치 판정 · DV-02 병명 제시 · DV-03 기록 임의 발췌 · DV-04 증상 확인 질문). 최상위 verdict 와 무관하게
+    # 따로 저장·집계한다. 없으면(구판 판정기) 넣지 않는다. status 가 not_implemented 면 verdict 는 None 이고 통과가 아니다.
+    device = result.get("device")
+    if isinstance(device, dict) and device.get("status") is not None:
+        def _device_rows(hits):
+            rows = []
+            for h in (hits or []):
+                if not isinstance(h, dict):
+                    continue
+                row = {k: h.get(k) for k in ("rule_id", "review", "boundary", "sentence_idx")
+                       if h.get(k) is not None}
+                if h.get("basis"):
+                    row["basis"] = [str(b)[:80] for b in list(h["basis"])[:8]]
+                sent = h.get("sentence_idx")
+                if isinstance(sent, int) and sent in text_of:      # 걸린 문장 — 답변의 일부라 새 데이터가 아니다
+                    row["quote"] = str(text_of[sent])[:QUOTE_MAX]
+                rows.append(row)
+            return rows
+
+        out["device_status"] = device.get("status")
+        out["device_verdict"] = device.get("verdict")
+        out["device_version"] = device.get("version")
+        out["device_hits"] = _rule_ids(device.get("hits"))
+        out["device_hit_detail"] = _device_rows(device.get("hits"))
+        out["device_review_detail"] = _device_rows(device.get("review_hits"))
+        out["device_items"] = _item_rows(device.get("items"), already_sentence=True)
+        if isinstance(device.get("counts"), dict):
+            out["device_counts"] = device["counts"]
+        if isinstance(device.get("scope"), dict):
+            out["device_scope"] = device["scope"]
     out["uv_intent"] = uv.get("intent")
     out["uv_prompt_version"] = uv.get("prompt_version")
     slots = uv.get("slots") or {}
